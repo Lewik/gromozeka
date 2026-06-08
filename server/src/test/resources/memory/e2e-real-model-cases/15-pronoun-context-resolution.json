@@ -56,12 +56,12 @@
       {
         "predicateIn": ["prefers"],
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Honda"]
+        "objectEntityCanonicalNameIn": ["Honda"]
       },
       {
         "predicateIn": ["prefers"],
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Ford"]
+        "objectEntityCanonicalNameIn": ["Ford"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
@@ -83,12 +83,12 @@
       {
         "predicateIn": ["prefers"],
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Honda"]
+        "objectEntityCanonicalNameIn": ["Honda"]
       },
       {
         "predicateIn": ["prefers"],
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Ford"]
+        "objectEntityCanonicalNameIn": ["Ford"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]

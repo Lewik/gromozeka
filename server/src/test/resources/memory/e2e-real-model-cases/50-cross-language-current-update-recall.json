@@ -28,14 +28,16 @@
             "selectedClaimsMin": 1,
             "requiredSelectedClaims": [
               {
-                "containsAll": ["RiverLedger", "ORC"],
+                "subjectEntityCanonicalNameIn": ["RiverLedger"],
+                "objectEntityCanonicalNameIn": ["ORC"],
                 "evidenceQuoteContainsAll": ["ORC instead of Avro"],
                 "evidenceSourceSpeakerRoleIn": ["USER"]
               }
             ],
             "forbiddenSelectedClaims": [
               {
-                "normalizedContainsAll": ["RiverLedger", "Avro"]
+                "subjectEntityCanonicalNameIn": ["RiverLedger"],
+                "objectEntityCanonicalNameIn": ["Avro"]
               }
             ],
             "selectedContainsAll": ["RiverLedger", "ORC"],
@@ -64,14 +66,16 @@
     ],
     "requiredClaims": [
       {
-        "containsAll": ["RiverLedger", "ORC"],
+        "subjectEntityCanonicalNameIn": ["RiverLedger"],
+        "objectEntityCanonicalNameIn": ["ORC"],
         "evidenceQuoteContainsAll": ["ORC instead of Avro"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["RiverLedger", "Avro"]
+        "subjectEntityCanonicalNameIn": ["RiverLedger"],
+        "objectEntityCanonicalNameIn": ["Avro"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
@@ -82,14 +86,16 @@
     "userSourcesMin": 3,
     "requiredClaims": [
       {
-        "containsAll": ["RiverLedger", "ORC"],
+        "subjectEntityCanonicalNameIn": ["RiverLedger"],
+        "objectEntityCanonicalNameIn": ["ORC"],
         "evidenceQuoteContainsAll": ["ORC instead of Avro"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["RiverLedger", "Avro"]
+        "subjectEntityCanonicalNameIn": ["RiverLedger"],
+        "objectEntityCanonicalNameIn": ["Avro"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]

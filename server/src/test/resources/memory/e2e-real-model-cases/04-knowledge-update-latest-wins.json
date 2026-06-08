@@ -35,8 +35,9 @@
             ],
             "forbiddenSelectedClaims": [
               {
+                "predicateIn": ["prefers"],
                 "subjectEntityTypeIn": ["USER"],
-                "normalizedContainsAll": ["Toyota"]
+                "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"]
               }
             ],
             "forbiddenSelectedNotes": [
@@ -77,8 +78,9 @@
     ],
     "forbiddenClaims": [
       {
+        "predicateIn": ["prefers"],
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Toyota"]
+        "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"]
       }
     ],
     "forbiddenNotes": [
@@ -105,8 +107,9 @@
     ],
     "forbiddenClaims": [
       {
+        "predicateIn": ["prefers"],
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Toyota"]
+        "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"]
       }
     ],
     "forbiddenNotes": [

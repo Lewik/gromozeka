@@ -27,12 +27,16 @@
             "selectedClaimsMin": 1,
             "requiredSelectedClaims": [
               {
-                "containsAll": ["Atlas", "MongoDB"]
+                "subjectEntityTypeIn": ["PROJECT"],
+                "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (project)"],
+                "objectEntityCanonicalNameIn": ["MongoDB"]
               }
             ],
             "forbiddenSelectedClaims": [
               {
-                "normalizedContainsAll": ["Atlas", "PostgreSQL"]
+                "subjectEntityTypeIn": ["PROJECT"],
+                "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (project)"],
+                "objectEntityCanonicalNameIn": ["PostgreSQL"]
               }
             ],
             "injectedPromptContainsAll": ["Atlas", "MongoDB"],
@@ -62,12 +66,16 @@
             "selectedClaimsMin": 1,
             "requiredSelectedClaims": [
               {
-                "containsAll": ["Atlas", "PostgreSQL"]
+                "subjectEntityTypeIn": ["PERSON"],
+                "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (person)"],
+                "objectEntityCanonicalNameIn": ["PostgreSQL"]
               }
             ],
             "forbiddenSelectedClaims": [
               {
-                "normalizedContainsAll": ["Atlas", "MongoDB"]
+                "subjectEntityTypeIn": ["PERSON"],
+                "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (person)"],
+                "objectEntityCanonicalNameIn": ["MongoDB"]
               }
             ],
             "injectedPromptContainsAll": ["Atlas", "PostgreSQL"],
@@ -89,12 +97,16 @@
     "userSourcesMin": 1,
     "requiredClaims": [
       {
-        "containsAll": ["Atlas", "MongoDB"],
+        "subjectEntityTypeIn": ["PROJECT"],
+        "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (project)"],
+        "objectEntityCanonicalNameIn": ["MongoDB"],
         "evidenceQuoteContainsAll": ["Atlas project", "backend database is MongoDB"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       },
       {
-        "containsAll": ["Atlas", "PostgreSQL"],
+        "subjectEntityTypeIn": ["PERSON"],
+        "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (person)"],
+        "objectEntityCanonicalNameIn": ["PostgreSQL"],
         "evidenceQuoteContainsAll": ["Atlas the person", "preferred tutorial database is PostgreSQL"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
@@ -107,12 +119,16 @@
     "userSourcesMin": 3,
     "requiredClaims": [
       {
-        "containsAll": ["Atlas", "MongoDB"],
+        "subjectEntityTypeIn": ["PROJECT"],
+        "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (project)"],
+        "objectEntityCanonicalNameIn": ["MongoDB"],
         "evidenceQuoteContainsAll": ["Atlas project", "backend database is MongoDB"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       },
       {
-        "containsAll": ["Atlas", "PostgreSQL"],
+        "subjectEntityTypeIn": ["PERSON"],
+        "subjectEntityCanonicalNameIn": ["Atlas", "Atlas (person)"],
+        "objectEntityCanonicalNameIn": ["PostgreSQL"],
         "evidenceQuoteContainsAll": ["Atlas the person", "preferred tutorial database is PostgreSQL"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }

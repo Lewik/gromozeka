@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryForgetPlanner
 import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
+import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
@@ -37,9 +38,10 @@ class LlmMemoryForgetPlanner(
             return MemoryForgetPlan(summary = "No memory candidates matched the explicit forget request.")
         }
 
+        val candidateViews = candidates.toForgetCandidateViews()
         val stageMessages = request.toMemoryStageMessages(
             stageName = "forget-planner",
-            taskPrompt = buildPrompt(request, routeDecision, candidates, snapshot),
+            taskPrompt = buildPrompt(request, routeDecision, candidateViews, snapshot),
         )
 
         log.info {
@@ -47,7 +49,8 @@ class LlmMemoryForgetPlanner(
                 "candidates=${candidates.size} runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
-        val candidateRefs = candidates.mapTo(mutableSetOf()) { it.toForgetItemRef() }
+        val candidateRefs = candidateViews.mapTo(mutableSetOf()) { it.ref }
+        val candidateViewsByHandle = candidateViews.associateBy { it.handle }
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
@@ -69,7 +72,7 @@ class LlmMemoryForgetPlanner(
             parse = { jsonText ->
                 val parsed = json.decodeFromString<ForgetPlannerResponse>(jsonText)
                 MemoryForgetPlan(
-                    forgetActions = parsed.forgetActions.mapNotNull { it.toAction(candidateRefs) },
+                    forgetActions = parsed.forgetActions.mapNotNull { it.toAction(candidateViewsByHandle, candidateRefs) },
                     summary = parsed.summary.trim(),
                 )
             },
@@ -91,7 +94,7 @@ class LlmMemoryForgetPlanner(
     private fun buildPrompt(
         request: DirectStructuredMemoryWriteRequest,
         routeDecision: MemoryRouteDecision,
-        candidates: List<MemoryStore.SearchHit>,
+        candidates: List<ForgetCandidateView>,
         snapshot: MemoryNamespaceSnapshot,
     ): String = """
         You are MemoryForgetPlanner v1.
@@ -119,7 +122,7 @@ class LlmMemoryForgetPlanner(
             {
               "action": "archive_item | soft_delete_source | noop",
               "target_type": "source | claim | note | action_item | episode",
-              "target_ids": ["id"],
+              "target_ids": ["candidate_handle_or_exact_id"],
               "reason": "short explanation"
             }
           ],
@@ -131,6 +134,9 @@ class LlmMemoryForgetPlanner(
         - Prefer removing matching memory from normal recall, not changing truth status.
         - Archive matching claims, notes, action items, and episodes that encode the forgotten content.
         - Soft-delete source evidence that directly supports the forgotten content when the source is primarily about the forgotten content.
+        - Prefer target_ids with candidate handles from Candidate memory, for example claim_1 or source_1.
+        - You may use exact candidate ids only when copying them from a Candidate memory row.
+        - Do not target ids that appear only inside evidence_source_ids fields unless that same source is also listed as a Candidate memory source row.
         - Never soft-delete the current forget request source id ${request.source.id.value}; it is audit evidence for this operation.
         - Do not delete unrelated sources that merely share a word with the forget request.
         - If the request is broad but candidates are ambiguous, no-op ambiguous candidates instead of over-deleting.
@@ -154,10 +160,13 @@ class LlmMemoryForgetPlanner(
         val targetIds: List<String> = emptyList(),
         val reason: String = "",
     ) {
-        fun toAction(candidateRefs: Set<MemoryItemRef>): MemoryForgetPlan.Action? {
+        fun toAction(
+            candidateViewsByHandle: Map<String, ForgetCandidateView>,
+            candidateRefs: Set<MemoryItemRef>,
+        ): MemoryForgetPlan.Action? {
             val type = targetType.toForgetTargetType() ?: return null
             val actionType = action.toForgetActionType() ?: return null
-            val ids = targetIds.mapNotNull { it.toForgetIdOrNull(type, candidateRefs) }
+            val ids = targetIds.mapNotNull { it.toForgetIdOrNull(type, candidateViewsByHandle, candidateRefs) }
             if (actionType != MemoryForgetPlan.Action.Type.NOOP && ids.isEmpty()) return null
             val allowed = ids.filter { id -> MemoryItemRef(type, id) in candidateRefs }
             if (actionType != MemoryForgetPlan.Action.Type.NOOP && allowed.isEmpty()) return null
@@ -172,48 +181,61 @@ class LlmMemoryForgetPlanner(
     }
 }
 
-private fun List<MemoryStore.SearchHit>.renderForgetCandidates(): String =
-    joinToString("\n") { hit ->
-        when (hit) {
-            is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.oneLineForForgetPlannerLog(MAX_FORGET_SOURCE_TEXT_CHARS)}"
-            is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: status=${hit.claim.status.name}; predicate=${hit.claim.predicate}; text=${hit.claim.normalizedText.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.claim.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: status=${hit.note.status.name}; maturity=${hit.note.maturity.name}; title=${hit.note.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${hit.note.summary.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.note.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.ActionItemHit -> "- action_item ${hit.actionItem.id.value}: status=${hit.actionItem.status.name}; title=${hit.actionItem.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; description=${hit.actionItem.description.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.actionItem.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: situation=${hit.episode.situation.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; lesson=${hit.episode.lesson.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.episode.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.EntityHit -> "- entity ${hit.entity.id.value}: type=${hit.entity.entityType.name}; name=${hit.entity.canonicalName.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${hit.entity.summary.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}"
-            is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: owner=${hit.profile.ownerEntityId.value}; text=${hit.profile.profileText.oneLineForForgetPlannerLog(500)}"
-            is MemoryStore.SearchHit.RunHit -> "- run ${hit.run.id.value}: type=${hit.run.runType.name}; summary=${hit.run.summary.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}"
-        }
+private data class ForgetCandidateView(
+    val handle: String,
+    val ref: MemoryItemRef,
+    val sourceId: MemorySource.Id?,
+    val text: String,
+)
+
+private fun List<MemoryStore.SearchHit>.toForgetCandidateViews(): List<ForgetCandidateView> {
+    val counters = mutableMapOf<MemoryItemRef.Type, Int>()
+    return map { hit ->
+        val ref = hit.toForgetItemRef()
+        val index = counters.getOrDefault(ref.type, 0) + 1
+        counters[ref.type] = index
+        ForgetCandidateView(
+            handle = "${ref.type.forForgetPromptType()}_$index",
+            ref = ref,
+            sourceId = (hit as? MemoryStore.SearchHit.SourceHit)?.source?.id,
+            text = hit.renderForgetCandidateText(),
+        )
+    }
+}
+
+private fun List<ForgetCandidateView>.renderForgetCandidates(): String =
+    joinToString("\n") { candidate ->
+        "- handle=${candidate.handle}; type=${candidate.ref.type.forForgetPromptType()}; id=${candidate.ref.id}; ${candidate.text}"
     }.ifBlank { "none" }
 
 private fun MemoryNamespaceSnapshot.renderForgetSupportingSources(
-    candidates: List<MemoryStore.SearchHit>,
-    currentSourceId: com.gromozeka.domain.model.memory.MemorySource.Id,
+    candidates: List<ForgetCandidateView>,
+    currentSourceId: MemorySource.Id,
 ): String {
-    val sourceIds = buildSet {
-        candidates.forEach { hit ->
-            when (hit) {
-                is MemoryStore.SearchHit.SourceHit -> add(hit.source.id)
-                is MemoryStore.SearchHit.ClaimHit -> addAll(hit.claim.evidenceRefs.map { it.sourceId })
-                is MemoryStore.SearchHit.NoteHit -> addAll(hit.note.evidenceRefs.map { it.sourceId })
-                is MemoryStore.SearchHit.ActionItemHit -> addAll(hit.actionItem.evidenceRefs.map { it.sourceId })
-                is MemoryStore.SearchHit.EpisodeHit -> addAll(hit.episode.evidenceRefs.map { it.sourceId })
-                is MemoryStore.SearchHit.EntityHit,
-                is MemoryStore.SearchHit.ProfileHit,
-                is MemoryStore.SearchHit.RunHit,
-                -> Unit
-            }
-        }
-    }
+    val sourceCandidateHandles = candidates
+        .mapNotNull { candidate -> candidate.sourceId?.let { it to candidate.handle } }
+        .toMap()
 
     return sources
-        .filter { it.id in sourceIds && it.id != currentSourceId }
+        .filter { it.id in sourceCandidateHandles.keys && it.id != currentSourceId }
         .take(16)
         .joinToString("\n") { source ->
-            "- source ${source.id.value}: ${source.contentText.oneLineForForgetPlannerLog(MAX_FORGET_SUPPORTING_SOURCE_TEXT_CHARS)}"
+            "- handle=${sourceCandidateHandles.getValue(source.id)}; id=${source.id.value}; ${source.contentText.oneLineForForgetPlannerLog(MAX_FORGET_SUPPORTING_SOURCE_TEXT_CHARS)}"
         }
         .ifBlank { "none" }
 }
+
+private fun MemoryStore.SearchHit.renderForgetCandidateText(): String =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> "text=${source.contentText.oneLineForForgetPlannerLog(MAX_FORGET_SOURCE_TEXT_CHARS)}"
+        is MemoryStore.SearchHit.ClaimHit -> "status=${claim.status.name}; predicate=${claim.predicate}; text=${claim.normalizedText.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence_source_ids=${claim.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+        is MemoryStore.SearchHit.NoteHit -> "status=${note.status.name}; maturity=${note.maturity.name}; title=${note.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${note.summary.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence_source_ids=${note.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+        is MemoryStore.SearchHit.ActionItemHit -> "status=${actionItem.status.name}; title=${actionItem.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; description=${actionItem.description.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence_source_ids=${actionItem.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+        is MemoryStore.SearchHit.EpisodeHit -> "situation=${episode.situation.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; lesson=${episode.lesson.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence_source_ids=${episode.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+        is MemoryStore.SearchHit.EntityHit -> "name=${entity.canonicalName.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${entity.summary.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}"
+        is MemoryStore.SearchHit.ProfileHit -> "owner=${profile.ownerEntityId.value}; text=${profile.profileText.oneLineForForgetPlannerLog(500)}"
+        is MemoryStore.SearchHit.RunHit -> "run_type=${run.runType.name}; summary=${run.summary.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}"
+    }
 
 internal fun MemoryStore.SearchHit.toForgetItemRef(): MemoryItemRef =
     when (this) {
@@ -247,9 +269,13 @@ private fun String.toForgetTargetType(): MemoryItemRef.Type? =
 
 private fun String.toForgetIdOrNull(
     targetType: MemoryItemRef.Type,
+    candidateViewsByHandle: Map<String, ForgetCandidateView>,
     candidateRefs: Set<MemoryItemRef>,
 ): String? {
     val value = trim().takeIf { it.isNotBlank() } ?: return null
+    candidateViewsByHandle[value]?.let { candidate ->
+        return candidate.ref.takeIf { it.type == targetType }?.id
+    }
     val lowerValue = value.lowercase()
     if (lowerValue in setOf("uuid", "id", "null")) return null
     if (lowerValue.contains("<id>") || lowerValue.contains("{id}") || lowerValue.endsWith(":id")) {
@@ -260,6 +286,18 @@ private fun String.toForgetIdOrNull(
     }
     return value
 }
+
+private fun MemoryItemRef.Type.forForgetPromptType(): String =
+    when (this) {
+        MemoryItemRef.Type.SOURCE -> "source"
+        MemoryItemRef.Type.ENTITY -> "entity"
+        MemoryItemRef.Type.CLAIM -> "claim"
+        MemoryItemRef.Type.NOTE -> "note"
+        MemoryItemRef.Type.ACTION_ITEM -> "action_item"
+        MemoryItemRef.Type.PROFILE -> "profile"
+        MemoryItemRef.Type.EPISODE -> "episode"
+        MemoryItemRef.Type.RUN -> "run"
+    }
 
 private fun String.oneLineForForgetPlannerLog(maxChars: Int): String {
     val oneLine = trim()

@@ -1,0 +1,511 @@
+{
+    "version": 1,
+    "hash": "814ff1985cb641a972506b02d739b273d3a1b1b644480323223452ab67e435fc",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; Read-Time Retrieval Planner v3 answer-mode and retrieval policy; `Read-Time Retrieval Planner v3` runs before answer synthesis to decide whether memory search is needed, which answer mode to use (`factual`, `rationale`, `task`, or `mixed`), which memory types to search, retrieval budget, and whether raw evidence is needed. Its rules map factual recall to claims/status/preferences, rationale questions to notes, task questions to commitments/follow-ups, mixed questions to multiple memory classes, and source retrieval to conflicts, uncertainty, or quotation-quality grounding.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 12. Read-Time Retrieval Planner v3`, lines 821-899\n- note hot-path:note:<1> DOC_DIGEST; Claim Extractor v3 extracts atomic semantic claims; `Claim Extractor v3` is invoked when the router chooses `direct_structured_write` or `mixed`, or by a background consolidator, and extracts precise atomic semantic claims from latest turns. Its contract requires one predicate application per claim, `scope_json` to avoid over-generalization, no forced conversion of soft rationale into claims, preferring zero low-quality claims, and valid JSON only.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 6. Claim Extractor v3`, lines 416-491\n- note hot-path:note:<2> DOC_DIGEST; Answer Composer v3 grounding and uncertainty policy; `Answer Composer v3` runs after retrieval to produce a grounded answer that respects evidence strength, scope boundaries, retrieval mode, and uncertainty. It should prefer active claims and scoped tasks for factual questions, use notes carefully for rationale questions, acknowledge conflicts or weak evidence, and abstain when memory is insufficient rather than invent specifics.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 13. Answer Composer v3`, lines 901-959\n- note hot-path:note:<3> DIRECTION; MemoryRouter v3 decision policy separates facts, notes, tasks, and noise; The `MemoryRouter v3` prompt routes transient or low-value content to `noop`, explicit facts/preferences/status/deadlines/commitments to `direct_structured_write`, rationale/trade-offs/design direction/plans/conclusions/lessons/document digests to `note_write`, and combined structured plus contextual material to `mixed`. Its hard rules emphasize preferring `noop` over memory pollution, not treating every question as a task, not forcing rationale into claims, honoring explicit remember requests, and returning valid JSON only.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 1. Memory Router v3`, lines 76-92\n- claim hot-path:claim:<0> requires_valid_json_only; Claim Extractor v3 must return valid JSON only.; scope=Document `03. Prompt Pack`, section `6. Claim Extractor v3`.\n- claim hot-path:claim:<1> requires_valid_json_only; Claim Reconciler v3 must return valid JSON only.; scope=Document `03. Prompt Pack`, section `7. Claim Reconciler v3`.\n- note hot-path:note:<4> DOC_DIGEST; Claim Reconciler v3 claim lifecycle policy; `Claim Reconciler v3` runs after `ClaimExtractor` to compare candidate claims against existing claims and choose update operations: `insert`, `update`, `supersede`, `retract`, or `noop`. It uses predicate rules for replace/coexist/range_split, allows coexistence when scope differs by time, project, person, or modality, prefers supersede over silent overwrite, and uses retract only for clear contradiction or disconfirmation.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 7. Claim Reconciler v3`, lines 492-567\n- claim hot-path:claim:<2> includes_source_retrieval_when; Write-Time Retrieval Planner v3 includes source retrieval when conflicts or grounding-quality checks are likely to matter.; scope=Within the 03. Prompt Pack document section for Write-Time Retrieval Planner v3.\n- claim hot-path:claim:<3> requires_valid_json_only; Memory Repair Planner v1 must return valid JSON only.; scope=agent_memory_handoff/03_prompts.md section 11, Memory Repair Planner v1\n- note hot-path:note:<5> DIRECTION; Write-Time Retrieval Planner v3 query and filter policy; `Write-Time Retrieval Planner v3` retrieval plans should include notes for rationale-heavy or plan-heavy material, claims for preferences/status/factual updates, source retrieval when conflicts or grounding checks matter, and time filters for temporal language such as \"now\", \"used to\", \"from now on\", deadlines, or relative dates. Plans should remain precise, preferring fewer better queries.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 2. Write-Time Retrieval Planner v3`, prompt rules, lines 156-168\n- claim hot-path:claim:<4> requires_valid_json_only; Read-Time Retrieval Planner v3 must return valid JSON only.; scope=03. Prompt Pack / 12. Read-Time Retrieval Planner v3\n- claim hot-path:claim:<5> has_constraint; Write-Time Retrieval Planner v3 must return valid JSON only.; scope=Within the 03. Prompt Pack document section for Write-Time Retrieval Planner v3.\n- claim hot-path:claim:<6> requires_prompt_versioning; The v3 prompt pack requires every prompt to be versioned, such as `router_v3` or `claim_extract_v3`.; scope=Rules stated in document `agent_memory_handoff/03_prompts.md`, section `0. Общие правила для всех memory prompts`.\n\n        Resolved entities:\n        - mention=FastSlowEscalationPlanner v1; action=CREATE_NEW; id=entity:<0>; type=AGENT; name=FastSlowEscalationPlanner v1; reason=The document section defines a prompt for an agent with this name, and no existing candidate safely matches it.\n- mention=Optional FastSlow Escalation Planner v1; action=CREATE_NEW; id=entity:<0>; type=AGENT; name=FastSlowEscalationPlanner v1; reason=This heading is a surface form for the same FastSlowEscalationPlanner v1 agent, but no existing entity id is available in this batch for add_alias.\n- mention=Minimum validation layer outside the model; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Minimum validation layer outside the model; reason=The section describes a reusable validation-layer concept distinct from the existing agents and document.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model Document lines: 960-1034 ## 14. Optional FastSlow Escalation Planner v1 ### Когда вызывать После draft answer в fast path. ### Цель Решить, надо ли эскалировать в slow path. ### Выход ```json { \"escalate\": false, \"reason\": \"short explanation\", \"handoff\": { \"user_goal\": \"string\", \"facts_we_believe\": [], \"open_questions\": [], \"uncertainty_flags\": [], \"required_outputs\": [] } } ``` ### Prompt ```text You are FastSlowEscalationPlanner v1. Goal: Decide whether the current request should stay on the fast path or be escalated to the slow path. Current request: {{user_request}} Draft answer: {{draft_answer}} Uncertainty flags: {{uncertainty_flags}} Return JSON: { \"escalate\": false, \"reason\": \"short explanation\", \"handoff\": { \"user_goal\": \"string\", \"facts_we_believe\": [], \"open_questions\": [], \"uncertainty_flags\": [], \"required_outputs\": [] } } Rules: - Escalate for high-stakes ambiguity, unresolved conflicts, heavy rationale synthesis, or verification-sensitive answers. - Prefer staying on the fast path when the answer is already well-grounded. - Return valid JSON only. ``` ## 15. Minimum validation layer outside the model Даже хорошие prompts не отменяют deterministic guards. Минимум: - schema validation - predicate exists in catalog - exactly one of `object_entity_id` / `object_value_json` - `confidence` in range - `valid_to >= valid_from` - `normalized_text` non-empty - active claim must have evidence - `scope_json` object-shaped - retrieval budget caps cannot be exceeded\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:d69c734af7b8a0c5f6474c2efff526cd] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model\nDocument lines: 960-1034\n\n## 14. Optional FastSlow Escalation Planner v1\n\n### Когда вызывать\nПосле draft answer в fast path.\n\n### Цель\nРешить, надо ли эскалировать в slow path.\n\n### Выход\n\n```json\n{\n  \"escalate\": false,\n  \"reason\": \"short explanation\",\n  \"handoff\": {\n    \"user_goal\": \"string\",\n    \"facts_we_believe\": [],\n    \"open_questions\": [],\n    \"uncertainty_flags\": [],\n    \"required_outputs\": []\n  }\n}\n```\n\n### Prompt\n\n```text\nYou are FastSlowEscalationPlanner v1.\n\nGoal:\nDecide whether the current request should stay on the fast path or be escalated to the slow path.\n\nCurrent request:\n{{user_request}}\n\nDraft answer:\n{{draft_answer}}\n\nUncertainty flags:\n{{uncertainty_flags}}\n\nReturn JSON:\n{\n  \"escalate\": false,\n  \"reason\": \"short explanation\",\n  \"handoff\": {\n    \"user_goal\": \"string\",\n    \"facts_we_believe\": [],\n    \"open_questions\": [],\n    \"uncertainty_flags\": [],\n    \"required_outputs\": []\n  }\n}\n\nRules:\n- Escalate for high-stakes ambiguity, unresolved conflicts, heavy rationale synthesis, or verification-sensitive answers.\n- Prefer staying on the fast path when the answer is already well-grounded.\n- Return valid JSON only.\n```\n\n## 15. Minimum validation layer outside the model\n\nДаже хорошие prompts не отменяют deterministic guards.\n\nМинимум:\n- schema validation\n- predicate exists in catalog\n- exactly one of `object_entity_id` / `object_value_json`\n- `confidence` in range\n- `valid_to >= valid_from`\n- `normalized_text` non-empty\n- active claim must have evidence\n- `scope_json` object-shaped\n- retrieval budget caps cannot be exceeded",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:d69c734af7b8a0c5f6474c2efff526cd"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; Read-Time Retrieval Planner v3 answer-mode and retrieval policy; `Read-Time Retrieval Planner v3` runs before answer synthesis to decide whether memory search is needed, which answer mode to use (`factual`, `rationale`, `task`, or `mixed`), which memory types to search, retrieval budget, and whether raw evidence is needed. Its rules map factual recall to claims/status/preferences, rationale questions to notes, task questions to commitments/follow-ups, mixed questions to multiple memory classes, and source retrieval to conflicts, uncertainty, or quotation-quality grounding.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 12. Read-Time Retrieval Planner v3`, lines 821-899\n- note hot-path:note:<1> DOC_DIGEST; Claim Extractor v3 extracts atomic semantic claims; `Claim Extractor v3` is invoked when the router chooses `direct_structured_write` or `mixed`, or by a background consolidator, and extracts precise atomic semantic claims from latest turns. Its contract requires one predicate application per claim, `scope_json` to avoid over-generalization, no forced conversion of soft rationale into claims, preferring zero low-quality claims, and valid JSON only.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 6. Claim Extractor v3`, lines 416-491\n- note hot-path:note:<2> DOC_DIGEST; Answer Composer v3 grounding and uncertainty policy; `Answer Composer v3` runs after retrieval to produce a grounded answer that respects evidence strength, scope boundaries, retrieval mode, and uncertainty. It should prefer active claims and scoped tasks for factual questions, use notes carefully for rationale questions, acknowledge conflicts or weak evidence, and abstain when memory is insufficient rather than invent specifics.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 13. Answer Composer v3`, lines 901-959\n- note hot-path:note:<3> DIRECTION; MemoryRouter v3 decision policy separates facts, notes, tasks, and noise; The `MemoryRouter v3` prompt routes transient or low-value content to `noop`, explicit facts/preferences/status/deadlines/commitments to `direct_structured_write`, rationale/trade-offs/design direction/plans/conclusions/lessons/document digests to `note_write`, and combined structured plus contextual material to `mixed`. Its hard rules emphasize preferring `noop` over memory pollution, not treating every question as a task, not forcing rationale into claims, honoring explicit remember requests, and returning valid JSON only.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 1. Memory Router v3`, lines 76-92\n- claim hot-path:claim:<0> requires_valid_json_only; Claim Extractor v3 must return valid JSON only.; scope=Document `03. Prompt Pack`, section `6. Claim Extractor v3`.\n- claim hot-path:claim:<1> requires_valid_json_only; Claim Reconciler v3 must return valid JSON only.; scope=Document `03. Prompt Pack`, section `7. Claim Reconciler v3`.\n- note hot-path:note:<4> DOC_DIGEST; Claim Reconciler v3 claim lifecycle policy; `Claim Reconciler v3` runs after `ClaimExtractor` to compare candidate claims against existing claims and choose update operations: `insert`, `update`, `supersede`, `retract`, or `noop`. It uses predicate rules for replace/coexist/range_split, allows coexistence when scope differs by time, project, person, or modality, prefers supersede over silent overwrite, and uses retract only for clear contradiction or disconfirmation.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 7. Claim Reconciler v3`, lines 492-567\n- claim hot-path:claim:<2> includes_source_retrieval_when; Write-Time Retrieval Planner v3 includes source retrieval when conflicts or grounding-quality checks are likely to matter.; scope=Within the 03. Prompt Pack document section for Write-Time Retrieval Planner v3.\n- claim hot-path:claim:<3> requires_valid_json_only; Memory Repair Planner v1 must return valid JSON only.; scope=agent_memory_handoff/03_prompts.md section 11, Memory Repair Planner v1\n- note hot-path:note:<5> DIRECTION; Write-Time Retrieval Planner v3 query and filter policy; `Write-Time Retrieval Planner v3` retrieval plans should include notes for rationale-heavy or plan-heavy material, claims for preferences/status/factual updates, source retrieval when conflicts or grounding checks matter, and time filters for temporal language such as \"now\", \"used to\", \"from now on\", deadlines, or relative dates. Plans should remain precise, preferring fewer better queries.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 2. Write-Time Retrieval Planner v3`, prompt rules, lines 156-168\n- claim hot-path:claim:<4> requires_valid_json_only; Read-Time Retrieval Planner v3 must return valid JSON only.; scope=03. Prompt Pack / 12. Read-Time Retrieval Planner v3\n- claim hot-path:claim:<5> has_constraint; Write-Time Retrieval Planner v3 must return valid JSON only.; scope=Within the 03. Prompt Pack document section for Write-Time Retrieval Planner v3.\n- claim hot-path:claim:<6> requires_prompt_versioning; The v3 prompt pack requires every prompt to be versioned, such as `router_v3` or `claim_extract_v3`.; scope=Rules stated in document `agent_memory_handoff/03_prompts.md`, section `0. Общие правила для всех memory prompts`.\n\n        Resolved entities:\n        - mention=FastSlowEscalationPlanner v1; action=CREATE_NEW; id=entity:<0>; type=AGENT; name=FastSlowEscalationPlanner v1; reason=The document section defines a prompt for an agent with this name, and no existing candidate safely matches it.\n- mention=Optional FastSlow Escalation Planner v1; action=CREATE_NEW; id=entity:<0>; type=AGENT; name=FastSlowEscalationPlanner v1; reason=This heading is a surface form for the same FastSlowEscalationPlanner v1 agent, but no existing entity id is available in this batch for add_alias.\n- mention=Minimum validation layer outside the model; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Minimum validation layer outside the model; reason=The section describes a reusable validation-layer concept distinct from the existing agents and document.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model Document lines: 960-1034 ## 14. Optional FastSlow Escalation Planner v1 ### Когда вызывать После draft answer в fast path. ### Цель Решить, надо ли эскалировать в slow path. ### Выход ```json { \"escalate\": false, \"reason\": \"short explanation\", \"handoff\": { \"user_goal\": \"string\", \"facts_we_believe\": [], \"open_questions\": [], \"uncertainty_flags\": [], \"required_outputs\": [] } } ``` ### Prompt ```text You are FastSlowEscalationPlanner v1. Goal: Decide whether the current request should stay on the fast path or be escalated to the slow path. Current request: {{user_request}} Draft answer: {{draft_answer}} Uncertainty flags: {{uncertainty_flags}} Return JSON: { \"escalate\": false, \"reason\": \"short explanation\", \"handoff\": { \"user_goal\": \"string\", \"facts_we_believe\": [], \"open_questions\": [], \"uncertainty_flags\": [], \"required_outputs\": [] } } Rules: - Escalate for high-stakes ambiguity, unresolved conflicts, heavy rationale synthesis, or verification-sensitive answers. - Prefer staying on the fast path when the answer is already well-grounded. - Return valid JSON only. ``` ## 15. Minimum validation layer outside the model Даже хорошие prompts не отменяют deterministic guards. Минимум: - schema validation - predicate exists in catalog - exactly one of `object_entity_id` / `object_value_json` - `confidence` in range - `valid_to >= valid_from` - `normalized_text` non-empty - active claim must have evidence - `scope_json` object-shaped - retrieval budget caps cannot be exceeded\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:d69c734af7b8a0c5f6474c2efff526cd] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1 .. 15. Minimum validation layer outside the model\nDocument lines: 960-1034\n\n## 14. Optional FastSlow Escalation Planner v1\n\n### Когда вызывать\nПосле draft answer в fast path.\n\n### Цель\nРешить, надо ли эскалировать в slow path.\n\n### Выход\n\n```json\n{\n  \"escalate\": false,\n  \"reason\": \"short explanation\",\n  \"handoff\": {\n    \"user_goal\": \"string\",\n    \"facts_we_believe\": [],\n    \"open_questions\": [],\n    \"uncertainty_flags\": [],\n    \"required_outputs\": []\n  }\n}\n```\n\n### Prompt\n\n```text\nYou are FastSlowEscalationPlanner v1.\n\nGoal:\nDecide whether the current request should stay on the fast path or be escalated to the slow path.\n\nCurrent request:\n{{user_request}}\n\nDraft answer:\n{{draft_answer}}\n\nUncertainty flags:\n{{uncertainty_flags}}\n\nReturn JSON:\n{\n  \"escalate\": false,\n  \"reason\": \"short explanation\",\n  \"handoff\": {\n    \"user_goal\": \"string\",\n    \"facts_we_believe\": [],\n    \"open_questions\": [],\n    \"uncertainty_flags\": [],\n    \"required_outputs\": []\n  }\n}\n\nRules:\n- Escalate for high-stakes ambiguity, unresolved conflicts, heavy rationale synthesis, or verification-sensitive answers.\n- Prefer staying on the fast path when the answer is already well-grounded.\n- Return valid JSON only.\n```\n\n## 15. Minimum validation layer outside the model\n\nДаже хорошие prompts не отменяют deterministic guards.\n\nМинимум:\n- schema validation\n- predicate exists in catalog\n- exactly one of `object_entity_id` / `object_value_json`\n- `confidence` in range\n- `valid_to >= valid_from`\n- `normalized_text` non-empty\n- active claim must have evidence\n- `scope_json` object-shaped\n- retrieval budget caps cannot be exceeded",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:d69c734af7b8a0c5f6474c2efff526cd"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"FastSlowEscalationPlanner v1 runs after draft answer in fast path\",\"Escalate for high-stakes ambiguity, unresolved conflicts, heavy rationale synthesis, or verification-sensitive answers\",\"Prefer staying on fast path when answer is already well-grounded\",\"Return valid JSON only\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Decide whether the current request should stay on the fast path or be escalated to the slow path.\",\"evidence_reason\":\"The section explicitly defines the planner goal and rules for fast-path versus slow-path escalation.\",\"importance\":4,\"keywords\":[\"FastSlowEscalationPlanner v1\",\"fast path\",\"slow path\",\"escalation\",\"draft answer\",\"uncertainty_flags\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is a reusable prompt-policy digest describing when and why to escalate, rather than a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 14. Optional FastSlow Escalation Planner v1`, lines 960-1018\"},\"summary\":\"`FastSlowEscalationPlanner v1` runs after a draft answer in the fast path to decide whether to stay fast or escalate to slow path. It escalates for high-stakes ambiguity, unresolved conflicts, heavy rationale synthesis, or verification-sensitive answers, and prefers staying fast when the draft is already well-grounded.\",\"tags\":[\"doc_digest\",\"prompt_pack\",\"escalation\"],\"title\":\"FastSlowEscalationPlanner v1 escalation policy\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Good prompts do not replace deterministic guards\",\"Minimum guards include schema validation\",\"Minimum guards require predicate exists in catalog\",\"Minimum guards require exactly one of object_entity_id or object_value_json\",\"Minimum guards require confidence in range\",\"Minimum guards require valid_to >= valid_from\",\"Minimum guards require normalized_text non-empty\",\"Minimum guards require active claim to have evidence\",\"Minimum guards require scope_json object-shaped\",\"Minimum guards require retrieval budget caps cannot be exceeded\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Даже хорошие prompts не отменяют deterministic guards.\",\"evidence_reason\":\"The section explicitly states the need for deterministic guards and lists the required minimum validation checks.\",\"importance\":4,\"keywords\":[\"Minimum validation layer outside the model\",\"deterministic guards\",\"schema validation\",\"predicate catalog\",\"active claim evidence\",\"retrieval budget caps\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is a reusable policy/validation-layer digest with a checklist, better represented as a note than as only separate atomic claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 15. Minimum validation layer outside the model`, lines 1020-1034\"},\"summary\":\"The `Minimum validation layer outside the model` specifies that good prompts do not replace deterministic guards. The minimum guard set includes schema validation, predicate catalog checks, exactly one object target, confidence and validity-range checks, non-empty normalized text, evidence for active claims, object-shaped scope, and retrieval budget caps.\",\"tags\":[\"doc_digest\",\"validation\",\"deterministic_guards\"],\"title\":\"Minimum validation layer requires deterministic guards\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4233,
+                "completionTokens": 792,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

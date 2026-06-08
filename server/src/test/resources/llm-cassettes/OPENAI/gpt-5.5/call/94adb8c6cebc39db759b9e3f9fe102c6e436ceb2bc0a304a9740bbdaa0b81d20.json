@@ -1,0 +1,403 @@
+{
+    "version": 1,
+    "hash": "94adb8c6cebc39db759b9e3f9fe102c6e436ceb2bc0a304a9740bbdaa0b81d20",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: ClaimReconciler v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Decide how candidate claims should update active memory and assign predicate policy.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_claim_id\": \"existing-claim-id-or-null\",\n              \"canonical_predicate\": \"stable_snake_case_predicate_or_null\",\n              \"predicate_family\": \"stable_conceptual_family_or_null\",\n              \"predicate_description\": \"short policy meaning or null\",\n              \"object_kind\": \"entity | string | number | boolean | json | null\",\n              \"cardinality\": \"single | multi | null\",\n              \"temporal_policy\": \"atemporal | time_scoped | status_like | null\",\n              \"conflict_policy\": \"replace | coexist | range_split | null\",\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new durable information.\n        - noop: candidate is duplicate, low-value, or should not become active memory.\n        - supersede: candidate is the new current value and target_claim_id is the old active claim it replaces.\n        - retract: target_claim_id should stop being active because the target message retracts it without a replacement candidate.\n        - update: target_claim_id should be patched without adding a new candidate; use sparingly.\n\n        Predicate policy fields:\n        - canonical_predicate: normalized predicate to store for the candidate. Reuse an existing predicate only if it is the same semantic relation; otherwise choose a concise snake_case relation.\n        - predicate_family: stable conceptual family used for future reconciliation.\n        - cardinality: single if one subject can have only one active value in this family and scope; multi if several values can coexist.\n        - temporal_policy: atemporal for timeless facts, time_scoped for facts true in explicit time windows, status_like for current states, current preferences, decisions, and other evolving values.\n        - conflict_policy: replace when a new value invalidates the old active value, coexist when both can remain true, range_split when old and new values are both temporally meaningful.\n\n        Rules:\n        - Use the target source and full thread context to understand corrections, replacements, pronouns, temporal meaning, and scope.\n        - Do not decide by literal predicate names. Infer the semantic predicate family from the claim meaning, subject, object, qualifiers, evidence, scope, and temporal fields.\n        - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.\n        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.\n        - Invent a new canonical_predicate only when no active catalog predicate captures the relation.\n        - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as \"is_described_as\", \"has_property\", \"is_a\", or \"defined_as\". Choose a specific durable relation or return noop.\n        - For ordinary positive preferences, use catalog predicate \"prefers\"; do not keep category-specific variants such as \"prefers_car_brand\" unless they represent a named current/default slot.\n        - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.\n        - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.\n        - If multiple candidates from the same target source express the same durable point at different abstraction levels, keep the most specific/actionable candidate and return noop for weaker broader candidates.\n        - If one candidate captures the target source's explicit current/default/status value and another candidate is only a generic preference or affinity inferred from the same words, return noop for the generic candidate unless the target source independently asserts it.\n        - Do not insert redundant broader candidates merely because they use a different predicate or family.\n        - For exclusive current/default/status values in the same subject, scope, and environment, use cardinality=single and conflict_policy=replace unless simultaneous active values are explicitly allowed.\n        - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.\n        - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.\n        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.\n        - If predicate policy says coexist, insert the candidate unless it is a duplicate.\n        - If predicate policy says range_split, insert the candidate and supersede only an old current-state claim that should no longer be retrieved as current.\n        - Attributed viewpoints, independent owners, independent events, and historical facts usually coexist unless the target source explicitly retracts them.\n        - Use catalog predicate \"believes\" for third-party viewpoints such as \"Alice thinks X\"; do not canonicalize those claims to \"prefers\" or \"avoids\" unless the source explicitly asserts preference or avoidance.\n        - Prefer insert over destructive actions when policy or evidence is unclear.\n        - Return one operation for each candidate unless the right action is a target-only retract/update.\n        - candidate_index is zero-based from Candidate claims below.\n        - target_claim_id must be one of Existing active claims below or null.\n        - Fill predicate policy fields for every operation with a candidate, including noop.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 3. Главные сущности / 3.5 `Claim` .. 3.6 `Profile`\nDocument lines: 311-417\n\n### 3.5 `Claim`\n\nАтомарный факт или relation edge.\n\nЭто ключевая таблица для:\n- точных factual answers\n- predicate-based reconciliation\n- explainable retrieval\n\nРекомендуемые поля:\n- `claim_id: uuid`\n- `namespace_id`\n- `subject_entity_id: uuid`\n- `predicate: text`\n- `object_entity_id: uuid | null`\n- `object_value_json: jsonb | null`\n- `normalized_text: text`\n- `context_text: text | null`\n- `scope_json: jsonb`\n- `qualifiers_json: jsonb`\n- `confidence: numeric(4,3)`\n- `importance: smallint`\n- `status: active | superseded | retracted | expired | candidate`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `valid_from: timestamptz | null`\n- `valid_to: timestamptz | null`\n- `origin_note_id: uuid | null`\n- `first_seen_at: timestamptz`\n- `last_seen_at: timestamptz`\n- `supersedes_claim_id: uuid | null`\n- `retracted_by_claim_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n- `embedding: vector | null`\n- `use_count: integer`\n- `last_used_at: timestamptz | null`\n- `last_validated_at: timestamptz | null`\n- `archived_at: timestamptz | null`\n\nОтдельная таблица `claim_sources`:\n- `claim_id`\n- `source_id`\n- `support_type: direct | inferred | imported | derived_from_note`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\nИнварианты:\n- один claim = одно predicate application\n- claim должен иметь смысл без исходного чата\n- explicit statement > inference\n- relative time должен быть нормализован\n- если смысл еще слишком мягкий, лучше `Note`, чем плохой `Claim`\n\n---\n\n### 3.6 `Profile`\n\nКомпактная always-in-context проекция.\n\nЭто не source of truth, а projection layer поверх:\n- explicit user instructions\n- stable claims\n- selected long-lived context\n\nРекомендуемые поля:\n- `profile_id: uuid`\n- `namespace_id`\n- `owner_entity_id: uuid`\n- `profile_json: jsonb`\n- `profile_text: text`\n- `version: bigint`\n- `updated_from_run_id: uuid | null`\n- `last_compacted_at: timestamptz | null`\n- `created_at`\n- `updated_at`\n\nРекомендуемая структура:\n\n```json\n{\n  \"preferred_name\": null,\n  \"languages\": [],\n  \"timezone\": null,\n  \"response_preferences\": {\n    \"response_language\": null,\n    \"tone\": null,\n    \"detail_level\": null,\n    \"code_comment_language\": null\n  },\n  \"expertise\": [],\n  \"stable_preferences\": [],\n  \"constraints\": [],\n  \"current_goals\": [],\n  \"soft_signals\": []\n}\n```\n\nИнварианты:\n- profile должен быть коротким\n- explicit facts важнее inference\n- спорные facts лучше оставлять в claim/note, а не тащить в profile\n- profile должен быть пересобираем\n\n---\n\n        Candidate claims:\n        - candidate[0] subject=entity:<0> predicate=needed_for object=\"precise factual answers\" scope=Applies to the v3 memory data model described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is a key table for precise factual answers. evidence=Это ключевая таблица для: - точных factual answers\n- candidate[1] subject=entity:<0> predicate=needed_for object=\"predicate-based reconciliation\" scope=Applies to the v3 memory data model described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is a key table for predicate-based reconciliation. evidence=- predicate-based reconciliation\n- candidate[2] subject=entity:<0> predicate=needed_for object=\"explainable retrieval\" scope=Applies to the v3 memory data model described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is a key table for explainable retrieval. evidence=- explainable retrieval\n- candidate[3] subject=entity:<0> predicate=has_constraint object=\"one Claim must equal one predicate application\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, one Claim must equal one predicate application. evidence=один claim = одно predicate application\n- candidate[4] subject=entity:<0> predicate=has_constraint object=\"a Claim must make sense without the original chat\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, a Claim must make sense without the original chat. evidence=claim должен иметь смысл без исходного чата\n- candidate[5] subject=entity:<0> predicate=has_constraint object=\"explicit statements should be preferred over inference for Claims\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, explicit statements should be preferred over inference for Claims. evidence=explicit statement > inference\n- candidate[6] subject=entity:<0> predicate=has_constraint object=\"relative time in Claims must be normalized\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, relative time in Claims must be normalized. evidence=relative time должен быть нормализован\n- candidate[7] subject=entity:<0> predicate=has_constraint object=\"if meaning is still too soft, Note should be preferred over a bad Claim\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, if meaning is still too soft, Note should be preferred over a bad Claim. evidence=если смысл еще слишком мягкий, лучше `Note`, чем плохой `Claim`\n- candidate[8] subject=entity:<1> predicate=links_claim_to_source object=entity:<2> scope=Applies to the `claim_sources` table described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, the `claim_sources` table links Claims to Sources. evidence=Отдельная таблица `claim_sources`: - `claim_id` - `source_id`\n- candidate[9] subject=entity:<3> predicate=projection_over object=entity:<0> scope=Applies to Profile in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile is a projection layer over stable Claims. evidence=projection layer поверх: - explicit user instructions - stable claims\n- candidate[10] subject=entity:<3> predicate=has_constraint object=\"Profile is not the source of truth\" scope=Applies to Profile in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile is not the source of truth. evidence=Это не source of truth\n- candidate[11] subject=entity:<3> predicate=has_constraint object=\"Profile must be short\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile must be short. evidence=profile должен быть коротким\n- candidate[12] subject=entity:<3> predicate=has_constraint object=\"explicit facts should be preferred over inference in Profile\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, explicit facts should be preferred over inference in Profile. evidence=explicit facts важнее inference\n- candidate[13] subject=entity:<3> predicate=has_constraint object=\"controversial facts should be left in Claim or Note rather than pulled into Profile\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, controversial facts should be left in Claim or Note rather than pulled into Profile. evidence=спорные facts лучше оставлять в claim/note, а не тащить в profile\n- candidate[14] subject=entity:<3> predicate=has_constraint object=\"Profile must be rebuildable\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile must be rebuildable. evidence=profile должен быть пересобираем\n\n        Existing active claims:\n        - id=hot-path:claim:<0> subject=entity:<4> predicate=answers_question object=\"how often an item should participate in search and whether it is hot, warm, cold, archived, or hidden from ordinary retrieval\" family=answers_question policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.2 retrieval-state semantics status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, retrieval_state answers how often an item should participate in search and whether it is in hot, warm, or cold memory, archived, or hidden from ordinary retrieval.\n- id=hot-path:claim:<1> subject=entity:<5> predicate=answers_question object=\"whether knowledge is current, superseded, refuted, or outside its temporal window\" family=answers_question policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.2 truth-status semantics status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, truth status answers whether knowledge is current, superseded, refuted, or past the end of its temporal window.\n- id=hot-path:claim:<2> subject=entity:<5> predicate=must_not_be_mixed_with object=entity:<4> family=must_not_be_mixed_with policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.2 truth-status and retrieval-state semantics status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, truth status and retrieval_state are different axes and must not be mixed.\n- id=hot-path:claim:<3> subject=entity:<6> predicate=has_model_layer_component object=entity:<0> family=has_model_layer_component policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 1 model layer decomposition status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is part of the graph-shaped semantic layer.\n- id=hot-path:claim:<4> subject=entity:<2> predicate=needed_for object=\"re-check and explainability\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.1 `Source` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source is needed for re-check and explainability.\n- id=hot-path:claim:<5> subject=entity:<7> predicate=needed_for object=\"retrieval and reconciliation\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.1 field purpose status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, scope_json is needed for retrieval and reconciliation.\n- id=hot-path:claim:<6> subject=entity:<6> predicate=has_model_layer_component object=entity:<2> family=has_model_layer_component policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 1 model layer decomposition status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source is the evidence layer component.\n- id=hot-path:claim:<7> subject=entity:<6> predicate=has_model_layer_component object=entity:<8> family=has_model_layer_component policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 1 model layer decomposition status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Entity is part of the graph-shaped semantic layer.\n- id=hot-path:claim:<8> subject=entity:<9> predicate=needed_for object=\"important retrieval-useful information that should not yet be cemented as a hard fact\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.4 Note status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Note is needed for information that is already important, useful for retrieval, but should not yet be cemented as a hard fact.\n- id=hot-path:claim:<9> subject=entity:<2> predicate=has_constraint object=\"Source.observed_at must be stored separately from ingestion time.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.1 `Source` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source.observed_at must be stored separately from ingestion time.\n- id=hot-path:claim:<10> subject=entity:<10> predicate=answers_question object=\"which facts go into profile projection\" family=answers_question policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.3 PredicateCatalog status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, PredicateCatalog records which facts go into the profile projection.\n- id=hot-path:claim:<11> subject=entity:<9> predicate=must_not_be_mixed_with object=entity:<0> family=must_not_be_mixed_with policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.4 Note status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Note is not a final Claim.\n- id=hot-path:claim:<12> subject=entity:<8> predicate=anchors_memory_item object=entity:<0> family=anchors_memory_item policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.2 `Entity` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Entity is an anchor for Claim items.\n- id=hot-path:claim:<13> subject=entity:<2> predicate=has_constraint object=\"Source delete policy must be explicit.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.1 `Source` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source delete policy must be explicit.\n- id=hot-path:claim:<14> subject=entity:<11> predicate=needed_for object=\"explainability\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.1 field purpose status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, scope_text is needed for explainability.\n\n        Predicate catalog excerpt:\n        - anchors_memory_item: Memory item type anchored by an entity or canonical node; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- answers_question: Question or semantic concern answered by a field or concept; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_cross_cutting_concern: Cross-cutting concern of a data model or architecture; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_model_layer_component: Component included in a specific layer of the data model; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- must_not_be_mixed_with: Two concepts or fields are distinct axes and should not be mixed; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- must_support_capability: Required capability that the data model must support; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- needed_for: Purpose or use that a field is needed for; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile claim candidates against active memory claims.",
+                "name": "memory_claim_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "canonical_predicate": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "cardinality": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "single",
+                                                    "multi"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "conflict_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "replace",
+                                                    "coexist",
+                                                    "range_split"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "object_kind": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "entity",
+                                                    "string",
+                                                    "number",
+                                                    "boolean",
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "predicate_description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "predicate_family": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_claim_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "temporal_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "atemporal",
+                                                    "time_scoped",
+                                                    "status_like"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_claim_id",
+                                    "canonical_predicate",
+                                    "predicate_family",
+                                    "predicate_description",
+                                    "object_kind",
+                                    "cardinality",
+                                    "temporal_policy",
+                                    "conflict_policy",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryClaimReconciler": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:5cd67d4099626dd0811f842150290074"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: ClaimReconciler v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Decide how candidate claims should update active memory and assign predicate policy.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_claim_id\": \"existing-claim-id-or-null\",\n              \"canonical_predicate\": \"stable_snake_case_predicate_or_null\",\n              \"predicate_family\": \"stable_conceptual_family_or_null\",\n              \"predicate_description\": \"short policy meaning or null\",\n              \"object_kind\": \"entity | string | number | boolean | json | null\",\n              \"cardinality\": \"single | multi | null\",\n              \"temporal_policy\": \"atemporal | time_scoped | status_like | null\",\n              \"conflict_policy\": \"replace | coexist | range_split | null\",\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new durable information.\n        - noop: candidate is duplicate, low-value, or should not become active memory.\n        - supersede: candidate is the new current value and target_claim_id is the old active claim it replaces.\n        - retract: target_claim_id should stop being active because the target message retracts it without a replacement candidate.\n        - update: target_claim_id should be patched without adding a new candidate; use sparingly.\n\n        Predicate policy fields:\n        - canonical_predicate: normalized predicate to store for the candidate. Reuse an existing predicate only if it is the same semantic relation; otherwise choose a concise snake_case relation.\n        - predicate_family: stable conceptual family used for future reconciliation.\n        - cardinality: single if one subject can have only one active value in this family and scope; multi if several values can coexist.\n        - temporal_policy: atemporal for timeless facts, time_scoped for facts true in explicit time windows, status_like for current states, current preferences, decisions, and other evolving values.\n        - conflict_policy: replace when a new value invalidates the old active value, coexist when both can remain true, range_split when old and new values are both temporally meaningful.\n\n        Rules:\n        - Use the target source and full thread context to understand corrections, replacements, pronouns, temporal meaning, and scope.\n        - Do not decide by literal predicate names. Infer the semantic predicate family from the claim meaning, subject, object, qualifiers, evidence, scope, and temporal fields.\n        - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.\n        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.\n        - Invent a new canonical_predicate only when no active catalog predicate captures the relation.\n        - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as \"is_described_as\", \"has_property\", \"is_a\", or \"defined_as\". Choose a specific durable relation or return noop.\n        - For ordinary positive preferences, use catalog predicate \"prefers\"; do not keep category-specific variants such as \"prefers_car_brand\" unless they represent a named current/default slot.\n        - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.\n        - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.\n        - If multiple candidates from the same target source express the same durable point at different abstraction levels, keep the most specific/actionable candidate and return noop for weaker broader candidates.\n        - If one candidate captures the target source's explicit current/default/status value and another candidate is only a generic preference or affinity inferred from the same words, return noop for the generic candidate unless the target source independently asserts it.\n        - Do not insert redundant broader candidates merely because they use a different predicate or family.\n        - For exclusive current/default/status values in the same subject, scope, and environment, use cardinality=single and conflict_policy=replace unless simultaneous active values are explicitly allowed.\n        - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.\n        - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.\n        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.\n        - If predicate policy says coexist, insert the candidate unless it is a duplicate.\n        - If predicate policy says range_split, insert the candidate and supersede only an old current-state claim that should no longer be retrieved as current.\n        - Attributed viewpoints, independent owners, independent events, and historical facts usually coexist unless the target source explicitly retracts them.\n        - Use catalog predicate \"believes\" for third-party viewpoints such as \"Alice thinks X\"; do not canonicalize those claims to \"prefers\" or \"avoids\" unless the source explicitly asserts preference or avoidance.\n        - Prefer insert over destructive actions when policy or evidence is unclear.\n        - Return one operation for each candidate unless the right action is a target-only retract/update.\n        - candidate_index is zero-based from Candidate claims below.\n        - target_claim_id must be one of Existing active claims below or null.\n        - Fill predicate policy fields for every operation with a candidate, including noop.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 3. Главные сущности / 3.5 `Claim` .. 3.6 `Profile`\nDocument lines: 311-417\n\n### 3.5 `Claim`\n\nАтомарный факт или relation edge.\n\nЭто ключевая таблица для:\n- точных factual answers\n- predicate-based reconciliation\n- explainable retrieval\n\nРекомендуемые поля:\n- `claim_id: uuid`\n- `namespace_id`\n- `subject_entity_id: uuid`\n- `predicate: text`\n- `object_entity_id: uuid | null`\n- `object_value_json: jsonb | null`\n- `normalized_text: text`\n- `context_text: text | null`\n- `scope_json: jsonb`\n- `qualifiers_json: jsonb`\n- `confidence: numeric(4,3)`\n- `importance: smallint`\n- `status: active | superseded | retracted | expired | candidate`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `valid_from: timestamptz | null`\n- `valid_to: timestamptz | null`\n- `origin_note_id: uuid | null`\n- `first_seen_at: timestamptz`\n- `last_seen_at: timestamptz`\n- `supersedes_claim_id: uuid | null`\n- `retracted_by_claim_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n- `embedding: vector | null`\n- `use_count: integer`\n- `last_used_at: timestamptz | null`\n- `last_validated_at: timestamptz | null`\n- `archived_at: timestamptz | null`\n\nОтдельная таблица `claim_sources`:\n- `claim_id`\n- `source_id`\n- `support_type: direct | inferred | imported | derived_from_note`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\nИнварианты:\n- один claim = одно predicate application\n- claim должен иметь смысл без исходного чата\n- explicit statement > inference\n- relative time должен быть нормализован\n- если смысл еще слишком мягкий, лучше `Note`, чем плохой `Claim`\n\n---\n\n### 3.6 `Profile`\n\nКомпактная always-in-context проекция.\n\nЭто не source of truth, а projection layer поверх:\n- explicit user instructions\n- stable claims\n- selected long-lived context\n\nРекомендуемые поля:\n- `profile_id: uuid`\n- `namespace_id`\n- `owner_entity_id: uuid`\n- `profile_json: jsonb`\n- `profile_text: text`\n- `version: bigint`\n- `updated_from_run_id: uuid | null`\n- `last_compacted_at: timestamptz | null`\n- `created_at`\n- `updated_at`\n\nРекомендуемая структура:\n\n```json\n{\n  \"preferred_name\": null,\n  \"languages\": [],\n  \"timezone\": null,\n  \"response_preferences\": {\n    \"response_language\": null,\n    \"tone\": null,\n    \"detail_level\": null,\n    \"code_comment_language\": null\n  },\n  \"expertise\": [],\n  \"stable_preferences\": [],\n  \"constraints\": [],\n  \"current_goals\": [],\n  \"soft_signals\": []\n}\n```\n\nИнварианты:\n- profile должен быть коротким\n- explicit facts важнее inference\n- спорные facts лучше оставлять в claim/note, а не тащить в profile\n- profile должен быть пересобираем\n\n---\n\n        Candidate claims:\n        - candidate[0] subject=entity:<0> predicate=needed_for object=\"precise factual answers\" scope=Applies to the v3 memory data model described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is a key table for precise factual answers. evidence=Это ключевая таблица для: - точных factual answers\n- candidate[1] subject=entity:<0> predicate=needed_for object=\"predicate-based reconciliation\" scope=Applies to the v3 memory data model described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is a key table for predicate-based reconciliation. evidence=- predicate-based reconciliation\n- candidate[2] subject=entity:<0> predicate=needed_for object=\"explainable retrieval\" scope=Applies to the v3 memory data model described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is a key table for explainable retrieval. evidence=- explainable retrieval\n- candidate[3] subject=entity:<0> predicate=has_constraint object=\"one Claim must equal one predicate application\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, one Claim must equal one predicate application. evidence=один claim = одно predicate application\n- candidate[4] subject=entity:<0> predicate=has_constraint object=\"a Claim must make sense without the original chat\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, a Claim must make sense without the original chat. evidence=claim должен иметь смысл без исходного чата\n- candidate[5] subject=entity:<0> predicate=has_constraint object=\"explicit statements should be preferred over inference for Claims\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, explicit statements should be preferred over inference for Claims. evidence=explicit statement > inference\n- candidate[6] subject=entity:<0> predicate=has_constraint object=\"relative time in Claims must be normalized\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, relative time in Claims must be normalized. evidence=relative time должен быть нормализован\n- candidate[7] subject=entity:<0> predicate=has_constraint object=\"if meaning is still too soft, Note should be preferred over a bad Claim\" scope=Applies to Claim invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, if meaning is still too soft, Note should be preferred over a bad Claim. evidence=если смысл еще слишком мягкий, лучше `Note`, чем плохой `Claim`\n- candidate[8] subject=entity:<1> predicate=links_claim_to_source object=entity:<2> scope=Applies to the `claim_sources` table described in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, the `claim_sources` table links Claims to Sources. evidence=Отдельная таблица `claim_sources`: - `claim_id` - `source_id`\n- candidate[9] subject=entity:<3> predicate=projection_over object=entity:<0> scope=Applies to Profile in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile is a projection layer over stable Claims. evidence=projection layer поверх: - explicit user instructions - stable claims\n- candidate[10] subject=entity:<3> predicate=has_constraint object=\"Profile is not the source of truth\" scope=Applies to Profile in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile is not the source of truth. evidence=Это не source of truth\n- candidate[11] subject=entity:<3> predicate=has_constraint object=\"Profile must be short\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile must be short. evidence=profile должен быть коротким\n- candidate[12] subject=entity:<3> predicate=has_constraint object=\"explicit facts should be preferred over inference in Profile\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, explicit facts should be preferred over inference in Profile. evidence=explicit facts важнее inference\n- candidate[13] subject=entity:<3> predicate=has_constraint object=\"controversial facts should be left in Claim or Note rather than pulled into Profile\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, controversial facts should be left in Claim or Note rather than pulled into Profile. evidence=спорные facts лучше оставлять в claim/note, а не тащить в profile\n- candidate[14] subject=entity:<3> predicate=has_constraint object=\"Profile must be rebuildable\" scope=Applies to Profile invariants in `agent_memory_handoff/02_data_model.md`. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Profile must be rebuildable. evidence=profile должен быть пересобираем\n\n        Existing active claims:\n        - id=hot-path:claim:<0> subject=entity:<4> predicate=answers_question object=\"how often an item should participate in search and whether it is hot, warm, cold, archived, or hidden from ordinary retrieval\" family=answers_question policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.2 retrieval-state semantics status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, retrieval_state answers how often an item should participate in search and whether it is in hot, warm, or cold memory, archived, or hidden from ordinary retrieval.\n- id=hot-path:claim:<1> subject=entity:<5> predicate=answers_question object=\"whether knowledge is current, superseded, refuted, or outside its temporal window\" family=answers_question policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.2 truth-status semantics status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, truth status answers whether knowledge is current, superseded, refuted, or past the end of its temporal window.\n- id=hot-path:claim:<2> subject=entity:<5> predicate=must_not_be_mixed_with object=entity:<4> family=must_not_be_mixed_with policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.2 truth-status and retrieval-state semantics status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, truth status and retrieval_state are different axes and must not be mixed.\n- id=hot-path:claim:<3> subject=entity:<6> predicate=has_model_layer_component object=entity:<0> family=has_model_layer_component policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 1 model layer decomposition status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Claim is part of the graph-shaped semantic layer.\n- id=hot-path:claim:<4> subject=entity:<2> predicate=needed_for object=\"re-check and explainability\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.1 `Source` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source is needed for re-check and explainability.\n- id=hot-path:claim:<5> subject=entity:<7> predicate=needed_for object=\"retrieval and reconciliation\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.1 field purpose status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, scope_json is needed for retrieval and reconciliation.\n- id=hot-path:claim:<6> subject=entity:<6> predicate=has_model_layer_component object=entity:<2> family=has_model_layer_component policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 1 model layer decomposition status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source is the evidence layer component.\n- id=hot-path:claim:<7> subject=entity:<6> predicate=has_model_layer_component object=entity:<8> family=has_model_layer_component policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 1 model layer decomposition status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Entity is part of the graph-shaped semantic layer.\n- id=hot-path:claim:<8> subject=entity:<9> predicate=needed_for object=\"important retrieval-useful information that should not yet be cemented as a hard fact\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.4 Note status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Note is needed for information that is already important, useful for retrieval, but should not yet be cemented as a hard fact.\n- id=hot-path:claim:<9> subject=entity:<2> predicate=has_constraint object=\"Source.observed_at must be stored separately from ingestion time.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.1 `Source` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source.observed_at must be stored separately from ingestion time.\n- id=hot-path:claim:<10> subject=entity:<10> predicate=answers_question object=\"which facts go into profile projection\" family=answers_question policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.3 PredicateCatalog status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, PredicateCatalog records which facts go into the profile projection.\n- id=hot-path:claim:<11> subject=entity:<9> predicate=must_not_be_mixed_with object=entity:<0> family=must_not_be_mixed_with policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.4 Note status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Note is not a final Claim.\n- id=hot-path:claim:<12> subject=entity:<8> predicate=anchors_memory_item object=entity:<0> family=anchors_memory_item policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.2 `Entity` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Entity is an anchor for Claim items.\n- id=hot-path:claim:<13> subject=entity:<2> predicate=has_constraint object=\"Source delete policy must be explicit.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 3.1 `Source` status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, Source delete policy must be explicit.\n- id=hot-path:claim:<14> subject=entity:<11> predicate=needed_for object=\"explainability\" family=needed_for policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=agent_memory_handoff/02_data_model.md section 2.1 field purpose status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In the v3 memory data model, scope_text is needed for explainability.\n\n        Predicate catalog excerpt:\n        - anchors_memory_item: Memory item type anchored by an entity or canonical node; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- answers_question: Question or semantic concern answered by a field or concept; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_cross_cutting_concern: Cross-cutting concern of a data model or architecture; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_model_layer_component: Component included in a specific layer of the data model; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- must_not_be_mixed_with: Two concepts or fields are distinct axes and should not be mixed; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- must_support_capability: Required capability that the data model must support; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- needed_for: Purpose or use that a field is needed for; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_claim_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "canonical_predicate": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "cardinality": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "single",
+                                                    "multi"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "conflict_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "replace",
+                                                    "coexist",
+                                                    "range_split"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "object_kind": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "entity",
+                                                    "string",
+                                                    "number",
+                                                    "boolean",
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "predicate_description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "predicate_family": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_claim_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "temporal_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "atemporal",
+                                                    "time_scoped",
+                                                    "status_like"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_claim_id",
+                                    "canonical_predicate",
+                                    "predicate_family",
+                                    "predicate_description",
+                                    "object_kind",
+                                    "cardinality",
+                                    "temporal_policy",
+                                    "conflict_policy",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile claim candidates against active memory claims.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryClaimReconciler": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:5cd67d4099626dd0811f842150290074"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"needed_for\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Purpose or use that a field is needed for\",\"predicate_family\":\"needed_for\",\"reason\":\"New purpose of Claim table; catalog predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":1,\"canonical_predicate\":\"needed_for\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Purpose or use that a field is needed for\",\"predicate_family\":\"needed_for\",\"reason\":\"New purpose of Claim table; catalog predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":2,\"canonical_predicate\":\"needed_for\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Purpose or use that a field is needed for\",\"predicate_family\":\"needed_for\",\"reason\":\"New purpose of Claim table; catalog predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":3,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Claim invariant; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":4,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Claim invariant; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":5,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Claim invariant; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":6,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Claim invariant; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":7,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Claim invariant about preferring Note for soft meaning; no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":8,\"canonical_predicate\":\"links_claim_to_source\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"Table or relation links Claim records to their supporting Source records\",\"predicate_family\":\"links_claim_to_source\",\"reason\":\"No catalog predicate captures this specific table relationship; durable new schema relation.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":9,\"canonical_predicate\":\"projection_over\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"Projection layer is derived over or from an underlying source-of-truth layer\",\"predicate_family\":\"projection_over\",\"reason\":\"No catalog predicate captures projection-over relation; new durable Profile relation.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":10,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Profile constraint; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":11,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Profile invariant; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":12,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Profile invariant; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":13,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Profile invariant about controversial facts; no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":14,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable user or project constraint\",\"predicate_family\":\"has_constraint\",\"reason\":\"New Profile invariant; catalog constraint predicate fits and no duplicate exists.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7135,
+                "completionTokens": 1206,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

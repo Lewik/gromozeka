@@ -28,7 +28,9 @@
             "selectedClaimsMin": 1,
             "requiredSelectedClaims": [
               {
-                "normalizedContainsAll": ["PostgreSQL", "primary", "storage"],
+                "predicateIn": ["primary_storage_backend"],
+                "subjectEntityCanonicalNameIn": ["Nimbus"],
+                "objectEntityCanonicalNameIn": ["PostgreSQL"],
                 "predicatePolicyCardinalityIn": ["SINGLE"],
                 "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
                 "predicatePolicyConflictPolicyIn": ["REPLACE"]
@@ -36,7 +38,9 @@
             ],
             "forbiddenSelectedClaims": [
               {
-                "normalizedContainsAll": ["MongoDB", "primary", "storage"]
+                "predicateIn": ["primary_storage_backend"],
+                "subjectEntityCanonicalNameIn": ["Nimbus"],
+                "objectEntityCanonicalNameIn": ["MongoDB"]
               }
             ],
             "injectedPromptContainsAll": ["PostgreSQL"]
@@ -60,7 +64,9 @@
     ],
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["PostgreSQL", "primary", "storage"],
+        "predicateIn": ["primary_storage_backend"],
+        "subjectEntityCanonicalNameIn": ["Nimbus"],
+        "objectEntityCanonicalNameIn": ["PostgreSQL"],
         "predicatePolicyCardinalityIn": ["SINGLE"],
         "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
         "predicatePolicyConflictPolicyIn": ["REPLACE"],
@@ -70,7 +76,9 @@
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["MongoDB", "primary", "storage"]
+        "predicateIn": ["primary_storage_backend"],
+        "subjectEntityCanonicalNameIn": ["Nimbus"],
+        "objectEntityCanonicalNameIn": ["MongoDB"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
@@ -90,7 +98,9 @@
     ],
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["PostgreSQL", "primary", "storage"],
+        "predicateIn": ["primary_storage_backend"],
+        "subjectEntityCanonicalNameIn": ["Nimbus"],
+        "objectEntityCanonicalNameIn": ["PostgreSQL"],
         "predicatePolicyCardinalityIn": ["SINGLE"],
         "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
         "predicatePolicyConflictPolicyIn": ["REPLACE"],
@@ -99,7 +109,9 @@
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["MongoDB", "primary", "storage"]
+        "predicateIn": ["primary_storage_backend"],
+        "subjectEntityCanonicalNameIn": ["Nimbus"],
+        "objectEntityCanonicalNameIn": ["MongoDB"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]

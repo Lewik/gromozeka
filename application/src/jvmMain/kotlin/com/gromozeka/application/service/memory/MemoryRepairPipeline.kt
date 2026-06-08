@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.memory.MemoryMaintenanceRequest
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryEpisode
+import com.gromozeka.domain.model.memory.MemoryProfile
 import com.gromozeka.domain.model.memory.MemoryRepairCandidateCluster
 import com.gromozeka.domain.model.memory.MemoryRepairPlan
 import com.gromozeka.domain.model.memory.MemoryRepairPlanner
@@ -526,16 +527,24 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
     profiles
         .sortedBy { it.id.value }
         .forEach { profile ->
+            val relevantClaims = claims.profileRelevantClaims(profile)
+            val relevantNotes = notes.profileRelevantNotes(profile)
+            val relevantActionItems = actionItems.profileRelevantActionItems(profile)
             val latestRelevantUpdate = listOf(
-                claims.filter { it.archivedAt == null && it.subjectEntityId == profile.ownerEntityId }.maxOfOrNull { it.updatedAt },
-                notes.filter { it.archivedAt == null && (it.anchorEntityId == profile.ownerEntityId || it.entityRefs.any { ref -> ref.entityId == profile.ownerEntityId }) }.maxOfOrNull { it.updatedAt },
-                actionItems.filter { it.archivedAt == null && (it.ownerEntityId == profile.ownerEntityId || it.relatedEntityIds.contains(profile.ownerEntityId)) }.maxOfOrNull { it.updatedAt },
+                relevantClaims.maxOfOrNull { it.updatedAt },
+                relevantNotes.maxOfOrNull { it.updatedAt },
+                relevantActionItems.maxOfOrNull { it.updatedAt },
             ).filterNotNull().maxOrNull()
             if (latestRelevantUpdate != null && latestRelevantUpdate > profile.updatedAt) {
+                val profileRelevantHits =
+                    relevantClaims.map { MemoryStore.SearchHit.ClaimHit(it, score = 0.85) } +
+                        relevantNotes.map { MemoryStore.SearchHit.NoteHit(it, score = 0.75) } +
+                        relevantActionItems.map { MemoryStore.SearchHit.ActionItemHit(it, score = 0.7) }
                 clusters += MemoryRepairCandidateCluster(
                     id = "repair-cluster-${clusters.size + 1}",
                     kind = MemoryRepairCandidateCluster.Kind.PROFILE_DRIFT,
-                    hits = listOf(MemoryStore.SearchHit.ProfileHit(profile, score = 0.7)),
+                    hits = listOf(MemoryStore.SearchHit.ProfileHit(profile, score = 0.7)) +
+                        profileRelevantHits.sortedWith(repairPipelineHitComparator).take(MAX_PROFILE_DRIFT_SUPPORTING_HITS),
                     reason = "Profile is older than active profile-relevant memory.",
                 )
             }
@@ -588,6 +597,27 @@ private fun MemoryEpisode.repairDuplicateKey(): String =
         result.normalizedRepairKey(),
         lesson.normalizedRepairKey(),
     ).joinToString("|")
+
+private fun List<MemoryClaim>.profileRelevantClaims(profile: MemoryProfile): List<MemoryClaim> =
+    filter {
+        it.archivedAt == null &&
+            it.status == MemoryClaim.Status.ACTIVE &&
+            it.subjectEntityId == profile.ownerEntityId
+    }.sortedWith(repairClaimComparator)
+
+private fun List<MemoryNote>.profileRelevantNotes(profile: MemoryProfile): List<MemoryNote> =
+    filter {
+        it.archivedAt == null &&
+            it.status == MemoryNote.Status.ACTIVE &&
+            (it.anchorEntityId == profile.ownerEntityId || it.entityRefs.any { ref -> ref.entityId == profile.ownerEntityId })
+    }.sortedWith(repairNoteComparator)
+
+private fun List<MemoryActionItem>.profileRelevantActionItems(profile: MemoryProfile): List<MemoryActionItem> =
+    filter {
+        it.archivedAt == null &&
+            it.status in setOf(MemoryActionItem.Status.OPEN, MemoryActionItem.Status.IN_PROGRESS, MemoryActionItem.Status.BLOCKED) &&
+            (it.ownerEntityId == profile.ownerEntityId || it.relatedEntityIds.contains(profile.ownerEntityId))
+    }.sortedWith(repairTaskComparator)
 
 private fun MemoryClaim.canArchiveClaim(snapshot: MemoryNamespaceSnapshot): Boolean {
     if (status != MemoryClaim.Status.ACTIVE) return true
@@ -783,4 +813,5 @@ private fun String.oneLineForRepairPipelineLog(maxChars: Int): String {
 
 private const val MAX_REPAIR_CANDIDATE_CLUSTERS = 40
 private const val MAX_REPAIR_SUSPICIOUS_HITS = 80
+private const val MAX_PROFILE_DRIFT_SUPPORTING_HITS = 8
 private const val REPAIR_PLANNER_CLUSTER_BATCH_SIZE = 8

@@ -1,0 +1,363 @@
+{
+    "version": 1,
+    "hash": "759c32a71f8874761c5f853054a5ddb36254151262cdb39bc99856b815884ee2",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=CONCEPT; name=Note path; aliases=none; summary=Concept named Note path.\n- id=entity:<1>; type=CONCEPT; name=Retrieval policy (memory architecture axis); aliases=none; summary=Concept named Retrieval policy (memory architecture axis).\n- id=entity:<2>; type=SERVICE; name=Claim Reconciler; aliases=none; summary=Service named Claim Reconciler.\n- id=entity:<3>; type=SERVICE; name=Note Reconciler; aliases=none; summary=Service named Note Reconciler.\n- id=entity:<4>; type=CONCEPT; name=Claim (memory representation); aliases=none; summary=Concept named Claim (memory representation).\n- id=entity:<5>; type=CONCEPT; name=Note (memory representation); aliases=none; summary=Concept named Note (memory representation).\n- id=entity:<6>; type=CONCEPT; name=Rich note memory tier; aliases=none; summary=Concept named Rich note memory tier.\n- id=entity:<7>; type=SERVICE; name=Claim Extractor; aliases=none; summary=Service named Claim Extractor.\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:490da64b1b9997f0756bc8be7dc781ae: Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state\nDocument lines: 209-276\n\n## 7. Когда писать `Claim`, а когда `Note`\n\n### Писать `Claim`\nКогда информация:\n- явная\n- нормализуемая\n- пригодна для точного ответа\n- может быть сравнена с другими claims по predicate policy\n\nПримеры:\n- “отвечай мне на русском”\n- “комментарии в коде должны быть на английском”\n- “сейчас работаю с Python”\n- “дедлайн в пятницу”\n\n### Писать `Note`\nКогда информация:\n- уже важна\n- полезна для будущего retrieval\n- но слишком богата контекстом или слишком ранняя для hard f\n[truncated 993 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff architecture document, not as an immediate task.\n\nFile: agent_memory_handoff/01_architecture.md\n\n# 01. Architecture\n\n## 1. Цель системы\n\nНужна memory layer для AI-агента, которая:\n\n- переживает границы одной сессии\n- умеет хранить факты, preferences, задачи, rationale и evolving plans\n- поддерживает обновление знаний, а не только накопление\n- позволяет объяснить, **откуда** взялась память\n- не превращает каждый turn в permanent knowledge\n- умеет старить, архивировать и чинить память\n\n## 2. Центральная архитектурная идея\n\nВ `v3` у памяти четыре оси, а не одна:\n\n1. **Representation**\n   - `Source`\n   - `Claim`\n   - `Note\n[truncated 10644 chars]\n- claim hot-path:claim:<0> The AI agent memory layer needs to store facts, preferences, tasks, rationale, and evolving plans.\n- claim hot-path:claim:<1> The recommended Memory v3 architecture uses Postgres + pgvector as its primary storage backend.\n- claim hot-path:claim:<2> Memory v3 architecture has Retrieval policy as one of its four axes.\n- claim hot-path:claim:<3> Consolidation converts mature notes into claims, tasks, profile, or episodes when the signal is strong enough.\n- note hot-path:note:<0> Recommended Memory v3 write and read architecture flow; The recommended architecture logs User / Tool / Document input in Source Log, routes it through Memory Router and Write-Time Retrieval, canonicalizes entities, dispatches to Claim Extractor, Task Updater, Profile Updater, and Note Constructor, reconciles claims and notes into Postgres + pgvector, runs background consolidation/repair/retention workers, and serves runtime answers through Read-Time Retrieval Planner and Answer Composer.\n- claim hot-path:claim:<4> Note path handles rationale and trade-offs that are important but should not yet become hard facts.\n- note hot-path:note:<1> Memory write model separates semantic and maintenance paths; The Memory v3 write model uses two semantic write paths and two maintenance paths: Direct structured path for safely normalizable facts, preferences, tasks, and status changes; Note path for important but not-yet-hard facts such as rationale, trade-offs, evolving plans, lessons, document digests, and contextual framing; Consolidation promotes mature notes when signal becomes strong enough; Repair fixes memory degradation.\n- claim hot-path:claim:<5> The Representation axis of the memory architecture includes Claim as a representation type.\n- claim hot-path:claim:<6> The Representation axis of the memory architecture includes Note as a representation type.\n- claim hot-path:claim:<7> Memory v3 architecture has Lifecycle as one of its four axes.\n\n        Retrieval plan context:\n        entity_queries=01. Architecture|agent_memory_handoff/01_architecture.md|01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state|MARKDOWN\n        text_queries=01. Architecture agent_memory_handoff/01_architecture.md 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state MARKDOWN Document title: 01. Architecture Document source: agent_memory_handoff/01_architecture.md Document section: 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state Document lines: 209-276 ## 7. Когда писать `Claim`, а когда `Note` ### Писать `Claim` Когда информация: - явная - нормализуемая - пригодна для точного ответа - может быть сравнена с другими claims по predicate policy Примеры: - “отвечай мне на русском” - “комментарии в коде должны быть на английском” - “сейчас работаю с Python” - “дедлайн в пятницу” ### Писать `Note` Когда информация: - уже важна - полезна для будущего retrieval - но слишком богата контекстом или слишком ранняя для hard fact Примеры: - “пока склоняемся к Postgres как source of truth” - “Neo4j отложили, потому что нет traversal-heavy use case” - “по памяти лучше разделять cheap router и сильный reconciler” - “из документа следует, что стратегия еще обсуждается” ### Писать и то, и другое Когда в одном материале есть: - explicit facts / tasks - плюс rationale / direction ## 8. Truth state и retrieval state Это отдельные вещи, и их нельзя смешивать. ### Truth state Отвечает на вопрос: актуально ли это как знание? Для claims: - `active` - `superseded` - `retracted` - `expired` - `candidate` Для notes: - `active` - `superseded` - `retracted` - `resolved` - `stale` - `candidate` ### Retrieval state Отвечает на вопрос: как это искать и держать в hot path? Общий паттерн: - `active` - `warm` - `cold` - `archived` - `deleted` Пример: - note может быть `resolved`, но еще `warm`, потому что полезен для rationale retrieval - claim может быть `superseded`, но оставаться `warm` как historical evidence\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:490da64b1b9997f0756bc8be7dc781ae] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/01_architecture.md; title=01. Architecture; heading=01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state; imported_at=1970-01-01T00:00:00Z\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state\nDocument lines: 209-276\n\n## 7. Когда писать `Claim`, а когда `Note`\n\n### Писать `Claim`\nКогда информация:\n- явная\n- нормализуемая\n- пригодна для точного ответа\n- может быть сравнена с другими claims по predicate policy\n\nПримеры:\n- “отвечай мне на русском”\n- “комментарии в коде должны быть на английском”\n- “сейчас работаю с Python”\n- “дедлайн в пятницу”\n\n### Писать `Note`\nКогда информация:\n- уже важна\n- полезна для будущего retrieval\n- но слишком богата контекстом или слишком ранняя для hard fact\n\nПримеры:\n- “пока склоняемся к Postgres как source of truth”\n- “Neo4j отложили, потому что нет traversal-heavy use case”\n- “по памяти лучше разделять cheap router и сильный reconciler”\n- “из документа следует, что стратегия еще обсуждается”\n\n### Писать и то, и другое\nКогда в одном материале есть:\n- explicit facts / tasks\n- плюс rationale / direction\n\n## 8. Truth state и retrieval state\n\nЭто отдельные вещи, и их нельзя смешивать.\n\n### Truth state\nОтвечает на вопрос: актуально ли это как знание?\n\nДля claims:\n- `active`\n- `superseded`\n- `retracted`\n- `expired`\n- `candidate`\n\nДля notes:\n- `active`\n- `superseded`\n- `retracted`\n- `resolved`\n- `stale`\n- `candidate`\n\n### Retrieval state\nОтвечает на вопрос: как это искать и держать в hot path?\n\nОбщий паттерн:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\nПример:\n- note может быть `resolved`, но еще `warm`, потому что полезен для rationale retrieval\n- claim может быть `superseded`, но оставаться `warm` как historical evidence",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:490da64b1b9997f0756bc8be7dc781ae"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=CONCEPT; name=Note path; aliases=none; summary=Concept named Note path.\n- id=entity:<1>; type=CONCEPT; name=Retrieval policy (memory architecture axis); aliases=none; summary=Concept named Retrieval policy (memory architecture axis).\n- id=entity:<2>; type=SERVICE; name=Claim Reconciler; aliases=none; summary=Service named Claim Reconciler.\n- id=entity:<3>; type=SERVICE; name=Note Reconciler; aliases=none; summary=Service named Note Reconciler.\n- id=entity:<4>; type=CONCEPT; name=Claim (memory representation); aliases=none; summary=Concept named Claim (memory representation).\n- id=entity:<5>; type=CONCEPT; name=Note (memory representation); aliases=none; summary=Concept named Note (memory representation).\n- id=entity:<6>; type=CONCEPT; name=Rich note memory tier; aliases=none; summary=Concept named Rich note memory tier.\n- id=entity:<7>; type=SERVICE; name=Claim Extractor; aliases=none; summary=Service named Claim Extractor.\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:490da64b1b9997f0756bc8be7dc781ae: Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state\nDocument lines: 209-276\n\n## 7. Когда писать `Claim`, а когда `Note`\n\n### Писать `Claim`\nКогда информация:\n- явная\n- нормализуемая\n- пригодна для точного ответа\n- может быть сравнена с другими claims по predicate policy\n\nПримеры:\n- “отвечай мне на русском”\n- “комментарии в коде должны быть на английском”\n- “сейчас работаю с Python”\n- “дедлайн в пятницу”\n\n### Писать `Note`\nКогда информация:\n- уже важна\n- полезна для будущего retrieval\n- но слишком богата контекстом или слишком ранняя для hard f\n[truncated 993 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff architecture document, not as an immediate task.\n\nFile: agent_memory_handoff/01_architecture.md\n\n# 01. Architecture\n\n## 1. Цель системы\n\nНужна memory layer для AI-агента, которая:\n\n- переживает границы одной сессии\n- умеет хранить факты, preferences, задачи, rationale и evolving plans\n- поддерживает обновление знаний, а не только накопление\n- позволяет объяснить, **откуда** взялась память\n- не превращает каждый turn в permanent knowledge\n- умеет старить, архивировать и чинить память\n\n## 2. Центральная архитектурная идея\n\nВ `v3` у памяти четыре оси, а не одна:\n\n1. **Representation**\n   - `Source`\n   - `Claim`\n   - `Note\n[truncated 10644 chars]\n- claim hot-path:claim:<0> The AI agent memory layer needs to store facts, preferences, tasks, rationale, and evolving plans.\n- claim hot-path:claim:<1> The recommended Memory v3 architecture uses Postgres + pgvector as its primary storage backend.\n- claim hot-path:claim:<2> Memory v3 architecture has Retrieval policy as one of its four axes.\n- claim hot-path:claim:<3> Consolidation converts mature notes into claims, tasks, profile, or episodes when the signal is strong enough.\n- note hot-path:note:<0> Recommended Memory v3 write and read architecture flow; The recommended architecture logs User / Tool / Document input in Source Log, routes it through Memory Router and Write-Time Retrieval, canonicalizes entities, dispatches to Claim Extractor, Task Updater, Profile Updater, and Note Constructor, reconciles claims and notes into Postgres + pgvector, runs background consolidation/repair/retention workers, and serves runtime answers through Read-Time Retrieval Planner and Answer Composer.\n- claim hot-path:claim:<4> Note path handles rationale and trade-offs that are important but should not yet become hard facts.\n- note hot-path:note:<1> Memory write model separates semantic and maintenance paths; The Memory v3 write model uses two semantic write paths and two maintenance paths: Direct structured path for safely normalizable facts, preferences, tasks, and status changes; Note path for important but not-yet-hard facts such as rationale, trade-offs, evolving plans, lessons, document digests, and contextual framing; Consolidation promotes mature notes when signal becomes strong enough; Repair fixes memory degradation.\n- claim hot-path:claim:<5> The Representation axis of the memory architecture includes Claim as a representation type.\n- claim hot-path:claim:<6> The Representation axis of the memory architecture includes Note as a representation type.\n- claim hot-path:claim:<7> Memory v3 architecture has Lifecycle as one of its four axes.\n\n        Retrieval plan context:\n        entity_queries=01. Architecture|agent_memory_handoff/01_architecture.md|01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state|MARKDOWN\n        text_queries=01. Architecture agent_memory_handoff/01_architecture.md 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state MARKDOWN Document title: 01. Architecture Document source: agent_memory_handoff/01_architecture.md Document section: 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state Document lines: 209-276 ## 7. Когда писать `Claim`, а когда `Note` ### Писать `Claim` Когда информация: - явная - нормализуемая - пригодна для точного ответа - может быть сравнена с другими claims по predicate policy Примеры: - “отвечай мне на русском” - “комментарии в коде должны быть на английском” - “сейчас работаю с Python” - “дедлайн в пятницу” ### Писать `Note` Когда информация: - уже важна - полезна для будущего retrieval - но слишком богата контекстом или слишком ранняя для hard fact Примеры: - “пока склоняемся к Postgres как source of truth” - “Neo4j отложили, потому что нет traversal-heavy use case” - “по памяти лучше разделять cheap router и сильный reconciler” - “из документа следует, что стратегия еще обсуждается” ### Писать и то, и другое Когда в одном материале есть: - explicit facts / tasks - плюс rationale / direction ## 8. Truth state и retrieval state Это отдельные вещи, и их нельзя смешивать. ### Truth state Отвечает на вопрос: актуально ли это как знание? Для claims: - `active` - `superseded` - `retracted` - `expired` - `candidate` Для notes: - `active` - `superseded` - `retracted` - `resolved` - `stale` - `candidate` ### Retrieval state Отвечает на вопрос: как это искать и держать в hot path? Общий паттерн: - `active` - `warm` - `cold` - `archived` - `deleted` Пример: - note может быть `resolved`, но еще `warm`, потому что полезен для rationale retrieval - claim может быть `superseded`, но оставаться `warm` как historical evidence\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:490da64b1b9997f0756bc8be7dc781ae] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/01_architecture.md; title=01. Architecture; heading=01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state; imported_at=1970-01-01T00:00:00Z\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 7. Когда писать `Claim`, а когда `Note` .. 8. Truth state и retrieval state\nDocument lines: 209-276\n\n## 7. Когда писать `Claim`, а когда `Note`\n\n### Писать `Claim`\nКогда информация:\n- явная\n- нормализуемая\n- пригодна для точного ответа\n- может быть сравнена с другими claims по predicate policy\n\nПримеры:\n- “отвечай мне на русском”\n- “комментарии в коде должны быть на английском”\n- “сейчас работаю с Python”\n- “дедлайн в пятницу”\n\n### Писать `Note`\nКогда информация:\n- уже важна\n- полезна для будущего retrieval\n- но слишком богата контекстом или слишком ранняя для hard fact\n\nПримеры:\n- “пока склоняемся к Postgres как source of truth”\n- “Neo4j отложили, потому что нет traversal-heavy use case”\n- “по памяти лучше разделять cheap router и сильный reconciler”\n- “из документа следует, что стратегия еще обсуждается”\n\n### Писать и то, и другое\nКогда в одном материале есть:\n- explicit facts / tasks\n- плюс rationale / direction\n\n## 8. Truth state и retrieval state\n\nЭто отдельные вещи, и их нельзя смешивать.\n\n### Truth state\nОтвечает на вопрос: актуально ли это как знание?\n\nДля claims:\n- `active`\n- `superseded`\n- `retracted`\n- `expired`\n- `candidate`\n\nДля notes:\n- `active`\n- `superseded`\n- `retracted`\n- `resolved`\n- `stale`\n- `candidate`\n\n### Retrieval state\nОтвечает на вопрос: как это искать и держать в hot path?\n\nОбщий паттерн:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\nПример:\n- note может быть `resolved`, но еще `warm`, потому что полезен для rationale retrieval\n- claim может быть `superseded`, но оставаться `warm` как historical evidence",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:490da64b1b9997f0756bc8be7dc781ae"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"about_file_assertion\":false,\"action\":\"add_alias\",\"alias_text\":\"Claim\",\"confidence\":0.98,\"entity_id\":\"entity:<4>\",\"mention\":\"Claim\",\"new_entity\":null,\"reason\":\"The document discusses Claim as a memory representation type, matching the existing Claim (memory representation) entity.\"},{\"about_file_assertion\":false,\"action\":\"add_alias\",\"alias_text\":\"Note\",\"confidence\":0.98,\"entity_id\":\"entity:<5>\",\"mention\":\"Note\",\"new_entity\":null,\"reason\":\"The document discusses Note as a memory representation type, matching the existing Note (memory representation) entity.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.93,\"entity_id\":null,\"mention\":\"Truth state\",\"new_entity\":{\"canonical_name\":\"Truth state\",\"entity_type\":\"concept\",\"summary\":\"Concept describing whether stored knowledge is currently valid or applicable.\"},\"reason\":\"Truth state is introduced as a distinct durable memory architecture concept and no existing candidate safely matches it.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.93,\"entity_id\":null,\"mention\":\"Retrieval state\",\"new_entity\":{\"canonical_name\":\"Retrieval state\",\"entity_type\":\"concept\",\"summary\":\"Concept describing how stored knowledge is searched for and retained in retrieval paths.\"},\"reason\":\"Retrieval state is introduced as a distinct durable memory architecture concept and is distinct from the existing Retrieval policy entity.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3635,
+                "completionTokens": 648,
+                "thinkingTokens": 317,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

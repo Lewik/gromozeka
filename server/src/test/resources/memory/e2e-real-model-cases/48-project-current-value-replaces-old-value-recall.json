@@ -29,13 +29,15 @@
             "requiredSelectedClaims": [
               {
                 "predicateIn": ["primary_export_format"],
-                "containsAll": ["BookNest", "Parquet"]
+                "subjectEntityCanonicalNameIn": ["BookNest"],
+                "objectEntityCanonicalNameIn": ["Parquet"]
               }
             ],
             "forbiddenSelectedClaims": [
               {
                 "predicateIn": ["primary_export_format"],
-                "normalizedContainsAll": ["BookNest", "CSV"]
+                "subjectEntityCanonicalNameIn": ["BookNest"],
+                "objectEntityCanonicalNameIn": ["CSV"]
               }
             ],
             "selectedContainsAll": ["BookNest", "Parquet"],
@@ -65,7 +67,8 @@
     "requiredClaims": [
       {
         "predicateIn": ["primary_export_format"],
-        "containsAll": ["BookNest", "Parquet"],
+        "subjectEntityCanonicalNameIn": ["BookNest"],
+        "objectEntityCanonicalNameIn": ["Parquet"],
         "evidenceQuoteContainsAll": ["current primary export format is Parquet"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
@@ -73,7 +76,8 @@
     "forbiddenClaims": [
       {
         "predicateIn": ["primary_export_format"],
-        "normalizedContainsAll": ["BookNest", "CSV"]
+        "subjectEntityCanonicalNameIn": ["BookNest"],
+        "objectEntityCanonicalNameIn": ["CSV"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
@@ -84,7 +88,8 @@
     "requiredClaims": [
       {
         "predicateIn": ["primary_export_format"],
-        "containsAll": ["BookNest", "Parquet"],
+        "subjectEntityCanonicalNameIn": ["BookNest"],
+        "objectEntityCanonicalNameIn": ["Parquet"],
         "evidenceQuoteContainsAll": ["current primary export format is Parquet"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
@@ -92,7 +97,8 @@
     "forbiddenClaims": [
       {
         "predicateIn": ["primary_export_format"],
-        "normalizedContainsAll": ["BookNest", "CSV"]
+        "subjectEntityCanonicalNameIn": ["BookNest"],
+        "objectEntityCanonicalNameIn": ["CSV"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]

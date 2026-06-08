@@ -221,29 +221,6 @@
     }
   },
   {
-    "id": "gpt-5.3-codex",
-    "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
-    "limits": {
-      "textGeneration": {
-        "contextWindowTokens": 400000,
-        "autoCompaction": { "type": "percent", "value": 80 }
-      }
-    }
-  },
-  {
-    "id": "gpt-5.3-codex-spark",
-    "provider": "OPENAI",
-    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
-    "limits": {
-      "textGeneration": {
-        "contextWindowTokens": 400000,
-        "maxOutputTokens": 128000,
-        "autoCompaction": { "type": "percent", "value": 80 }
-      }
-    }
-  },
-  {
     "id": "gpt-5.4",
     "provider": "OPENAI",
     "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],

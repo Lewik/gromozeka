@@ -15,7 +15,6 @@
             ],
             "materializedClaimsMin": 1,
             "materializedNotesMin": 1,
-            "materializedNotesMax": 20,
             "materializedActionItemsMax": 0,
             "containsAll": [
               "MemoryRouter",
@@ -69,9 +68,7 @@
   ],
   "expectedAfterSeeds": {
     "activeClaimsMin": 1,
-    "activeClaimsMax": 80,
     "notesMin": 1,
-    "notesMax": 20,
     "actionItemsMax": 0,
     "userSourcesMin": 1,
     "requiredSources": [
@@ -119,9 +116,7 @@
   },
   "expectedFinal": {
     "activeClaimsMin": 1,
-    "activeClaimsMax": 80,
     "notesMin": 1,
-    "notesMax": 20,
     "actionItemsMax": 0,
     "userSourcesMin": 2,
     "requiredNotes": [

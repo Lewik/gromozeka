@@ -35,14 +35,15 @@
             "selectedClaimsMin": 1,
             "requiredSelectedClaims": [
               {
-                "containsAll": ["FleetNorth", "MongoDB"],
+                "subjectEntityCanonicalNameIn": ["FleetNorth"],
+                "objectEntityCanonicalNameIn": ["MongoDB"],
                 "evidenceSourceSpeakerRoleIn": ["USER"]
               }
             ],
             "forbiddenSelectedClaims": [
               {
                 "subjectEntityTypeIn": ["USER"],
-                "normalizedContainsAll": ["Toyota"]
+                "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"]
               }
             ],
             "injectedPromptContainsAll": ["FleetNorth", "MongoDB"],
@@ -75,7 +76,7 @@
             "forbiddenSelectedClaims": [
               {
                 "subjectEntityTypeIn": ["USER"],
-                "normalizedContainsAll": ["Toyota"]
+                "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"]
               }
             ]
           },
@@ -95,7 +96,8 @@
     "userSourcesMin": 2,
     "requiredClaims": [
       {
-        "containsAll": ["FleetNorth", "MongoDB"],
+        "subjectEntityCanonicalNameIn": ["FleetNorth"],
+        "objectEntityCanonicalNameIn": ["MongoDB"],
         "evidenceQuoteContainsAll": ["backend database is MongoDB"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
@@ -111,7 +113,7 @@
     "forbiddenClaims": [
       {
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Toyota"]
+        "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"]
       }
     ],
     "forbiddenNotes": [
@@ -127,7 +129,8 @@
     "userSourcesMin": 3,
     "requiredClaims": [
       {
-        "containsAll": ["FleetNorth", "MongoDB"],
+        "subjectEntityCanonicalNameIn": ["FleetNorth"],
+        "objectEntityCanonicalNameIn": ["MongoDB"],
         "evidenceQuoteContainsAll": ["backend database is MongoDB"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
@@ -143,7 +146,7 @@
     "forbiddenClaims": [
       {
         "subjectEntityTypeIn": ["USER"],
-        "normalizedContainsAll": ["Toyota"]
+        "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"]
       }
     ],
     "forbiddenNotes": [

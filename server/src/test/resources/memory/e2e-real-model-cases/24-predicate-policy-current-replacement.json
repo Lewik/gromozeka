@@ -28,7 +28,8 @@
             "selectedClaimsMin": 1,
             "requiredSelectedClaims": [
               {
-                "normalizedContainsAll": ["Zed", "default"],
+                "subjectEntityTypeIn": ["USER"],
+                "objectEntityCanonicalNameIn": ["Zed"],
                 "predicatePolicyCardinalityIn": ["SINGLE"],
                 "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
                 "predicatePolicyConflictPolicyIn": ["REPLACE"]
@@ -36,7 +37,8 @@
             ],
             "forbiddenSelectedClaims": [
               {
-                "normalizedContainsAll": ["JetBrains", "default"]
+                "subjectEntityTypeIn": ["USER"],
+                "objectEntityCanonicalNameIn": ["JetBrains", "JetBrains IDEs"]
               }
             ],
             "injectedPromptContainsAll": ["Zed"]
@@ -60,7 +62,8 @@
     ],
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["Zed", "default"],
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["Zed"],
         "predicatePolicyCardinalityIn": ["SINGLE"],
         "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
         "predicatePolicyConflictPolicyIn": ["REPLACE"],
@@ -70,7 +73,8 @@
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["JetBrains", "default"]
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["JetBrains", "JetBrains IDEs"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
@@ -90,7 +94,8 @@
     ],
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["Zed", "default"],
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["Zed"],
         "predicatePolicyCardinalityIn": ["SINGLE"],
         "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
         "predicatePolicyConflictPolicyIn": ["REPLACE"],
@@ -99,7 +104,8 @@
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["JetBrains", "default"]
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["JetBrains", "JetBrains IDEs"]
       }
     ],
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]

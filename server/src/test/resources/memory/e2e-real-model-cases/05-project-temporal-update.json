@@ -39,7 +39,8 @@
             ],
             "forbiddenSelectedClaims": [
               {
-                "normalizedContainsAll": ["SQLite", "prototype"]
+                "objectEntityCanonicalNameIn": ["SQLite"],
+                "normalizedContainsAll": ["prototype"]
               }
             ],
             "injectedPromptContainsAll": ["Gromozeka", "MongoDB"],
@@ -61,11 +62,23 @@
     ],
     "requiredClaims": [
       {
+        "predicateIn": ["uses_persistence_database"],
+        "predicatePolicyTemporalPolicyIn": ["TIME_SCOPED"],
+        "predicatePolicyConflictPolicyIn": ["RANGE_SPLIT"],
+        "statusIn": ["ACTIVE"],
+        "subjectEntityCanonicalNameIn": ["Gromozeka"],
+        "objectEntityCanonicalNameIn": ["SQLite"],
         "normalizedContainsAll": ["SQLite", "prototype"],
         "evidenceQuoteContainsAll": ["2026-01-10"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       },
       {
+        "predicateIn": ["primary_storage_backend"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE"],
+        "statusIn": ["ACTIVE"],
+        "subjectEntityCanonicalNameIn": ["Gromozeka"],
+        "objectEntityCanonicalNameIn": ["MongoDB"],
         "normalizedContainsAll": ["MongoDB"],
         "evidenceQuoteContainsAll": ["as of 2026-05-03"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -79,11 +92,23 @@
     "userSourcesMin": 3,
     "requiredClaims": [
       {
+        "predicateIn": ["uses_persistence_database"],
+        "predicatePolicyTemporalPolicyIn": ["TIME_SCOPED"],
+        "predicatePolicyConflictPolicyIn": ["RANGE_SPLIT"],
+        "statusIn": ["ACTIVE"],
+        "subjectEntityCanonicalNameIn": ["Gromozeka"],
+        "objectEntityCanonicalNameIn": ["SQLite"],
         "normalizedContainsAll": ["SQLite", "prototype"],
         "evidenceQuoteContainsAll": ["2026-01-10"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       },
       {
+        "predicateIn": ["primary_storage_backend"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE"],
+        "statusIn": ["ACTIVE"],
+        "subjectEntityCanonicalNameIn": ["Gromozeka"],
+        "objectEntityCanonicalNameIn": ["MongoDB"],
         "normalizedContainsAll": ["MongoDB"],
         "evidenceQuoteContainsAll": ["as of 2026-05-03"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -91,9 +116,11 @@
     ],
     "forbiddenClaims": [
       {
+        "statusIn": ["ACTIVE"],
         "containsAll": ["PostgreSQL"]
       },
       {
+        "statusIn": ["ACTIVE"],
         "containsAll": ["Neo4j"]
       }
     ],

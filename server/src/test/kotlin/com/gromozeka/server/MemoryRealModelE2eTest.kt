@@ -2150,8 +2150,6 @@ class MemoryRealModelE2eTest {
             subject?.canonicalName.orEmpty(),
             objectEntity?.canonicalName.orEmpty(),
             objectValue?.toString().orEmpty(),
-            evidenceQuotes.joinToString("\n"),
-            evidenceTexts.joinToString("\n"),
         ).joinToString("\n").lowercase()
 
         if (expectation.normalizedContainsAll.any { it.lowercase() !in normalizedText.lowercase() }) return false
@@ -2159,8 +2157,11 @@ class MemoryRealModelE2eTest {
         if (expectation.confidenceMin != null && confidence < expectation.confidenceMin) return false
         if (expectation.confidenceMax != null && confidence > expectation.confidenceMax) return false
         if (expectation.subjectEntityTypeIn.isNotEmpty() && subject?.entityType?.name !in expectation.subjectEntityTypeIn.map { it.uppercase() }) return false
+        if (expectation.subjectEntityCanonicalNameIn.isNotEmpty() && subject?.canonicalName !in expectation.subjectEntityCanonicalNameIn) return false
         if (expectation.objectEntityTypeIn.isNotEmpty() && objectEntity?.entityType?.name !in expectation.objectEntityTypeIn.map { it.uppercase() }) return false
         if (expectation.objectEntityCanonicalNameIn.isNotEmpty() && objectEntity?.canonicalName !in expectation.objectEntityCanonicalNameIn) return false
+        if (expectation.objectValueStringIn.isNotEmpty() && objectValue?.toString()?.trim('"') !in expectation.objectValueStringIn) return false
+        if (expectation.objectValueContainsAll.any { it.lowercase() !in objectValue.toString().lowercase() }) return false
         if (expectation.evidenceQuoteContainsAll.any { needle ->
                 (evidenceQuotes + evidenceTexts).none { needle.lowercase() in it.lowercase() }
             }
@@ -2192,7 +2193,8 @@ class MemoryRealModelE2eTest {
         "predicateIn=$predicateIn predicateFamilyIn=$predicateFamilyIn " +
             "policyCardinality=$predicatePolicyCardinalityIn policyTemporal=$predicatePolicyTemporalPolicyIn policyConflict=$predicatePolicyConflictPolicyIn " +
             "containsAll=$containsAll normalizedContainsAll=$normalizedContainsAll " +
-            "objectEntityCanonicalNameIn=$objectEntityCanonicalNameIn evidenceQuoteContainsAll=$evidenceQuoteContainsAll"
+            "subjectEntityCanonicalNameIn=$subjectEntityCanonicalNameIn objectEntityCanonicalNameIn=$objectEntityCanonicalNameIn " +
+            "objectValueStringIn=$objectValueStringIn objectValueContainsAll=$objectValueContainsAll evidenceQuoteContainsAll=$evidenceQuoteContainsAll"
 
     private fun List<Conversation.Message>.renderAssistantText(): String =
         filter { it.role == Conversation.Message.Role.ASSISTANT || it.role == Conversation.Message.Role.SYSTEM }
@@ -3118,8 +3120,11 @@ private data class ClaimExpectation(
     val predicatePolicyConflictPolicyIn: List<String> = emptyList(),
     val statusIn: List<String> = emptyList(),
     val subjectEntityTypeIn: List<String> = emptyList(),
+    val subjectEntityCanonicalNameIn: List<String> = emptyList(),
     val objectEntityTypeIn: List<String> = emptyList(),
     val objectEntityCanonicalNameIn: List<String> = emptyList(),
+    val objectValueStringIn: List<String> = emptyList(),
+    val objectValueContainsAll: List<String> = emptyList(),
     val normalizedContainsAll: List<String> = emptyList(),
     val containsAll: List<String> = emptyList(),
     val confidenceMin: Double? = null,

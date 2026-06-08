@@ -29,13 +29,15 @@
             "selectedClaimsMax": 1,
             "requiredSelectedClaims": [
               {
-                "normalizedContainsAll": ["ShelfAudit", "JSON Lines"],
+                "subjectEntityCanonicalNameIn": ["ShelfAudit"],
+                "objectEntityCanonicalNameIn": ["JSON Lines"],
                 "evidenceSourceSpeakerRoleIn": ["USER"]
               }
             ],
             "forbiddenSelectedClaims": [
               {
-                "normalizedContainsAll": ["ShelfAudit", "CSV"],
+                "subjectEntityCanonicalNameIn": ["ShelfAudit"],
+                "objectEntityCanonicalNameIn": ["CSV"],
                 "statusIn": ["ACTIVE"]
               }
             ],
@@ -62,14 +64,16 @@
     "userSourcesMin": 2,
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["ShelfAudit", "JSON Lines"],
+        "subjectEntityCanonicalNameIn": ["ShelfAudit"],
+        "objectEntityCanonicalNameIn": ["JSON Lines"],
         "evidenceQuoteContainsAll": ["JSON Lines replaces CSV"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["ShelfAudit", "CSV"],
+        "subjectEntityCanonicalNameIn": ["ShelfAudit"],
+        "objectEntityCanonicalNameIn": ["CSV"],
         "statusIn": ["ACTIVE"]
       }
     ],
@@ -86,14 +90,16 @@
     "userSourcesMin": 3,
     "requiredClaims": [
       {
-        "normalizedContainsAll": ["ShelfAudit", "JSON Lines"],
+        "subjectEntityCanonicalNameIn": ["ShelfAudit"],
+        "objectEntityCanonicalNameIn": ["JSON Lines"],
         "evidenceQuoteContainsAll": ["JSON Lines replaces CSV"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
     "forbiddenClaims": [
       {
-        "normalizedContainsAll": ["ShelfAudit", "CSV"],
+        "subjectEntityCanonicalNameIn": ["ShelfAudit"],
+        "objectEntityCanonicalNameIn": ["CSV"],
         "statusIn": ["ACTIVE"]
       }
     ],
