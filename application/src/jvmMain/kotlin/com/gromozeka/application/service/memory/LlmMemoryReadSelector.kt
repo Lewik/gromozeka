@@ -92,7 +92,11 @@ class LlmMemoryReadSelector(
                     batchLabel = "level=$level batch=${index + 1}/${candidateBatches.size}",
                     passMode = ReadSelectorPassMode.INTERMEDIATE_RECALL,
                 )
-                val selectedSurvivors = batchResult.selectedHits.take(READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH)
+                val selectedSurvivors = if (request.plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+                    batchResult.selectedHits
+                } else {
+                    batchResult.selectedHits.take(READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH)
+                }
                 val safetySurvivors = batch.readSelectorSafetySurvivors(request.plan)
                 val selectedSurvivorRefs = selectedSurvivors.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
                 val safetyAddedSurvivors = safetySurvivors
@@ -251,7 +255,14 @@ class LlmMemoryReadSelector(
         request: MemoryReadSelectionRequest,
         renderedCandidates: String,
         passMode: ReadSelectorPassMode,
-    ): String = """
+    ): String {
+        val selectionRule = if (request.plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+            "Select the complete relevant set: every distinct candidate that may represent a separate matching item, event, assignment, source, or ordered fact needed to avoid an incomplete answer."
+        } else {
+            passMode.selectionRule
+        }
+
+        return """
         Memory stage: ReadSelectorReranker v1.
         Namespace: ${request.readRequest.namespace.value}
         Pass mode: ${passMode.promptLabel}
@@ -261,7 +272,7 @@ class LlmMemoryReadSelector(
 
         Selection rules:
         ${passMode.extraRules}
-        - ${passMode.selectionRule}
+        - $selectionRule
         - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.
         - Reject candidates that only have vague lexical overlap.
         - Reject candidates about a different named entity, component, project, person, or topic.
@@ -271,6 +282,7 @@ class LlmMemoryReadSelector(
         - Prefer notes for rationale, decisions, plans, and contextual meaning.
         - Prefer action items only for open commitments or workflow state.
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
+        - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.
         - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.
         - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.
         - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.
@@ -281,6 +293,7 @@ class LlmMemoryReadSelector(
         - If no candidate contains relevant persisted memory, return an empty selected_items array.
 
         Planned answer mode: ${request.plan.answerMode.name}
+        Planned coverage mode: ${request.plan.coverageMode.name}
         Require evidence fallback: ${request.plan.requireEvidenceFallback}
         Retrieval budget: ${request.plan.retrievalBudget.renderForReadSelector()}
         Target message:
@@ -310,6 +323,7 @@ class LlmMemoryReadSelector(
           "summary": "one short sentence"
         }
     """.trimIndent()
+    }
 
     @Serializable
     private data class ReadSelectorResponse(
@@ -381,7 +395,7 @@ private enum class ReadSelectorPassMode(
         - This is an intermediate pass over one candidate batch. A later global selector will rerank survivors from all batches.
         - When uncertain, select the candidate so the final pass can compare it globally.
         - Reject only candidates that are clearly irrelevant, stale compared to active memory, or pure lexical noise.
-        - Aim for at most $READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH selected_items. Exceed that only when many distinct dated facts are required together.
+        - Aim for at most $READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH selected_items. Exceed that when many distinct dated facts or complete-set candidates are required together.
         """.trimIndent(),
         selectionRule = "Select a compact survivor set, but prefer keeping a plausible candidate over dropping it too early.",
     ),

@@ -39,6 +39,7 @@ data class MemoryReadTrace(
         val summary: String,
         val predicate: String? = null,
         val status: String? = null,
+        val evidenceSourceIds: List<MemorySource.Id> = emptyList(),
     )
 
     data class SelectorDecision(

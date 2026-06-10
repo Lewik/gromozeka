@@ -472,7 +472,7 @@ class MemoryMessageRoutingApplicationService(
                 runtimeTools = runtimeTools,
             ),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
-                UuidMemoryIdFactory("hot-path")
+                memoryIdFactory("hot-path", source)
             ),
             profileUpdater = ProjectionMemoryProfileUpdater(store),
             forgetPipeline = ExplicitMemoryForgetPipeline(
@@ -482,7 +482,7 @@ class MemoryMessageRoutingApplicationService(
                     runtimeSystemPrompts = runtimeSystemPrompts,
                     runtimeTools = runtimeTools,
                 ),
-                idFactory = UuidMemoryIdFactory("hot-path-forget"),
+                idFactory = memoryIdFactory("hot-path-forget", source),
                 profileUpdater = ProjectionMemoryProfileUpdater(store),
                 embeddingIndexer = embeddingIndexer,
             ),
@@ -685,6 +685,16 @@ class MemoryMessageRoutingApplicationService(
 
     private fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
         role != Conversation.Message.Role.SYSTEM && error == null
+
+    private fun memoryIdFactory(
+        prefix: String,
+        source: MemorySource,
+    ): MemoryIdFactory {
+        if (!java.lang.Boolean.getBoolean("gromozeka.memory.routing.deterministicIds")) {
+            return UuidMemoryIdFactory(prefix)
+        }
+        return SequentialMemoryIdFactory("$prefix-${source.id.value.sha256().take(12)}")
+    }
 }
 
 private fun MemoryWriteRetrievalPlan.describeForLog(): String =

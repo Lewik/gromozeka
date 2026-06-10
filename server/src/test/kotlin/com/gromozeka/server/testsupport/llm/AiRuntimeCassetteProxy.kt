@@ -644,11 +644,23 @@ internal data class AiRuntimeCassetteReplayContext(
 internal data class AiRuntimeCassetteRuntimeBindings(
     val actualToPlaceholder: Map<String, String>,
     val placeholderToActual: Map<String, String>,
+    val nextPlaceholderIndexByPrefix: Map<String, Int>,
 ) {
     fun normalizeText(value: String): String {
-        return actualToPlaceholder.entries
+        val normalizedKnownIds = actualToPlaceholder.entries
             .sortedByDescending { it.key.length }
             .fold(value) { text, (actual, placeholder) -> text.replace(actual, placeholder) }
+        val counters = nextPlaceholderIndexByPrefix.toMutableMap()
+        val unboundPlaceholders = linkedMapOf<String, String>()
+        return runtimeScopedIdRegex.replace(normalizedKnownIds) { match ->
+            if (match.value.substringAfter(":").startsWith("unbound-")) return@replace match.value
+            unboundPlaceholders.getOrPut(match.value) {
+                val prefix = match.value.substringBefore(":")
+                val index = counters.getOrDefault(prefix, 0)
+                counters[prefix] = index + 1
+                "$prefix:unbound-$index"
+            }
+        }
     }
 
     fun rehydrateText(value: String): String {
@@ -658,7 +670,7 @@ internal data class AiRuntimeCassetteRuntimeBindings(
     }
 
     companion object {
-        val EMPTY = AiRuntimeCassetteRuntimeBindings(emptyMap(), emptyMap())
+        val EMPTY = AiRuntimeCassetteRuntimeBindings(emptyMap(), emptyMap(), emptyMap())
 
         fun from(request: AiRuntimeRequest): AiRuntimeCassetteRuntimeBindings {
             val requestText = buildString {
@@ -691,6 +703,7 @@ internal data class AiRuntimeCassetteRuntimeBindings(
             return AiRuntimeCassetteRuntimeBindings(
                 actualToPlaceholder = actualToPlaceholder,
                 placeholderToActual = actualToPlaceholder.entries.associate { (actual, placeholder) -> placeholder to actual },
+                nextPlaceholderIndexByPrefix = counters,
             )
         }
     }
@@ -1169,11 +1182,13 @@ private fun normalizeRuntimeStructuredOutputText(
     value: String,
     runtimeBindings: AiRuntimeCassetteRuntimeBindings,
 ): String {
-    val normalizedText = normalizeRuntimeText(value, runtimeBindings)
-    if (!normalizedText.trimStart().startsWith("{") && !normalizedText.trimStart().startsWith("[")) return normalizedText
+    val normalizedRuntimeIdsText = runtimeBindings.normalizeText(value)
+    if (!normalizedRuntimeIdsText.trimStart().startsWith("{") && !normalizedRuntimeIdsText.trimStart().startsWith("[")) {
+        return normalizeRuntimeText(value, runtimeBindings)
+    }
     val runtimeDate = Clock.System.now().toString().take(10)
     return runCatching {
-        val parsed = cassetteJson.parseToJsonElement(normalizedText)
+        val parsed = cassetteJson.parseToJsonElement(normalizedRuntimeIdsText)
         compactCassetteJson.encodeToString(
             normalizeRuntimeOutputJsonElement(
                 element = parsed,
@@ -1182,7 +1197,7 @@ private fun normalizeRuntimeStructuredOutputText(
             )
         )
     }.getOrElse {
-        normalizedText
+        normalizeRuntimeText(value, runtimeBindings)
     }
 }
 
@@ -1209,6 +1224,8 @@ private fun normalizeRuntimeOutputJsonElement(
             JsonPrimitive(
                 if (key in runtimeOutputInstantFieldNames && value.startsWith(runtimeDate)) {
                     STABLE_INSTANT
+                } else if (key in runtimeOutputInstantFieldNames) {
+                    runtimeBindings.normalizeText(value)
                 } else {
                     normalizeRuntimeJsonString(path, value, runtimeBindings)
                 }
@@ -1307,7 +1324,9 @@ private val runtimeOutputInstantFieldNames = setOf(
 
 private const val UUID_PATTERN = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 private const val INSTANT_PATTERN = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z"
+private const val DATE_PATTERN = "\\d{4}-\\d{2}-\\d{2}"
 private val runtimeCurrentTimeRegex = Regex("(?m)(Current time:\\s*)$INSTANT_PATTERN")
+private val runtimeTodayDateRegex = Regex("(?m)(Today's date:\\s*)$DATE_PATTERN")
 private val runtimeLabeledInstantRegex = Regex(
     "\\b(validFrom|validTo|createdAt|updatedAt|observedAt|recordedAt|firstSeenAt|lastSeenAt|" +
         "valid_from|valid_to|created_at|updated_at|observed_at|recorded_at|first_seen_at|last_seen_at|" +
@@ -1328,6 +1347,7 @@ private val runtimeScopedIdRegex =
 private val runtimePipelineItemIdRegex =
     Regex("\\b([a-z][a-z0-9-]*):(run|source|claim|note|actionItem|entity|episode|profile):[A-Za-z0-9][A-Za-z0-9._:-]*")
 private val runtimeTargetMessageIdRegex = Regex("(?m)(Target message id:\\s*)$UUID_PATTERN")
+private val runtimeValidationPathIndexRegex = Regex("\\b([A-Za-z_][A-Za-z0-9_]*)\\[\\d+]")
 private val gromozekaE2eDirectoryRegex = Regex("(/[^\\s\"']*)?gromozeka-e2e-[0-9]+")
 
 private fun normalizeRuntimeJsonString(
@@ -1335,10 +1355,11 @@ private fun normalizeRuntimeJsonString(
     value: String,
     runtimeBindings: AiRuntimeCassetteRuntimeBindings,
 ): String {
-    return if (path.isRuntimeFieldPath()) {
-        stableRuntimeValueForField(path.last(), value)
-    } else {
-        normalizeRuntimeText(value, runtimeBindings)
+    val key = path.lastOrNull()
+    return when {
+        path.isRuntimeFieldPath() -> stableRuntimeValueForField(path.last(), value)
+        key == "fullText" || key == "ttsText" -> normalizeRuntimeStructuredOutputText(value, runtimeBindings)
+        else -> normalizeRuntimeText(value, runtimeBindings)
     }
 }
 
@@ -1466,14 +1487,12 @@ private fun normalizeRuntimeText(
 ): String {
     return runtimeBindings.normalizeText(value)
         .replace(runtimeCurrentTimeRegex) { match -> "${match.groupValues[1]}<instant>" }
+        .replace(runtimeTodayDateRegex) { match -> "${match.groupValues[1]}<date>" }
         .replace(runtimeLabeledInstantRegex) { match -> "${match.groupValues[1]}=$STABLE_INSTANT" }
         .replace(runtimeHumanLabeledInstantRegex) { match -> "${match.groupValues[1]}$STABLE_INSTANT" }
         .replace(runtimeJsonInstantFieldRegex) { match -> "${match.groupValues[1]}$STABLE_INSTANT${match.groupValues[3]}" }
         .replace(runtimeTargetMessageIdRegex) { match -> "${match.groupValues[1]}$STABLE_UUID" }
-        .replace(runtimeScopedIdRegex) { match ->
-            val prefix = match.value.substringBefore(":")
-            "$prefix:<id>"
-        }
+        .replace(runtimeValidationPathIndexRegex) { match -> "${match.groupValues[1]}[<index>]" }
         .replace(runtimePipelineItemIdRegex) { match ->
             "${match.groupValues[1]}:${match.groupValues[2]}:<id>"
         }

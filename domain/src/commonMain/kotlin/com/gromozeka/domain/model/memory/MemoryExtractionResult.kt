@@ -448,6 +448,7 @@ data class MemoryForgetPlan(
 data class MemoryReadPlan(
     val needMemory: Boolean = true,
     val answerMode: AnswerMode = AnswerMode.MIXED,
+    val coverageMode: CoverageMode = CoverageMode.MINIMAL,
     val coreBlocks: Set<CoreBlock> = emptySet(),
     val retrievalBudget: MemoryRetrievalBudget = MemoryRetrievalBudget(),
     val retrievalRequests: List<RetrievalRequest> = emptyList(),
@@ -459,6 +460,12 @@ data class MemoryReadPlan(
         RATIONALE,
         ACTION_ITEM,
         MIXED,
+    }
+
+    @Serializable
+    enum class CoverageMode {
+        MINIMAL,
+        COMPLETE_SET,
     }
 
     @Serializable

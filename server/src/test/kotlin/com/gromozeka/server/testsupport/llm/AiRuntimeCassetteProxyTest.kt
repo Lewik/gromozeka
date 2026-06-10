@@ -34,6 +34,8 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class AiRuntimeCassetteProxyTest {
 
@@ -178,6 +180,43 @@ class AiRuntimeCassetteProxyTest {
     }
 
     @Test
+    fun cassetteResponseKeepsUnboundScopedIdsReplayable() = runBlocking {
+        val root = Files.createTempDirectory("llm-cassettes-test-")
+        try {
+            val backend = FixedTextBackend(
+                """{"subject_entity_id":"entity:unknown-alpha","object_entity_id":"entity:unknown-beta"}"""
+            )
+            val provider = cassetteProvider(
+                backends = listOf(backend),
+                settings = AiRuntimeCassetteSettings(
+                    mode = AiRuntimeCassetteMode.RECORD_MISSING,
+                    rootDirectory = root,
+                ),
+            )
+            val runtime = provider.getRuntime(
+                selection = runtimeSelection("fake/model:1"),
+                projectPath = "/tmp/gromozeka-e2e-111/projects/case-a",
+            )
+
+            runtime.call(requestWithDynamicIds("111", "Resolved entity id=entity:known-alpha"))
+
+            val cassetteBody = Files.readString(
+                root.resolve("OPENAI")
+                    .resolve("fake_model_1")
+                    .resolve("call")
+                    .listDirectoryEntries("*.json")
+                    .single()
+            )
+
+            assertFalse("entity:<id>" in cassetteBody)
+            assertTrue("entity:unbound-1" in cassetteBody)
+            assertTrue("entity:unbound-2" in cassetteBody)
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun refreshKeepsCassetteBodyStableWhenOnlyRuntimeFieldsChange() = runBlocking {
         val root = Files.createTempDirectory("llm-cassettes-test-")
         try {
@@ -217,6 +256,46 @@ class AiRuntimeCassetteProxyTest {
                 .call(requestWithDynamicIds("222", "Tell me the stored fact."))
 
             assertEquals(firstBody, Files.readString(cassettePath))
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun replayKeepsSemanticStructuredOutputInstants() = runBlocking {
+        val root = Files.createTempDirectory("llm-cassettes-test-")
+        try {
+            val semanticDate = "2023-02-10T00:00:00Z"
+            val provider = cassetteProvider(
+                backends = listOf(
+                    FixedTextBackend(
+                        """{"claims":[{"predicate":"attended_event","valid_from":"$semanticDate","valid_to":null}]}"""
+                    )
+                ),
+                settings = AiRuntimeCassetteSettings(
+                    mode = AiRuntimeCassetteMode.RECORD_MISSING,
+                    rootDirectory = root,
+                ),
+            )
+
+            provider
+                .getRuntime(runtimeSelection("fake/model:1"), "/tmp/gromozeka-e2e-111/projects/case-a")
+                .call(requestWithDynamicIds("111", "Tell me the stored fact."))
+
+            val replayProvider = cassetteProvider(
+                backends = listOf(FixedTextBackend("should-not-call-delegate")),
+                settings = AiRuntimeCassetteSettings(
+                    mode = AiRuntimeCassetteMode.REPLAY_ONLY,
+                    rootDirectory = root,
+                ),
+            )
+            val replayed = replayProvider
+                .getRuntime(runtimeSelection("fake/model:1"), "/tmp/gromozeka-e2e-222/projects/case-a")
+                .call(requestWithDynamicIds("222", "Tell me the stored fact."))
+                .text()
+
+            assertTrue(semanticDate in replayed)
+            assertFalse("${Clock.System.now().toString().take(10)}T" in replayed)
         } finally {
             root.toFile().deleteRecursively()
         }
@@ -541,6 +620,24 @@ class AiRuntimeCassetteProxyTest {
                     )
                 ).asFlow()
             }
+        }
+    }
+
+    private class FixedTextBackend(
+        private val text: String,
+    ) : AiRuntimeBackend {
+        override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
+
+        override fun createRuntime(
+            connection: AiConnection,
+            modelConfiguration: AiModelConfiguration,
+            projectPath: String?,
+        ): AiRuntime = object : AiRuntime {
+            override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse = response(text)
+
+            override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = listOf(response(text)).asFlow()
         }
     }
 

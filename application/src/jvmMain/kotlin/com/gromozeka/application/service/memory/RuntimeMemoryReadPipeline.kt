@@ -41,7 +41,7 @@ class RuntimeMemoryReadPipeline(
         val searchSteps = mutableListOf<MemoryReadTrace.SearchStep>()
         log.info {
             "Memory read plan: namespace=${request.namespace.value} need=${plan.needMemory} " +
-                "mode=${plan.answerMode.name} core=${plan.coreBlocks.joinToString { it.name }} " +
+                "mode=${plan.answerMode.name} coverage=${plan.coverageMode.name} core=${plan.coreBlocks.joinToString { it.name }} " +
                 "budget=${plan.retrievalBudget} requests=${plan.retrievalRequests.size} " +
                 "retrieval=${plan.retrievalRequests.joinToString("|") { "${it.memoryType.name}:${it.topK}:${it.query.oneLineForRuntimeMemoryLog(120)}" }}"
         }
@@ -686,6 +686,7 @@ object RuntimeMemoryPromptComposer {
 
                 Namespace: ${request.namespace.value}
                 Answer mode: ${plan.answerMode.name}
+                Coverage mode: ${plan.coverageMode.name}
             """.trimIndent()
         }
 
@@ -698,11 +699,13 @@ object RuntimeMemoryPromptComposer {
             Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.
             If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.
             If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.
+            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.
             If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
             If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.
 
             Namespace: ${request.namespace.value}
             Answer mode: ${plan.answerMode.name}
+            Coverage mode: ${plan.coverageMode.name}
             Require evidence fallback: ${plan.requireEvidenceFallback}
 
             Retrieved profile:
@@ -1225,14 +1228,18 @@ private fun List<MemoryStore.SearchHit>.currentTruthBearingTypedRefs(): List<Mem
         .distinct()
 
 private fun MemoryReadPlan.defersRawSourcesWhenTypedMemoryExists(): Boolean =
-    when (answerMode) {
-        MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.ACTION_ITEM,
-        -> true
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        false
+    } else {
+        when (answerMode) {
+            MemoryReadPlan.AnswerMode.FACTUAL,
+            MemoryReadPlan.AnswerMode.ACTION_ITEM,
+            -> true
 
-        MemoryReadPlan.AnswerMode.MIXED,
-        MemoryReadPlan.AnswerMode.RATIONALE,
-        -> false
+            MemoryReadPlan.AnswerMode.MIXED,
+            MemoryReadPlan.AnswerMode.RATIONALE,
+            -> false
+        }
     }
 
 private fun MemoryStore.SearchHit.isCurrentTruthBearingTypedHit(): Boolean =
@@ -1463,6 +1470,10 @@ private data class RuntimeMemorySourcePruningResult(
 private fun List<MemoryStore.SearchHit>.filterNonRequiredSourcesWhenTypedMemoryAnswers(
     plan: MemoryReadPlan,
 ): RuntimeMemorySourcePruningResult {
+    if (plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        return RuntimeMemorySourcePruningResult(hits = this)
+    }
+
     if (plan.shouldRenderEvidenceInPrompt()) {
         return RuntimeMemorySourcePruningResult(hits = this)
     }
@@ -1608,12 +1619,16 @@ private fun MemoryStore.SearchHit.isEmptyProfileHit(): Boolean =
         profile.profileText.contains("No active profile-synced memory.", ignoreCase = true)
 
 private fun MemoryReadPlan.evidenceHydrationSourceLimit(): Int =
-    when (answerMode) {
-        MemoryReadPlan.AnswerMode.RATIONALE -> retrievalBudget.sources.takeIf { it > 0 } ?: 4
-        MemoryReadPlan.AnswerMode.MIXED -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
-        MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.ACTION_ITEM,
-        -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET && shouldIncludeSourceEvidence()) {
+        retrievalBudget.sources.takeIf { it > 0 } ?: 6
+    } else {
+        when (answerMode) {
+            MemoryReadPlan.AnswerMode.RATIONALE -> retrievalBudget.sources.takeIf { it > 0 } ?: 4
+            MemoryReadPlan.AnswerMode.MIXED -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
+            MemoryReadPlan.AnswerMode.FACTUAL,
+            MemoryReadPlan.AnswerMode.ACTION_ITEM,
+            -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
+        }
     }
 
 private fun MemoryReadPlan.shouldIncludeSourceEvidence(): Boolean =
@@ -1626,7 +1641,9 @@ private fun List<MemoryStore.SearchHit>.keepLinkedEvidenceSources(
     evidenceSourceIds: List<MemorySource.Id>,
 ): List<MemoryStore.SearchHit> {
     if (evidenceSourceIds.isEmpty()) return this
-    val allowedSourceIds = evidenceSourceIds.toSet()
+    val selectedSourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+        .mapTo(mutableSetOf()) { it.source.id }
+    val allowedSourceIds = evidenceSourceIds.toSet() + selectedSourceIds
     return filter { hit ->
         hit !is MemoryStore.SearchHit.SourceHit || hit.source.id in allowedSourceIds
     }
@@ -1923,6 +1940,7 @@ private fun MemoryStore.SearchHit.toTraceHit(): MemoryReadTrace.Hit =
             ref = toItemRef(),
             score = score,
             summary = source.contentText.oneLineForRuntimeMemoryLog(220),
+            evidenceSourceIds = listOf(source.id),
         )
 
         is MemoryStore.SearchHit.EntityHit -> MemoryReadTrace.Hit(
@@ -1937,6 +1955,7 @@ private fun MemoryStore.SearchHit.toTraceHit(): MemoryReadTrace.Hit =
             summary = claim.normalizedText.oneLineForRuntimeMemoryLog(220),
             predicate = claim.predicate,
             status = claim.status.name,
+            evidenceSourceIds = claim.evidenceRefs.map { it.sourceId }.distinct(),
         )
 
         is MemoryStore.SearchHit.NoteHit -> MemoryReadTrace.Hit(
@@ -1944,6 +1963,7 @@ private fun MemoryStore.SearchHit.toTraceHit(): MemoryReadTrace.Hit =
             score = score,
             summary = "${note.title}: ${note.summary}".oneLineForRuntimeMemoryLog(220),
             status = note.status.name,
+            evidenceSourceIds = note.evidenceRefs.map { it.sourceId }.distinct(),
         )
 
         is MemoryStore.SearchHit.ActionItemHit -> MemoryReadTrace.Hit(
@@ -1951,6 +1971,7 @@ private fun MemoryStore.SearchHit.toTraceHit(): MemoryReadTrace.Hit =
             score = score,
             summary = "${actionItem.status.name}: ${actionItem.title}".oneLineForRuntimeMemoryLog(220),
             status = actionItem.status.name,
+            evidenceSourceIds = actionItem.evidenceRefs.map { it.sourceId }.distinct(),
         )
 
         is MemoryStore.SearchHit.ProfileHit -> MemoryReadTrace.Hit(
@@ -1963,6 +1984,7 @@ private fun MemoryStore.SearchHit.toTraceHit(): MemoryReadTrace.Hit =
             ref = toItemRef(),
             score = score,
             summary = episode.lesson.oneLineForRuntimeMemoryLog(220),
+            evidenceSourceIds = episode.evidenceRefs.map { it.sourceId }.distinct(),
         )
 
         is MemoryStore.SearchHit.RunHit -> MemoryReadTrace.Hit(

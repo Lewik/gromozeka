@@ -154,18 +154,19 @@ class LlmMemoryWriteRouter(
             - Current-turn execution command: an instruction for the assistant to act now in this chat/codebase, such as edit this, clean this up, run tests, commit and push, do the second wave, or finish it. It is audit-only by default.
             - Internal action item memory: a follow-up/todo/commitment that must be remembered after this turn, or an explicit lifecycle update to an existing stored action item, such as keep an open action item, close the follow-up, cancel the todo, unblock the action item, or mark it done.
             - External work item: a Jira Story, GitHub Issue, ticket, backlog item, issue-tracker task, assignee/status row, or project-management record. Do not route it as action_item merely because it has an assignee, status, priority, or "Type=Story"; route durable information about it as note/claim/source unless TARGET_MESSAGE explicitly asks Gromozeka to remember a follow-up.
-            - Durable claim/rule: a stable reusable fact, preference, constraint, workflow rule, project state, or user requirement. It is not merely a one-time instruction to execute now.
+            - Durable claim/rule: a stable reusable fact, preference, prior experience, dated personal event, constraint, workflow rule, project state, or user requirement. It is not merely a one-time instruction to execute now.
             - Note memory: reusable rationale, trade-offs, design direction, lesson, procedure, or document digest. It is not a transcript summary of the current instruction.
             - Document ingest source: TARGET_MESSAGE is imported or pasted document content when source metadata contains source_kind=document, origin=provided_document_section, origin=pasted_document_section, or the source text starts with Document source/section metadata. Treat the document as imported evidence, not as a chat command; stable document facts may become imported claims with document scope.
             - Forced memory write: source metadata force_memory_write=true means the user/tool explicitly requested memory ingestion for this exact target. Do not return "noop"; choose the best non-noop write mode for the content.
 
             Decision policy:
             - "noop" for greetings, filler, repetition, low-value chatter, and transient content.
-            - "direct_structured_write" for explicit durable facts, stable preferences, reusable rules, clear durable status changes, deadlines, commitments, and durable action item lifecycle commands.
-            - "note_write" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.
-            - "mixed" when the material contains both structured facts/action items and richer rationale/context.
+            - "direct_structured_write" for explicit durable facts, stable preferences, prior experiences, dated personal events, reusable rules, clear durable status changes, deadlines, commitments, and durable action item lifecycle commands.
+            - "note_write" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests when there are no distinct structured facts/preferences/events worth extracting.
+            - "mixed" when the material contains both structured facts/action items/preferences/dated events and richer rationale/context.
             - "forget_request" when TARGET_MESSAGE explicitly asks to forget, remove, delete, or stop remembering previously stored information.
             - For document ingest sources, prefer "note_write" for conceptual/rationale/procedural sections and "mixed" when the document section also states stable facts, rules, or action item lifecycle data. Do not reject the source merely because it is not a user utterance.
+            - For forced ingestion of past conversations, do not collapse extractable user preferences, prior experiences, recommendation patterns, or dated events into note-only memory. Use "mixed" when a transcript contains both a reusable note and claim-like signals.
             - Include memory_type "action_item" only when TARGET_MESSAGE explicitly creates, repeats, updates, closes, cancels, blocks, unblocks, reprioritizes, or assigns a durable follow-up/action item/todo for Gromozeka memory.
             - Do not include memory_type "action_item" for an external Jira Story, GitHub Issue, ticket, backlog item, or project-management record unless TARGET_MESSAGE explicitly asks Gromozeka to remember or track a follow-up about it.
             - Do not include memory_type "action_item" for a normal implementation command unless the target explicitly says it should be tracked after this turn.
@@ -213,6 +214,8 @@ class LlmMemoryWriteRouter(
             - "Дочисти оставшиеся ссылки прямо сейчас" -> decision="noop", memory_types=[], audit-only source policy.
             - "Закрой три таски по memory cleanup" -> decision="direct_structured_write", memory_types=["action_item"], no claim/note/profile unless a stable reusable fact is also asserted.
             - "Memory MVP follow-up: keep an open action item to review command-vs-memory routing" -> decision="direct_structured_write", memory_types=["action_item"].
+            - Past transcript: "I need meal prep ideas with quinoa and roasted vegetables... I've had grilled chicken and turkey breast before, but I've never tried lentil bolognese" -> decision="mixed", memory_types=["claim","note","source"].
+            - Past transcript: "I just got back from a networking event that ran from 6 PM to 8 PM today" -> decision="direct_structured_write" or "mixed", memory_types=["claim","source"].
             - "Jira Story MV-344, Type=Story, Assignee=Lev, Status=In Progress" -> decision="note_write" or "mixed", memory_types=["note","source"] plus "claim" only for durable facts; no action_item unless the target explicitly asks Gromozeka to track a follow-up.
             - "For this project, normally edit only gromozeko.dev and update gromozeko.beta by pulling repository changes into beta" -> decision="direct_structured_write", memory_types=["claim"].
             - "We chose retrieval-before-update because pronouns and corrections need existing memory context" -> decision="note_write" or "mixed", memory_types=["note"] plus "claim" only if there is a distinct durable fact.

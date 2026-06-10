@@ -2893,6 +2893,77 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun runtimeReadKeepsRawSourceCandidatesForCompleteSetRecall() = runBlocking {
+        val sourceWithTypedClaim = source(
+            "complete-set-typed-source",
+            "The user needs to pick up the repaired camera from the service desk.",
+        )
+        val sourceOnlyItem = source(
+            "complete-set-source-only",
+            "The user also needs to return the spare tripod to the rental counter.",
+        )
+        val typedClaim = claim(
+            id = "complete-set-typed-claim",
+            sourceId = sourceWithTypedClaim.id.value,
+            predicate = "has_goal",
+            normalizedText = "The user needs to pick up the repaired camera from the service desk.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(sourceWithTypedClaim, sourceOnlyItem),
+                entities = listOf(entity()),
+                claims = listOf(typedClaim),
+            )
+        )
+        val selector = CapturingReadSelector(
+            selectedRefs = listOf(
+                MemoryItemRef(MemoryItemRef.Type.CLAIM, typedClaim.id.value),
+                MemoryItemRef(MemoryItemRef.Type.SOURCE, sourceOnlyItem.id.value),
+            )
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "One typed item may be part of the complete set.",
+                            query = "pick up return user needs",
+                            topK = 2,
+                        ),
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Source-only items may be missing from typed memory.",
+                            query = "pick up return user needs",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(memoryReadRequest("complete-set-target", "How many errands do I need to pick up or return?"))
+
+        val capturedRefs = selector.capturedRefs.toSet()
+        val resultRefs = result.retrievedHits.map { it.toTestItemRef() }.toSet()
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, typedClaim.id.value)))
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, sourceOnlyItem.id.value)))
+        assertTrue(resultRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, typedClaim.id.value)))
+        assertTrue(resultRefs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, sourceOnlyItem.id.value)))
+        assertTrue(prompt.contains("Coverage mode: COMPLETE_SET"))
+        assertTrue(prompt.contains("repaired camera"))
+        assertTrue(prompt.contains("spare tripod"))
+    }
+
+    @Test
     fun runtimeTaskPromptLabelsTitleAndDoesNotHydrateEvidenceWithoutFallback() = runBlocking {
         val taskSource = source("actionItem-source", "Follow-up: add selector trace report to memory e2e.")
         val actionItem = actionItem("actionItem-selector-trace", status = MemoryActionItem.Status.OPEN).copy(

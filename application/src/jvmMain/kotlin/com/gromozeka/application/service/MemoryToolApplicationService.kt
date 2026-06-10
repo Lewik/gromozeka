@@ -124,7 +124,7 @@ class MemoryToolApplicationService(
         }
 
         if (conversationIdValue.isNullOrBlank()) {
-            return rememberStandaloneProvidedText(normalizedText, forceWrite, mode, namespaceValue)
+            return rememberStandaloneProvidedText(resolvedContent, normalizedText, forceWrite, mode, namespaceValue)
         }
 
         return runCatching {
@@ -168,6 +168,7 @@ class MemoryToolApplicationService(
     }
 
     private suspend fun rememberStandaloneProvidedText(
+        resolvedContent: MemoryResolvedRememberContent,
         text: String,
         forceWrite: Boolean,
         mode: String?,
@@ -179,16 +180,27 @@ class MemoryToolApplicationService(
             val namespace = resolveMemoryNamespace(namespaceValue, project)
             val contentHash = text.sha256()
             val now = Clock.System.now()
+            val recordRef = resolvedContent.sourceRef
+                ?.takeIf { it.isNotBlank() }
+                ?: "memory_remember:provided_text:${contentHash.take(16)}"
             val source = MemorySource.ExternalRecord(
-                id = MemorySource.Id("external:provided-text:${contentHash.take(32)}"),
+                id = externalRecordSourceId(
+                    kind = "provided-text",
+                    namespace = namespace,
+                    recordRef = recordRef,
+                    contentHash = contentHash,
+                ),
                 namespace = namespace,
-                recordRef = "memory_remember:provided_text:${contentHash.take(16)}",
+                recordRef = recordRef,
                 authorLabel = "user-provided text",
                 contentText = text,
                 contentPayload = buildJsonObject {
                     put("memoryToolOrigin", "provided_text")
                     put("userConsentConfirmed", true)
                     put("standalone", true)
+                    put("inputKind", resolvedContent.kind.name)
+                    put("sourceRef", resolvedContent.sourceRef)
+                    resolvedContent.title?.let { put("title", it) }
                     if (forceWrite) put("forceMemoryWrite", true)
                     mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
                 },
@@ -246,7 +258,12 @@ class MemoryToolApplicationService(
             val documentHash = resolvedContent.text.sha256()
             val parentRecordRef = "memory_remember:document:${documentHash.take(16)}"
             val parentSource = MemorySource.ExternalRecord(
-                id = MemorySource.Id("external:document:${documentHash.take(32)}"),
+                id = externalRecordSourceId(
+                    kind = "document",
+                    namespace = namespace,
+                    recordRef = parentRecordRef,
+                    contentHash = documentHash,
+                ),
                 namespace = namespace,
                 recordRef = parentRecordRef,
                 authorLabel = "user-provided document",
@@ -824,6 +841,19 @@ class MemoryToolApplicationService(
     private fun String.sha256(): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(toByteArray())
         return digest.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun externalRecordSourceId(
+        kind: String,
+        namespace: MemoryNamespace,
+        recordRef: String,
+        contentHash: String,
+    ): MemorySource.Id {
+        val identityHash = listOf(namespace.value, recordRef, contentHash)
+            .joinToString("\n")
+            .sha256()
+            .take(32)
+        return MemorySource.Id("external:$kind:$identityHash")
     }
 
     private data class MemoryToolContext(

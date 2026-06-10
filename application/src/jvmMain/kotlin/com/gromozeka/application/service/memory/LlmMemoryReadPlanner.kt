@@ -208,6 +208,8 @@ class LlmMemoryReadPlanner(
         val needMemory: Boolean = false,
         @SerialName("answer_mode")
         val answerMode: String = "mixed",
+        @SerialName("coverage_mode")
+        val coverageMode: String = "minimal",
         @SerialName("core_blocks")
         val coreBlocks: List<String> = emptyList(),
         @SerialName("retrieval_budget")
@@ -221,6 +223,7 @@ class LlmMemoryReadPlanner(
             MemoryReadPlan(
                 needMemory = needMemory,
                 answerMode = answerMode.toAnswerMode(),
+                coverageMode = coverageMode.toCoverageMode(),
                 coreBlocks = coreBlocks.mapNotNull { it.toCoreBlock() }.toSet(),
                 retrievalBudget = retrievalBudget.toBudget(),
                 retrievalRequests = retrievalRequests.mapNotNull { it.toRetrievalRequest() },
@@ -364,6 +367,7 @@ class LlmMemoryReadPlanner(
             {
               "need_memory": true,
               "answer_mode": "factual | rationale | action_item | mixed",
+              "coverage_mode": "minimal | complete_set",
               "core_blocks": ["profile", "action_items"],
               "retrieval_budget": {
                 "claims": 0,
@@ -397,6 +401,8 @@ class LlmMemoryReadPlanner(
             - Use "action_item" for internal commitments and follow-ups.
             - For action item status, done, cancelled, closed, blocked, or "is anything still open" questions, retrieve action item memory even when the relevant action item may no longer be open.
             - Use "mixed" when multiple memory classes are required.
+            - Use coverage_mode="minimal" when one or a few directly relevant items are sufficient.
+            - Use coverage_mode="complete_set" when omission changes the answer: counts, inventories, list-all/set questions, timeline/order reconstruction, or requests that need every distinct matching item/event/assignment/source.
             - Prefer no memory when the current request is fully self-contained.
             - A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.
             - Include the profile core block for broad user/project working style, language, tone, preferences, constraints, and "how should you adapt to me/us" questions.
@@ -406,7 +412,9 @@ class LlmMemoryReadPlanner(
             - For named document questions that ask for exact definitions, fields, listed items, or specific component roles, include source retrieval; notes are useful for document digests and rationale, but raw source can be the best answer evidence.
             - If the target asks what order, procedure, workflow, policy, or working agreement "we should follow", and the target itself does not provide the steps, retrieve memory even if the wording sounds like a general advice question.
             - If the target asks what a named report, trace, pipeline, component, policy, rule, or workflow should show/include/do/use/be, retrieve memory unless the target itself provides that rule.
-            - For timeline, sequence, ordering, ordinal, "first/second/third/latest/previous/next", or "what happened before/after" questions, retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.
+            - For timeline, sequence, ordering, ordinal, "first/second/third/latest/previous/next", or "what happened before/after" questions, use coverage_mode="complete_set" and retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.
+            - For temporal recall questions such as "how many days ago", "when did I", "what date", or "what day", retrieve direct claims first and include source retrieval as evidence fallback because dated personal events may be preserved as source-only evidence.
+            - For count, set, inventory, list-all, or "how many" questions, use coverage_mode="complete_set", retrieve enough typed facts to enumerate the set, and include source retrieval as evidence fallback. Counts are wrong if one item is omitted.
             - For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.
             - For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.
             - Leave predicate priority arrays empty when no predicate ranking is needed.
@@ -480,6 +488,12 @@ private fun String.toAnswerMode(): MemoryReadPlan.AnswerMode =
         "rationale", "reasoning", "why" -> MemoryReadPlan.AnswerMode.RATIONALE
         "action_item", "action_items", "actionitem", "actionitems", "task", "tasks" -> MemoryReadPlan.AnswerMode.ACTION_ITEM
         else -> MemoryReadPlan.AnswerMode.MIXED
+    }
+
+private fun String.toCoverageMode(): MemoryReadPlan.CoverageMode =
+    when (trim().lowercase().replace("-", "_")) {
+        "complete_set", "complete", "full", "exhaustive", "all" -> MemoryReadPlan.CoverageMode.COMPLETE_SET
+        else -> MemoryReadPlan.CoverageMode.MINIMAL
     }
 
 private fun String.toCoreBlock(): MemoryReadPlan.CoreBlock? =

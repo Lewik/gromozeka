@@ -391,6 +391,7 @@ internal object MemoryStructuredResponseFormats {
         schema = objectSchema(
             "need_memory" to booleanSchema(),
             "answer_mode" to stringEnumSchema("factual", "rationale", "action_item", "mixed"),
+            "coverage_mode" to stringEnumSchema("minimal", "complete_set"),
             "core_blocks" to arraySchema(stringEnumSchema("profile", "action_items", "session_summary")),
             "retrieval_budget" to objectSchema(
                 "claims" to integerSchema(),

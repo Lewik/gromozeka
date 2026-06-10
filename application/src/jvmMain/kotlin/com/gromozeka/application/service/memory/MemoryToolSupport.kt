@@ -133,6 +133,13 @@ object MemoryToolResultRenderer {
                         put("summary", hit.summary.shortForMemoryToolResult())
                         hit.predicate?.let { put("predicate", it) }
                         hit.status?.let { put("status", it) }
+                        if (hit.evidenceSourceIds.isNotEmpty()) {
+                            putJsonArray("evidence_source_ids") {
+                                hit.evidenceSourceIds.forEach { sourceId ->
+                                    add(JsonPrimitive(sourceId.value))
+                                }
+                            }
+                        }
                     })
                 }
             }

@@ -200,7 +200,7 @@ class PersistentMemoryTraceSink(
         }
 
     private fun MemoryReadTraceEvent.readTraceSummary(): String =
-        "Memory read trace: need=${result.plan.needMemory} mode=${result.plan.answerMode.name} " +
+        "Memory read trace: need=${result.plan.needMemory} mode=${result.plan.answerMode.name} coverage=${result.plan.coverageMode.name} " +
             "retrieved=${result.retrievedHits.size} selected=${result.trace.selectedHits.size} " +
             "promptChars=${result.runtimePrompt?.length ?: 0}"
 
@@ -455,6 +455,14 @@ class PersistentMemoryTraceSink(
             put("ref", ref.toTraceJson())
             put("score", score)
             put("summary", traceSummary())
+            val evidenceSourceIds = evidenceSourceIds()
+            if (evidenceSourceIds.isNotEmpty()) {
+                putJsonArray("evidenceSourceIds") {
+                    evidenceSourceIds.forEach { sourceId ->
+                        add(JsonPrimitive(sourceId.value))
+                    }
+                }
+            }
             when (this@toTraceHitJson) {
                 is MemoryStore.SearchHit.SourceHit -> {
                     put("sourceKind", source.traceKind())
@@ -499,6 +507,19 @@ class PersistentMemoryTraceSink(
                     put("status", run.status.name)
                 }
             }
+        }
+
+    private fun MemoryStore.SearchHit.evidenceSourceIds(): List<MemorySource.Id> =
+        when (this) {
+            is MemoryStore.SearchHit.SourceHit -> listOf(source.id)
+            is MemoryStore.SearchHit.ClaimHit -> claim.evidenceRefs.map { it.sourceId }.distinct()
+            is MemoryStore.SearchHit.NoteHit -> note.evidenceRefs.map { it.sourceId }.distinct()
+            is MemoryStore.SearchHit.ActionItemHit -> actionItem.evidenceRefs.map { it.sourceId }.distinct()
+            is MemoryStore.SearchHit.EpisodeHit -> episode.evidenceRefs.map { it.sourceId }.distinct()
+            is MemoryStore.SearchHit.EntityHit,
+            is MemoryStore.SearchHit.ProfileHit,
+            is MemoryStore.SearchHit.RunHit,
+            -> emptyList()
         }
 
     private fun MemoryStore.SearchHit.traceSummary(): String =
