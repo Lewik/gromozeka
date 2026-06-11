@@ -1556,54 +1556,8 @@ private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean, 
         .ifBlank { "none" }
 }
 
-private fun String.queryFocusedExcerptForMemoryPrompt(query: String, maxChars: Int = 4_000): String {
-    val text = trim()
-    if (text.length <= maxChars) return text
-
-    val terms = query
-        .split(Regex("[^\\p{L}\\p{N}_-]+"))
-        .map { it.trim() }
-        .filter { it.length >= 4 }
-        .distinctBy { it.lowercase() }
-        .take(16)
-    val windows = terms
-        .mapNotNull { term -> text.indexOf(term, ignoreCase = true).takeIf { it >= 0 } }
-        .map { index ->
-            val start = (index - 500).coerceAtLeast(0)
-            val end = (index + 900).coerceAtMost(text.length)
-            start to end
-        }
-        .sortedBy { it.first }
-        .fold(mutableListOf<Pair<Int, Int>>()) { acc, window ->
-            val previous = acc.lastOrNull()
-            if (previous != null && window.first <= previous.second + 120) {
-                acc[acc.lastIndex] = previous.first to maxOf(previous.second, window.second)
-            } else {
-                acc += window
-            }
-            acc
-        }
-
-    if (windows.isEmpty()) return text.truncateForRuntimeMemoryPrompt(maxChars)
-
-    val head = text.take(500)
-    val snippets = mutableListOf<String>()
-    var used = head.length
-    for ((start, end) in windows) {
-        val prefix = if (start > 0) "..." else ""
-        val suffix = if (end < text.length) "..." else ""
-        val snippet = "$prefix${text.substring(start, end).trim()}$suffix"
-        if (used + snippet.length + 32 > maxChars) break
-        snippets += snippet
-        used += snippet.length + 32
-    }
-
-    return buildList {
-        add(head)
-        add("...[matching excerpts]...")
-        addAll(snippets)
-    }.joinToString("\n")
-}
+private fun String.queryFocusedExcerptForMemoryPrompt(query: String, maxChars: Int = 4_000): String =
+    RuntimeMemorySourceExcerpt.queryFocused(text = this, query = query, maxChars = maxChars)
 
 private fun List<MemoryStore.SearchHit>.renderEntities(): String =
     filterIsInstance<MemoryStore.SearchHit.EntityHit>()

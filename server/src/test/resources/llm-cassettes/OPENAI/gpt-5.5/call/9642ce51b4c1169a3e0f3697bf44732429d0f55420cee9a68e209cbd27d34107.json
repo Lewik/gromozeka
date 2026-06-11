@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "9642ce51b4c1169a3e0f3697bf44732429d0f55420cee9a68e209cbd27d34107",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What was the first issue I had with my new car after its first service?\n\n                                Question date:\n                                2023/04/10 (Mon) 23:07\n\n                                Expected answer:\n                                GPS system not functioning correctly\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2655b836\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-3efe3f2bf3b2-claim-6 [ACTIVE] attended_event family=attended_event: The user had their car serviced for the first time on 2023-03-15, and it was a great experience.; scope=Applies to the user's car maintenance history.; evidence=DIRECT source=external:provided-text:e57ed812bf41c612c4389919579bcbfa quote=\"I just got my car serviced for the first time on March 15th, and it was a great experience.\"\n- claim hot-path-647f27191435-claim-10 [ACTIVE] component_replaced family=component_replaced: The user's car GPS system was replaced entirely by the dealership after the 2023-03-22 issue.; scope=Applies to the user's car GPS system repair history.; evidence=DIRECT source=external:provided-text:d38678bf2c4cf07ac071af6e58d90399 quote=\"They replaced the entire system\"\n- claim hot-path-647f27191435-claim-12 [ACTIVE] serviced_by family=serviced_by: The user's car was taken back to the dealership to fix the GPS system issue.; scope=Applies to the repair history of the user's car GPS issue.; evidence=DIRECT source=external:provided-text:d38678bf2c4cf07ac071af6e58d90399 quote=\"I had to take it back to the dealership to get it fixed\"\n- claim hot-path-647f27191435-claim-9 [ACTIVE] had_vehicle_issue family=had_vehicle_issue: The user's car GPS system had an issue on 2023-03-22.; scope=Applies to the maintenance history of the user's car.; evidence=DIRECT source=external:provided-text:d38678bf2c4cf07ac071af6e58d90399 quote=\"I recently had an issue with my car's GPS system on 3/22\"\n- claim hot-path-5f7a25c27a87-claim-5 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns a silver Honda Civic purchased on 2023-02-10.; scope=Applies to the user's vehicle ownership in this namespace.; evidence=DIRECT source=external:provided-text:52cf0d1c55ab87043e6ee79b037375ce quote=\"I've got a new car, a silver Honda Civic that I bought on February 10th\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:52cf0d1c55ab87043e6ee79b037375ce [external_record ref=longmemeval:gpt4_2655b836:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/10 (Mon) 17:15\nTranscript:\nuser: I'm thinking of planning a road trip soon and I'm trying to figure out the best route to take. I've got a new car, a silver Honda Civic that I bought on February 10th, and I want to make sure I'm getting the most out of its features, like the GPS system. Can you help me with that?\nassistant: Congratulations on your new car! I'd be happy to help you plan a road trip and make the most of your Honda Civic's GPS system.\n\nTo get started, can you please provide me with some more details about your trip? Here are a few questions to consider:\n\n1. Where are you starting and ending your trip?\n2. How many days do you have for the trip?\n3. What type of scenery or attractions are you interested in seeing along the way (e.g. national parks, beaches, cities, mountains)?\n4. Are there any specific routes or highways you're interested in taking or avoiding?\n5. Do you have any preferences for accommodations or dining options along the way?\n6. Are there any particular features of your GPS system you're looking to utilize (e.g. traffic updates, lane guidance, voice commands)?\n\nOnce I have a better understanding of your trip plans, I can provide you with some personalized route suggestions and tips for getting the most out of your GPS system.\nuser: I'm planning a 5-day trip from my hometown to Yellowstone National Park. I've always wanted to visit and I think the scenic...\n...r those who want the best protection and shine for their vehicle.\n\nAs for detailing services, you can consider the following options:\n\n1. **Local car wash and detailing shops**: Look for reputable, well-reviewed shops in your area that offer detailing services. They'll have the necessary equipment and expertise to give your car a thorough cleaning and protection.\n2. **Mobile detailing services**: If you're short on time or prefer the convenience, consider mobile detailing services that come to your location. They'll bring their equipment and expertise to you.\n3. **DIY**: If you're comfortable with detailing your car yourself, you can purchase the necessary products and follow online tutorials or guides to achieve a professional-looking finish.\n\nSome popular detailing services to consider:\n\n1. **Ceramic coating**: A premium protection option that provides an invisible barrier against the elements, ceramic coating can last for months or even years.\n2. **Paint correction**: A service that removes imperfections and scratches, paint correction can leave your car's paint job looking like new.\n3. **Interior detailing**: A thorough cleaning and protection of your car's interior, including upholstery, carpets, and surfaces.\n\nBefore choosing a detailing service or product, be sure to:\n\n1. **Read reviews**: Check online reviews from multiple sources to ensure the product or service is reputable and effective.\n2. **Ask questions**: If you're unsure about a product or service, ask questions to ensure you understand what you're getting.\n3. **Check prices**: Compare prices and services to find the best value for your money.\n\nBy investing in a good car wax and detailing, you'll be protec...\n- source external:provided-text:d38678bf2c4cf07ac071af6e58d90399 [external_record ref=longmemeval:gpt4_2655b836:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/10 (Mon) 14:47\nTranscript:\nuser: I'm thinking of getting a car wax and detailing done soon. Can you give me some tips on what to look for when choosing a detailer?\nassistant: Choosing the right detailer can make all the difference in getting your car looking its best. Here are some valuable tips to help you find a reliable and skilled detailer:\n\n1. **Check online reviews**: Look up reviews on platforms like Google, Yelp, Facebook, and other review sites to see what previous customers have to say about their experience with the detailer. Pay attention to the overall rating and read the comments to get an idea of their strengths and weaknesses.\n2. **Ask for referrals**: Ask friends, family, or coworkers who have had their cars detailed recently for recommendations. They can provide valuable insights and firsthand experience with the detailer.\n3. **Check their credentials**: Look for certifications from reputable organizations like the International Detailing Association (IDA) or the National Detailing Association (NDA). These certifications indicate that the detailer has undergone training and has a certain level of expertise.\n4. **Check their equipment and products**: A good detailer should have high-quality equipment and products to ensure a professional finish. Ask about the types of waxes, polishes, and cleaning solutions they use.\n5. **Inspect their work**: Ask to see before-and-after photos of their previous work or visit their shop to inspect the quality of their work firsthand. This will give you an idea of their attention to detail...\n...once the obstruction is cleared.\n3. **Map updates**: GPS systems rely on map data, which can become outdated if not updated regularly. This can lead to incorrect routing, missing roads, or inaccurate traffic information. Many manufacturers offer map updates, which can be done at the dealership or through the car's infotainment system.\n4. **Hardware failures**: In some cases, the GPS antenna or receiver can fail, causing the system to malfunction. This is less common but can require replacement of the affected component.\n5. **Integration issues**: Some GPS systems may not integrate seamlessly with other car systems, such as the infotainment system or smartphone connectivity. This can lead to issues like incorrect display information or failed voice commands.\n6. **Cybersecurity risks**: As with any connected system, GPS systems can be vulnerable to cyberattacks. Manufacturers are working to address these risks, but it's essential to keep your car's software up to date to minimize the risk of exploitation.\n\nIt's great that your dealership was able to resolve the issue with your GPS system. If you experience any further problems, don't hesitate to reach out to them or the manufacturer for assistance.\n\nRegarding the detailer you're considering, it's excellent that they have great reviews! Before making a final decision, you might want to ask them a few questions to ensure they're a good fit for your car's needs:\n\n1. What type of wax or protective coating do they use, and how long does it last?\n2. Do they use soft, microfiber cloths to avoid scratching the paint, and what kind of cleaning products do they use?\n3. Can they provide before-and-after photos of their work or show y...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: User's car dealership; Organization named User's car dealership.\n- entity entity:<1> [PRODUCT]: User's car GPS system; Product named User's car GPS system.\n- entity entity:<2> [PRODUCT]: User's car; Product named User's car.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2655b836",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What was the first issue I had with my new car after its first service?\n\n                                Question date:\n                                2023/04/10 (Mon) 23:07\n\n                                Expected answer:\n                                GPS system not functioning correctly\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2655b836\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-3efe3f2bf3b2-claim-6 [ACTIVE] attended_event family=attended_event: The user had their car serviced for the first time on 2023-03-15, and it was a great experience.; scope=Applies to the user's car maintenance history.; evidence=DIRECT source=external:provided-text:e57ed812bf41c612c4389919579bcbfa quote=\"I just got my car serviced for the first time on March 15th, and it was a great experience.\"\n- claim hot-path-647f27191435-claim-10 [ACTIVE] component_replaced family=component_replaced: The user's car GPS system was replaced entirely by the dealership after the 2023-03-22 issue.; scope=Applies to the user's car GPS system repair history.; evidence=DIRECT source=external:provided-text:d38678bf2c4cf07ac071af6e58d90399 quote=\"They replaced the entire system\"\n- claim hot-path-647f27191435-claim-12 [ACTIVE] serviced_by family=serviced_by: The user's car was taken back to the dealership to fix the GPS system issue.; scope=Applies to the repair history of the user's car GPS issue.; evidence=DIRECT source=external:provided-text:d38678bf2c4cf07ac071af6e58d90399 quote=\"I had to take it back to the dealership to get it fixed\"\n- claim hot-path-647f27191435-claim-9 [ACTIVE] had_vehicle_issue family=had_vehicle_issue: The user's car GPS system had an issue on 2023-03-22.; scope=Applies to the maintenance history of the user's car.; evidence=DIRECT source=external:provided-text:d38678bf2c4cf07ac071af6e58d90399 quote=\"I recently had an issue with my car's GPS system on 3/22\"\n- claim hot-path-5f7a25c27a87-claim-5 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns a silver Honda Civic purchased on 2023-02-10.; scope=Applies to the user's vehicle ownership in this namespace.; evidence=DIRECT source=external:provided-text:52cf0d1c55ab87043e6ee79b037375ce quote=\"I've got a new car, a silver Honda Civic that I bought on February 10th\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:52cf0d1c55ab87043e6ee79b037375ce [external_record ref=longmemeval:gpt4_2655b836:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/10 (Mon) 17:15\nTranscript:\nuser: I'm thinking of planning a road trip soon and I'm trying to figure out the best route to take. I've got a new car, a silver Honda Civic that I bought on February 10th, and I want to make sure I'm getting the most out of its features, like the GPS system. Can you help me with that?\nassistant: Congratulations on your new car! I'd be happy to help you plan a road trip and make the most of your Honda Civic's GPS system.\n\nTo get started, can you please provide me with some more details about your trip? Here are a few questions to consider:\n\n1. Where are you starting and ending your trip?\n2. How many days do you have for the trip?\n3. What type of scenery or attractions are you interested in seeing along the way (e.g. national parks, beaches, cities, mountains)?\n4. Are there any specific routes or highways you're interested in taking or avoiding?\n5. Do you have any preferences for accommodations or dining options along the way?\n6. Are there any particular features of your GPS system you're looking to utilize (e.g. traffic updates, lane guidance, voice commands)?\n\nOnce I have a better understanding of your trip plans, I can provide you with some personalized route suggestions and tips for getting the most out of your GPS system.\nuser: I'm planning a 5-day trip from my hometown to Yellowstone National Park. I've always wanted to visit and I think the scenic...\n...r those who want the best protection and shine for their vehicle.\n\nAs for detailing services, you can consider the following options:\n\n1. **Local car wash and detailing shops**: Look for reputable, well-reviewed shops in your area that offer detailing services. They'll have the necessary equipment and expertise to give your car a thorough cleaning and protection.\n2. **Mobile detailing services**: If you're short on time or prefer the convenience, consider mobile detailing services that come to your location. They'll bring their equipment and expertise to you.\n3. **DIY**: If you're comfortable with detailing your car yourself, you can purchase the necessary products and follow online tutorials or guides to achieve a professional-looking finish.\n\nSome popular detailing services to consider:\n\n1. **Ceramic coating**: A premium protection option that provides an invisible barrier against the elements, ceramic coating can last for months or even years.\n2. **Paint correction**: A service that removes imperfections and scratches, paint correction can leave your car's paint job looking like new.\n3. **Interior detailing**: A thorough cleaning and protection of your car's interior, including upholstery, carpets, and surfaces.\n\nBefore choosing a detailing service or product, be sure to:\n\n1. **Read reviews**: Check online reviews from multiple sources to ensure the product or service is reputable and effective.\n2. **Ask questions**: If you're unsure about a product or service, ask questions to ensure you understand what you're getting.\n3. **Check prices**: Compare prices and services to find the best value for your money.\n\nBy investing in a good car wax and detailing, you'll be protec...\n- source external:provided-text:d38678bf2c4cf07ac071af6e58d90399 [external_record ref=longmemeval:gpt4_2655b836:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/10 (Mon) 14:47\nTranscript:\nuser: I'm thinking of getting a car wax and detailing done soon. Can you give me some tips on what to look for when choosing a detailer?\nassistant: Choosing the right detailer can make all the difference in getting your car looking its best. Here are some valuable tips to help you find a reliable and skilled detailer:\n\n1. **Check online reviews**: Look up reviews on platforms like Google, Yelp, Facebook, and other review sites to see what previous customers have to say about their experience with the detailer. Pay attention to the overall rating and read the comments to get an idea of their strengths and weaknesses.\n2. **Ask for referrals**: Ask friends, family, or coworkers who have had their cars detailed recently for recommendations. They can provide valuable insights and firsthand experience with the detailer.\n3. **Check their credentials**: Look for certifications from reputable organizations like the International Detailing Association (IDA) or the National Detailing Association (NDA). These certifications indicate that the detailer has undergone training and has a certain level of expertise.\n4. **Check their equipment and products**: A good detailer should have high-quality equipment and products to ensure a professional finish. Ask about the types of waxes, polishes, and cleaning solutions they use.\n5. **Inspect their work**: Ask to see before-and-after photos of their previous work or visit their shop to inspect the quality of their work firsthand. This will give you an idea of their attention to detail...\n...once the obstruction is cleared.\n3. **Map updates**: GPS systems rely on map data, which can become outdated if not updated regularly. This can lead to incorrect routing, missing roads, or inaccurate traffic information. Many manufacturers offer map updates, which can be done at the dealership or through the car's infotainment system.\n4. **Hardware failures**: In some cases, the GPS antenna or receiver can fail, causing the system to malfunction. This is less common but can require replacement of the affected component.\n5. **Integration issues**: Some GPS systems may not integrate seamlessly with other car systems, such as the infotainment system or smartphone connectivity. This can lead to issues like incorrect display information or failed voice commands.\n6. **Cybersecurity risks**: As with any connected system, GPS systems can be vulnerable to cyberattacks. Manufacturers are working to address these risks, but it's essential to keep your car's software up to date to minimize the risk of exploitation.\n\nIt's great that your dealership was able to resolve the issue with your GPS system. If you experience any further problems, don't hesitate to reach out to them or the manufacturer for assistance.\n\nRegarding the detailer you're considering, it's excellent that they have great reviews! Before making a final decision, you might want to ask them a few questions to ensure they're a good fit for your car's needs:\n\n1. What type of wax or protective coating do they use, and how long does it last?\n2. Do they use soft, microfiber cloths to avoid scratching the paint, and what kind of cleaning products do they use?\n3. Can they provide before-and-after photos of their work or show y...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: User's car dealership; Organization named User's car dealership.\n- entity entity:<1> [PRODUCT]: User's car GPS system; Product named User's car GPS system.\n- entity entity:<2> [PRODUCT]: User's car; Product named User's car.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2655b836",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The first issue after the car’s first service was a problem with the GPS system.\",\"reason\":\"The memory states the first service was on 2023-03-15 and a GPS system issue occurred afterward on 2023-03-22.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2709,
+                "completionTokens": 127,
+                "thinkingTokens": 52,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

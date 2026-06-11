@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "29762ebe4dba2b8bcfca6dc89a01a3db73e423195515f65b4d67583b3087e870",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which vehicle did I take care of first in February, the bike or the car?\n\n                                Question date:\n                                2023/03/10 (Fri) 23:15\n\n                                Expected answer:\n                                bike\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_76048e76\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-93924a14ea84-claim-11 [ACTIVE] serviced_by family=serviced_by: The user's bike was repaired by the user's bike shop in mid-February 2023.; scope=Applies to the user's hybrid bike repair history.; evidence=DIRECT source=external:provided-text:a845ecc706579ca3fd078cc6092b5d2b quote=\"the bike shop fixed it for me\"\n- claim hot-path-b2bf4699ed95-claim-7 [ACTIVE] performed_vehicle_maintenance family=performed_vehicle_maintenance: The user washed the current Toyota Corolla on Monday, February 27, 2023, after more than a month without washing it.; scope=User's maintenance history for the current Toyota Corolla.; evidence=DIRECT source=external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 quote=\"I just washed my current Corolla on Monday, February 27th, after not doing so for over a month\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 [external_record ref=longmemeval:gpt4_76048e76:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 08:11\nTranscript:\nuser: I'm thinking of getting a newer car and I'm researching the new hybrid model of my current Toyota Corolla. Do you have any info on its fuel efficiency and any promotions or discounts available? By the way, I just washed my current Corolla on Monday, February 27th, after not doing so for over a month - it was getting pretty dirty after that snowstorm we had a few weeks prior!\nassistant: Exciting to hear that you\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 08:11\nTranscript:\nuser: I'm thinking of getting a newer car and I'm researching the new hybrid model of my current Toyota Corolla. Do you have any info on its fuel efficiency and any promotions or discounts available? By the way, I just washed my current Corolla on Monday, February 27th, after not doing so for over a month - it was getting pretty dirty after that snowstorm we had a few weeks prior!\nassistant: Exciting to hear that you're considering upgrading to a newer hybrid model of your trusty Toyota Corolla!\n\nAccording to the latest data, the 2022 Toyota Corolla Hybrid has an estimated EPA rating of up to 53 mpg in the city, 52 mpg on the highway, and 52 mpg combined. These numbers are quite impressive, especially considering the Corolla Hybrid's affordable price point.\n\nAs for promotions and discounts, Toyota often offers various incentives and deals on their hybrid models. Here are a few current offers you might want to explore:\n\n1. **Toyota's Hybrid Bonus Cash**: You can get up to $500 in bonus cash on select hybrid models, including the Corolla Hybrid.\n2. **Low APR Financing**: Toyota is currently offering 2.49% APR financing for 60 months on the 2022 Corolla Hybrid.\n3. **Lease Deals**: You can lease a 2022 Corolla Hybrid for around $229 per month for 36 months, with $2,999 due at signing.\n\nPlease note that these offers may vary depending on your location, and it's always best to check with your local Toyota dealership for the most up-to-date information.\n\nBy the way, kudos on washing your current Corolla! It's great that you're taking good care of your vehicle. I'm sure it felt refreshing to get rid of all the dirt and grime from that snowstorm.\n\nDo you have any specific questions about the Corolla Hybrid or would you like me to look into other models that might fit your needs?\nuser: I'd like to know more about the maintenance costs of the Corolla Hybrid. I've been doing some maintenance on my current car myself, like washing and vacuuming, but I had to take it to the dealership for a routine checkup this Friday because my friend said the \"check engine\" light came on when she borrowed it.\nassistant: Wise decision to get the \"check engine\" light checked out!\n\nMaintenance costs are an essential factor to consider when buying a new car, and the Toyota Corolla Hybrid is known for being relatively low-maintenance. Here are some points to keep in mind:\n\n1. **Oil changes**: The Corolla Hybrid requires synthetic oil changes, which can cost around $75-$100 per change, depending on the dealership or service center. Toyota recommends oil changes every 5,000 to 7,500 miles.\n2. **Tire rotation**: Regular tire rotation is essential for even wear and tear. You can expect to pay around $20-$30 per rotation, and it's recommended every 5,000 to 8,000 miles.\n3. **Battery maintenance**: The Corolla Hybrid's battery is designed to last the life of the vehicle, but it's still important to keep the terminals clean and secure. You can expect to pay around $20-$50 for a battery maintenance check.\n4. **Hybrid system maintenance**: The Corolla Hybrid's hybrid system is designed to be self-sustaining, but it's still important to follow the recommended maintenance schedule. Toyota recommends replacing the hybrid battery coolant every 30,000 miles, which can cost around $100-$150.\n5. ** Brake pads**: The Corolla Hybrid's brake pa...\n- source external:provided-text:a845ecc706579ca3fd078cc6092b5d2b [external_record ref=longmemeval:gpt4_76048e76:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 22:50\nTranscript:\nuser: I'm thinking of getting a new bike rack for my car. Do you have any recommendations? By the way, I've been having some issues with my bike lately - in mid-February, I had to take it in for repairs because the gears were acting up and I couldn't shift properly.\nassistant: New bike rack, eh? I'd be happy to help you with some recommendations!\n\nBefore we dive into that, sorry to hear about the issues with your bik\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 22:50\nTranscript:\nuser: I'm thinking of getting a new bike rack for my car. Do you have any recommendations? By the way, I've been having some issues with my bike lately - in mid-February, I had to take it in for repairs because the gears were acting up and I couldn't shift properly.\nassistant: New bike rack, eh? I'd be happy to help you with some recommendations!\n\nBefore we dive into that, sorry to hear about the issues with your bike. Gear problems can be frustrating, especially when you're in the middle of a ride. Did the repair shop identify the cause of the problem? Was it a worn-out component, misalignment, or something else?\n\nNow, about that bike rack... There are many great options out there, but it depends on your specific needs and preferences. Here are a few questions to help narrow down some recommendations:\n\n1. What type of bike do you have (road, mountain, hybrid, electric)?\n2. How many bikes do you want to carry?\n3. What's your car's make and model?\n4. Do you prefer a roof-mounted, hitch-mounted, or trunk-mounted rack?\n5. Are you looking for a budget-friendly option or are you willing to invest in a high-end rack?\n6. Do you need any additional features, such as tilt functionality or integrated locks?\n\nSome popular bike rack brands include Thule, Yakima, Saris, and Kuat. I can give you more specific recommendations based on your answers to these questions.\n\nLet me know, and we can get started on finding the perfect bike rack for you!\nuser: I have a hybrid bike, and I want to carry just one bike. My car is a Toyota Corolla. I'm not sure about the type of mount, but I'd like something easy to install and remove. I'm open to different price...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: User's bike shop; Organization named User's bike shop.\n- entity entity:<1> [PRODUCT]: User's hybrid bike; Product named User's hybrid bike.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_76048e76",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which vehicle did I take care of first in February, the bike or the car?\n\n                                Question date:\n                                2023/03/10 (Fri) 23:15\n\n                                Expected answer:\n                                bike\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_76048e76\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-93924a14ea84-claim-11 [ACTIVE] serviced_by family=serviced_by: The user's bike was repaired by the user's bike shop in mid-February 2023.; scope=Applies to the user's hybrid bike repair history.; evidence=DIRECT source=external:provided-text:a845ecc706579ca3fd078cc6092b5d2b quote=\"the bike shop fixed it for me\"\n- claim hot-path-b2bf4699ed95-claim-7 [ACTIVE] performed_vehicle_maintenance family=performed_vehicle_maintenance: The user washed the current Toyota Corolla on Monday, February 27, 2023, after more than a month without washing it.; scope=User's maintenance history for the current Toyota Corolla.; evidence=DIRECT source=external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 quote=\"I just washed my current Corolla on Monday, February 27th, after not doing so for over a month\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 [external_record ref=longmemeval:gpt4_76048e76:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 08:11\nTranscript:\nuser: I'm thinking of getting a newer car and I'm researching the new hybrid model of my current Toyota Corolla. Do you have any info on its fuel efficiency and any promotions or discounts available? By the way, I just washed my current Corolla on Monday, February 27th, after not doing so for over a month - it was getting pretty dirty after that snowstorm we had a few weeks prior!\nassistant: Exciting to hear that you\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 08:11\nTranscript:\nuser: I'm thinking of getting a newer car and I'm researching the new hybrid model of my current Toyota Corolla. Do you have any info on its fuel efficiency and any promotions or discounts available? By the way, I just washed my current Corolla on Monday, February 27th, after not doing so for over a month - it was getting pretty dirty after that snowstorm we had a few weeks prior!\nassistant: Exciting to hear that you're considering upgrading to a newer hybrid model of your trusty Toyota Corolla!\n\nAccording to the latest data, the 2022 Toyota Corolla Hybrid has an estimated EPA rating of up to 53 mpg in the city, 52 mpg on the highway, and 52 mpg combined. These numbers are quite impressive, especially considering the Corolla Hybrid's affordable price point.\n\nAs for promotions and discounts, Toyota often offers various incentives and deals on their hybrid models. Here are a few current offers you might want to explore:\n\n1. **Toyota's Hybrid Bonus Cash**: You can get up to $500 in bonus cash on select hybrid models, including the Corolla Hybrid.\n2. **Low APR Financing**: Toyota is currently offering 2.49% APR financing for 60 months on the 2022 Corolla Hybrid.\n3. **Lease Deals**: You can lease a 2022 Corolla Hybrid for around $229 per month for 36 months, with $2,999 due at signing.\n\nPlease note that these offers may vary depending on your location, and it's always best to check with your local Toyota dealership for the most up-to-date information.\n\nBy the way, kudos on washing your current Corolla! It's great that you're taking good care of your vehicle. I'm sure it felt refreshing to get rid of all the dirt and grime from that snowstorm.\n\nDo you have any specific questions about the Corolla Hybrid or would you like me to look into other models that might fit your needs?\nuser: I'd like to know more about the maintenance costs of the Corolla Hybrid. I've been doing some maintenance on my current car myself, like washing and vacuuming, but I had to take it to the dealership for a routine checkup this Friday because my friend said the \"check engine\" light came on when she borrowed it.\nassistant: Wise decision to get the \"check engine\" light checked out!\n\nMaintenance costs are an essential factor to consider when buying a new car, and the Toyota Corolla Hybrid is known for being relatively low-maintenance. Here are some points to keep in mind:\n\n1. **Oil changes**: The Corolla Hybrid requires synthetic oil changes, which can cost around $75-$100 per change, depending on the dealership or service center. Toyota recommends oil changes every 5,000 to 7,500 miles.\n2. **Tire rotation**: Regular tire rotation is essential for even wear and tear. You can expect to pay around $20-$30 per rotation, and it's recommended every 5,000 to 8,000 miles.\n3. **Battery maintenance**: The Corolla Hybrid's battery is designed to last the life of the vehicle, but it's still important to keep the terminals clean and secure. You can expect to pay around $20-$50 for a battery maintenance check.\n4. **Hybrid system maintenance**: The Corolla Hybrid's hybrid system is designed to be self-sustaining, but it's still important to follow the recommended maintenance schedule. Toyota recommends replacing the hybrid battery coolant every 30,000 miles, which can cost around $100-$150.\n5. ** Brake pads**: The Corolla Hybrid's brake pa...\n- source external:provided-text:a845ecc706579ca3fd078cc6092b5d2b [external_record ref=longmemeval:gpt4_76048e76:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 22:50\nTranscript:\nuser: I'm thinking of getting a new bike rack for my car. Do you have any recommendations? By the way, I've been having some issues with my bike lately - in mid-February, I had to take it in for repairs because the gears were acting up and I couldn't shift properly.\nassistant: New bike rack, eh? I'd be happy to help you with some recommendations!\n\nBefore we dive into that, sorry to hear about the issues with your bik\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/10 (Fri) 22:50\nTranscript:\nuser: I'm thinking of getting a new bike rack for my car. Do you have any recommendations? By the way, I've been having some issues with my bike lately - in mid-February, I had to take it in for repairs because the gears were acting up and I couldn't shift properly.\nassistant: New bike rack, eh? I'd be happy to help you with some recommendations!\n\nBefore we dive into that, sorry to hear about the issues with your bike. Gear problems can be frustrating, especially when you're in the middle of a ride. Did the repair shop identify the cause of the problem? Was it a worn-out component, misalignment, or something else?\n\nNow, about that bike rack... There are many great options out there, but it depends on your specific needs and preferences. Here are a few questions to help narrow down some recommendations:\n\n1. What type of bike do you have (road, mountain, hybrid, electric)?\n2. How many bikes do you want to carry?\n3. What's your car's make and model?\n4. Do you prefer a roof-mounted, hitch-mounted, or trunk-mounted rack?\n5. Are you looking for a budget-friendly option or are you willing to invest in a high-end rack?\n6. Do you need any additional features, such as tilt functionality or integrated locks?\n\nSome popular bike rack brands include Thule, Yakima, Saris, and Kuat. I can give you more specific recommendations based on your answers to these questions.\n\nLet me know, and we can get started on finding the perfect bike rack for you!\nuser: I have a hybrid bike, and I want to carry just one bike. My car is a Toyota Corolla. I'm not sure about the type of mount, but I'd like something easy to install and remove. I'm open to different price...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: User's bike shop; Organization named User's bike shop.\n- entity entity:<1> [PRODUCT]: User's hybrid bike; Product named User's hybrid bike.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_76048e76",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"bike\",\"reason\":\"The memory states the bike was repaired in mid-February 2023, while the car was washed on February 27, so the bike was taken care of first.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2421,
+                "completionTokens": 115,
+                "thinkingTokens": 52,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -418,6 +418,8 @@ class LlmMemoryReadPlanner(
             - For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.
             - For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.
             - For questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer "current_metric_value" claims and deprioritize contextual event/goal claims unless the target asks for the event or goal itself.
+            - For questions about where a person, user, organization, project, or concrete subject is currently located, lives, is based, or ended up after relocation, prefer "current_location" claims and deprioritize historical move/event claims unless the target asks for the history itself.
+            - For questions about what a past generated story, image description, draft, specification, or artifact said/showed/included, prefer "generated_artifact_detail" claims and include source retrieval as evidence fallback when exact wording matters.
             - Leave predicate priority arrays empty when no predicate ranking is needed.
             - Keep retrieval bounded.
             - Include source retrieval when conflicts, uncertainty, or quotation-quality grounding is needed.
