@@ -392,7 +392,7 @@ class MemoryMessageRoutingApplicationService(
             runtimeSystemPrompts = runtimeSystemPrompts,
             runtimeTools = runtimeTools,
             logContext = "namespace=${namespace.value} source=${source.id.value} sourceType=${source::class.simpleName}",
-            traceContext = null,
+            traceContext = source.standaloneTraceContext(),
             throwOnError = throwOnError,
         )
     }
@@ -648,6 +648,15 @@ class MemoryMessageRoutingApplicationService(
         val threadId: Conversation.Thread.Id,
         val targetMessageId: Conversation.Message.Id,
     )
+
+    private fun MemorySource.standaloneTraceContext(): MemoryWriteTraceContext {
+        val suffix = id.value.sha256().take(16)
+        return MemoryWriteTraceContext(
+            conversationId = Conversation.Id("memory-source:$suffix"),
+            threadId = Conversation.Thread.Id("memory-source-thread:$suffix"),
+            targetMessageId = Conversation.Message.Id("memory-source-message:$suffix"),
+        )
+    }
 
     private suspend fun buildThreadContext(
         conversationId: Conversation.Id,

@@ -2916,24 +2916,41 @@ class MemoryRealModelE2eNoToolsConfig {
 
 class MemoryE2eReadTraceCollector : MemoryReadTraceSink {
     private val events = ConcurrentHashMap<String, MemoryReadTraceEvent>()
+    private val eventsByNamespace = ConcurrentHashMap<String, ConcurrentLinkedQueue<MemoryReadTraceEvent>>()
 
     override fun onMemoryRead(event: MemoryReadTraceEvent) {
         events[event.targetMessageId.value] = event
+        eventsByNamespace.computeIfAbsent(event.namespace.value) { ConcurrentLinkedQueue() }.add(event)
     }
 
     fun take(messageId: Conversation.Message.Id): MemoryReadTraceEvent? =
         events.remove(messageId.value)
+
+    fun takeLatest(namespace: MemoryNamespace): MemoryReadTraceEvent? {
+        val queue = eventsByNamespace[namespace.value] ?: return null
+        var latest: MemoryReadTraceEvent? = null
+        while (true) {
+            latest = queue.poll() ?: return latest
+        }
+    }
 }
 
 class MemoryE2eWriteTraceCollector : MemoryWriteTraceSink {
     private val events = ConcurrentHashMap<String, MemoryWriteTraceEvent>()
+    private val eventsBySourceId = ConcurrentHashMap<String, ConcurrentLinkedQueue<MemoryWriteTraceEvent>>()
 
     override fun onMemoryWrite(event: MemoryWriteTraceEvent) {
         events[event.targetMessageId.value] = event
+        event.result.sourceBatch.sources.forEach { source ->
+            eventsBySourceId.computeIfAbsent(source.id.value) { ConcurrentLinkedQueue() }.add(event)
+        }
     }
 
     fun take(messageId: Conversation.Message.Id): MemoryWriteTraceEvent? =
         events.remove(messageId.value)
+
+    fun takeBySourceId(sourceId: String): MemoryWriteTraceEvent? =
+        eventsBySourceId[sourceId]?.poll()
 }
 
 class MemoryE2eMaintenanceTraceCollector : MemoryMaintenanceTraceSink {

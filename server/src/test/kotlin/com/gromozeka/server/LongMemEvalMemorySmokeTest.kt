@@ -2,6 +2,8 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.AiConversationMessageMapper
+import com.gromozeka.application.service.memory.MemoryReadTraceEvent
+import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserProfile
@@ -10,6 +12,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.server.testsupport.app.ServerTestHarness
@@ -109,14 +113,18 @@ class LongMemEvalMemorySmokeTest {
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
         ).use { harness ->
             val memoryTools = harness.context.getBean(MemoryToolApplicationService::class.java)
+            val readTraceCollector = harness.context.getBean(MemoryE2eReadTraceCollector::class.java)
+            val writeTraceCollector = harness.context.getBean(MemoryE2eWriteTraceCollector::class.java)
             val judgeRuntime = harness.context
                 .getBean(AiRuntimeProvider::class.java)
                 .getRuntime(ServerTestHarness.openAiSubscriptionRuntimeSelection(), resolveProjectRoot())
             val artifactDirectory = prepareArtifactDirectory(runId)
+            val caseArtifactDirectory = artifactDirectory.resolve("cases")
             val progressPath = artifactDirectory.resolve("progress.log")
             val resultsPath = artifactDirectory.resolve("results.jsonl")
             val summaryPath = artifactDirectory.resolve("summary.md")
 
+            Files.createDirectories(caseArtifactDirectory)
             progressPath.writeText("")
             appendProgress(
                 progressPath,
@@ -130,7 +138,16 @@ class LongMemEvalMemorySmokeTest {
                     "case_start index=${index + 1}/${entries.size} id=${entry.questionId} type=${entry.questionType} sessions=${entry.haystackSessions.size} namespace=${namespace.value}"
                 )
                 val startedAt = System.currentTimeMillis()
-                val result = runCase(memoryTools, judgeRuntime, entry, namespace, progressPath)
+                val result = runCase(
+                    memoryTools = memoryTools,
+                    judgeRuntime = judgeRuntime,
+                    readTraceCollector = readTraceCollector,
+                    writeTraceCollector = writeTraceCollector,
+                    entry = entry,
+                    namespace = namespace,
+                    progressPath = progressPath,
+                    caseArtifactDirectory = caseArtifactDirectory,
+                )
                 Files.writeString(
                     resultsPath,
                     jsonLines.encodeToString(result) + "\n",
@@ -159,9 +176,12 @@ class LongMemEvalMemorySmokeTest {
     private suspend fun runCase(
         memoryTools: MemoryToolApplicationService,
         judgeRuntime: AiRuntime,
+        readTraceCollector: MemoryE2eReadTraceCollector,
+        writeTraceCollector: MemoryE2eWriteTraceCollector,
         entry: LongMemEvalEntry,
         namespace: MemoryNamespace,
         progressPath: Path,
+        caseArtifactDirectory: Path,
     ): LongMemEvalSmokeCaseResult {
         val caseStartedAt = System.currentTimeMillis()
         val rememberedSessions = mutableListOf<LongMemEvalRememberedSession>()
@@ -172,11 +192,6 @@ class LongMemEvalMemorySmokeTest {
             val haystackSessionId = entry.haystackSessionIds.getOrNull(index) ?: "session-$sessionNumber"
             val sourceRef = "longmemeval:${entry.questionId}:session:$sessionNumber"
             val sourceId = sourceIdForProvidedText(namespace, sourceRef, sessionText)
-            rememberedSessions += LongMemEvalRememberedSession(
-                haystackSessionId = haystackSessionId,
-                sourceId = sourceId,
-                hasAnswer = session.any { it.hasAnswer },
-            )
             appendProgress(
                 progressPath,
                 "remember_session_start id=${entry.questionId} index=$sessionNumber/${entry.haystackSessions.size} chars=${sessionText.length} sourceId=$sourceId"
@@ -192,6 +207,16 @@ class LongMemEvalMemorySmokeTest {
                     mode = "force",
                     namespaceValue = namespace.value,
                 )
+            )
+            val writeTrace = writeTraceCollector.takeBySourceId(sourceId)
+            rememberedSessions += LongMemEvalRememberedSession(
+                haystackSessionId = haystackSessionId,
+                sourceId = sourceId,
+                hasAnswer = session.any { it.hasAnswer },
+                sourceRef = sourceRef,
+                chars = sessionText.length,
+                result = result,
+                writeTrace = writeTrace,
             )
             appendProgress(
                 progressPath,
@@ -213,6 +238,7 @@ class LongMemEvalMemorySmokeTest {
         )
         val enrichDurationMs = System.currentTimeMillis() - enrichStartedAt
         assertEquals("completed", enrichResult.status, "memory_enrich_context failed for ${entry.questionId}")
+        val readTrace = readTraceCollector.takeLatest(namespace)
 
         val memoryContext = enrichResult.memoryContext.orEmpty()
         val expectedAnswer = entry.answerText()
@@ -246,6 +272,23 @@ class LongMemEvalMemorySmokeTest {
             progressPath,
             "support_judge_done id=${entry.questionId} supported=${supportJudgement.supported} hypothesis=${supportJudgement.hypothesis.oneLineForArtifact(180)} reason=${supportJudgement.reason.oneLineForArtifact(240)}"
         )
+        val caseDossierPath = caseArtifactDirectory.resolve("${entry.questionId.sanitizePathSegment()}.md")
+        caseDossierPath.writeText(
+            renderCaseDossier(
+                entry = entry,
+                namespace = namespace,
+                rememberedSessions = rememberedSessions,
+                expectedEvidenceSourceIds = expectedEvidenceSourceIds,
+                enrichResult = enrichResult,
+                readTrace = readTrace,
+                expectedAnswer = expectedAnswer,
+                exactAnswerTextVisible = exactAnswerTextVisible,
+                evidenceSourceHit = evidenceSourceHit,
+                allEvidenceSourcesHit = allEvidenceSourcesHit,
+                supportJudgement = supportJudgement,
+                memoryContext = memoryContext,
+            )
+        )
         return LongMemEvalSmokeCaseResult(
             questionId = entry.questionId,
             questionType = entry.questionType,
@@ -266,6 +309,7 @@ class LongMemEvalMemorySmokeTest {
             rememberDecisions = rememberResults.map { it.decision.orEmpty() },
             selectedRefs = enrichResult.selectedRefs,
             memoryContextPreview = memoryContext.take(MEMORY_CONTEXT_REPORT_CHARS),
+            caseDossierPath = caseDossierPath.toAbsolutePath().normalize().toString(),
             rememberDurationMs = rememberDurationMs,
             enrichDurationMs = enrichDurationMs,
             supportJudgeDurationMs = supportJudgeDurationMs,
@@ -532,6 +576,7 @@ class LongMemEvalMemorySmokeTest {
             appendLine("- remember statuses: ${result.rememberStatuses.joinToString()}")
             appendLine("- remember decisions: ${result.rememberDecisions.joinToString()}")
             appendLine("- durations: total=${result.durationMs.durationSummary()}, remember=${result.rememberDurationMs.durationSummary()}, enrich=${result.enrichDurationMs.durationSummary()}, judge=${result.supportJudgeDurationMs.durationSummary()}")
+            appendLine("- case dossier: `${result.caseDossierPath}`")
             appendLine()
             appendLine("Selected refs:")
             appendLine("```json")
@@ -545,6 +590,211 @@ class LongMemEvalMemorySmokeTest {
             appendLine()
         }
     }
+
+    private fun renderCaseDossier(
+        entry: LongMemEvalEntry,
+        namespace: MemoryNamespace,
+        rememberedSessions: List<LongMemEvalRememberedSession>,
+        expectedEvidenceSourceIds: List<String>,
+        enrichResult: MemoryToolJsonResult,
+        readTrace: MemoryReadTraceEvent?,
+        expectedAnswer: String,
+        exactAnswerTextVisible: Boolean,
+        evidenceSourceHit: Boolean?,
+        allEvidenceSourcesHit: Boolean?,
+        supportJudgement: LongMemEvalSupportJudgement,
+        memoryContext: String,
+    ): String = buildString {
+        appendLine("# LongMemEval Case Dossier")
+        appendLine()
+        appendLine("questionId | ${entry.questionId}")
+        appendLine("questionType | ${entry.questionType}")
+        appendLine("namespace | ${namespace.value}")
+        appendLine("questionDate | ${entry.questionDate}")
+        appendLine("question | ${entry.question}")
+        appendLine("expectedAnswer | $expectedAnswer")
+        appendLine("supportedByMemory | ${supportJudgement.supported}")
+        appendLine("exactAnswerTextVisible | $exactAnswerTextVisible")
+        appendLine("evidenceSourceHit | $evidenceSourceHit")
+        appendLine("allEvidenceSourcesHit | $allEvidenceSourcesHit")
+        appendLine("expectedEvidenceSourceIds | ${expectedEvidenceSourceIds.joinToString().ifBlank { "none" }}")
+        appendLine("selectedEvidenceSourceIds | ${enrichResult.selectedEvidenceSourceIds.joinToString().ifBlank { "none" }}")
+        appendLine()
+        appendLine("## Remember / Write Pipeline")
+        rememberedSessions.forEachIndexed { index, remembered ->
+            appendLine("### Session ${index + 1}: ${remembered.haystackSessionId}")
+            appendLine()
+            appendLine("sourceRef | ${remembered.sourceRef}")
+            appendLine("sourceId | ${remembered.sourceId}")
+            appendLine("chars | ${remembered.chars}")
+            appendLine("hasAnswer | ${remembered.hasAnswer}")
+            appendLine("toolStatus | ${remembered.result.status}")
+            appendLine("toolDecision | ${remembered.result.decision.orEmpty().ifBlank { "none" }}")
+            appendLine("toolCounts | ${remembered.result.countsSummary.ifBlank { "none" }}")
+            appendLine()
+            appendLine(renderWriteTraceForDossier(remembered.writeTrace))
+            appendLine()
+        }
+        appendLine("## Enrich / Read Pipeline")
+        appendLine()
+        appendLine("toolStatus | ${enrichResult.status}")
+        appendLine("retrievedCount | ${enrichResult.retrievedCount ?: 0}")
+        appendLine("selectedRefs |")
+        appendLine("```json")
+        appendLine(enrichResult.selectedRefs.ifBlank { "[]" })
+        appendLine("```")
+        appendLine()
+        appendLine(renderReadTraceForDossier(readTrace))
+        appendLine()
+        appendLine("## Memory Context")
+        appendLine()
+        appendLine("```text")
+        appendLine(memoryContext.take(MEMORY_CONTEXT_REPORT_CHARS))
+        appendLine("```")
+        appendLine()
+        appendLine("## Support Judge")
+        appendLine()
+        appendLine("supported | ${supportJudgement.supported}")
+        appendLine("hypothesis | ${supportJudgement.hypothesis}")
+        appendLine("reason | ${supportJudgement.reason}")
+    }
+
+    private fun renderWriteTraceForDossier(event: MemoryWriteTraceEvent?): String {
+        if (event == null) return "Write trace | missing"
+
+        val result = event.result
+        return buildString {
+            appendLine("Write trace | captured")
+            appendLine("latencyMs | ${event.latencyMs ?: "unknown"}")
+            appendLine("llmCalls | ${event.llmCalls.renderLlmCallsForDossier()}")
+            appendLine("routeDecision | ${result.routeDecision.decision.name}")
+            appendLine("memoryTypes | ${result.routeDecision.memoryTypes.joinToString { it.name }.ifBlank { "none" }}")
+            appendLine("salience | ${result.routeDecision.salience}")
+            appendLine("reason | ${result.routeDecision.reason}")
+            appendLine("sourcePolicy | structured=${result.routeDecision.sourcePolicy.allowStructuredExtraction} recall=${result.routeDecision.sourcePolicy.allowRecall} evidence=${result.routeDecision.sourcePolicy.allowEvidenceHydration}")
+            appendLine("retrievalPlan | ${result.retrievalPlan?.let { plan -> "need=${plan.needRetrieval} types=${plan.memoryTypes.joinToString { it.name }} entityQueries=${plan.entityQueries.joinToString("|").ifBlank { "none" }} textQueries=${plan.textQueries.joinToString("|").ifBlank { "none" }} predicates=${plan.predicateHints.joinToString("|").ifBlank { "none" }} budget=${plan.retrievalBudget}" } ?: "none"}")
+            appendLine("retrievedHits | ${result.retrievedHits.size} ${result.retrievedHits.breakdownForDossier()}")
+            appendLine("entityOps | ${result.entityOps.size}")
+            appendLine("noteCandidates | ${result.noteCandidates.size}")
+            appendLine("noteOps | raw=${result.rawNoteOps.size} final=${result.noteOps.size}")
+            appendLine("claimCandidates | ${result.claimCandidates.size}")
+            appendLine("claimOps | raw=${result.rawClaimOps.size} final=${result.claimOps.size}")
+            appendLine("actionItemOps | raw=${result.rawActionItemOps.size} final=${result.actionItemOps.size}")
+            appendLine("materialized | sources=${result.memoryBatch.sources.size} runs=${result.memoryBatch.runs.size} entities=${result.memoryBatch.entities.size} claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} actionItems=${result.memoryBatch.actionItems.size} profiles=${result.memoryBatch.profiles.size} episodes=${result.memoryBatch.episodes.size}")
+            appendLine()
+            appendLine("Sources:")
+            appendLine(result.memoryBatch.sources.take(8).joinToString("\n") { "- ${it.id.value}: ${it.contentText.oneLineForArtifact(260)}" }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Retrieved hits:")
+            appendLine(result.retrievedHits.take(24).joinToString("\n") { it.renderForDossier() }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Entity ops:")
+            appendLine(result.entityOps.take(24).joinToString("\n") { "- $it" }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Claim candidates:")
+            appendLine(result.claimCandidates.take(40).joinToString("\n") { "- ${it.predicate}: ${it.normalizedText}; reason=${it.reason.oneLineForArtifact(240)}" }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Final claim ops:")
+            appendLine(result.claimOps.take(40).joinToString("\n") { "- $it" }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Materialized entities:")
+            appendLine(result.memoryBatch.entities.take(40).joinToString("\n") { "- ${it.id.value}: ${it.entityType.name}:${it.canonicalName}" }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Materialized claims:")
+            appendLine(result.memoryBatch.claims.take(60).joinToString("\n") { claim ->
+                "- ${claim.id.value}: ${claim.status.name}:${claim.predicate}: ${claim.normalizedText}; evidence=${claim.evidenceRefs.map { it.sourceId.value }.distinct().joinToString("|").ifBlank { "none" }}"
+            }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Materialized notes:")
+            appendLine(result.memoryBatch.notes.take(30).joinToString("\n") { "- ${it.id.value}: ${it.noteType.name}:${it.title}; ${it.summary}" }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Materialized runs:")
+            appendLine(result.memoryBatch.runs.take(20).joinToString("\n") { "- ${it.id.value}: ${it.runType.name}:${it.status.name}; ${it.summary}" }.ifBlank { "- none" })
+        }
+    }
+
+    private fun renderReadTraceForDossier(event: MemoryReadTraceEvent?): String {
+        if (event == null) return "Read trace | missing"
+
+        val result = event.result
+        val trace = result.trace
+        return buildString {
+            appendLine("Read trace | captured")
+            appendLine("latencyMs | ${event.latencyMs}")
+            appendLine("llmCalls | ${event.llmCalls.renderLlmCallsForDossier()}")
+            appendLine("needMemory | ${result.plan.needMemory}")
+            appendLine("answerMode | ${result.plan.answerMode.name}")
+            appendLine("coverageMode | ${result.plan.coverageMode.name}")
+            appendLine("retrievedHits | ${result.retrievedHits.size} ${result.retrievedHits.breakdownForDossier()}")
+            appendLine("selectedHits | ${trace.selectedHits.size}")
+            appendLine("runtimePromptChars | ${result.runtimePrompt?.length ?: 0}")
+            appendLine()
+            appendLine("Search steps:")
+            appendLine(
+                trace.searchSteps.joinToString("\n") { step ->
+                    "- ${step.stage} scope=${step.scope} requested=${step.requestedLimit} raw=${step.rawCount} candidates=${step.candidateCount} selected=${step.selectedCount} query=${step.query.oneLineForArtifact(240)}"
+                }.ifBlank { "- none" }
+            )
+            appendLine()
+            appendLine("Selector stages:")
+            appendLine(
+                trace.selectorTrace.stages.joinToString("\n") { stage ->
+                    "- ${stage.mode.name}: input=${stage.inputRefs.size} selected=${stage.llmSelectedRefs.size} carried=${stage.llmCarriedRefs.size} safety=${stage.safetyAddedRefs.size} output=${stage.outputRefs.size}"
+                }.ifBlank { "- none" }
+            )
+            appendLine()
+            appendLine("Selector decisions:")
+            appendLine(
+                trace.selectorDecisions.take(60).joinToString("\n") { decision ->
+                    "- ${if (decision.selected) "SELECT" else "REJECT"} ${decision.ref.type.name}:${decision.ref.id} rank=${decision.rank} summary=${decision.summary.oneLineForArtifact(240)} reason=${decision.reason.oneLineForArtifact(240)}"
+                }.ifBlank { "- none" }
+            )
+            appendLine()
+            appendLine("Selected hits:")
+            appendLine(trace.selectedHits.take(40).joinToString("\n") { "- ${it.ref.type.name}:${it.ref.id} score=${it.score} predicate=${it.predicate ?: "-"} status=${it.status ?: "-"} text=${it.summary.oneLineForArtifact(360)}" }.ifBlank { "- none" })
+            appendLine()
+            appendLine("Source safety:")
+            appendLine("suppressedSources=${trace.sourceSafety.suppressedSources.size} restoredTypedHits=${trace.sourceSafety.restoredTypedHits.size}")
+            appendLine()
+            appendLine("Injected prompt preview:")
+            appendLine(trace.injectedPrompt?.preview?.take(MEMORY_CONTEXT_REPORT_CHARS) ?: "none")
+        }
+    }
+
+    private fun List<MemoryRun.LlmCallTiming>.renderLlmCallsForDossier(): String =
+        if (isEmpty()) {
+            "none"
+        } else {
+            joinToString("; ") { call ->
+                "${call.stageName}:${call.status.name}:${call.latencyMs}ms"
+            }
+        }
+
+    private fun List<MemoryStore.SearchHit>.breakdownForDossier(): String =
+        groupingBy {
+            when (it) {
+                is MemoryStore.SearchHit.SourceHit -> "source"
+                is MemoryStore.SearchHit.EntityHit -> "entity"
+                is MemoryStore.SearchHit.ClaimHit -> "claim"
+                is MemoryStore.SearchHit.NoteHit -> "note"
+                is MemoryStore.SearchHit.ActionItemHit -> "actionItem"
+                is MemoryStore.SearchHit.ProfileHit -> "profile"
+                is MemoryStore.SearchHit.EpisodeHit -> "episode"
+                is MemoryStore.SearchHit.RunHit -> "run"
+            }
+        }.eachCount().entries.sortedBy { it.key }.joinToString(",") { "${it.key}=${it.value}" }.ifBlank { "none" }
+
+    private fun MemoryStore.SearchHit.renderForDossier(): String =
+        when (this) {
+            is MemoryStore.SearchHit.SourceHit -> "- SOURCE:${source.id.value}: ${source.contentText.oneLineForArtifact(360)}"
+            is MemoryStore.SearchHit.EntityHit -> "- ENTITY:${entity.id.value}: ${entity.entityType.name}:${entity.canonicalName}"
+            is MemoryStore.SearchHit.ClaimHit -> "- CLAIM:${claim.id.value}: ${claim.status.name}:${claim.predicate}: ${claim.normalizedText}"
+            is MemoryStore.SearchHit.NoteHit -> "- NOTE:${note.id.value}: ${note.noteType.name}:${note.title}; ${note.summary}"
+            is MemoryStore.SearchHit.ActionItemHit -> "- ACTION_ITEM:${actionItem.id.value}: ${actionItem.status.name}:${actionItem.title}"
+            is MemoryStore.SearchHit.ProfileHit -> "- PROFILE:${profile.id.value}: ${profile.profileText.oneLineForArtifact(360)}"
+            is MemoryStore.SearchHit.EpisodeHit -> "- EPISODE:${episode.id.value}: ${episode.lesson.oneLineForArtifact(360)}"
+            is MemoryStore.SearchHit.RunHit -> "- RUN:${run.id.value}: ${run.runType.name}:${run.status.name}; ${run.summary}"
+        }
 
     private fun resolveDataFile(): Path {
         val override = System.getProperty(DATA_FILE_PROPERTY)?.trim().orEmpty()
@@ -684,6 +934,10 @@ private data class LongMemEvalRememberedSession(
     val haystackSessionId: String,
     val sourceId: String,
     val hasAnswer: Boolean,
+    val sourceRef: String,
+    val chars: Int,
+    val result: MemoryToolJsonResult,
+    val writeTrace: MemoryWriteTraceEvent?,
 )
 
 private data class MemoryToolJsonResult(
@@ -723,6 +977,7 @@ private data class LongMemEvalSmokeCaseResult(
     val rememberDecisions: List<String>,
     val selectedRefs: String,
     val memoryContextPreview: String,
+    val caseDossierPath: String,
     val rememberDurationMs: Long,
     val enrichDurationMs: Long,
     val supportJudgeDurationMs: Long,
