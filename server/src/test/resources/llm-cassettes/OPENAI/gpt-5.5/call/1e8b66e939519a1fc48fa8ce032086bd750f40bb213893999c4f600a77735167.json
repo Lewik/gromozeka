@@ -254,7 +254,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"action_item\",\"note\",\"source\"],\"reason\":\"force_memory_write=true; transcript contains durable wardrobe facts and purchases, an explicit unresolved dry-cleaning follow-up, plus reusable closet organization and clothing-care advice.\",\"salience\":0.72,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced ingestion of a past chat session with reusable wardrobe context, explicit pending dry-cleaning todo, and clothing-care/organization guidance.\"},\"source_search_text\":\"Past chat on 2023-02-15: user organizing closet and dresser drawers, decluttering tops and short-sleeve shirts, has winter clothes not worn since holidays, recent purchases black Levi's jeans and white H&M button-down shirt, needs to pick up dry cleaning for navy blue blazer worn to a meeting a few weeks ago, asks care tips for black jeans and navy blue blazer.\"}",
+                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"note\",\"action_item\",\"source\"],\"reason\":\"force_memory_write=true prevents noop. Transcript contains structured durable facts about wardrobe items and a pending dry-cleaning errand, plus reusable context about closet organization process and clothing-care guidance.\",\"salience\":0.72,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced ingestion of a past chat; contains reusable wardrobe context, item ownership/purchases, an apparent pending errand, and closet-organization advice/preferences that may be recalled later.\"},\"source_search_text\":\"Past chat on 2023-02-15: user organizing closet, decluttering tops and short-sleeve shirts, winter clothes not worn since holidays; needs to pick up dry cleaning for navy blue blazer worn to a meeting a few weeks earlier; recent purchases include new black jeans from Levi's and white button-down shirt from H&M; asked for care tips for black jeans and navy blue blazer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -269,11 +269,11 @@
                 }
             ],
             "usage": {
-                "promptTokens": 5937,
-                "completionTokens": 207,
+                "promptTokens": 8241,
+                "completionTokens": 222,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
-                "cacheReadTokens": 2304
+                "cacheReadTokens": 0
             },
             "finishReason": "completed",
             "providerMetadata": {

@@ -2248,6 +2248,96 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun runtimeReadKeepsPreferredClaimPredicatesAfterCandidateMerging() = runBlocking {
+        val metricPolicy = MemoryPredicateDefinition(
+            predicate = "current_metric_value",
+            namespace = TEST_NAMESPACE,
+            objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,
+            cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
+            temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
+            conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+        )
+        val goalClaim = claim(
+            id = "goal-claim",
+            sourceId = "goal-source",
+            predicate = "has_goal",
+            objectValue = JsonPrimitive("Improve benchmark"),
+            normalizedText = "The user wants to improve the benchmark value.",
+            importance = 9,
+        )
+        val eventClaim = claim(
+            id = "event-claim",
+            sourceId = "event-source",
+            predicate = "attended_event",
+            objectValue = JsonPrimitive("Historical benchmark event"),
+            normalizedText = "The user reported a benchmark value during a historical event.",
+            importance = 9,
+        )
+        val metricClaim = claim(
+            id = "metric-claim",
+            sourceId = "metric-source",
+            predicate = metricPolicy.predicate,
+            objectValue = JsonPrimitive("42"),
+            normalizedText = "The user's current benchmark value is 42.",
+            importance = 1,
+        ).copy(
+            predicateFamily = metricPolicy.predicate,
+            predicatePolicy = metricPolicy,
+        )
+        val selector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, metricClaim.id.value))
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What is my current benchmark value?",
+        )
+
+        RuntimeMemoryReadPipeline(
+            store = InMemoryMemoryStore(
+                MemoryNamespaceSnapshot(
+                    sources = listOf(
+                        source("goal-source", goalClaim.normalizedText),
+                        source("event-source", eventClaim.normalizedText),
+                        source("metric-source", metricClaim.normalizedText),
+                    ),
+                    entities = listOf(entity()),
+                    claims = listOf(goalClaim, eventClaim, metricClaim),
+                )
+            ),
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 3),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Retrieve the current benchmark value.",
+                            query = "current benchmark value",
+                            topK = 3,
+                            preferredClaimPredicates = listOf(metricPolicy.predicate),
+                            deprioritizedClaimPredicates = listOf("has_goal", "attended_event"),
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        assertEquals(MemoryItemRef(MemoryItemRef.Type.CLAIM, metricClaim.id.value), selector.capturedRefs.first())
+    }
+
+    @Test
     fun runtimeReadDoesNotRestoreRejectedCoreProfilesAfterSelector() = runBlocking {
         val noisyProfile = profile(
             id = "profile-noisy-user",

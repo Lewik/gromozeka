@@ -447,7 +447,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"coverage_mode\":\"minimal\",\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"action_items\":0,\"claims\":3,\"episodes\":0,\"notes\":1,\"sources\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"mentioned\",\"related_to\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_shift_rotation\",\"assigned_rotation\",\"works_shift\",\"has_schedule\"],\"query\":\"GM social media agents shift rotation sheet Admon Sunday rotation\",\"top_k\":3,\"why\":\"Need the specific remembered shift rotation assignment for Admon on Sunday from the GM social media agents rotation sheet.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"shift rotation sheet GM social media agents Admon Sunday\",\"top_k\":1,\"why\":\"A compact digest of the shift rotation sheet may contain the Sunday row or Admon's weekly rotation if not stored as a typed claim.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"coverage_mode\":\"minimal\",\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"action_items\":0,\"claims\":3,\"episodes\":0,\"notes\":1,\"sources\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"mentioned\",\"related_to\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_shift_rotation\",\"assigned_rotation\",\"works_on_day\",\"scheduled_for\"],\"query\":\"GM social media agents shift rotation sheet Admon Sunday rotation\",\"top_k\":3,\"why\":\"Need the remembered Sunday shift rotation assignment for Admon from the GM social media agents rotation sheet.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"GM social media agents shift rotation sheet Sunday Admon\",\"top_k\":1,\"why\":\"A compact note may contain the shift rotation sheet or weekly schedule details if not stored as claims.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -462,8 +462,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2160,
-                "completionTokens": 225,
+                "promptTokens": 2175,
+                "completionTokens": 216,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 2304

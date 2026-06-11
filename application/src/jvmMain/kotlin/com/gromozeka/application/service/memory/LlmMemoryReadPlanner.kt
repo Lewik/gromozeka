@@ -417,6 +417,7 @@ class LlmMemoryReadPlanner(
             - For count, set, inventory, list-all, or "how many" questions, use coverage_mode="complete_set", retrieve enough typed facts to enumerate the set, and include source retrieval as evidence fallback. Counts are wrong if one item is omitted.
             - For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.
             - For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.
+            - For questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer "current_metric_value" claims and deprioritize contextual event/goal claims unless the target asks for the event or goal itself.
             - Leave predicate priority arrays empty when no predicate ranking is needed.
             - Keep retrieval bounded.
             - Include source retrieval when conflicts, uncertainty, or quotation-quality grounding is needed.

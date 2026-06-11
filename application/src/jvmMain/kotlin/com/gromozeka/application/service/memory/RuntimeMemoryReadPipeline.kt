@@ -295,7 +295,7 @@ class RuntimeMemoryReadPipeline(
             .distinctBy { it.toItemRef() }
             .excludeCurrentThreadSources(request)
             .filterNot { it.isEmptyProfileHit() }
-            .sortedForRuntimeMemoryRead()
+            .sortedForRuntimeMemoryRead(plan)
         val sourceSelection = MemorySourceRetrievalPolicy.apply(
             hits = distinctHits,
             useCase = plan.sourceRetrievalUseCase(),
@@ -320,9 +320,9 @@ class RuntimeMemoryReadPipeline(
         val rawSelectorCandidateHits = budgetedHits
             .withTypedEvidenceSupport(request, plan)
             .enforceBudget(plan, expandForSelector = true)
-            .sortedForRuntimeMemoryRead()
+            .sortedForRuntimeMemoryRead(plan)
         val selectorSnapshot = rawSelectorCandidateHits.toReadPartialSnapshot(request.namespace)
-        val selectorCandidateHits = rawSelectorCandidateHits.sortedForRuntimeMemoryRead()
+        val selectorCandidateHits = rawSelectorCandidateHits.sortedForRuntimeMemoryRead(plan)
         val selectionResult = selector.select(
             MemoryReadSelectionRequest(
                 readRequest = request,
@@ -1061,6 +1061,12 @@ private fun List<MemoryStore.SearchHit>.applySourceRetrievalPolicyFor(
 private fun List<MemoryStore.SearchHit>.sortedForRuntimeMemoryRead(): List<MemoryStore.SearchHit> =
     sortedWith(runtimeMemorySearchHitComparator)
 
+private fun List<MemoryStore.SearchHit>.sortedForRuntimeMemoryRead(plan: MemoryReadPlan): List<MemoryStore.SearchHit> =
+    sortedWith(
+        compareByDescending<MemoryStore.SearchHit> { it.claimPredicatePriority(plan) }
+            .then(runtimeMemorySearchHitComparator)
+    )
+
 private val runtimeMemorySearchHitComparator: Comparator<MemoryStore.SearchHit> =
     compareByDescending<MemoryStore.SearchHit> { it.score }
         .thenByDescending { it.runtimeImportance() }
@@ -1332,15 +1338,30 @@ private fun MemoryReadRequest.sourceFallbackSearchQuery(plan: MemoryReadPlan): S
 private fun MemoryStore.SearchHit.claimPredicatePriority(retrievalRequest: MemoryReadPlan.RetrievalRequest): Int {
     if (this !is MemoryStore.SearchHit.ClaimHit) return 0
 
-    val predicate = claim.predicate.lowercase()
+    val predicates = claim.predicateNamesForReadPriority()
     val preferred = retrievalRequest.preferredClaimPredicates.mapTo(mutableSetOf()) { it.lowercase() }
     val deprioritized = retrievalRequest.deprioritizedClaimPredicates.mapTo(mutableSetOf()) { it.lowercase() }
     return when {
-        predicate in preferred -> 2
-        predicate in deprioritized -> -1
+        predicates.any { it in preferred } -> 2
+        predicates.any { it in deprioritized } -> -1
         else -> 0
     }
 }
+
+private fun MemoryStore.SearchHit.claimPredicatePriority(plan: MemoryReadPlan): Int {
+    if (this !is MemoryStore.SearchHit.ClaimHit) return 0
+
+    val claimRequests = plan.retrievalRequests.filter { it.memoryType == MemorySemanticType.CLAIM }
+    if (claimRequests.isEmpty()) return 0
+
+    return claimRequests.maxOf { claimPredicatePriority(it) }
+}
+
+private fun MemoryClaim.predicateNamesForReadPriority(): Set<String> =
+    buildSet {
+        add(predicate.lowercase())
+        predicateFamily?.lowercase()?.let(::add)
+    }
 
 private fun MemoryReadPlan.sourceRetrievalUseCase(): MemorySourceRetrievalUseCase =
     if (shouldRenderEvidenceInPrompt()) {
@@ -1392,7 +1413,7 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(
 
     return buildList {
         addAll(profiles.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.profilesLimit()))
-        addAll(claims.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.claims.budgetLimit(default = 6, expandForSelector = expandForSelector)))
+        addAll(claims.sortedForRuntimeMemoryRead(plan).take(plan.retrievalBudget.claims.budgetLimit(default = 6, expandForSelector = expandForSelector)))
         addAll(notes.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.notes.budgetLimit(default = 4, expandForSelector = expandForSelector)))
         addAll(actionItems.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.actionItems.budgetLimit(default = 3, expandForSelector = expandForSelector)))
         addAll(sources.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.sources.budgetLimit(default = 3, expandForSelector = expandForSelector)))

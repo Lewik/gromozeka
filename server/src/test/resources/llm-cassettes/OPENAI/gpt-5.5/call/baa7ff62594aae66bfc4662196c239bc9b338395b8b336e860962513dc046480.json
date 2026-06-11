@@ -254,7 +254,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"note\",\"action_item\",\"source\"],\"reason\":\"The transcript includes extractable stable facts/preferences and an explicit unresolved pickup task, plus reusable context about the user's organization routines and planned systems.\",\"salience\":0.82,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced memory ingestion of a past chat session containing durable user preferences, possessions, past dated events, intended routines, and richer organizational context.\"},\"source_search_text\":\"Past chat session 2023-02-15: user is organizing closet by season using home boxes; owns and loves new black Levi's jeans worn on dinner date last Friday; winter clothes include thick grey scarf and gloves, spring clothes include yellow sundress; exchanged Zara boots bought on 2/5 and still needs to pick up new pair; user usually tracks pickups/returns mentally but sometimes forgets and plans to use phone notes app from now on; gym bag smells funky; favourite yoga pants worn to gym last Thursday need washing; user is considering dedicating a weekly day to laundry and cleaning gym gear; tips for closet space, seasonal rotation, pickup/return tracking, workout clothes organization.\"}",
+                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"note\",\"source\"],\"reason\":\"Forced memory write; transcript contains durable personal possessions/preferences, prior dated shopping/gym events, and reusable organizational intentions plus advice/context worth note memory.\",\"salience\":0.7,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced ingestion of past chat with reusable user facts/preferences, dated events, and routines; source should remain available for evidence.\"},\"source_search_text\":\"Past chat 2023-02-15: user organizing closet by season using home boxes; loves new black Levi's jeans worn on dinner date last Friday; winter clothes include thick grey scarf and gloves, spring clothes include yellow sundress; exchanged Zara boots bought on 2/5 and still needs to pick up new pair; user usually tracks pickups/returns in head but forgets and plans to use phone notes app; gym bag smells funky; needs to wash favorite yoga pants worn to gym last Thursday; considering weekly day for laundry and cleaning gym gear; advice on closet seasonal rotation, pickup/return tracking, workout clothes organization and freshness.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -269,11 +269,11 @@
                 }
             ],
             "usage": {
-                "promptTokens": 4992,
-                "completionTokens": 264,
+                "promptTokens": 7296,
+                "completionTokens": 249,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
-                "cacheReadTokens": 2304
+                "cacheReadTokens": 0
             },
             "finishReason": "completed",
             "providerMetadata": {

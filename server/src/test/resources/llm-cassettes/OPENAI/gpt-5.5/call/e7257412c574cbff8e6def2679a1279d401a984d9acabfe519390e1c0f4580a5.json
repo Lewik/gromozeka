@@ -254,7 +254,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"note\",\"source\"],\"reason\":\"Forced memory write. Transcript contains durable personal/context facts (borrowed sweater, Zara boot exchange, favorite yoga pants, planned closet/laundry context) plus reusable advice/context best stored as notes.\",\"salience\":0.62,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced ingestion of a past chat with reusable personal facts and contextual notes; source should remain available as evidence.\"},\"source_search_text\":\"Past chat on 2023-02-15: user asked for closet organization after holidays and winter clothes storage; outdoor concert this weekend outfit ideas; green sweater lent to sister with unknown return; considered yellow sundress for winter outdoor concert; Zara boots bought/exchanged on February 5 because too small and larger size not yet picked up; planned laundry this weekend; favorite yoga pants worn to gym last Thursday and care tips.\"}",
+                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"note\",\"source\"],\"reason\":\"Forced memory write. Transcript contains durable personal context and dated events plus reusable household/clothing care context, with some richer situational notes.\",\"salience\":0.65,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced ingestion of a past chat with reusable personal facts, dated events, and practical preference/context signals; source should remain usable as evidence.\"},\"source_search_text\":\"2023-02-15 past chat: user closet messy since holidays, winter clothes to put away; outdoor concert this weekend outfit planning; green sweater lent to sister return unknown; considered yellow sundress; Zara boots bought or exchanged February 5 too small, larger size not picked up yet; weekend laundry; favorite yoga pants worn to gym last Thursday; tips for preventing lost socks and caring for yoga pants\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -270,7 +270,7 @@
             ],
             "usage": {
                 "promptTokens": 5141,
-                "completionTokens": 211,
+                "completionTokens": 203,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 2304

@@ -254,7 +254,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"note\",\"source\"],\"reason\":\"Forced memory write. Transcript contains durable details about a GM social media agent roster, shift times, weekly Sunday-Saturday scheduling requirement, and desired 2 days off, plus contextual schedule design/output worth preserving as a note.\",\"salience\":0.62,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced ingestion of a past chat with reusable staffing/scheduling facts and generated schedule context; source can support later recall and extraction.\"},\"source_search_text\":\"Past chat on 2023-05-24: user requested a one-week Sunday-Saturday shift rotation sheet for GM social media agents with 7 agents: Admon, Magdy, Ehab, Sara, Mostafa, Nemr, Adam; 4 shifts: 8 am-4 pm, 12 pm-8 pm, 4 pm-12 am, 12 am-8 am; 2 days off for every agent.\"}",
+                                "fullText": "{\"decision\":\"mixed\",\"memory_types\":[\"claim\",\"note\",\"source\"],\"reason\":\"The transcript has durable facts about a GM social media agent roster request, named agents, shift times, and scheduling constraints, plus a reusable document-like final schedule/context.\",\"salience\":0.55,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Forced ingestion of a past chat containing reusable scheduling constraints and a final generated roster; source should remain available as evidence.\"},\"source_search_text\":\"Past chat on 2023-05-24: user requested a one-week Sunday-Saturday shift rotation sheet for GM social media agents with 7 agents, 4 shifts (8am-4pm, 12pm-8pm, 4pm-12am, 12am-8am), 2 days off per agent; agent names Admon, Magdy, Ehab, Sara, Mostafa, Nemr, Adam; final roster assigned shifts by day.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -270,7 +270,7 @@
             ],
             "usage": {
                 "promptTokens": 4714,
-                "completionTokens": 227,
+                "completionTokens": 221,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 2304

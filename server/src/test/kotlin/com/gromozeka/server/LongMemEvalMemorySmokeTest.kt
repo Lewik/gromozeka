@@ -133,7 +133,7 @@ class LongMemEvalMemorySmokeTest {
                 val result = runCase(memoryTools, judgeRuntime, entry, namespace, progressPath)
                 Files.writeString(
                     resultsPath,
-                    json.encodeToString(result) + "\n",
+                    jsonLines.encodeToString(result) + "\n",
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND,
                 )
@@ -643,6 +643,10 @@ class LongMemEvalMemorySmokeTest {
         val json = Json {
             ignoreUnknownKeys = true
             prettyPrint = true
+            encodeDefaults = true
+        }
+        val jsonLines = Json {
+            ignoreUnknownKeys = true
             encodeDefaults = true
         }
     }

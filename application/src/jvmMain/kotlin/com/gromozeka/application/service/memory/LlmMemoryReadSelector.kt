@@ -290,6 +290,8 @@ class LlmMemoryReadSelector(
         - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.
         - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.
         - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.
+        - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.
+        - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.
         - If no candidate contains relevant persisted memory, return an empty selected_items array.
 
         Planned answer mode: ${request.plan.answerMode.name}
@@ -394,7 +396,7 @@ private enum class ReadSelectorPassMode(
         extraRules = """
         - This is an intermediate pass over one candidate batch. A later global selector will rerank survivors from all batches.
         - When uncertain, select the candidate so the final pass can compare it globally.
-        - Reject only candidates that are clearly irrelevant, stale compared to active memory, or pure lexical noise.
+        - Reject only candidates that are clearly irrelevant, stale compared to stronger active memory, or pure lexical noise. Do not treat an ACTIVE pending obligation as stale solely because its source is old; completion, cancellation, supersession, or a stronger contradictory active memory must be explicit.
         - Aim for at most $READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH selected_items. Exceed that when many distinct dated facts or complete-set candidates are required together.
         """.trimIndent(),
         selectionRule = "Select a compact survivor set, but prefer keeping a plausible candidate over dropping it too early.",

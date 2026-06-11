@@ -447,7 +447,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"action_items\"],\"coverage_mode\":\"complete_set\",\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"action_items\":10,\"claims\":10,\"episodes\":0,\"notes\":0,\"sources\":5},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"action_item\",\"preferred_claim_predicates\":[],\"query\":\"clothing items to pick up or return from a store; store pickup return clothes apparel garments\",\"top_k\":10,\"why\":\"The question asks for a complete count of clothing-related store pickup or return obligations.\"},{\"deprioritized_claim_predicates\":[\"owns\",\"bought\",\"likes\",\"visited\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"needs_to_pick_up\",\"needs_to_return\",\"has_pending_pickup\",\"has_pending_return\",\"must_pick_up\",\"must_return\"],\"query\":\"need to pick up or return clothing items from a store\",\"top_k\":10,\"why\":\"Retrieve all remembered clothing pickup/return facts so the count can include every distinct item.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"pick up return store clothing clothes jacket shirt pants dress shoes\",\"top_k\":5,\"why\":\"Evidence fallback for complete-set counting in case clothing pickup/return obligations exist only in raw conversation evidence.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"action_items\"],\"coverage_mode\":\"complete_set\",\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"action_items\":10,\"claims\":10,\"episodes\":0,\"notes\":0,\"sources\":5},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"action_item\",\"preferred_claim_predicates\":[],\"query\":\"clothing items to pick up or return from a store errands pickup return clothes store\",\"top_k\":10,\"why\":\"Find all open or relevant tasks involving picking up or returning clothing items at stores to count them completely.\"},{\"deprioritized_claim_predicates\":[\"likes\",\"owns\",\"bought\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"needs_to_pick_up\",\"needs_to_return\",\"has_errand\",\"must_return\",\"must_pick_up\",\"item_status\"],\"query\":\"need to pick up return clothing clothes item store order pickup return\",\"top_k\":10,\"why\":\"Retrieve remembered facts about clothing pickups or returns that may not be tracked as action items.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"pick up return clothing clothes store items\",\"top_k\":5,\"why\":\"Evidence fallback for complete count in case relevant clothing pickup/return errands exist only in raw conversation evidence.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -462,11 +462,11 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2150,
-                "completionTokens": 303,
+                "promptTokens": 4461,
+                "completionTokens": 298,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
-                "cacheReadTokens": 2304
+                "cacheReadTokens": 0
             },
             "finishReason": "completed",
             "providerMetadata": {

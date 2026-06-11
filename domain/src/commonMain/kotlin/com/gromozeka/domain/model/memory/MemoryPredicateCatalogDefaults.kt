@@ -156,6 +156,15 @@ object MemoryPredicateCatalogDefaults {
             defaultImportance = 8,
         ),
         definition(
+            predicate = "current_metric_value",
+            description = "Current value of a named metric, record, benchmark, score, quota, threshold, or personal best",
+            objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,
+            cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
+            temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
+            conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+            defaultImportance = 8,
+        ),
+        definition(
             predicate = "pending_pickup",
             description = "Subject needs to collect, pick up, retrieve, or receive a concrete item from a place or party",
             objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,

@@ -111,7 +111,7 @@ class LlmMemoryClaimReconciler(
         predicateCatalog: MemoryPredicateCatalog,
     ): String = """
         Memory stage: ClaimReconciler v1.
-        Current time: ${Clock.System.now()}
+        Runtime processing time: ${Clock.System.now()}
         Timezone: $timezone
         Namespace: ${request.namespace.value}
 
@@ -159,12 +159,14 @@ class LlmMemoryClaimReconciler(
         - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as "is_described_as", "has_property", "is_a", or "defined_as". Choose a specific durable relation or return noop.
         - For ordinary positive preferences, use catalog predicate "prefers"; do not keep category-specific variants such as "prefers_car_brand" unless they represent a named current/default slot.
         - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.
+        - For named metric, record, score, benchmark, quota, threshold, or personal-best values, use catalog predicate "current_metric_value" when present. Preserve the metric/domain in scope or qualifiers so unrelated metrics do not replace each other.
         - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.
         - If multiple candidates from the same target source express the same durable point at different abstraction levels, keep the most specific/actionable candidate and return noop for weaker broader candidates.
         - If one candidate captures the target source's explicit current/default/status value and another candidate is only a generic preference or affinity inferred from the same words, return noop for the generic candidate unless the target source independently asserts it.
         - Do not insert redundant broader candidates merely because they use a different predicate or family.
         - For exclusive current/default/status values in the same subject, scope, and environment, use cardinality=single and conflict_policy=replace unless simultaneous active values are explicitly allowed.
         - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.
+        - Runtime processing time is not evidence that a pending obligation has expired, completed, or become stale. For catalog pending_* claims and other independently completeable duties, insert the explicit pending fact unless the target source or existing active memory explicitly says it was completed, cancelled, returned, picked up, superseded, or otherwise no longer pending.
         - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.
         - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.
         - If predicate policy says coexist, insert the candidate unless it is a duplicate.

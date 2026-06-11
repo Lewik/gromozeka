@@ -1325,7 +1325,7 @@ private val runtimeOutputInstantFieldNames = setOf(
 private const val UUID_PATTERN = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 private const val INSTANT_PATTERN = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z"
 private const val DATE_PATTERN = "\\d{4}-\\d{2}-\\d{2}"
-private val runtimeCurrentTimeRegex = Regex("(?m)(Current time:\\s*)$INSTANT_PATTERN")
+private val runtimeCurrentTimeRegex = Regex("(?m)((?:Current time|Runtime processing time):\\s*)$INSTANT_PATTERN")
 private val runtimeTodayDateRegex = Regex("(?m)(Today's date:\\s*)$DATE_PATTERN")
 private val runtimeLabeledInstantRegex = Regex(
     "\\b(validFrom|validTo|createdAt|updatedAt|observedAt|recordedAt|firstSeenAt|lastSeenAt|" +

@@ -437,6 +437,7 @@ class AiRuntimeCassetteProxyTest {
             systemPrompts = listOf(
                 "Project path: /tmp/gromozeka-e2e-$dynamicPart/projects/case-a\n" +
                     "Current time: 2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\n" +
+                    "Runtime processing time: 2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\n" +
                     "candidate validFrom=2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z " +
                     "imported_at=2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z " +
                     "importedAt=2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z " +

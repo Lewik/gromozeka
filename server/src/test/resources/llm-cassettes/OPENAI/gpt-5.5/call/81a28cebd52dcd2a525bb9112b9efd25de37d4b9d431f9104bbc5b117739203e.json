@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "81a28cebd52dcd2a525bb9112b9efd25de37d4b9d431f9104bbc5b117739203e",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some accessories that would complement my current photography setup?\n\n                                Question date:\n                                2023/05/30 (Tue) 05:04\n\n                                Expected answer:\n                                The user would prefer suggestions of Sony-compatible accessories or high-quality photography gear that can enhance their photography experience. They may not prefer suggestions of other brands' equipment or low-quality gear.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:06878be2\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0cff0b363ed9-claim-9 [ACTIVE] has_goal family=has_goal: The user wants an external battery pack that can charge their Sony A7R IV and other devices while traveling or shooting on the go.; scope=User's photography accessory needs.\n- claim hot-path-0cff0b363ed9-claim-10 [ACTIVE] owns family=owns: The user owns or uses a Sony 24-70mm f/2.8 lens.; scope=User's photography equipment.\n- claim hot-path-0cff0b363ed9-claim-11 [ACTIVE] has_goal family=has_goal: The user is considering the Gitzo GT3543LS tripod and wants to learn more about it.; scope=User's photography gear research.\n- claim hot-path-0cff0b363ed9-claim-6 [ACTIVE] owns family=owns: The user owns or uses a Sony A7R IV camera.; scope=User's photography equipment.\n- claim hot-path-0cff0b363ed9-claim-8 [ACTIVE] has_goal family=has_goal: The user wants a protective case or pouch for their Godox V1 flash.; scope=User's photography accessory needs.\n- claim hot-path-0cff0b363ed9-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to upgrade their camera bag to something more comfortable and durable, preferably designed for Sony cameras.; scope=User's photography gear upgrade interests.\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Sony 24-70mm f/2.8 lens; Product named Sony 24-70mm f/2.8 lens.\n- entity entity:<1> [PRODUCT]: Sony A7R IV; Product named Sony A7R IV.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "06878be2",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some accessories that would complement my current photography setup?\n\n                                Question date:\n                                2023/05/30 (Tue) 05:04\n\n                                Expected answer:\n                                The user would prefer suggestions of Sony-compatible accessories or high-quality photography gear that can enhance their photography experience. They may not prefer suggestions of other brands' equipment or low-quality gear.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:06878be2\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0cff0b363ed9-claim-9 [ACTIVE] has_goal family=has_goal: The user wants an external battery pack that can charge their Sony A7R IV and other devices while traveling or shooting on the go.; scope=User's photography accessory needs.\n- claim hot-path-0cff0b363ed9-claim-10 [ACTIVE] owns family=owns: The user owns or uses a Sony 24-70mm f/2.8 lens.; scope=User's photography equipment.\n- claim hot-path-0cff0b363ed9-claim-11 [ACTIVE] has_goal family=has_goal: The user is considering the Gitzo GT3543LS tripod and wants to learn more about it.; scope=User's photography gear research.\n- claim hot-path-0cff0b363ed9-claim-6 [ACTIVE] owns family=owns: The user owns or uses a Sony A7R IV camera.; scope=User's photography equipment.\n- claim hot-path-0cff0b363ed9-claim-8 [ACTIVE] has_goal family=has_goal: The user wants a protective case or pouch for their Godox V1 flash.; scope=User's photography accessory needs.\n- claim hot-path-0cff0b363ed9-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to upgrade their camera bag to something more comfortable and durable, preferably designed for Sony cameras.; scope=User's photography gear upgrade interests.\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Sony 24-70mm f/2.8 lens; Product named Sony 24-70mm f/2.8 lens.\n- entity entity:<1> [PRODUCT]: Sony A7R IV; Product named Sony A7R IV.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "06878be2",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest Sony-compatible, high-quality accessories such as an external battery pack for the Sony A7R IV, a durable Sony-oriented camera bag, a protective pouch for the Godox V1, or a quality tripod like the Gitzo GT3543LS.\",\"reason\":\"The memory shows the user uses Sony camera gear and has sought Sony-compatible or durable/high-quality accessories for their setup.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1054,
+                "completionTokens": 172,
+                "thinkingTokens": 71,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
