@@ -18,6 +18,8 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.server.testsupport.app.ServerTestHarness
 import com.gromozeka.server.testsupport.app.sanitizePathSegment
+import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteSettings
+import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteUsageReporter
 import com.gromozeka.shared.uuid.uuid7
 import java.nio.file.Files
 import java.nio.file.Path
@@ -78,6 +80,7 @@ class LongMemEvalMemorySmokeTest {
             .selectByProperties()
         assertTrue(entries.isNotEmpty(), "No LongMemEval entries selected from $dataFile")
 
+        val cassetteSettings = AiRuntimeCassetteSettings.fromSystemProperties()
         val subscriptionPath = resolveSubscriptionConfigPath()
         val subscriptionSession = ServerTestHarness.subscriptionSessionFromConfig(subscriptionPath)
         assertNotNull(subscriptionSession, "OpenAI subscription config not found or incomplete: $subscriptionPath")
@@ -164,6 +167,17 @@ class LongMemEvalMemorySmokeTest {
             }
 
             summaryPath.writeText(renderSummary(dataFile, modelName, postgresSchema, caseResults))
+            AiRuntimeCassetteUsageReporter.writeReportIfEnabled(
+                settings = cassetteSettings,
+                artifactDirectory = artifactDirectory,
+            )?.let { report ->
+                println("LLM cassette usage report saved to: ${report.reportPath}")
+                appendProgress(
+                    progressPath,
+                    "cassette_usage_report used=${report.usedCount} disk=${report.diskCount} unused=${report.unusedCount} " +
+                        "missingUsed=${report.missingUsedCount} deleted=${report.deletedCount} path=${report.reportPath}"
+                )
+            }
             println("LongMemEval memory smoke artifacts saved to: $artifactDirectory")
 
             val failedCases = caseResults.filterNot { it.answerSupportedByMemory }

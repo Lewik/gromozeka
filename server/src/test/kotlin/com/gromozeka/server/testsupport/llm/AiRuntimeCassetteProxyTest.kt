@@ -47,6 +47,24 @@ class AiRuntimeCassetteProxyTest {
             "GROMOZEKA_HOME" to "/tmp/prod-home",
             "GROMOZEKA_MODE" to null,
             "gromozeka.memory.e2e" to "true",
+            "gromozeka.longmemeval" to null,
+        ) {
+            val settings = AiRuntimeCassetteSettings.fromSystemProperties()
+
+            assertEquals(projectRoot().resolve("server/src/test/resources/llm-cassettes"), settings.rootDirectory)
+            assertEquals(AiRuntimeCassetteMode.REPLAY_ONLY, settings.mode)
+        }
+    }
+
+    @Test
+    fun defaultDirectoryUsesTestResourcesInLongMemEvalMode() {
+        withSystemProperties(
+            "gromozeka.llm.cassette.dir" to null,
+            "gromozeka.llm.cassette.mode" to null,
+            "GROMOZEKA_HOME" to "/tmp/prod-home",
+            "GROMOZEKA_MODE" to null,
+            "gromozeka.memory.e2e" to null,
+            "gromozeka.longmemeval" to "true",
         ) {
             val settings = AiRuntimeCassetteSettings.fromSystemProperties()
 
@@ -63,6 +81,7 @@ class AiRuntimeCassetteProxyTest {
             "GROMOZEKA_HOME" to "/tmp/prod-home",
             "GROMOZEKA_MODE" to "prod",
             "gromozeka.memory.e2e" to null,
+            "gromozeka.longmemeval" to null,
         ) {
             val settings = AiRuntimeCassetteSettings.fromSystemProperties()
 

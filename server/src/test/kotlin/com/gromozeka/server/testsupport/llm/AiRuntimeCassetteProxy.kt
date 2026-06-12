@@ -130,7 +130,8 @@ internal data class AiRuntimeCassetteSettings(
         private fun isTestMode(): Boolean {
             return when ((System.getProperty("GROMOZEKA_MODE") ?: System.getenv("GROMOZEKA_MODE"))?.lowercase()) {
                 "test", "e2e" -> true
-                else -> System.getProperty("gromozeka.memory.e2e") == "true"
+                else -> System.getProperty("gromozeka.memory.e2e") == "true" ||
+                    System.getProperty("gromozeka.longmemeval") == "true"
             }
         }
 
