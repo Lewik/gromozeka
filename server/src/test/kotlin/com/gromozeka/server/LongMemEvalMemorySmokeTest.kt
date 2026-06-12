@@ -259,7 +259,11 @@ class LongMemEvalMemorySmokeTest {
         val memoryContext = enrichResult.memoryContext.orEmpty()
         val expectedAnswer = entry.answerText()
         val exactAnswerTextVisible = memoryContext.contains(expectedAnswer, ignoreCase = true)
-        val selectedEvidenceSourceIds = enrichResult.selectedEvidenceSourceIds
+        val selectedEvidenceSourceIds = (
+            enrichResult.selectedEvidenceSourceIds +
+                selectedProfileEvidenceSourceIds(enrichResult.selectedRefItems, rememberedSessions)
+            )
+            .distinct()
         val selectedExpectedEvidenceSourceIds = expectedEvidenceSourceIds
             .filter { expectedSourceId -> expectedSourceId in selectedEvidenceSourceIds.toSet() }
         val evidenceSourceHit = if (expectedEvidenceSourceIds.isEmpty()) {
@@ -468,26 +472,74 @@ class LongMemEvalMemorySmokeTest {
                         .take(SELECTED_REFS_REPORT_CHARS)
                 }
                 .orEmpty(),
+            selectedRefItems = selectedRefItems(root),
             selectedEvidenceSourceIds = selectedEvidenceSourceIds(root),
         )
     }
 
-    private fun selectedEvidenceSourceIds(root: JsonObject): List<String> =
+    private fun selectedRefItems(root: JsonObject): List<MemoryToolSelectedRef> =
         root["selected_refs"]
             ?.jsonArray
-            ?.flatMap { element ->
+            ?.map { element ->
                 val ref = element.jsonObject
-                val directSourceId = ref.stringValue("id")
-                    ?.takeIf { ref.stringValue("type") == "SOURCE" }
+                MemoryToolSelectedRef(
+                    type = ref.stringValue("type").orEmpty(),
+                    id = ref.stringValue("id").orEmpty(),
+                    evidenceSourceIds = ref["evidence_source_ids"]
+                        ?.jsonArray
+                        ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                        .orEmpty(),
+                )
+            }
+            .orEmpty()
+
+    private fun selectedEvidenceSourceIds(root: JsonObject): List<String> =
+        selectedRefItems(root)
+            .flatMap { ref ->
+                val directSourceId = ref.id
+                    .takeIf { ref.type == "SOURCE" }
                     ?.let { listOf(it) }
                     .orEmpty()
-                val evidenceSourceIds = ref["evidence_source_ids"]
-                    ?.jsonArray
-                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
-                    .orEmpty()
-                directSourceId + evidenceSourceIds
+                directSourceId + ref.evidenceSourceIds
             }
-            ?.distinct()
+            .distinct()
+
+    private fun selectedProfileEvidenceSourceIds(
+        selectedRefItems: List<MemoryToolSelectedRef>,
+        rememberedSessions: List<LongMemEvalRememberedSession>,
+    ): List<String> {
+        val selectedProfileIds = selectedRefItems
+            .filter { it.type == "PROFILE" }
+            .map { it.id }
+            .toSet()
+        if (selectedProfileIds.isEmpty()) return emptyList()
+
+        val memoryBatches = rememberedSessions.mapNotNull { it.writeTrace?.result?.memoryBatch }
+        val claimsById = memoryBatches.flatMap { it.claims }.associateBy { it.id.value }
+        val notesById = memoryBatches.flatMap { it.notes }.associateBy { it.id.value }
+        val actionItemsById = memoryBatches.flatMap { it.actionItems }.associateBy { it.id.value }
+
+        return memoryBatches
+            .flatMap { it.profiles }
+            .filter { it.id.value in selectedProfileIds }
+            .flatMap { profile ->
+                profile.profileJson.profileReferencedIds("facts").flatMap { claimId ->
+                    claimsById[claimId]?.evidenceRefs?.map { it.sourceId.value }.orEmpty()
+                } +
+                    profile.profileJson.profileReferencedIds("notes").flatMap { noteId ->
+                        notesById[noteId]?.evidenceRefs?.map { it.sourceId.value }.orEmpty()
+                    } +
+                    profile.profileJson.profileReferencedIds("actionItems").flatMap { actionItemId ->
+                        actionItemsById[actionItemId]?.evidenceRefs?.map { it.sourceId.value }.orEmpty()
+                    }
+            }
+            .distinct()
+    }
+
+    private fun JsonObject.profileReferencedIds(section: String): List<String> =
+        this[section]
+            ?.jsonArray
+            ?.mapNotNull { it.jsonObject.stringValue("id") }
             .orEmpty()
 
     private fun loadEntries(dataFile: Path): List<LongMemEvalEntry> =
@@ -964,7 +1016,14 @@ private data class MemoryToolJsonResult(
     val memoryContext: String?,
     val countsSummary: String,
     val selectedRefs: String,
+    val selectedRefItems: List<MemoryToolSelectedRef>,
     val selectedEvidenceSourceIds: List<String>,
+)
+
+private data class MemoryToolSelectedRef(
+    val type: String,
+    val id: String,
+    val evidenceSourceIds: List<String>,
 )
 
 private data class LongMemEvalSupportJudgement(
