@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "88f4d49cc5acf9075909f9bc61b69cb46771a051c95db4f05b593ea908ff8765",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many short stories have I written since I started writing regularly?\n\n                                Question date:\n                                2023/06/14 (Wed) 08:23\n\n                                Expected answer:\n                                seven\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:a1eacc2a\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-61d486976a69-claim-8 [ACTIVE] current_metric_value family=current_metric_value: The user had completed 7 short stories since starting to write regularly as of 2023-05-30.; scope=User's writing accomplishments as of the 2023-05-30 session; evidence=DIRECT source=external:provided-text:2c184855946884b57184fbafa0f03c2f quote=\"I've even managed to complete 7 short stories since I started.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:2c184855946884b57184fbafa0f03c2f [external_record ref=longmemeval:a1eacc2a:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/30 (Tue) 06:33\nTranscript:\nuser: I'm thinking of continuing to experiment with non-linear narrative structures in my writing. Can you recommend some books or authors that are known for using this style effectively? By the way, I've been writing regularly for three months now, and it's been amazing - I've even managed to complete 7 short stories since I started.\nassistant: Congratulations on your writing progress! Completing seven short stories in three months is a remarkable achievement. Exploring non-linear narrative structures can add depth and complexity to your stories. Here are some book recommendations and authors known for their effective use of non-linear storytelling:...\n...Keep writing and exploring, and congratulations again on your progress!...\n...1. **Sharing work**: Members take turns sharing their writing, usually in a predetermined order. This can be a short story, a chapter from a novel, or a poem....\n...2. **Create a schedule and stick to it**: Decide on a regular meeting schedule and stick to it. This will help you stay accountable and ensure that everyone is making progress....\n...6. **Encourage accountability**: Consider setting deadlines for submitting work or completing writing challenges. This will help you stay motivated and ensure that everyone is actively working on their projects....\n...* Plan social activities or writing retreats to bond outside of regular meetings and recharge your creative batteries....\n...assistant: What a great idea! Writing a memoir about your experiences with writing can be a fantastic way to reflect on your growth and progress. Since you've only been writing for three months, your memoir might be more of a \"mini-memoir\" or a reflective essay, but that's perfectly fine! Here are some ideas for chapters or sections to get you started:\n\n1. **The Spark**: Describe the moment that inspired you to start writing regularly. What triggered your desire to write? Was it a particular event, person, or experience?\n2. **The First Steps**: Recount your early days of writing, including any struggles or triumphs you faced. How did you establish a writing routine, and what challenges did you overcome?\n3. **The 7-Story Sprint**: Since you've completed seven short stories in three months, you could dedicate a section to each story. Share the inspiration behind each piece, any challenges you faced while writing, and what you learned from the experience....\n...user: I think I'll start with \"The Spark\" chapter, where I'll describe how I started writing regularly and what motivated me to continue. I've been thinking about how writing has become a therapeutic outlet for me, so I might explore that theme throughout the chapter. Do you have any tips on how to structure this chapter, or any suggestions for what I should focus on?...\n...2. **Establish the context**: Provide some background information about your life before you started writing regularly. What were you doing, and how were you feeling? This will help readers understand what motivated you to start writing.\n3. **The inciting incident**: Describe the specific event, moment, or realization that sparked your desire to start writing regularly. Be as detailed as possible, and try to recreate the emotions you felt at the time.\n4. **The early days**: Share your experiences during the initial stages of writing. How did you feel, and what challenges did you face? This will help readers understand your growth and progress....\n...4. **Edit and revise**: Once you've written the first draft, edit and revise your chapter to ensure it flows smoothly and effectively conveys your message....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "a1eacc2a",
+                "questionType": "knowledge-update"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many short stories have I written since I started writing regularly?\n\n                                Question date:\n                                2023/06/14 (Wed) 08:23\n\n                                Expected answer:\n                                seven\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:a1eacc2a\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-61d486976a69-claim-8 [ACTIVE] current_metric_value family=current_metric_value: The user had completed 7 short stories since starting to write regularly as of 2023-05-30.; scope=User's writing accomplishments as of the 2023-05-30 session; evidence=DIRECT source=external:provided-text:2c184855946884b57184fbafa0f03c2f quote=\"I've even managed to complete 7 short stories since I started.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:2c184855946884b57184fbafa0f03c2f [external_record ref=longmemeval:a1eacc2a:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/30 (Tue) 06:33\nTranscript:\nuser: I'm thinking of continuing to experiment with non-linear narrative structures in my writing. Can you recommend some books or authors that are known for using this style effectively? By the way, I've been writing regularly for three months now, and it's been amazing - I've even managed to complete 7 short stories since I started.\nassistant: Congratulations on your writing progress! Completing seven short stories in three months is a remarkable achievement. Exploring non-linear narrative structures can add depth and complexity to your stories. Here are some book recommendations and authors known for their effective use of non-linear storytelling:...\n...Keep writing and exploring, and congratulations again on your progress!...\n...1. **Sharing work**: Members take turns sharing their writing, usually in a predetermined order. This can be a short story, a chapter from a novel, or a poem....\n...2. **Create a schedule and stick to it**: Decide on a regular meeting schedule and stick to it. This will help you stay accountable and ensure that everyone is making progress....\n...6. **Encourage accountability**: Consider setting deadlines for submitting work or completing writing challenges. This will help you stay motivated and ensure that everyone is actively working on their projects....\n...* Plan social activities or writing retreats to bond outside of regular meetings and recharge your creative batteries....\n...assistant: What a great idea! Writing a memoir about your experiences with writing can be a fantastic way to reflect on your growth and progress. Since you've only been writing for three months, your memoir might be more of a \"mini-memoir\" or a reflective essay, but that's perfectly fine! Here are some ideas for chapters or sections to get you started:\n\n1. **The Spark**: Describe the moment that inspired you to start writing regularly. What triggered your desire to write? Was it a particular event, person, or experience?\n2. **The First Steps**: Recount your early days of writing, including any struggles or triumphs you faced. How did you establish a writing routine, and what challenges did you overcome?\n3. **The 7-Story Sprint**: Since you've completed seven short stories in three months, you could dedicate a section to each story. Share the inspiration behind each piece, any challenges you faced while writing, and what you learned from the experience....\n...user: I think I'll start with \"The Spark\" chapter, where I'll describe how I started writing regularly and what motivated me to continue. I've been thinking about how writing has become a therapeutic outlet for me, so I might explore that theme throughout the chapter. Do you have any tips on how to structure this chapter, or any suggestions for what I should focus on?...\n...2. **Establish the context**: Provide some background information about your life before you started writing regularly. What were you doing, and how were you feeling? This will help readers understand what motivated you to start writing.\n3. **The inciting incident**: Describe the specific event, moment, or realization that sparked your desire to start writing regularly. Be as detailed as possible, and try to recreate the emotions you felt at the time.\n4. **The early days**: Share your experiences during the initial stages of writing. How did you feel, and what challenges did you face? This will help readers understand your growth and progress....\n...4. **Edit and revise**: Once you've written the first draft, edit and revise your chapter to ensure it flows smoothly and effectively conveys your message....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "a1eacc2a",
+                "questionType": "knowledge-update"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"seven\",\"reason\":\"The retrieved claim and transcript state the user had completed 7 short stories since starting to write regularly.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1639,
+                "completionTokens": 104,
+                "thinkingTokens": 55,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -3460,6 +3460,164 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun runtimeReadCompleteSetKeepsMixedSourceOnlyDetailAndRestoresActiveClaim() = runBlocking {
+        val mixedSource = source(
+            "complete-set-mixed-source",
+            "ShelfLog primary export is currently CSV. The user's workshop notes are kept in the blue binder.",
+        )
+        val newSource = source(
+            "complete-set-current-source",
+            "ShelfLog primary export is currently JSON Lines instead of CSV.",
+        )
+        val oldClaim = claim(
+            id = "complete-set-old-export-claim",
+            sourceId = mixedSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The primary export format for ShelfLog is currently CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "complete-set-active-export-claim",
+            sourceId = newSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("JSON Lines"),
+            normalizedText = "The primary export format for ShelfLog is currently JSON Lines.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(mixedSource, newSource),
+                entities = listOf(entity()),
+                claims = listOf(oldClaim, activeClaim),
+            )
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 0, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Complete-set recall needs source-only details even when the source also contains stale typed facts.",
+                            query = "ShelfLog current export format workshop notes blue binder",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+            selector = FixedReadSelector(
+                selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.SOURCE, mixedSource.id.value))
+            ),
+        ).read(
+            memoryReadRequest(
+                "complete-set-mixed-source-target",
+                "What is ShelfLog's current export format, and where are my workshop notes kept?",
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, mixedSource.id.value)))
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+        assertTrue(result.trace.sourceSafety.suppressedSources.isEmpty())
+        assertEquals(listOf(activeClaim.id.value), result.trace.sourceSafety.restoredTypedHits.map { it.ref.id })
+        assertTrue(prompt.contains("The primary export format for ShelfLog is currently JSON Lines."))
+        assertTrue(prompt.contains("workshop notes are kept in the blue binder"))
+    }
+
+    @Test
+    fun runtimeReadExposesSupersededFactsForHistoricalStateQuestionsOnly() = runBlocking {
+        val sneakersEntity = entity(
+            id = MemoryEntity.Id("entity-old-sneakers"),
+            entityType = MemoryEntity.Type.PRODUCT,
+            canonicalName = "User's old sneakers",
+            normalizedName = "users old sneakers",
+        )
+        val oldSource = source(
+            "old-sneakers-under-bed-source",
+            "I've been keeping my old sneakers under my bed for storage.",
+        )
+        val newSource = source(
+            "old-sneakers-shoe-rack-source",
+            "My old sneakers are in a shoe rack in my closet now.",
+        )
+        val oldClaim = claim(
+            id = "old-sneakers-under-bed-claim",
+            sourceId = oldSource.id.value,
+            subjectEntityId = sneakersEntity.id,
+            predicate = "current_location",
+            objectValue = JsonPrimitive("under my bed"),
+            normalizedText = "The user's old sneakers were kept under the user's bed.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "old-sneakers-shoe-rack-claim",
+            sourceId = newSource.id.value,
+            subjectEntityId = sneakersEntity.id,
+            predicate = "current_location",
+            objectValue = JsonPrimitive("in a shoe rack in the user's closet"),
+            normalizedText = "The user's old sneakers are in a shoe rack in the user's closet.",
+        ).copy(supersedesClaimId = oldClaim.id)
+        val backingStore = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(oldSource, newSource),
+                entities = listOf(entity(), sneakersEntity),
+                claims = listOf(oldClaim, activeClaim),
+            )
+        )
+        val readPlan = MemoryReadPlan(
+            needMemory = true,
+            answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+            retrievalBudget = MemoryRetrievalBudget(claims = 4),
+            retrievalRequests = listOf(
+                MemoryReadPlan.RetrievalRequest(
+                    memoryType = MemorySemanticType.CLAIM,
+                    why = "Retrieve location facts for the user's old sneakers.",
+                    query = "old sneakers location storage",
+                    topK = 4,
+                )
+            ),
+        )
+
+        val currentSelector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value))
+        )
+        RuntimeMemoryReadPipeline(
+            store = backingStore,
+            planner = FixedReadPlanner(readPlan),
+            selector = currentSelector,
+        ).read(memoryReadRequest("current-sneakers-location", "Where do I keep my old sneakers?"))
+
+        assertTrue(currentSelector.capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+        assertFalse(currentSelector.capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, oldClaim.id.value)))
+
+        val historicalSelector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, oldClaim.id.value))
+        )
+        val historicalResult = RuntimeMemoryReadPipeline(
+            store = backingStore,
+            planner = FixedReadPlanner(readPlan),
+            selector = historicalSelector,
+        ).read(memoryReadRequest("historical-sneakers-location", "Where did I initially keep my old sneakers?"))
+
+        val prompt = assertNotNull(historicalResult.runtimePrompt)
+
+        assertTrue(historicalSelector.capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+        assertTrue(historicalSelector.capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, oldClaim.id.value)))
+        assertTrue(historicalResult.retrievedHits.map { it.toTestItemRef() }.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, oldClaim.id.value)))
+        assertTrue(prompt.contains("The user's old sneakers were kept under the user's bed."))
+        assertTrue(prompt.contains("non-current typed memory and older evidence may be the direct answer"))
+    }
+
+    @Test
     fun runtimeReadKeepsActiveNoteQuoteWithoutRenderingContaminatedSource() = runBlocking {
         val mixedSource = source(
             "mixed-shelflog-source",

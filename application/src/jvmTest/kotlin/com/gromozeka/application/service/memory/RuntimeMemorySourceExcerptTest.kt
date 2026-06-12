@@ -57,6 +57,57 @@ class RuntimeMemorySourceExcerptTest {
     }
 
     @Test
+    fun keepsRareShortTermMatchForBedtimeQuestions() {
+        val targetSentence = "user: I didn't get to bed until 2 AM last Wednesday, which made Thursday morning a struggle."
+        val source = """
+            Session date: 2023/05/25 (Thu) 13:47
+            $targetSentence
+            assistant: ${"Healthy breakfast and meal prep advice. ".repeat(120)}
+            user: ${"I need more healthy dinner recipes and snack ideas. ".repeat(80)}
+            assistant: ${"Mason jar salads, dried fruits, and bulk protein prep can help. ".repeat(120)}
+        """.trimIndent()
+
+        val excerpt = RuntimeMemorySourceExcerpt.queryFocused(
+            text = source,
+            query = "What time did I go to bed on the day before the appointment?",
+            maxChars = 1_200,
+        )
+
+        assertTrue(excerpt.contains(targetSentence), excerpt)
+        assertTrue(excerpt.contains("2 AM"), excerpt)
+    }
+
+    @Test
+    fun keepsBedtimeAnswerWhenFallbackQueryContainsCompetingDateTerms() {
+        val targetSentence =
+            "user: I'm feeling a bit sluggish today and I think it's because I didn't get to bed until 2 AM last Wednesday, which made Thursday morning a struggle."
+        val source = """
+            LongMemEval past chat session.
+            Session date: 2023/05/25 (Thu) 13:47
+            Transcript:
+            $targetSentence
+            assistant: ${"Healthy breakfast and meal prep advice can help with energy throughout the day. ".repeat(100)}
+            user: ${"I need quick lunches, snacks, healthy dinner recipes, and hydration options. ".repeat(80)}
+            assistant: ${"Mason Jar Salads, dried fruits, trail mix, meal prep labels, and coconut water. ".repeat(100)}
+        """.trimIndent()
+
+        val excerpt = RuntimeMemorySourceExcerpt.queryFocused(
+            text = source,
+            query = """
+                doctor's appointment went to bed day before time
+                LongMemEval recall target.
+                Current date: 2023/05/27 (Sat) 18:41
+                Question: What time did I go to bed on the day before I had a doctor's appointment?
+                doctor's appointment date and went to bed time day before appointment
+            """.trimIndent(),
+            maxChars = 4_000,
+        )
+
+        assertTrue(excerpt.contains(targetSentence), excerpt)
+        assertTrue(excerpt.contains("2 AM"), excerpt)
+    }
+
+    @Test
     fun doesNotExpandSingleLineMatchesBackToDocumentStart() {
         val source = "${"early unrelated text ".repeat(250)}target answer lives near the matched phrase and should survive excerpting ${"late unrelated text ".repeat(250)}"
 

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "2e5c441f7c6a3c8469aaa07abe3883c82345a7eb4cf6bd6a3c7afb433a686123",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been thinking about ways to stay connected with my colleagues. Any suggestions?\n\n                                Question date:\n                                2023/05/30 (Tue) 14:01\n\n                                Expected answer:\n                                The user would prefer responses that acknowledge their desire for social interaction and collaboration while working remotely, utilizing their previous experiences with company initiatives and team collaborations. They might prefer suggestions of virtual team-building activities, regular check-ins, or joining interest-based groups within the company. The user may not prefer generic suggestions that do not take into account their specific work situation or previous attempts at staying connected with colleagues.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:54026fce\n            Answer mode: RATIONALE\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-8035a25a6784-claim-4 [ACTIVE] has_goal family=has_goal: The user wants suggestions for how to socialize with colleagues while working from home.; scope=User's remote work socialization needs; evidence=DIRECT source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"I'm looking for some suggestions on how to socialize with my colleagues.\"\n- claim hot-path-8035a25a6784-claim-7 [ACTIVE] prefers family=prefers: The user likes the idea of virtual coffee breaks for socializing with colleagues.; scope=User's remote work socialization preferences; evidence=DIRECT source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"I like the idea of virtual coffee breaks.\"\n\n            Retrieved notes:\n            - note hot-path-8035a25a6784-note-2 [PLAN/ACTIVE]: Virtual coffee breaks should be introduced collaboratively and inclusively; For the user's team, virtual coffee breaks are best framed as an optional, collaborative response to missing workplace casual conversations during remote work: start with an open question, share a personal observation, propose the idea tentatively, invite feedback, and avoid dominating by using open-ended questions, active listening, paraphrasing, and explicitly inviting quieter members to contribute.; scope=Applies to the user's plan for discussing virtual coffee breaks with their team while working remotely.; evidence=SUMMARIZED source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"I like the idea of framing it as a collaborative suggestion. How can I make sure that I'm not dominating the conversation and allowing everyone to share their thoughts?\"\n- note hot-path-8035a25a6784-note-3 [PLAN/ACTIVE]: Ground rules for relaxed virtual coffee breaks; The user's emerging approach for virtual coffee breaks is to acknowledge challenges and mitigate them with a regular schedule, clear communication about attendance importance, a reliable and easy-to-use video platform, and ground rules such as no work talk, light casual conversation, respect for time, presence, video use, rotating prompts, and active listening.; scope=Applies to designing and running virtual coffee breaks for the user's team.; evidence=SUMMARIZED source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"we could establish a regular schedule for virtual coffee breaks and make sure to communicate the importance of attending\"\n\n            Retrieved evidence:\n            - source external:provided-text:e936c6d003a4d18dd516b70be4c22554 [external_record ref=longmemeval:54026fce:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some suggestions on how to socialize with my colleagues. I enjoy the flexibility of working from home but miss social interactions and watercooler conversations with colleagues. Do you have any ideas?\nassistant: Here are a few suggestions to socialize with your colleagues while working from home:...\n...4. **Social Channels**: Create or join informal chat groups on platforms like Slack or Microsoft Teams for non-work-related conversations....\n...These activities can help maintain and strengthen your connections with colleagues while working remotely.\nuser: I like the idea of virtual coffee breaks. How can I make sure that everyone in my team is comfortable with the idea and willing to participate?...\n...3. **Choose a convenient time**: Schedule virtual coffee breaks at a time that works for the majority of the team. Consider time zones, work schedules, and personal preferences to ensure maximum participation....\n...7. **Encourage participation**: Actively encourage team members to participate by sharing fun icebreaker questions, games, or topics of discussion. This can help break the ice and create a relaxed atmosphere....\n...\"Hey team! 👋 As we continue to work from home, I want to make sure we stay connected and have some fun together. I'm proposing we start a virtual coffee break every [insert day and time]. It'll be a casual, 30-minute video call where we can chat about non-work-related topics, share our weekends, or just catch up. Think of it as a virtual watercooler! 💧\n\nIf you're interested, please let me know, and I'll send out a calendar invite. If you have any suggestions or ideas for the format, please share them with me. Looking forward to catching up with you all soon! 😊\"...\n...user: I like the suggestion to discuss and agree with the team first. How can I bring it up in our next team meeting without making it sound like I'm forcing the idea on them?...\n...1. **Start with a question**: Begin by asking an open-ended question that sparks a discussion. For example:\n\t* \"How do we think we can stay connected and build our team culture while working from home?\"\n\t* \"What are some ways we can make our remote work experience feel more collaborative and social?\"...\n...* \"I've noticed that I've been missing our in-person coffee breaks and casual chats. It's made me realize how important those moments are for our team's morale and connection.\"...\n...\"Hey team, I wanted to discuss something that's been on my mind lately. How do we think we can stay connected and build our team culture while working from home? I've noticed that I've been missing our in-person coffee breaks and casual chats. It's made me realize how important those moments are for our team's morale and connection.\n\n\"I was thinking, what if we scheduled a virtual coffee break once a week? We could use Zoom to catch up and chat about non-work-related stuff. It could be a great way to stay connected and have some fun together. What do you all think? Would this be something you'd be interested in? Are there any concerns or suggestions you have?\"...\n...user: That's a great discussion! I think it's helpful to acknowledge the potential challenges and come up with strategies to overcome them. For example, we could establish a regular schedule for virtual coffee breaks and make sure to communicate the importance of attending. We could also use a video conferencing platform that's reliable and easy to use. What do you think about setting some ground rules for virtual coffee breaks, like no work talk allowed or keeping the conversation light and casual?...\n...What do you think about setting up a virtual \"coffee shop\" or a dedicated virtual space for team members to hang out and socialize? This could be a shared virtual room or a social platform where team members can connect and chat informally. 🤔\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Remote work; Concept named Remote work.\n- entity entity:<1> [CONCEPT]: Virtual coffee breaks; Concept named Virtual coffee breaks.\n- entity entity:<2> [CONCEPT]: Workplace casual conversations; Concept named Workplace casual conversations.\n- entity entity:<3> [ORGANIZATION]: User's team; Organization named User's team.\n- entity entity:<4> [PRODUCT]: Zoom; Product named Zoom.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "54026fce",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been thinking about ways to stay connected with my colleagues. Any suggestions?\n\n                                Question date:\n                                2023/05/30 (Tue) 14:01\n\n                                Expected answer:\n                                The user would prefer responses that acknowledge their desire for social interaction and collaboration while working remotely, utilizing their previous experiences with company initiatives and team collaborations. They might prefer suggestions of virtual team-building activities, regular check-ins, or joining interest-based groups within the company. The user may not prefer generic suggestions that do not take into account their specific work situation or previous attempts at staying connected with colleagues.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:54026fce\n            Answer mode: RATIONALE\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-8035a25a6784-claim-4 [ACTIVE] has_goal family=has_goal: The user wants suggestions for how to socialize with colleagues while working from home.; scope=User's remote work socialization needs; evidence=DIRECT source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"I'm looking for some suggestions on how to socialize with my colleagues.\"\n- claim hot-path-8035a25a6784-claim-7 [ACTIVE] prefers family=prefers: The user likes the idea of virtual coffee breaks for socializing with colleagues.; scope=User's remote work socialization preferences; evidence=DIRECT source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"I like the idea of virtual coffee breaks.\"\n\n            Retrieved notes:\n            - note hot-path-8035a25a6784-note-2 [PLAN/ACTIVE]: Virtual coffee breaks should be introduced collaboratively and inclusively; For the user's team, virtual coffee breaks are best framed as an optional, collaborative response to missing workplace casual conversations during remote work: start with an open question, share a personal observation, propose the idea tentatively, invite feedback, and avoid dominating by using open-ended questions, active listening, paraphrasing, and explicitly inviting quieter members to contribute.; scope=Applies to the user's plan for discussing virtual coffee breaks with their team while working remotely.; evidence=SUMMARIZED source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"I like the idea of framing it as a collaborative suggestion. How can I make sure that I'm not dominating the conversation and allowing everyone to share their thoughts?\"\n- note hot-path-8035a25a6784-note-3 [PLAN/ACTIVE]: Ground rules for relaxed virtual coffee breaks; The user's emerging approach for virtual coffee breaks is to acknowledge challenges and mitigate them with a regular schedule, clear communication about attendance importance, a reliable and easy-to-use video platform, and ground rules such as no work talk, light casual conversation, respect for time, presence, video use, rotating prompts, and active listening.; scope=Applies to designing and running virtual coffee breaks for the user's team.; evidence=SUMMARIZED source=external:provided-text:e936c6d003a4d18dd516b70be4c22554 quote=\"we could establish a regular schedule for virtual coffee breaks and make sure to communicate the importance of attending\"\n\n            Retrieved evidence:\n            - source external:provided-text:e936c6d003a4d18dd516b70be4c22554 [external_record ref=longmemeval:54026fce:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some suggestions on how to socialize with my colleagues. I enjoy the flexibility of working from home but miss social interactions and watercooler conversations with colleagues. Do you have any ideas?\nassistant: Here are a few suggestions to socialize with your colleagues while working from home:...\n...4. **Social Channels**: Create or join informal chat groups on platforms like Slack or Microsoft Teams for non-work-related conversations....\n...These activities can help maintain and strengthen your connections with colleagues while working remotely.\nuser: I like the idea of virtual coffee breaks. How can I make sure that everyone in my team is comfortable with the idea and willing to participate?...\n...3. **Choose a convenient time**: Schedule virtual coffee breaks at a time that works for the majority of the team. Consider time zones, work schedules, and personal preferences to ensure maximum participation....\n...7. **Encourage participation**: Actively encourage team members to participate by sharing fun icebreaker questions, games, or topics of discussion. This can help break the ice and create a relaxed atmosphere....\n...\"Hey team! 👋 As we continue to work from home, I want to make sure we stay connected and have some fun together. I'm proposing we start a virtual coffee break every [insert day and time]. It'll be a casual, 30-minute video call where we can chat about non-work-related topics, share our weekends, or just catch up. Think of it as a virtual watercooler! 💧\n\nIf you're interested, please let me know, and I'll send out a calendar invite. If you have any suggestions or ideas for the format, please share them with me. Looking forward to catching up with you all soon! 😊\"...\n...user: I like the suggestion to discuss and agree with the team first. How can I bring it up in our next team meeting without making it sound like I'm forcing the idea on them?...\n...1. **Start with a question**: Begin by asking an open-ended question that sparks a discussion. For example:\n\t* \"How do we think we can stay connected and build our team culture while working from home?\"\n\t* \"What are some ways we can make our remote work experience feel more collaborative and social?\"...\n...* \"I've noticed that I've been missing our in-person coffee breaks and casual chats. It's made me realize how important those moments are for our team's morale and connection.\"...\n...\"Hey team, I wanted to discuss something that's been on my mind lately. How do we think we can stay connected and build our team culture while working from home? I've noticed that I've been missing our in-person coffee breaks and casual chats. It's made me realize how important those moments are for our team's morale and connection.\n\n\"I was thinking, what if we scheduled a virtual coffee break once a week? We could use Zoom to catch up and chat about non-work-related stuff. It could be a great way to stay connected and have some fun together. What do you all think? Would this be something you'd be interested in? Are there any concerns or suggestions you have?\"...\n...user: That's a great discussion! I think it's helpful to acknowledge the potential challenges and come up with strategies to overcome them. For example, we could establish a regular schedule for virtual coffee breaks and make sure to communicate the importance of attending. We could also use a video conferencing platform that's reliable and easy to use. What do you think about setting some ground rules for virtual coffee breaks, like no work talk allowed or keeping the conversation light and casual?...\n...What do you think about setting up a virtual \"coffee shop\" or a dedicated virtual space for team members to hang out and socialize? This could be a shared virtual room or a social platform where team members can connect and chat informally. 🤔\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Remote work; Concept named Remote work.\n- entity entity:<1> [CONCEPT]: Virtual coffee breaks; Concept named Virtual coffee breaks.\n- entity entity:<2> [CONCEPT]: Workplace casual conversations; Concept named Workplace casual conversations.\n- entity entity:<3> [ORGANIZATION]: User's team; Organization named User's team.\n- entity entity:<4> [PRODUCT]: Zoom; Product named Zoom.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "54026fce",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The user is looking for tailored ways to stay socially connected with colleagues while working remotely, especially collaborative options like optional virtual coffee breaks, regular scheduled casual check-ins, informal social channels, and team-agreed ground rules rather than generic advice.\",\"reason\":\"The memory directly records the user's remote-work socialization need, preference for virtual coffee breaks, and prior collaborative planning with their team.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2305,
+                "completionTokens": 219,
+                "thinkingTokens": 119,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

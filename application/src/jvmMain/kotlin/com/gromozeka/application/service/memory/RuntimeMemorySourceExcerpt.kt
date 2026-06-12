@@ -25,7 +25,17 @@ internal object RuntimeMemorySourceExcerpt {
         val selected = mutableListOf<ExcerptWindow>()
         var remaining = maxChars - MATCHING_EXCERPTS_HEADER.length - SELECTED_WINDOW_SEPARATOR.length
         for (candidate in candidates) {
-            if (selected.any { it.overlaps(candidate, mergeGap = WINDOW_MERGE_GAP) }) continue
+            val overlappingIndex = selected.indexOfFirst { it.overlaps(candidate, mergeGap = WINDOW_MERGE_GAP) }
+            if (overlappingIndex >= 0) {
+                val previous = selected[overlappingIndex]
+                val mergedCandidate = previous.merge(candidate, source, queryNeedles)
+                val extraLength = mergedCandidate.renderedLength(source.length) - previous.renderedLength(source.length)
+                if (extraLength <= 0 || extraLength <= remaining) {
+                    selected[overlappingIndex] = mergedCandidate
+                    remaining -= extraLength.coerceAtLeast(0)
+                }
+                continue
+            }
             val snippetLength = candidate.renderedLength(source.length)
             if (snippetLength > remaining && selected.isNotEmpty()) continue
             selected += candidate
@@ -140,7 +150,7 @@ internal object RuntimeMemorySourceExcerpt {
         val tokens = searchTokens()
         val terms = tokens
             .map { it.trim() }
-            .filter { it.length >= 4 }
+            .filter { it.isUsefulTerm() }
             .distinctBy { it.lowercase() }
             .take(MAX_QUERY_TERMS)
             .map { it.toQueryNeedle(source) }
@@ -169,6 +179,11 @@ internal object RuntimeMemorySourceExcerpt {
         split(Regex("[^\\p{L}\\p{N}_-]+"))
             .map { it.trim() }
             .filter { it.isNotBlank() }
+
+    private fun String.isUsefulTerm(): Boolean {
+        val normalized = lowercase()
+        return length >= 4 || (length >= 3 && normalized !in SHORT_STOPWORDS)
+    }
 
     private fun String.occurrencesOf(term: String): Sequence<Int> =
         sequence {
@@ -219,4 +234,19 @@ internal object RuntimeMemorySourceExcerpt {
     private const val MIN_USEFUL_WINDOW_CHARS = 300
     private const val MATCHING_EXCERPTS_HEADER = "...[matching excerpts]..."
     private const val SELECTED_WINDOW_SEPARATOR = "\n"
+    private val SHORT_STOPWORDS = setOf(
+        "and",
+        "are",
+        "but",
+        "can",
+        "did",
+        "for",
+        "had",
+        "has",
+        "how",
+        "not",
+        "the",
+        "was",
+        "you",
+    )
 }

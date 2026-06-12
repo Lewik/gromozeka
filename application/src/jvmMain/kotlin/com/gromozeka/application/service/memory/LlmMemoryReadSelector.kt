@@ -286,6 +286,7 @@ class LlmMemoryReadSelector(
         - Prefer notes for rationale, decisions, plans, and contextual meaning.
         - Prefer action items only for open commitments or workflow state.
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
+        - For advice, improvement, troubleshooting, or "how should I do better" questions, select concrete user-specific successes, failures, constraints, goals, preferences, and prior attempts. Do not drop a specific successful/failed example merely because a broader experience claim was selected.
         - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.
         - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.
         - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.
@@ -293,7 +294,8 @@ class LlmMemoryReadSelector(
         - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.
         - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.
         - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.
-        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.
+        - For current-state answers, never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.
+        - For questions about an initial, original, previous, older, or before/after state, non-current typed memory can be the direct historical answer. Select both the older candidate and the current replacement when the answer depends on comparing old vs current state.
         - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.
         - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.
         - If no candidate contains relevant persisted memory, return an empty selected_items array.

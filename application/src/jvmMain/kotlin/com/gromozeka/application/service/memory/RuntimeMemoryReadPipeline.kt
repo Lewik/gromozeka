@@ -98,6 +98,7 @@ class RuntimeMemoryReadPipeline(
         searchSteps: MutableList<MemoryReadTrace.SearchStep>,
     ): RuntimeMemoryRetrievedHits {
         val targetEntities = resolveTargetEntitiesForRead(request, plan)
+        val includeHistoricalTypedMemory = request.targetAsksForHistoricalTypedMemory(plan)
         val queryEmbeddings = mutableMapOf<String, MemoryStore.SearchEmbedding?>()
         val hits = mutableListOf<MemoryStore.SearchHit>()
         hits += targetEntities.hits
@@ -201,7 +202,7 @@ class RuntimeMemoryReadPipeline(
                 ?: 4
             val resultLimit = limit.coerceIn(1, 12)
             val searchLimit = scope.selectorCandidateSearchLimit(resultLimit, request)
-            val searchFilters = retrievalRequest.memoryType.defaultFilters()
+            val searchFilters = retrievalRequest.memoryType.defaultFilters(includeHistoricalTypedMemory)
                 .withTargetEntityIds(retrievalRequest.memoryType, targetEntities.filterEntityIds)
 
             val scopedRawRequestHits = store.search(
@@ -323,7 +324,7 @@ class RuntimeMemoryReadPipeline(
             .sortedForRuntimeMemoryRead(plan)
         val selectorSnapshot = rawSelectorCandidateHits.toReadPartialSnapshot(request.namespace)
         val selectorCandidateHits = rawSelectorCandidateHits
-            .filterNot { it.isInactiveTypedHitForRead() }
+            .filterNot { !includeHistoricalTypedMemory && it.isInactiveTypedHitForRead() }
             .sortedForRuntimeMemoryRead(plan)
         val selectionResult = selector.select(
             MemoryReadSelectionRequest(
@@ -357,7 +358,12 @@ class RuntimeMemoryReadPipeline(
                     "droppedSourceIds=${sourceFilteredHits.droppedSources.joinToString("|") { it.source.id.value }}"
             }
         }
-        val selectedSourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(selectorSnapshot, selectorCandidateHits)
+        val selectedSourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(
+            plan,
+            includeHistoricalTypedMemory,
+            selectorSnapshot,
+            selectorCandidateHits,
+        )
         val sourceSafety = selectedSourceSafety
         if (sourceSafety.changed) {
             log.info {
@@ -692,6 +698,13 @@ object RuntimeMemoryPromptComposer {
             """.trimIndent()
         }
 
+        val historicalMemoryInstruction =
+            if (request.targetAsksForHistoricalTypedMemory(plan)) {
+                "If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value."
+            } else {
+                null
+            }
+
         return """
             MEMORY-ONLY CONTEXT
             This message is not part of the real conversation and must not be stored as evidence.
@@ -700,6 +713,7 @@ object RuntimeMemoryPromptComposer {
             Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.
             Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.
             If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.
+            ${historicalMemoryInstruction.orEmpty()}
             If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.
             If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.
             If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
@@ -1004,14 +1018,14 @@ private fun MemoryStore.SearchScope.selectorCandidateSearchLimit(
         else -> resultLimit
     }.coerceAtLeast(resultLimit)
 
-private fun MemorySemanticType.defaultFilters(): MemoryStore.SearchFilters =
+private fun MemorySemanticType.defaultFilters(includeHistoricalTypedMemory: Boolean): MemoryStore.SearchFilters =
     when (this) {
         MemorySemanticType.CLAIM -> MemoryStore.SearchFilters(
-            claimStatuses = setOf(MemoryClaim.Status.ACTIVE),
+            claimStatuses = if (includeHistoricalTypedMemory) emptySet() else setOf(MemoryClaim.Status.ACTIVE),
         )
 
         MemorySemanticType.NOTE -> MemoryStore.SearchFilters(
-            noteStatuses = setOf(MemoryNote.Status.ACTIVE),
+            noteStatuses = if (includeHistoricalTypedMemory) emptySet() else setOf(MemoryNote.Status.ACTIVE),
         )
 
         MemorySemanticType.ACTION_ITEM -> MemoryStore.SearchFilters()
@@ -1274,6 +1288,23 @@ private fun MemoryStore.SearchHit.isInactiveTypedHitForRead(): Boolean =
         is MemoryStore.SearchHit.NoteHit -> note.status != MemoryNote.Status.ACTIVE
         else -> false
     }
+
+private fun MemoryReadRequest.targetAsksForHistoricalTypedMemory(plan: MemoryReadPlan): Boolean =
+    buildList {
+        add(targetQueryText())
+        plan.retrievalRequests.forEach { request ->
+            add(request.query)
+            add(request.why)
+        }
+    }.joinToString("\n").hasHistoricalMemoryIntent()
+
+private fun String.hasHistoricalMemoryIntent(): Boolean {
+    val normalized = lowercase()
+        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .let { " ${it.trim()} " }
+    return HISTORICAL_MEMORY_INTENT_PHRASES.any { phrase -> normalized.contains(phrase) }
+}
 
 private fun List<MemoryStore.SearchHit>.prioritizeForReadRequest(
     retrievalRequest: MemoryReadPlan.RetrievalRequest,
@@ -1671,6 +1702,8 @@ private fun List<MemoryStore.SearchHit>.toReadPartialSnapshot(namespace: MemoryN
     )
 
 private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
+    plan: MemoryReadPlan,
+    includeHistoricalTypedMemory: Boolean,
     snapshot: MemoryNamespaceSnapshot,
     candidateHits: List<MemoryStore.SearchHit>,
 ): RuntimeMemorySourceSafetyResult {
@@ -1686,11 +1719,21 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
         sourceIds = suppressedSourceIds,
         candidateHits = candidateHits,
     ).filterNot { it.toItemRef() in existingRefs }
-    val suppressedSourceHits = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
-        .filter { it.source.id in suppressedSourceIds }
-    val repairedHits = filterNot { hit ->
-        hit is MemoryStore.SearchHit.SourceHit && hit.source.id in suppressedSourceIds
-    } + restoredHits
+    val suppressRawSources =
+        plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET && !includeHistoricalTypedMemory
+    val suppressedSourceHits = if (suppressRawSources) {
+        filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+            .filter { it.source.id in suppressedSourceIds }
+    } else {
+        emptyList()
+    }
+    val repairedHits = if (suppressRawSources) {
+        filterNot { hit ->
+            hit is MemoryStore.SearchHit.SourceHit && hit.source.id in suppressedSourceIds
+        } + restoredHits
+    } else {
+        this + restoredHits
+    }
 
     return RuntimeMemorySourceSafetyResult(
         hits = repairedHits,
@@ -1989,6 +2032,23 @@ private fun List<MemoryReadTrace.Hit>.summaryForRuntimeMemoryTraceLog(): String 
 
 private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.totalDebugLimit(): Int =
     listOf(claims, notes, actionItems, sources, episodes).filter { it > 0 }.sum().takeIf { it > 0 } ?: 0
+
+private val HISTORICAL_MEMORY_INTENT_PHRASES = setOf(
+    " at first ",
+    " back then ",
+    " before ",
+    " earlier ",
+    " earliest ",
+    " first ",
+    " formerly ",
+    " initial ",
+    " initially ",
+    " originally ",
+    " previous ",
+    " previously ",
+    " prior ",
+    " used to ",
+)
 
 private fun String.oneLineForRuntimeMemoryLog(maxChars: Int): String {
     val oneLine = trim()

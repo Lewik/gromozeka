@@ -103,7 +103,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             overriddenBy = overriddenBy,
             selectionHint = when {
                 overriddenBy.isNotEmpty() ->
-                    "Historical evidence only. Do not select as current truth; prefer the ACTIVE overridden_by item for factual answers."
+                    "Historical evidence only. Select for historical/previous-state questions; prefer the ACTIVE overridden_by item for current-state factual answers."
                 supportsActive ->
                     "Evidence only. Select only when exact wording/provenance is required; typed ACTIVE memory carries the current truth."
                 else ->
@@ -161,7 +161,7 @@ internal object MemoryReadSelectorCandidateRenderer {
                 status == MemoryClaim.Status.ACTIVE ->
                     "Current typed fact. Prefer this for relevant factual answers over raw sources."
                 overriddenBy.isNotEmpty() ->
-                    "Non-current typed fact. Do not use as current truth; prefer the ACTIVE overridden_by item."
+                    "Non-current typed fact. Use for historical/previous-state questions; prefer the ACTIVE overridden_by item for current-state questions."
                 else ->
                     "Non-current typed fact. Use only when the target asks about historical, expired, retracted, or candidate memory."
             },

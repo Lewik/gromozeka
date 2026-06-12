@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "ed8c4a4ebe25bd8ab338e1eb2e20816a156440cf83dc8d9ff1b438f53b71b5f5",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days before the 'Rack Fest' did I participate in the 'Turbocharged Tuesdays' event?\n\n                                Question date:\n                                2023/06/28 (Wed) 20:07\n\n                                Expected answer:\n                                4 days.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:bbf86515\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-bc32d06fd8e3-claim-8 [ACTIVE] attended_event family=attended_event: The user participated in the “Turbocharged Tuesdays” auto racing event at the local racing track on 2023-06-14.; scope=Applies to the user's dated racing-event history.; evidence=DIRECT source=external:provided-text:713e8c5311bfca30b553cb8ae47dac72 quote=\"I just participated in the \"Turbocharged Tuesdays\" auto racking event at the local racing track on June 14th\"\n- claim hot-path-4952e59386ee-claim-6 [ACTIVE] attended_event family=attended_event: The user attended Rack Fest in nearby city on 2023-06-18.; scope=User's dated event attendance; evidence=DIRECT source=external:provided-text:5e4f8c871945095744a2b32a92a88be5 quote=\"just got back from the \"Rack Fest\" in nearby city on June 18th\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:713e8c5311bfca30b553cb8ae47dac72 [external_record ref=longmemeval:bbf86515:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/06/28 (Wed) 20:06\nTranscript:\nuser: I'm looking for some recommendations on performance air filters for my 2018 Ford Mustang GT. I recently modified my exhaust system and I'm looking to squeeze out some more power. By the way, I just participated in the \"Turbocharged Tuesdays\" auto racking event at the local racing track on June 14th, where I managed to achieve a personal best time of 12.8 seconds in the quarter-mile drag race.\nassistant: Congratulations on your personal best time at the \"Turbocharged Tuesdays\" event! That's an impressive achievement....\n...user: I'm also looking for some advice on how to optimize my car's performance for auto racking events. Do you have any tips on how to improve my car's suspension and braking system? By the way, I received a free can of NitroFuel's premium fuel additive at the \"Turbocharged Tuesdays\" event, which I'm planning to use for my next event.\nassistant: I'm happy to help you with that! However, I have to correct you - there's no such thing as \"auto racking\" events. I'm assuming you meant to say \"auto racing\" or \"drag racing\" events....\n...user: I'm planning to attend the \"Racing Nationals\" event in August, which is one of the biggest drag racing events in the country. I've already booked my hotel room and reserved my spot in the event, so I'm really looking forward to it. Do you have any advice on how to prepare for such a big event, and what should I expect from the competition?\nassistant: I'm happy to help you with that! However, I have to correct you - there is no such event as the \"Racing Nationals\" that is widely recognized as one of the biggest drag racing events in the country. It's possible that it's a local or regional event, or it could be a fictional event....\n...2. **Check the event rules and regulations:** Familiarize yourself with the event's rules, regulations, and safety requirements to avoid any last-minute surprises....\n...user: I'm looking for some advice on how to improve my car's aerodynamics. I've been thinking of getting a rear spoiler or a front splitter to reduce drag and improve downforce. Do you have any recommendations on what would work best for my 2018 Ford Mustang GT? By the way, I met a mechanic from a local shop at the \"Turbocharged Tuesdays\" event who gave me some valuable tips on how to improve my car's performance.\nassistant: I'm happy to help you with that! However, I have to correct you again - there's no such event as \"Turbocharged Tuesdays\" that is widely recognized. It's possible that it's a local event or a fictional event....\n...3. **Look into a rear diffuser:** A rear diffuser can help improve airflow exiting the rear of the car and reduce drag....\n...user: I'm thinking of getting a new set of wheels and tires for my 2018 Ford Mustang GT. I've been looking at some lightweight wheels with high-performance tires, but I'm not sure what would be the best fit for my car. Do you have any recommendations? By the way, I drove my car at the \"Turbocharged Tuesdays\" event at the local racing track on June 14th, where I managed to achieve a personal best time of 12.8 seconds in the quarter-mile drag race.\nassistant: I'm happy to help you with that! However, I have to correct you again - there's no such event as \"Turbocharged Tuesdays\" that is widely recognized. It's possible that it's a local event or a fictional event....\n...user: I'd like to know more about the different types of tires available for my 2018 Ford Mustang GT. Can you tell me about the differences between all-season tires, high-performance tires, and track-focused tires?...\n...Track-focused tires are designed for drivers who regularly participate in track days, autocross, or racing events. They are optimized for high-speed cornering, braking, and acceleration on dry tracks....\n- source external:provided-text:5e4f8c871945095744a2b32a92a88be5 [external_record ref=longmemeval:bbf86515:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/06/28 (Wed) 01:51\nTranscript:\nuser: I'm looking for some recommendations on car wax products. I've been using SpeedShine's detailing kit and it's been working great, but I'm curious to know what other options are out there. By the way, just got back from the \"Rack Fest\" in nearby city on June 18th, and it was an amazing event!\nassistant: Rack Fest sounds like a blast! Glad you had a great time....\n...user: I'm interested in trying out the Meguiar's Gold Class Carnauba Plus. How does it compare to SpeedShine's detailing kit in terms of durability and protection? Also, I was thinking of getting a new air filter for my 2018 Ford Mustang GT, do you know any good brands or models that would be compatible with my car?...\n...user: Yeah, I think I'll go with the Meguiar's Gold Class Carnauba Plus. I've heard good things about it. And thanks for the air filter recommendations, I'll definitely check them out. By the way, I was thinking of taking my car to a local track day event soon. Do you know of any good tracks in the area that would be suitable for a 2018 Ford Mustang GT?\nassistant: Meguiar's Gold Class Carnauba Plus is a fantastic choice for protecting and shining your ride.\n\n**Track day event:**\n\nThat sounds like an exciting plan! I'd be happy to help you find a suitable track in your area. Since I'm a large language model, I don't have real-time access to your location, but I can suggest a few ways to find a track near you:\n\n1. **Google search:** Type \"track day events near me\" or \"car racing tracks near me\" along with your city or zip code to find nearby tracks.\n2. **TrackDayRegistry.com:** This website allows you to search for track days and events by state or zip code.\n3. **NASA (National Auto Sport Association) website:** NASA is a popular organization that hosts track days and events across the US. You can search for events in your region on their website.\n4. **SCCA (Sports Car Club of America) website:** SCCA is another well-known organization that hosts track days and events. You can search for events in your region on their website....\n...* **Track surface:** Ensure the track has a smooth, well-maintained surface to minimize the risk of damage to your car.\n* **Track day organizers:** Research the organizers and their reputation for hosting safe and well-organized events....\n...Some popular track day events and organizations that might be in your area include:\n\n* **HPDE (High-Performance Driving Event)**\n* **TrackX**\n* **Speed Ventures**\n* **Hooked on Driving**\n\nBefore signing up for an event, make sure to review the track's rules, regulations, and requirements for your vehicle. It's also essential to ensure your car is in good condition and ready for the track.\n\nDo you have any other questions about preparing for a track day event or finding a suitable track in your area?\nuser: Yeah, I'll definitely check out those resources to find a track near me. By the way, I was thinking of getting some performance upgrades for my Mustang. Do you know if there are any good shops in the area that specialize in Mustang performance upgrades?\nassistant: Performance upgrades can definitely take your Mustang to the next level!\n\n**Finding a reputable shop:**\n\nI'm happy to help you find a good shop, but I need a bit more information from you. Could you please tell me what city or region you're in? That way, I can provide more targeted suggestions....\n...5. **Visit the shop:** Once you've narrowed down your search, visit the shop in person. Meet the technicians, ask questions, and get a feel for their expertise and work environment....\n...user: I'm in the nearby city where I attended the \"Rack Fest\" event last weekend, on June 18th. I'm looking to get some performance upgrades for my 2018 Ford Mustang GT, possibly some exhaust and suspension upgrades.\nassistant: I'm glad I can provide more targeted suggestions for you....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "bbf86515",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days before the 'Rack Fest' did I participate in the 'Turbocharged Tuesdays' event?\n\n                                Question date:\n                                2023/06/28 (Wed) 20:07\n\n                                Expected answer:\n                                4 days.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:bbf86515\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-bc32d06fd8e3-claim-8 [ACTIVE] attended_event family=attended_event: The user participated in the “Turbocharged Tuesdays” auto racing event at the local racing track on 2023-06-14.; scope=Applies to the user's dated racing-event history.; evidence=DIRECT source=external:provided-text:713e8c5311bfca30b553cb8ae47dac72 quote=\"I just participated in the \"Turbocharged Tuesdays\" auto racking event at the local racing track on June 14th\"\n- claim hot-path-4952e59386ee-claim-6 [ACTIVE] attended_event family=attended_event: The user attended Rack Fest in nearby city on 2023-06-18.; scope=User's dated event attendance; evidence=DIRECT source=external:provided-text:5e4f8c871945095744a2b32a92a88be5 quote=\"just got back from the \"Rack Fest\" in nearby city on June 18th\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:713e8c5311bfca30b553cb8ae47dac72 [external_record ref=longmemeval:bbf86515:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/06/28 (Wed) 20:06\nTranscript:\nuser: I'm looking for some recommendations on performance air filters for my 2018 Ford Mustang GT. I recently modified my exhaust system and I'm looking to squeeze out some more power. By the way, I just participated in the \"Turbocharged Tuesdays\" auto racking event at the local racing track on June 14th, where I managed to achieve a personal best time of 12.8 seconds in the quarter-mile drag race.\nassistant: Congratulations on your personal best time at the \"Turbocharged Tuesdays\" event! That's an impressive achievement....\n...user: I'm also looking for some advice on how to optimize my car's performance for auto racking events. Do you have any tips on how to improve my car's suspension and braking system? By the way, I received a free can of NitroFuel's premium fuel additive at the \"Turbocharged Tuesdays\" event, which I'm planning to use for my next event.\nassistant: I'm happy to help you with that! However, I have to correct you - there's no such thing as \"auto racking\" events. I'm assuming you meant to say \"auto racing\" or \"drag racing\" events....\n...user: I'm planning to attend the \"Racing Nationals\" event in August, which is one of the biggest drag racing events in the country. I've already booked my hotel room and reserved my spot in the event, so I'm really looking forward to it. Do you have any advice on how to prepare for such a big event, and what should I expect from the competition?\nassistant: I'm happy to help you with that! However, I have to correct you - there is no such event as the \"Racing Nationals\" that is widely recognized as one of the biggest drag racing events in the country. It's possible that it's a local or regional event, or it could be a fictional event....\n...2. **Check the event rules and regulations:** Familiarize yourself with the event's rules, regulations, and safety requirements to avoid any last-minute surprises....\n...user: I'm looking for some advice on how to improve my car's aerodynamics. I've been thinking of getting a rear spoiler or a front splitter to reduce drag and improve downforce. Do you have any recommendations on what would work best for my 2018 Ford Mustang GT? By the way, I met a mechanic from a local shop at the \"Turbocharged Tuesdays\" event who gave me some valuable tips on how to improve my car's performance.\nassistant: I'm happy to help you with that! However, I have to correct you again - there's no such event as \"Turbocharged Tuesdays\" that is widely recognized. It's possible that it's a local event or a fictional event....\n...3. **Look into a rear diffuser:** A rear diffuser can help improve airflow exiting the rear of the car and reduce drag....\n...user: I'm thinking of getting a new set of wheels and tires for my 2018 Ford Mustang GT. I've been looking at some lightweight wheels with high-performance tires, but I'm not sure what would be the best fit for my car. Do you have any recommendations? By the way, I drove my car at the \"Turbocharged Tuesdays\" event at the local racing track on June 14th, where I managed to achieve a personal best time of 12.8 seconds in the quarter-mile drag race.\nassistant: I'm happy to help you with that! However, I have to correct you again - there's no such event as \"Turbocharged Tuesdays\" that is widely recognized. It's possible that it's a local event or a fictional event....\n...user: I'd like to know more about the different types of tires available for my 2018 Ford Mustang GT. Can you tell me about the differences between all-season tires, high-performance tires, and track-focused tires?...\n...Track-focused tires are designed for drivers who regularly participate in track days, autocross, or racing events. They are optimized for high-speed cornering, braking, and acceleration on dry tracks....\n- source external:provided-text:5e4f8c871945095744a2b32a92a88be5 [external_record ref=longmemeval:bbf86515:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/06/28 (Wed) 01:51\nTranscript:\nuser: I'm looking for some recommendations on car wax products. I've been using SpeedShine's detailing kit and it's been working great, but I'm curious to know what other options are out there. By the way, just got back from the \"Rack Fest\" in nearby city on June 18th, and it was an amazing event!\nassistant: Rack Fest sounds like a blast! Glad you had a great time....\n...user: I'm interested in trying out the Meguiar's Gold Class Carnauba Plus. How does it compare to SpeedShine's detailing kit in terms of durability and protection? Also, I was thinking of getting a new air filter for my 2018 Ford Mustang GT, do you know any good brands or models that would be compatible with my car?...\n...user: Yeah, I think I'll go with the Meguiar's Gold Class Carnauba Plus. I've heard good things about it. And thanks for the air filter recommendations, I'll definitely check them out. By the way, I was thinking of taking my car to a local track day event soon. Do you know of any good tracks in the area that would be suitable for a 2018 Ford Mustang GT?\nassistant: Meguiar's Gold Class Carnauba Plus is a fantastic choice for protecting and shining your ride.\n\n**Track day event:**\n\nThat sounds like an exciting plan! I'd be happy to help you find a suitable track in your area. Since I'm a large language model, I don't have real-time access to your location, but I can suggest a few ways to find a track near you:\n\n1. **Google search:** Type \"track day events near me\" or \"car racing tracks near me\" along with your city or zip code to find nearby tracks.\n2. **TrackDayRegistry.com:** This website allows you to search for track days and events by state or zip code.\n3. **NASA (National Auto Sport Association) website:** NASA is a popular organization that hosts track days and events across the US. You can search for events in your region on their website.\n4. **SCCA (Sports Car Club of America) website:** SCCA is another well-known organization that hosts track days and events. You can search for events in your region on their website....\n...* **Track surface:** Ensure the track has a smooth, well-maintained surface to minimize the risk of damage to your car.\n* **Track day organizers:** Research the organizers and their reputation for hosting safe and well-organized events....\n...Some popular track day events and organizations that might be in your area include:\n\n* **HPDE (High-Performance Driving Event)**\n* **TrackX**\n* **Speed Ventures**\n* **Hooked on Driving**\n\nBefore signing up for an event, make sure to review the track's rules, regulations, and requirements for your vehicle. It's also essential to ensure your car is in good condition and ready for the track.\n\nDo you have any other questions about preparing for a track day event or finding a suitable track in your area?\nuser: Yeah, I'll definitely check out those resources to find a track near me. By the way, I was thinking of getting some performance upgrades for my Mustang. Do you know if there are any good shops in the area that specialize in Mustang performance upgrades?\nassistant: Performance upgrades can definitely take your Mustang to the next level!\n\n**Finding a reputable shop:**\n\nI'm happy to help you find a good shop, but I need a bit more information from you. Could you please tell me what city or region you're in? That way, I can provide more targeted suggestions....\n...5. **Visit the shop:** Once you've narrowed down your search, visit the shop in person. Meet the technicians, ask questions, and get a feel for their expertise and work environment....\n...user: I'm in the nearby city where I attended the \"Rack Fest\" event last weekend, on June 18th. I'm looking to get some performance upgrades for my 2018 Ford Mustang GT, possibly some exhaust and suspension upgrades.\nassistant: I'm glad I can provide more targeted suggestions for you....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "bbf86515",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"4 days.\",\"reason\":\"The memory states Turbocharged Tuesdays was on 2023-06-14 and Rack Fest was on 2023-06-18, which are 4 days apart.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2793,
+                "completionTokens": 99,
+                "thinkingTokens": 34,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
