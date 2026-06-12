@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.ConversationEngineService
+import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
@@ -70,6 +71,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -143,6 +145,7 @@ class MemoryRealModelE2eTest {
             val context = harness.context
             val conversationService = context.getBean(ConversationDomainService::class.java)
             val conversationEngineService = context.getBean(ConversationEngineService::class.java)
+            val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
             val store = context.getBean(MemoryStore::class.java)
             val traceCollector = context.getBean(MemoryE2eReadTraceCollector::class.java)
@@ -175,6 +178,7 @@ class MemoryRealModelE2eTest {
                                 harness = harness,
                                 conversationService = conversationService,
                                 conversationEngineService = conversationEngineService,
+                                memoryToolApplicationService = memoryToolApplicationService,
                                 promptDomainService = promptDomainService,
                                 store = store,
                                 case = case,
@@ -304,6 +308,7 @@ class MemoryRealModelE2eTest {
         harness: ServerTestHarness,
         conversationService: ConversationDomainService,
         conversationEngineService: ConversationEngineService,
+        memoryToolApplicationService: MemoryToolApplicationService,
         promptDomainService: PromptDomainService,
         store: MemoryStore,
         case: MemoryE2eCase,
@@ -361,32 +366,54 @@ class MemoryRealModelE2eTest {
             val currentConversation = conversation(session.id)
             session.turns.forEachIndexed { turnIndex, turnElement ->
                 val turn = turnElement.toSeedTurn(case.id, session.id, turnIndex)
-                val text = turn.text
+                val text = turn.progressText()
                 val turnStartedAt = System.currentTimeMillis()
                 appendProgress(
                     progressPath,
                     "seed_turn_start case=${case.id} session=${session.id} turn=${turnIndex + 1}/${session.turns.size} chars=${text.length} preview=${text.oneLineForProgressLog()}"
                 )
                 runCatching {
-                    sendUserTurn(
-                        conversationEngineService = conversationEngineService,
-                        conversation = currentConversation,
-                        agent = agent,
-                        text = text,
-                        traceCollector = traceCollector,
-                        writeTraceCollector = writeTraceCollector,
-                    )
-                }.onSuccess { sentTurn ->
+                    if (turn.isProvidedContent()) {
+                        val namespaceValue = turn.namespace
+                            ?: resolveNamespace(
+                                conversationService = conversationService,
+                                conversations = conversations,
+                                projectPath = projectPath.absolutePathString(),
+                                agent = agent,
+                            ).value
+                        rememberProvidedSeedTurn(
+                            memoryToolApplicationService = memoryToolApplicationService,
+                            store = store,
+                            turn = turn,
+                            namespaceValue = namespaceValue,
+                            progressPath = progressPath,
+                            caseId = case.id,
+                            sessionId = session.id,
+                            turnIndex = turnIndex,
+                        )
+                    } else {
+                        val messageText = turn.requireText(case.id, session.id, turnIndex)
+                        val sentTurn = sendUserTurn(
+                            conversationEngineService = conversationEngineService,
+                            conversation = currentConversation,
+                            agent = agent,
+                            text = messageText,
+                            traceCollector = traceCollector,
+                            writeTraceCollector = writeTraceCollector,
+                        )
+                        ExecutedSeedTurn(
+                            sessionId = session.id,
+                            text = messageText,
+                            memoryWriteTraceExpectation = turn.memoryWriteTraceExpectation,
+                            memoryWriteTrace = sentTurn.memoryWriteTrace,
+                        )
+                    }
+                }.onSuccess { executedTurn ->
                     appendProgress(
                         progressPath,
-                        "seed_turn_end case=${case.id} session=${session.id} turn=${turnIndex + 1}/${session.turns.size} durationMs=${System.currentTimeMillis() - turnStartedAt} answerChars=${sentTurn.answer.length} answerPreview=${sentTurn.answer.oneLineForProgressLog()} write=${sentTurn.memoryWriteTrace.progressSummaryForProgressLog()}"
+                        "seed_turn_end case=${case.id} session=${session.id} turn=${turnIndex + 1}/${session.turns.size} durationMs=${System.currentTimeMillis() - turnStartedAt} input=${executedTurn.inputKind} run=${executedTurn.memoryRun?.id?.value ?: "none"} runStatus=${executedTurn.memoryRun?.status?.name ?: "none"} write=${executedTurn.memoryWriteTrace.progressSummaryForProgressLog()}"
                     )
-                    seedResults += ExecutedSeedTurn(
-                        sessionId = session.id,
-                        text = text,
-                        memoryWriteTraceExpectation = turn.memoryWriteTraceExpectation,
-                        memoryWriteTrace = sentTurn.memoryWriteTrace,
-                    )
+                    seedResults += executedTurn
                 }.onFailure { error ->
                     appendProgress(
                         progressPath,
@@ -1107,6 +1134,114 @@ class MemoryRealModelE2eTest {
             memoryWriteTrace = writeTraceCollector.take(userMessage.id),
         )
     }
+
+    private suspend fun rememberProvidedSeedTurn(
+        memoryToolApplicationService: MemoryToolApplicationService,
+        store: MemoryStore,
+        turn: MemoryE2eSeedTurnDefinition,
+        namespaceValue: String,
+        progressPath: Path,
+        caseId: String,
+        sessionId: String,
+        turnIndex: Int,
+    ): ExecutedSeedTurn {
+        val toolResult = memoryToolApplicationService.rememberProvidedText(
+            conversationIdValue = null,
+            text = turn.text?.trim()?.takeIf { it.isNotBlank() && turn.documentType != null },
+            filePath = turn.resolvedFilePath(resolveProjectRoot()),
+            rawUrl = turn.rawUrl?.trim()?.takeIf { it.isNotBlank() },
+            documentType = turn.documentType,
+            title = turn.title,
+            sourceRef = turn.sourceRef,
+            forceWrite = turn.forceWrite,
+            mode = turn.mode,
+            namespaceValue = namespaceValue,
+        )
+        val runId = extractQueuedRunId(toolResult)
+        val completedRun = if (runId != null) {
+            awaitMemoryRunTerminal(
+                store = store,
+                runId = MemoryRun.Id(runId),
+                progressPath = progressPath,
+                caseId = caseId,
+                sessionId = sessionId,
+                turnIndex = turnIndex,
+            )
+        } else {
+            ensureToolResultSucceeded(toolResult)
+            null
+        }
+        return ExecutedSeedTurn(
+            sessionId = sessionId,
+            text = turn.progressText(),
+            memoryWriteTraceExpectation = turn.memoryWriteTraceExpectation,
+            memoryWriteTrace = null,
+            inputKind = turn.inputKindForReport(),
+            toolResult = toolResult,
+            memoryRun = completedRun,
+        )
+    }
+
+    private suspend fun awaitMemoryRunTerminal(
+        store: MemoryStore,
+        runId: MemoryRun.Id,
+        progressPath: Path,
+        caseId: String,
+        sessionId: String,
+        turnIndex: Int,
+    ): MemoryRun =
+        withTimeout(e2eTurnCompletionTimeoutMs()) {
+            var lastStatus: MemoryRun.Status? = null
+            while (true) {
+                val run = store.findRunById(runId)
+                if (run != null && run.status.isTerminal()) {
+                    if (run.status != MemoryRun.Status.SUCCESS) {
+                        error(
+                            "Document seed run ${run.id.value} finished with ${run.status.name}: " +
+                                (run.errorText ?: run.summary)
+                        )
+                    }
+                    return@withTimeout run
+                }
+                if (run?.status != null && run.status != lastStatus) {
+                    lastStatus = run.status
+                    appendProgress(
+                        progressPath,
+                        "seed_document_run_status case=$caseId session=$sessionId turn=${turnIndex + 1} run=${run.id.value} status=${run.status.name} summary=${run.summary.oneLineForProgressLog()}"
+                    )
+                }
+                delay(500)
+            }
+            error("Unreachable")
+        }
+
+    private fun extractQueuedRunId(toolResult: String): String? {
+        val result = parseToolResult(toolResult)
+        val status = result.stringValue("status")
+        if (status == "failed") {
+            error(result.stringValue("message") ?: toolResult)
+        }
+        return result.stringValue("run_id")
+    }
+
+    private fun ensureToolResultSucceeded(toolResult: String) {
+        val result = parseToolResult(toolResult)
+        val status = result.stringValue("status")
+        if (status != "completed") {
+            error("Unexpected memory tool result status '$status': $toolResult")
+        }
+    }
+
+    private fun parseToolResult(toolResult: String): JsonObject =
+        runCatching { json.parseToJsonElement(toolResult) as? JsonObject }
+            .getOrNull()
+            ?: error("Memory tool returned non-object JSON: $toolResult")
+
+    private fun JsonObject.stringValue(name: String): String? =
+        (this[name] as? JsonPrimitive)?.contentOrNull
+
+    private fun MemoryRun.Status.isTerminal(): Boolean =
+        this in setOf(MemoryRun.Status.SUCCESS, MemoryRun.Status.FAILED, MemoryRun.Status.PARTIAL, MemoryRun.Status.CANCELLED)
 
     private suspend fun collectSubmittedTurn(
         conversationEngineService: ConversationEngineService,
@@ -2199,25 +2334,12 @@ class MemoryRealModelE2eTest {
             "objectValueStringIn=$objectValueStringIn objectValueContainsAll=$objectValueContainsAll evidenceQuoteContainsAll=$evidenceQuoteContainsAll"
 
     private fun List<Conversation.Message>.renderAssistantText(): String =
-        filter { it.role == Conversation.Message.Role.ASSISTANT || it.role == Conversation.Message.Role.SYSTEM }
+        filter { it.role == Conversation.Message.Role.ASSISTANT }
             .flatMap { message ->
                 message.content.mapNotNull { item ->
                     when (item) {
                         is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
-                        is Conversation.Message.ContentItem.System -> item.content
-                        is Conversation.Message.ContentItem.ToolResult -> item.result.joinToString("\n") { result ->
-                            when (result) {
-                                is Conversation.Message.ContentItem.ToolResult.Data.Text -> result.content
-                                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> "[base64:${result.mediaType.value}]"
-                                is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url:${result.url}]"
-                                is Conversation.Message.ContentItem.ToolResult.Data.FileData -> "[file:${result.fileId}]"
-                            }
-                        }
-                        is Conversation.Message.ContentItem.ToolCall -> "[tool:${item.call.name}]"
-                        is Conversation.Message.ContentItem.Thinking -> null
-                        is Conversation.Message.ContentItem.UserMessage -> item.text
-                        is Conversation.Message.ContentItem.ImageItem -> "[image:${item.source.type}]"
-                        is Conversation.Message.ContentItem.UnknownJson -> item.json.toString()
+                        else -> null
                     }
                 }
             }
@@ -2271,7 +2393,17 @@ class MemoryRealModelE2eTest {
         result.seedResults.forEach { seed ->
             appendLine("### ${seed.sessionId}")
             appendLine()
-            appendLine("Message: ${seed.text}")
+            appendLine("Input kind: ${seed.inputKind}")
+            appendLine()
+            appendLine("Message: ${seed.text.oneLineForProgressLog(1_000)}")
+            if (seed.toolResult != null) {
+                appendLine()
+                appendLine("Tool result: ${seed.toolResult.oneLineForProgressLog(1_000)}")
+            }
+            if (seed.memoryRun != null) {
+                appendLine()
+                appendLine("Run: ${seed.memoryRun.id.value} ${seed.memoryRun.status.name} ${seed.memoryRun.summary}")
+            }
             appendLine()
             appendLine(renderMemoryWriteTrace(seed.memoryWriteTrace))
             appendLine()
@@ -3022,9 +3154,55 @@ private data class MemoryE2eSeedSession(
 
 @Serializable
 private data class MemoryE2eSeedTurnDefinition(
-    val text: String,
+    val text: String? = null,
+    val filePath: String? = null,
+    val rawUrl: String? = null,
+    val documentType: String? = null,
+    val title: String? = null,
+    val sourceRef: String? = null,
+    val forceWrite: Boolean = false,
+    val mode: String? = null,
+    val namespace: String? = null,
     val memoryWriteTraceExpectation: MemoryWriteTraceExpectation = MemoryWriteTraceExpectation(),
-)
+) {
+    fun isProvidedContent(): Boolean =
+        !filePath.isNullOrBlank() || !rawUrl.isNullOrBlank() || documentType != null
+
+    fun requireText(
+        caseId: String,
+        sessionId: String,
+        turnIndex: Int,
+    ): String =
+        text?.takeIf { it.isNotBlank() }
+            ?: error("Seed turn ${turnIndex + 1} in $caseId/$sessionId requires non-blank text")
+
+    fun progressText(): String =
+        when {
+            !filePath.isNullOrBlank() -> "file_path:${filePath.trim()}"
+            !rawUrl.isNullOrBlank() -> "raw_url:${rawUrl.trim()}"
+            else -> text.orEmpty()
+        }
+
+    fun inputKindForReport(): String =
+        when {
+            !filePath.isNullOrBlank() -> "file_path"
+            !rawUrl.isNullOrBlank() -> "raw_url"
+            documentType != null -> "provided_document"
+            else -> "chat_message"
+        }
+
+    fun resolvedFilePath(projectRoot: String): String? =
+        filePath?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { value ->
+                val path = Path.of(value)
+                if (path.isAbsolute) {
+                    path.normalize().absolutePathString()
+                } else {
+                    Path.of(projectRoot).resolve(path).normalize().absolutePathString()
+                }
+            }
+}
 
 private val seedTurnJson = Json {
     ignoreUnknownKeys = true
@@ -3041,8 +3219,34 @@ private fun JsonElement.toSeedTurn(
         )
 
         is JsonObject -> seedTurnJson.decodeFromJsonElement<MemoryE2eSeedTurnDefinition>(this)
+            .also { it.validate(caseId, sessionId, turnIndex) }
+
         else -> error("Seed turn ${turnIndex + 1} in $caseId/$sessionId must be a string or object")
     }
+
+private fun MemoryE2eSeedTurnDefinition.validate(
+    caseId: String,
+    sessionId: String,
+    turnIndex: Int,
+) {
+    val providedInputs = listOfNotNull(
+        text?.takeIf { it.isNotBlank() }?.let { "text" },
+        filePath?.takeIf { it.isNotBlank() }?.let { "filePath" },
+        rawUrl?.takeIf { it.isNotBlank() }?.let { "rawUrl" },
+    )
+    if (isProvidedContent()) {
+        require(providedInputs.size == 1) {
+            "Provided seed turn ${turnIndex + 1} in $caseId/$sessionId requires exactly one of text+documentType, filePath, rawUrl."
+        }
+        require(text.isNullOrBlank() || documentType != null) {
+            "Provided text seed turn ${turnIndex + 1} in $caseId/$sessionId requires documentType."
+        }
+    } else {
+        require(!text.isNullOrBlank()) {
+            "Chat seed turn ${turnIndex + 1} in $caseId/$sessionId requires non-blank text."
+        }
+    }
+}
 
 @Serializable
 private data class MemoryE2eRecallSession(
@@ -3545,6 +3749,9 @@ private data class ExecutedSeedTurn(
     val text: String,
     val memoryWriteTraceExpectation: MemoryWriteTraceExpectation,
     val memoryWriteTrace: MemoryWriteTraceEvent?,
+    val inputKind: String = "chat_message",
+    val toolResult: String? = null,
+    val memoryRun: MemoryRun? = null,
 )
 
 private data class ExecutedMaintenanceAction(

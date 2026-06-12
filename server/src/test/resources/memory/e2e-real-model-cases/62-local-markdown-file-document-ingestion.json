@@ -1,0 +1,153 @@
+{
+  "id": "local-markdown-file-document-ingestion",
+  "category": "document_memory",
+  "description": "Local repository markdown files should be ingested through memory_remember file_path and recalled as document-backed memory.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "filePath": "MEMORY_CURRENT_STATE.md",
+          "documentType": "markdown",
+          "title": "Memory Current State",
+          "sourceRef": "MEMORY_CURRENT_STATE.md",
+          "forceWrite": true,
+          "mode": "memory_e2e_file_path"
+        },
+        {
+          "filePath": "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryArchitecture.md",
+          "documentType": "markdown",
+          "title": "Memory Architecture",
+          "sourceRef": "domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryArchitecture.md",
+          "forceWrite": true,
+          "mode": "memory_e2e_file_path"
+        }
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "According to the local Memory Current State markdown, what is the active runtime memory storage path? Keep it short.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              [
+                "PostgreSQL",
+                "Postgres"
+              ],
+              [
+                "MemoryStore"
+              ],
+              [
+                "typed project-scoped memory",
+                "typed memory"
+              ]
+            ],
+            "containsNone": [
+              "[tool:"
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedContainsAll": [
+              "MemoryStore"
+            ]
+          }
+        },
+        {
+          "text": "According to the local Memory Architecture markdown, what are Source and Profile in the memory IR? Keep it short.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              [
+                "Source"
+              ],
+              [
+                "evidence",
+                "raw evidence",
+                "raw"
+              ],
+              [
+                "Profile"
+              ],
+              [
+                "projection"
+              ]
+            ],
+            "containsNone": [
+              "[tool:"
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedContainsAll": [
+              "Source"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "notesMin": 1,
+    "actionItemsMax": 0,
+    "sourcesMin": 2,
+    "requiredSources": [
+      {
+        "textContainsAll": [
+          "Memory Current State",
+          "PostgreSQL",
+          "MemoryStore"
+        ],
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
+          "Memory Architecture",
+          "Memory IR",
+          "MemorySource",
+          "MemoryProfile"
+        ],
+        "allowRecall": true
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": [
+      "EXTERNAL"
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "notesMin": 1,
+    "actionItemsMax": 0,
+    "sourcesMin": 4,
+    "requiredSources": [
+      {
+        "textContainsAll": [
+          "Memory Current State",
+          "PostgreSQL",
+          "MemoryStore"
+        ],
+        "allowRecall": true
+      },
+      {
+        "textContainsAll": [
+          "Memory Architecture",
+          "Memory IR",
+          "MemorySource",
+          "MemoryProfile"
+        ],
+        "allowRecall": true
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": [
+      "EXTERNAL"
+    ]
+  }
+}

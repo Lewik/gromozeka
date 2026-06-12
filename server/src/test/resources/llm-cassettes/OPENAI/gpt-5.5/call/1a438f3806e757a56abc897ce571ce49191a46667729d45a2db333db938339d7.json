@@ -1,0 +1,403 @@
+{
+    "version": 1,
+    "hash": "1a438f3806e757a56abc897ce571ce49191a46667729d45a2db333db938339d7",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/local-markdown-file-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the local Memory Current State markdown, what is the active runtime memory storage path? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: The target is only a question requesting recall of existing local documentation and includes no new durable information or memory update.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Coverage mode: MINIMAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] uses_persistence_database family=uses_persistence_database: The Gromozeka memory MVP stores typed project-scoped memory in PostgreSQL through MemoryStore.; scope=Applies to the current Gromozeka memory MVP state described in MEMORY_CURRENT_STATE.md.; evidence=IMPORTED source=external:document-section:ab015ca7643f975b43f146e0110b1a4b quote=\\\"typed project-scoped memory stored in PostgreSQL through `MemoryStore`\\\"\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            - source external:document-section:ab015ca7643f975b43f146e0110b1a4b [external_record ref=memory_remember:document:af58e85887b40293#section:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\\nDocument title: Memory Current State\\nDocument source: MEMORY_CURRENT_STATE.md\\nDocument section: Document preamble\\nDocument lines: 1-119\\n\\n# Memory Current State\\n\\nThis document is a short engineering snapshot of the current memory MVP after the PostgreSQL typed memory implementation and real-model E2E stabilization.\\n\\n## What Exists Now\\n\\nGromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`.\\n\\nThe core domain model lives in:\\n\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryStore.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryWritePipeline.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryReadPipeline.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryMaintenancePipeline.kt`\\n\\nThe main storage implementation is:\\n\\n- `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/PostgresMemoryStore.kt`\\n\\nThe old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime.\\n\\n## Runtime Write Path\\n\\nEvery chat message is routed through the new write pipeline by `MemoryMessageRoutingApplicationService`.\\n\\nThe current write pipeline shape is:\\n\\n1. Capture source.\\n2. Route with `LlmMemoryWriteRouter`.\\n3. If needed, plan write-time retrieval with `LlmMemoryWriteRetrievalPlanner`.\\n4. Reuse or create entities with `LlmMemoryEntityCanonicalizer`.\\n5. Build note candidates with `LlmMemoryNoteConstructor`.\\n6. Rec...\\n...ryClaimReconciler`.\\n9. Update tasks with `LlmMemoryActionItemUpdater`.\\n10. Materialize the resulting batch into `MemoryStore`.\\n11. Update projections such as profiles.\\n\\nAssistant chat turns are captured as sources, but are not materialized as structured memory in the hot path.\\n\\n## Runtime Read Path\\n\\n`ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call when memory is enabled.\\n\\nThe read pipeline shape is:\\n\\n1. Plan whether memory is needed with `LlmMemoryReadPlanner`.\\n2. If the planner says no memory is needed, run the model-based no-memory verifier before accepting that decision.\\n3. Search PostgreSQL through `MemoryStore`.\\n4. Apply source retrieval policy and retrieval budget.\\n5. Select final context with `LlmMemoryReadSelector`.\\n6. Compose a runtime memory prompt.\\n7. Inject that prompt as a runtime developer message into the main LLM request.\\n\\nThe current implementation intentionally avoids hard-coded lexical recall heuristics.\\n\\n## Manual Maintenance\\n\\nMaintenance is currently manual and synchronous from the UI/service calls:\\n\\n- note consolidation\\n- memory repair\\n- entity maintenance\\n- retention\\n\\nThese flows are wired through `MemoryApplicationService` and produce trace events for E2E reports.\\n\\n## Verification\\n\\nNormal build and targeted JVM tests pass:\\n\\n```bash\\n./gradlew :presentation:build -q\\n./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q\\n```\\n\\nThe full memory real-model suite is covered by LLM cassettes. Normal verification should use replay-only mode:\\n\\n```bash\\n./gradlew :presentation:jvmTest \\\\\\n  --tests 'com.gromozeka.presentation.MemoryRealMo...\\n\\n            Retrieved entities:\\n            - entity entity:<0> [CONCEPT]: Gromozeka memory MVP; Concept named Gromozeka memory MVP.\\n- entity entity:<1> [TECHNOLOGY]: PostgreSQL; Technology named PostgreSQL.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"The Gromozeka memory MVP stores typed project-scoped memory in PostgreSQL through MemoryStore.\",\"predicate\":\"uses_persistence_database\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\"]},{\"type\":\"SOURCE\",\"id\":\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\",\"summary\":\"Document title: Memory Current State Document source: MEMORY_CURRENT_STATE.md Document section: Document preamble Document lines: 1-119 # Memory Current State This document is a short engineering snapshot of the current ...[truncated 4700 chars]\",\"evidence_source_ids\":[\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"CONCEPT:Gromozeka memory MVP\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"TECHNOLOGY:PostgreSQL\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Direct current claim states the active runtime memory path as typed project-scoped memory stored in PostgreSQL through MemoryStore.\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\",\"selected\":true,\"rank\":2,\"reason\":\"Required evidence fallback contains the exact MEMORY_CURRENT_STATE.md wording requested.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic document anchor not needed when direct claim and evidence source are selected.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Relevant but less complete than selected claim because it omits MemoryStore phrasing.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemoryScope and MemoryEvidenceRef semantics.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: provenance design rule.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemoryEvidenceRef role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemoryScope role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemorySource role.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: intended IR write/read flows, not current storage path.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: verification workflow and E2E cassette policy.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Only states removed old storage, not the active path.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Relevant digest but unnecessary because selected claim is more precise for a short factual answer.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: lexical recall heuristics.\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:43f64dd8fda6252e45a1656544b472d4\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different document and topic; not Memory Current State.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 840000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/local-markdown-file-document-ingestion"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the local Memory Current State markdown, what is the active runtime memory storage path? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: The target is only a question requesting recall of existing local documentation and includes no new durable information or memory update.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Coverage mode: MINIMAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] uses_persistence_database family=uses_persistence_database: The Gromozeka memory MVP stores typed project-scoped memory in PostgreSQL through MemoryStore.; scope=Applies to the current Gromozeka memory MVP state described in MEMORY_CURRENT_STATE.md.; evidence=IMPORTED source=external:document-section:ab015ca7643f975b43f146e0110b1a4b quote=\\\"typed project-scoped memory stored in PostgreSQL through `MemoryStore`\\\"\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            - source external:document-section:ab015ca7643f975b43f146e0110b1a4b [external_record ref=memory_remember:document:af58e85887b40293#section:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\\nDocument title: Memory Current State\\nDocument source: MEMORY_CURRENT_STATE.md\\nDocument section: Document preamble\\nDocument lines: 1-119\\n\\n# Memory Current State\\n\\nThis document is a short engineering snapshot of the current memory MVP after the PostgreSQL typed memory implementation and real-model E2E stabilization.\\n\\n## What Exists Now\\n\\nGromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`.\\n\\nThe core domain model lives in:\\n\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryModels.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryStore.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryWritePipeline.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryReadPipeline.kt`\\n- `domain/src/commonMain/kotlin/com/gromozeka/domain/model/memory/MemoryMaintenancePipeline.kt`\\n\\nThe main storage implementation is:\\n\\n- `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/PostgresMemoryStore.kt`\\n\\nThe old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime.\\n\\n## Runtime Write Path\\n\\nEvery chat message is routed through the new write pipeline by `MemoryMessageRoutingApplicationService`.\\n\\nThe current write pipeline shape is:\\n\\n1. Capture source.\\n2. Route with `LlmMemoryWriteRouter`.\\n3. If needed, plan write-time retrieval with `LlmMemoryWriteRetrievalPlanner`.\\n4. Reuse or create entities with `LlmMemoryEntityCanonicalizer`.\\n5. Build note candidates with `LlmMemoryNoteConstructor`.\\n6. Rec...\\n...ryClaimReconciler`.\\n9. Update tasks with `LlmMemoryActionItemUpdater`.\\n10. Materialize the resulting batch into `MemoryStore`.\\n11. Update projections such as profiles.\\n\\nAssistant chat turns are captured as sources, but are not materialized as structured memory in the hot path.\\n\\n## Runtime Read Path\\n\\n`ConversationEngineService` calls `MemoryApplicationService.buildRuntimeMemoryPrompt(...)` before the main LLM call when memory is enabled.\\n\\nThe read pipeline shape is:\\n\\n1. Plan whether memory is needed with `LlmMemoryReadPlanner`.\\n2. If the planner says no memory is needed, run the model-based no-memory verifier before accepting that decision.\\n3. Search PostgreSQL through `MemoryStore`.\\n4. Apply source retrieval policy and retrieval budget.\\n5. Select final context with `LlmMemoryReadSelector`.\\n6. Compose a runtime memory prompt.\\n7. Inject that prompt as a runtime developer message into the main LLM request.\\n\\nThe current implementation intentionally avoids hard-coded lexical recall heuristics.\\n\\n## Manual Maintenance\\n\\nMaintenance is currently manual and synchronous from the UI/service calls:\\n\\n- note consolidation\\n- memory repair\\n- entity maintenance\\n- retention\\n\\nThese flows are wired through `MemoryApplicationService` and produce trace events for E2E reports.\\n\\n## Verification\\n\\nNormal build and targeted JVM tests pass:\\n\\n```bash\\n./gradlew :presentation:build -q\\n./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q\\n```\\n\\nThe full memory real-model suite is covered by LLM cassettes. Normal verification should use replay-only mode:\\n\\n```bash\\n./gradlew :presentation:jvmTest \\\\\\n  --tests 'com.gromozeka.presentation.MemoryRealMo...\\n\\n            Retrieved entities:\\n            - entity entity:<0> [CONCEPT]: Gromozeka memory MVP; Concept named Gromozeka memory MVP.\\n- entity entity:<1> [TECHNOLOGY]: PostgreSQL; Technology named PostgreSQL.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"The Gromozeka memory MVP stores typed project-scoped memory in PostgreSQL through MemoryStore.\",\"predicate\":\"uses_persistence_database\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\"]},{\"type\":\"SOURCE\",\"id\":\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\",\"summary\":\"Document title: Memory Current State Document source: MEMORY_CURRENT_STATE.md Document section: Document preamble Document lines: 1-119 # Memory Current State This document is a short engineering snapshot of the current ...[truncated 4700 chars]\",\"evidence_source_ids\":[\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"CONCEPT:Gromozeka memory MVP\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"TECHNOLOGY:PostgreSQL\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Direct current claim states the active runtime memory path as typed project-scoped memory stored in PostgreSQL through MemoryStore.\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:ab015ca7643f975b43f146e0110b1a4b\",\"selected\":true,\"rank\":2,\"reason\":\"Required evidence fallback contains the exact MEMORY_CURRENT_STATE.md wording requested.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic document anchor not needed when direct claim and evidence source are selected.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Relevant but less complete than selected claim because it omits MemoryStore phrasing.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemoryScope and MemoryEvidenceRef semantics.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: provenance design rule.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemoryEvidenceRef role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemoryScope role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: MemorySource role.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: intended IR write/read flows, not current storage path.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: verification workflow and E2E cassette policy.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Only states removed old storage, not the active path.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Relevant digest but unnecessary because selected claim is more precise for a short factual answer.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different topic: lexical recall heuristics.\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:43f64dd8fda6252e45a1656544b472d4\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different document and topic; not Memory Current State.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 840000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/local-markdown-file-document-ingestion"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "typed project-scoped memory in PostgreSQL through `MemoryStore`",
+                                "ttsText": "Typed project-scoped memory in PostgreSQL through MemoryStore.",
+                                "voiceTone": "neutral",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3287,
+                "completionTokens": 65,
+                "thinkingTokens": 12,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
