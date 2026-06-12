@@ -20,4 +20,54 @@ class RuntimeMemorySourceExcerptTest {
         assertTrue(excerpt.contains(targetSentence))
         assertFalse(excerpt.startsWith("Retailer coupons can be useful. Retailer coupons can be useful."))
     }
+
+    @Test
+    fun keepsAnswerNearQueryPhraseInsideLongRecommendationList() {
+        val earlyContext = """
+            user: Please suggest some family-friendly activities to do in Orlando.
+            assistant: ${"Orlando theme parks and family activities. ".repeat(80)}
+            user: Can you recommend any places to eat in Orlando that are family-friendly?
+            assistant: ${"Family-friendly Orlando dining option. ".repeat(80)}
+        """.trimIndent()
+        val targetRecommendation =
+            "1. The Sugar Factory - A sweet shop located at Icon Park that offers specialty drinks and giant milkshakes."
+        val source = """
+            $earlyContext
+            user: Do you have any recommendations for a fun dessert spot that my family can check out after dinner?
+            assistant: Absolutely! Here are some fun dessert spots:
+
+            $targetRecommendation
+
+            2. Wondermade - A gourmet marshmallow shop located in Sanford.
+            3. Gideon's Bakehouse - A bakery located at Disney Springs.
+            4. Kelly's Homemade Ice Cream - A small-batch ice cream shop located in Orlando.
+            ${"Other Orlando dessert and activity chatter. ".repeat(120)}
+        """.trimIndent()
+
+        val excerpt = RuntimeMemorySourceExcerpt.queryFocused(
+            text = source,
+            query = "Orlando unique dessert shop giant milkshakes talked about last time",
+            maxChars = 1_400,
+        )
+
+        assertTrue(excerpt.contains("The Sugar Factory"), excerpt)
+        assertTrue(excerpt.contains("Icon Park"), excerpt)
+        assertTrue(excerpt.contains("giant milkshakes"), excerpt)
+        assertFalse(excerpt.startsWith("user: Please suggest some family-friendly activities"))
+    }
+
+    @Test
+    fun doesNotExpandSingleLineMatchesBackToDocumentStart() {
+        val source = "${"early unrelated text ".repeat(250)}target answer lives near the matched phrase and should survive excerpting ${"late unrelated text ".repeat(250)}"
+
+        val excerpt = RuntimeMemorySourceExcerpt.queryFocused(
+            text = source,
+            query = "matched phrase target answer",
+            maxChars = 1_200,
+        )
+
+        assertTrue(excerpt.contains("target answer"), excerpt)
+        assertTrue(excerpt.contains("matched phrase"), excerpt)
+        assertFalse(excerpt.startsWith("early unrelated text early unrelated text early unrelated text"))
+    }
 }

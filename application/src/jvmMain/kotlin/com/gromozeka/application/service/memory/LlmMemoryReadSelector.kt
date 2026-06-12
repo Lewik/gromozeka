@@ -184,7 +184,11 @@ class LlmMemoryReadSelector(
         batchLabel: String?,
         passMode: ReadSelectorPassMode,
     ): MemoryReadSelectionResult {
-        val renderedCandidates = MemoryReadSelectorCandidateRenderer.render(request.candidateHits, request.snapshot)
+        val renderedCandidates = MemoryReadSelectorCandidateRenderer.render(
+            hits = request.candidateHits,
+            snapshot = request.snapshot,
+            query = request.sourceCandidateQuery(),
+        )
         val stageMessages = request.readRequest.toMemoryStageMessages(
             stageName = "read-selector-reranker",
             taskPrompt = buildSelectorPrompt(request, renderedCandidates, passMode),
@@ -437,6 +441,15 @@ private fun MemoryReadRequest.targetTextForReadSelector(): String {
         }
     }.joinToString("\n").trim()
 }
+
+private fun MemoryReadSelectionRequest.sourceCandidateQuery(): String =
+    buildList {
+        plan.retrievalRequests
+            .map { it.query }
+            .distinct()
+            .forEach(::add)
+        add(readRequest.targetTextForReadSelector())
+    }.joinToString("\n").trim()
 
 private fun MemoryStore.SearchHit.toReadSelectorItemRef(): MemoryItemRef =
     when (this) {

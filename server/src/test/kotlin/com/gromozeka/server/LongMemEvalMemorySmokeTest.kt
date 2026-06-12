@@ -614,6 +614,8 @@ class LongMemEvalMemorySmokeTest {
     ): String = buildString {
         appendLine("# LongMemEval Memory Smoke")
         appendLine()
+        appendLine("status | ${if (results.all { it.answerSupportedByMemory }) "PASS" else "FAIL"}")
+        appendLine()
         appendLine("- data: `$dataFile`")
         appendLine("- model: `$modelName`")
         appendLine("- postgres schema: `$postgresSchema`")

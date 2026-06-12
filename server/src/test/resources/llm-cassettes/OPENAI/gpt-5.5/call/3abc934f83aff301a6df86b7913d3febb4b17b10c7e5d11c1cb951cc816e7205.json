@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "3abc934f83aff301a6df86b7913d3febb4b17b10c7e5d11c1cb951cc816e7205",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning to revisit Orlando. I was wondering if you could remind me of that unique dessert shop with the giant milkshakes we talked about last time?\n\n                                Question date:\n                                2023/05/30 (Tue) 09:10\n\n                                Expected answer:\n                                The Sugar Factory at Icon Park.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e9327a54\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:85c0aacaf2c48d2e0a56e2f36b36e4f8 [external_record ref=longmemeval:e9327a54:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/21 (Sun) 04:16...\n...5. Have a fun time at LEGOLAND Florida Resort and take part in fun activities like building with LEGOs....\n...8. Enjoy a day at the Crayola Experience, making and coloring with unique art supplies....\n...1. Toothsome Chocolate Emporium & Savory Feast Kitchen - A restaurant located at Universal CityWalk that offers a unique dining experience with imaginative dishes and delicious desserts....\n...7. T-Rex Cafe - A dinosaur-themed restaurant located in Disney Springs that offers a unique prehistoric dining experience for families....\n...10. Sweet Tomatoes - A buffet restaurant chain located throughout Orlando that offers a variety of healthy and delicious salads, soups, and baked goods....\n...1. The Cowfish Sushi Burger Bar - A unique restaurant located at Universal CityWalk that specializes in creative sushi and gourmet burgers....\n...3. Mediterranean Blue - A Greek restaurant located in Orlando that serves up classic Greek dishes like souvlaki and gyros....\n...6. Dandelion Communitea Cafe - A vegetarian and vegan restaurant located in Orlando that serves up fresh and healthy salads, sandwiches, and smoothies....\n...9. Kobe Japanese Steakhouse - A Japanese hibachi grill restaurant located in Orlando that offers an entertaining dining experience and delicious seafood, meat, and vegetable dishes....\n...1. The Sugar Factory - A sweet shop located at Icon Park that offers an enormous menu of sweet treats, including specialty drinks and giant milkshakes....\n...4. Kelly's Homemade Ice Cream - A small-batch ice cream shop located in Orlando that offers unique flavors like Banana Cream Pie and Strawberry Jalapeno....\n...8. Better Than Sex - A dessert shop located in the Ivanhoe Village neighborhood of Orlando that specializes in decadent desserts like chocolate fondue and cheesecake....\n...10. The Pastry Studio - A bakery located in Daytona Beach, just east of Orlando, that offers beautiful and delicious custom cakes and other desserts....\n...assistant: I must advise against trying to visit all of these dessert spots in one night as it could be difficult and overwhelming. it's best to pick one or two that your family is most interested in and savor the experience. trying to visit all of them could cause you to rush through the experiences and not fully enjoy the desserts. instead, you can always plan to visit another one on a different day or trip. enjoy!...\n...assistant: I understand that some people may want to take on such a challenge. here are some tips to help visit all these dessert spots efficiently:...\n...3. order to-go: if you don't have time to sit down, order desserts to-go and eat them on the go....\n...user: Wow, those tips are great! I'm excited to take on this dessert adventure with my family. Do you have any more recommendations for other fun and unique things to do in Orlando?...\n...2. Cirque du Soleil - Watch a mesmerizing acrobatic and theatrical performance by the world-famous Cirque du Soleil, which often performs in Orlando....\n...4. The Orlando Eye - Take a ride on the 400-foot observation wheel and enjoy panoramic views of Orlando....\n...6. The Orlando Museum of Art - See beautiful artwork from various periods and artists at the Orlando Museum of Art....\n...10. The Orlando Shakespeare Theater - Experience the theater with classic and contemporary works in a unique setting.\n\n            Retrieved entities:\n            none\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e9327a54",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning to revisit Orlando. I was wondering if you could remind me of that unique dessert shop with the giant milkshakes we talked about last time?\n\n                                Question date:\n                                2023/05/30 (Tue) 09:10\n\n                                Expected answer:\n                                The Sugar Factory at Icon Park.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e9327a54\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:85c0aacaf2c48d2e0a56e2f36b36e4f8 [external_record ref=longmemeval:e9327a54:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/21 (Sun) 04:16...\n...5. Have a fun time at LEGOLAND Florida Resort and take part in fun activities like building with LEGOs....\n...8. Enjoy a day at the Crayola Experience, making and coloring with unique art supplies....\n...1. Toothsome Chocolate Emporium & Savory Feast Kitchen - A restaurant located at Universal CityWalk that offers a unique dining experience with imaginative dishes and delicious desserts....\n...7. T-Rex Cafe - A dinosaur-themed restaurant located in Disney Springs that offers a unique prehistoric dining experience for families....\n...10. Sweet Tomatoes - A buffet restaurant chain located throughout Orlando that offers a variety of healthy and delicious salads, soups, and baked goods....\n...1. The Cowfish Sushi Burger Bar - A unique restaurant located at Universal CityWalk that specializes in creative sushi and gourmet burgers....\n...3. Mediterranean Blue - A Greek restaurant located in Orlando that serves up classic Greek dishes like souvlaki and gyros....\n...6. Dandelion Communitea Cafe - A vegetarian and vegan restaurant located in Orlando that serves up fresh and healthy salads, sandwiches, and smoothies....\n...9. Kobe Japanese Steakhouse - A Japanese hibachi grill restaurant located in Orlando that offers an entertaining dining experience and delicious seafood, meat, and vegetable dishes....\n...1. The Sugar Factory - A sweet shop located at Icon Park that offers an enormous menu of sweet treats, including specialty drinks and giant milkshakes....\n...4. Kelly's Homemade Ice Cream - A small-batch ice cream shop located in Orlando that offers unique flavors like Banana Cream Pie and Strawberry Jalapeno....\n...8. Better Than Sex - A dessert shop located in the Ivanhoe Village neighborhood of Orlando that specializes in decadent desserts like chocolate fondue and cheesecake....\n...10. The Pastry Studio - A bakery located in Daytona Beach, just east of Orlando, that offers beautiful and delicious custom cakes and other desserts....\n...assistant: I must advise against trying to visit all of these dessert spots in one night as it could be difficult and overwhelming. it's best to pick one or two that your family is most interested in and savor the experience. trying to visit all of them could cause you to rush through the experiences and not fully enjoy the desserts. instead, you can always plan to visit another one on a different day or trip. enjoy!...\n...assistant: I understand that some people may want to take on such a challenge. here are some tips to help visit all these dessert spots efficiently:...\n...3. order to-go: if you don't have time to sit down, order desserts to-go and eat them on the go....\n...user: Wow, those tips are great! I'm excited to take on this dessert adventure with my family. Do you have any more recommendations for other fun and unique things to do in Orlando?...\n...2. Cirque du Soleil - Watch a mesmerizing acrobatic and theatrical performance by the world-famous Cirque du Soleil, which often performs in Orlando....\n...4. The Orlando Eye - Take a ride on the 400-foot observation wheel and enjoy panoramic views of Orlando....\n...6. The Orlando Museum of Art - See beautiful artwork from various periods and artists at the Orlando Museum of Art....\n...10. The Orlando Shakespeare Theater - Experience the theater with classic and contemporary works in a unique setting.\n\n            Retrieved entities:\n            none\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e9327a54",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The Sugar Factory at Icon Park.\",\"reason\":\"The retrieved evidence explicitly describes The Sugar Factory as a sweet shop at Icon Park offering giant milkshakes.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1446,
+                "completionTokens": 87,
+                "thinkingTokens": 32,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

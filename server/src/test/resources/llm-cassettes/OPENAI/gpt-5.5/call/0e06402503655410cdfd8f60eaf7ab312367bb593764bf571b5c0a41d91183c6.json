@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "0e06402503655410cdfd8f60eaf7ab312367bb593764bf571b5c0a41d91183c6",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some recent publications or conferences that I might find interesting?\n\n                                Question date:\n                                2023/05/22 (Mon) 14:25\n\n                                Expected answer:\n                                The user would prefer suggestions related to recent research papers, articles, or conferences that focus on artificial intelligence in healthcare, particularly those that involve deep learning for medical image analysis. They would not be interested in general AI topics or those unrelated to healthcare.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:75832dbd\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile benchmark:longmemeval:75832dbd:profile:<0> Profile for User (USER).\nStable facts:\n- The user works in deep learning for medical image analysis.\n- The user has experience with deep learning for medical image analysis.\n- The user wants to explore advanced topics in deep learning for medical image analysis, including multi-modal image fusion, transfer learning, and domain adaptation in medical imaging.\n- The user wants to learn more about explainable AI in medical image analysis.\n- The user wants research papers on techniques for visualizing and interpreting deep learning models in explainable AI for medical image analysis.\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-f6e771f80933-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to explore advanced topics in deep learning for medical image analysis, including multi-modal image fusion, transfer learning, and domain adaptation in medical imaging.; scope=Reusable research-interest context for future recommendations in medical imaging AI.; evidence=DIRECT source=external:provided-text:bdfc55d1434394625d67e6afce140b25 quote=\"I'd like to explore some more advanced topics in deep learning for medical image analysis.\"\n- claim hot-path-f6e771f80933-claim-11 [ACTIVE] has_goal family=has_goal: The user wants research papers on techniques for visualizing and interpreting deep learning models in explainable AI for medical image analysis.; scope=Specific reusable research-interest context for future paper recommendations.; evidence=DIRECT source=external:provided-text:bdfc55d1434394625d67e6afce140b25 quote=\"specifically on techniques for visualizing and interpreting deep learning models\"\n- claim hot-path-f6e771f80933-claim-7 [ACTIVE] works_with family=works_with: The user works in deep learning for medical image analysis.; scope=User's professional or research field within this namespace.; evidence=DIRECT source=external:provided-text:bdfc55d1434394625d67e6afce140b25 quote=\"Skip the basics as I am working in the field.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:bdfc55d1434394625d67e6afce140b25 [external_record ref=longmemeval:75832dbd:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...assistant: Certainly! Here’s a summary of recent advancements in deep learning for medical image analysis:...\n...user: Can you recommend some popular datasets for training deep learning models in medical image analysis, specifically for segmentation tasks?...\n...user: Can you provide some information on the latest trends and advancements in explainable AI for medical image analysis?...\n...**3. Visualizations and heatmaps**: Researchers are developing various visualization techniques, such as heatmaps, to illustrate the model's attention and feature importance. These visualizations can help clinicians understand the model's decision-making process....\n...**5. Explainable CNNs**: Researchers are designing explainable CNN architectures, such as the \"explainable U-Net,\" which incorporate interpretability into the model design....\n...**7. Evaluation metrics for XAI**: Developing evaluation metrics specifically for XAI in medical image analysis is crucial. Researchers are working on metrics that assess the quality and relevance of explanations....\n...1. **Interpretability vs. accuracy trade-off**: There is often a trade-off between model interpretability and accuracy. Researchers are working to develop models that balance both....\n...user: Can you recommend some relevant research papers or articles on explainable AI in medical image analysis that I can read to learn more about this topic?...\n...user: I'd like to explore some more advanced topics in deep learning for medical image analysis. Can you recommend some research papers or articles on topics like multi-modal image fusion, transfer learning, and domain adaptation in medical imaging?...\n...**Other Advanced Topics**...\n...user: I'd like to explore some more research papers and articles on the topic of explainable AI in medical image analysis, specifically on techniques for visualizing and interpreting deep learning models. Can you recommend some papers on this topic?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Deep learning for medical image analysis; Concept named Deep learning for medical image analysis.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "75832dbd",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some recent publications or conferences that I might find interesting?\n\n                                Question date:\n                                2023/05/22 (Mon) 14:25\n\n                                Expected answer:\n                                The user would prefer suggestions related to recent research papers, articles, or conferences that focus on artificial intelligence in healthcare, particularly those that involve deep learning for medical image analysis. They would not be interested in general AI topics or those unrelated to healthcare.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:75832dbd\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile benchmark:longmemeval:75832dbd:profile:<0> Profile for User (USER).\nStable facts:\n- The user works in deep learning for medical image analysis.\n- The user has experience with deep learning for medical image analysis.\n- The user wants to explore advanced topics in deep learning for medical image analysis, including multi-modal image fusion, transfer learning, and domain adaptation in medical imaging.\n- The user wants to learn more about explainable AI in medical image analysis.\n- The user wants research papers on techniques for visualizing and interpreting deep learning models in explainable AI for medical image analysis.\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-f6e771f80933-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to explore advanced topics in deep learning for medical image analysis, including multi-modal image fusion, transfer learning, and domain adaptation in medical imaging.; scope=Reusable research-interest context for future recommendations in medical imaging AI.; evidence=DIRECT source=external:provided-text:bdfc55d1434394625d67e6afce140b25 quote=\"I'd like to explore some more advanced topics in deep learning for medical image analysis.\"\n- claim hot-path-f6e771f80933-claim-11 [ACTIVE] has_goal family=has_goal: The user wants research papers on techniques for visualizing and interpreting deep learning models in explainable AI for medical image analysis.; scope=Specific reusable research-interest context for future paper recommendations.; evidence=DIRECT source=external:provided-text:bdfc55d1434394625d67e6afce140b25 quote=\"specifically on techniques for visualizing and interpreting deep learning models\"\n- claim hot-path-f6e771f80933-claim-7 [ACTIVE] works_with family=works_with: The user works in deep learning for medical image analysis.; scope=User's professional or research field within this namespace.; evidence=DIRECT source=external:provided-text:bdfc55d1434394625d67e6afce140b25 quote=\"Skip the basics as I am working in the field.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:bdfc55d1434394625d67e6afce140b25 [external_record ref=longmemeval:75832dbd:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...assistant: Certainly! Here’s a summary of recent advancements in deep learning for medical image analysis:...\n...user: Can you recommend some popular datasets for training deep learning models in medical image analysis, specifically for segmentation tasks?...\n...user: Can you provide some information on the latest trends and advancements in explainable AI for medical image analysis?...\n...**3. Visualizations and heatmaps**: Researchers are developing various visualization techniques, such as heatmaps, to illustrate the model's attention and feature importance. These visualizations can help clinicians understand the model's decision-making process....\n...**5. Explainable CNNs**: Researchers are designing explainable CNN architectures, such as the \"explainable U-Net,\" which incorporate interpretability into the model design....\n...**7. Evaluation metrics for XAI**: Developing evaluation metrics specifically for XAI in medical image analysis is crucial. Researchers are working on metrics that assess the quality and relevance of explanations....\n...1. **Interpretability vs. accuracy trade-off**: There is often a trade-off between model interpretability and accuracy. Researchers are working to develop models that balance both....\n...user: Can you recommend some relevant research papers or articles on explainable AI in medical image analysis that I can read to learn more about this topic?...\n...user: I'd like to explore some more advanced topics in deep learning for medical image analysis. Can you recommend some research papers or articles on topics like multi-modal image fusion, transfer learning, and domain adaptation in medical imaging?...\n...**Other Advanced Topics**...\n...user: I'd like to explore some more research papers and articles on the topic of explainable AI in medical image analysis, specifically on techniques for visualizing and interpreting deep learning models. Can you recommend some papers on this topic?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Deep learning for medical image analysis; Concept named Deep learning for medical image analysis.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "75832dbd",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The user is interested in recent publications or conferences about AI in healthcare, especially deep learning for medical image analysis, including advanced/XAI topics, rather than general AI.\",\"reason\":\"The memory states the user works in and seeks research papers on deep learning for medical image analysis, including explainable AI and advanced medical imaging topics.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1635,
+                "completionTokens": 191,
+                "thinkingTokens": 102,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

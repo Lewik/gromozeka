@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "264931606272cd9c934a8df68cb383cede76c9a0b7f015b8165a6051645fc849",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which device did I got first, the Samsung Galaxy S22 or the Dell XPS 13?\n\n                                Question date:\n                                2023/03/15 (Wed) 03:53\n\n                                Expected answer:\n                                Samsung Galaxy S22\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2312f94c\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-3c945415d1cb-claim-8 [ACTIVE] purchase_date family=purchase_date: The user got the Samsung Galaxy S22 on February 20, 2023.; scope=Purchase timing for the user's Samsung Galaxy S22.; evidence=IMPORTED source=external:provided-text:10aedb641a9a8c1f8796dff70a270a9f quote=\"on February 20th\"\n- claim hot-path-1b06d5ffdf47-claim-5 [ACTIVE] purchase_date family=purchase_date: The user pre-ordered the Dell XPS 13 on January 28, 2023, and it arrived on February 25, 2023 after a delay from the original expected arrival date of February 11, 2023.; scope=Applies to the Dell XPS 13 acquisition timeline stated in the imported 2023-03-15 session.; evidence=IMPORTED source=external:provided-text:455ae6dfc62af61a51f9e8ae46ddde55 quote=\"I pre-ordered the laptop on January 28th, and it finally arrived on February 25th after a delay from the original expected arrival date of February 11th.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:455ae6dfc62af61a51f9e8ae46ddde55 [external_record ref=longmemeval:gpt4_2312f94c:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a trip to Hawaii and I need to pack the right adapters for my devices. Can you help me figure out what kind of power adapters I'll need for my new laptop, Dell XPS 13, and my new smartphone, Samsung Galaxy S22? By the way, I pre-ordered the laptop on January 28th, and it finally arrived on February 25th after a delay from the original expected arrival date of February 11th....\n...1. **Dell XPS 13 Laptop:**...\n...2. **Samsung Galaxy S22 Smartphone:**...\n...user: I was planning to bring my portable power bank, Anker PowerCore 20000, which I bought from Amazon on February 13th. It's been working great with my phone and laptop. Do you think it'll be enough to keep my devices charged during the trip, or should I consider packing another one?...\n...* Your Samsung Galaxy S22's battery capacity is around 4500mAh....\n...* If you're a moderate user, you can expect to get around 3-4 full charges for your Galaxy S22 or 1-2 partial charges for your laptop from the Anker PowerCore 20000....\n...* Don't forget to leave some extra space in your luggage for souvenirs and any items you might purchase during your trip!...\n...You're almost ready for your Hawaiian adventure! Is there anything else you'd like to know or any specific questions you have about your trip?...\n...You're now well-prepared for Hawaii's wonderful weather! Enjoy your trip and don't hesitate to ask if you have any more questions....\n...Remember to relax, unwind, and soak up the aloha spirit. Take time to enjoy the beautiful scenery, try new foods, and experience the rich culture of Hawaii. Don't hesitate to reach out if you have any more questions or need any further assistance....\n- source external:provided-text:10aedb641a9a8c1f8796dff70a270a9f [external_record ref=longmemeval:gpt4_2312f94c:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a trip to Hawaii and I want to make sure my new phone stays charged. Can you recommend some must-visit places in Hawaii? By the way, I recently got a new Samsung Galaxy S22 from the Best Buy store at the mall on February 20th, and I'm loving it so far....\n...But first, congratulations on your new Samsung Galaxy S22! It's great to hear you're loving it so far. To ensure your phone stays charged throughout your trip, consider packing a portable power bank, a car charger (if you plan to rent a car), and a waterproof phone case to protect your device from water activities....\n...4. **Camera Ready:** With your new Samsung Galaxy S22, you'll be well-equipped to capture stunning photos of the sunrise. Consider bringing a tripod to stabilize your phone, and don't forget to charge your battery before heading out....\n...user: I'm also planning to use my portable power bank, Anker PowerCore 20000, that I bought from Amazon a week before I got my new phone, to ensure my devices stay charged during the trip....\n...3. **Prioritize your devices:** If you have multiple devices to charge, prioritize the ones that need it most. For example, if your phone is running low, charge it first, and then charge your other devices like your camera or headphones....\n...With your Anker PowerCore 20000 and your new Samsung Galaxy S22, you'll be well-equipped to capture stunning photos and stay connected during your trip to Maui. Don't forget to take in the breathtaking views and enjoy the moment, too!...\n...2. **Iao Valley State Park Trails**: This park offers several trails, including the 0.6-mile Iao Valley Stream Trail, which is a gentle, family-friendly hike that takes you through a lush valley and to the Iao Needle rock formation....\n...4. **Haleakala National Park Trails**: While Haleakala is famous for its sunrise summit hike, it also offers several beginner-friendly trails, such as the 1.5-mile Halemau'u Trail, which takes you through a lush forest and offers scenic views of the park....\n...* Bring plenty of water, snacks, and a first-aid kit...\n...user: I'm also planning to visit the Road to Hana, which I've heard is a scenic drive with many waterfalls and hiking trails along the way. Can you recommend any good stops or attractions along the way?...\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Dell XPS 13; Product named Dell XPS 13.\n- entity entity:<1> [PRODUCT]: Samsung Galaxy S22; Product named Samsung Galaxy S22.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2312f94c",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which device did I got first, the Samsung Galaxy S22 or the Dell XPS 13?\n\n                                Question date:\n                                2023/03/15 (Wed) 03:53\n\n                                Expected answer:\n                                Samsung Galaxy S22\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2312f94c\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-3c945415d1cb-claim-8 [ACTIVE] purchase_date family=purchase_date: The user got the Samsung Galaxy S22 on February 20, 2023.; scope=Purchase timing for the user's Samsung Galaxy S22.; evidence=IMPORTED source=external:provided-text:10aedb641a9a8c1f8796dff70a270a9f quote=\"on February 20th\"\n- claim hot-path-1b06d5ffdf47-claim-5 [ACTIVE] purchase_date family=purchase_date: The user pre-ordered the Dell XPS 13 on January 28, 2023, and it arrived on February 25, 2023 after a delay from the original expected arrival date of February 11, 2023.; scope=Applies to the Dell XPS 13 acquisition timeline stated in the imported 2023-03-15 session.; evidence=IMPORTED source=external:provided-text:455ae6dfc62af61a51f9e8ae46ddde55 quote=\"I pre-ordered the laptop on January 28th, and it finally arrived on February 25th after a delay from the original expected arrival date of February 11th.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:455ae6dfc62af61a51f9e8ae46ddde55 [external_record ref=longmemeval:gpt4_2312f94c:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a trip to Hawaii and I need to pack the right adapters for my devices. Can you help me figure out what kind of power adapters I'll need for my new laptop, Dell XPS 13, and my new smartphone, Samsung Galaxy S22? By the way, I pre-ordered the laptop on January 28th, and it finally arrived on February 25th after a delay from the original expected arrival date of February 11th....\n...1. **Dell XPS 13 Laptop:**...\n...2. **Samsung Galaxy S22 Smartphone:**...\n...user: I was planning to bring my portable power bank, Anker PowerCore 20000, which I bought from Amazon on February 13th. It's been working great with my phone and laptop. Do you think it'll be enough to keep my devices charged during the trip, or should I consider packing another one?...\n...* Your Samsung Galaxy S22's battery capacity is around 4500mAh....\n...* If you're a moderate user, you can expect to get around 3-4 full charges for your Galaxy S22 or 1-2 partial charges for your laptop from the Anker PowerCore 20000....\n...* Don't forget to leave some extra space in your luggage for souvenirs and any items you might purchase during your trip!...\n...You're almost ready for your Hawaiian adventure! Is there anything else you'd like to know or any specific questions you have about your trip?...\n...You're now well-prepared for Hawaii's wonderful weather! Enjoy your trip and don't hesitate to ask if you have any more questions....\n...Remember to relax, unwind, and soak up the aloha spirit. Take time to enjoy the beautiful scenery, try new foods, and experience the rich culture of Hawaii. Don't hesitate to reach out if you have any more questions or need any further assistance....\n- source external:provided-text:10aedb641a9a8c1f8796dff70a270a9f [external_record ref=longmemeval:gpt4_2312f94c:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a trip to Hawaii and I want to make sure my new phone stays charged. Can you recommend some must-visit places in Hawaii? By the way, I recently got a new Samsung Galaxy S22 from the Best Buy store at the mall on February 20th, and I'm loving it so far....\n...But first, congratulations on your new Samsung Galaxy S22! It's great to hear you're loving it so far. To ensure your phone stays charged throughout your trip, consider packing a portable power bank, a car charger (if you plan to rent a car), and a waterproof phone case to protect your device from water activities....\n...4. **Camera Ready:** With your new Samsung Galaxy S22, you'll be well-equipped to capture stunning photos of the sunrise. Consider bringing a tripod to stabilize your phone, and don't forget to charge your battery before heading out....\n...user: I'm also planning to use my portable power bank, Anker PowerCore 20000, that I bought from Amazon a week before I got my new phone, to ensure my devices stay charged during the trip....\n...3. **Prioritize your devices:** If you have multiple devices to charge, prioritize the ones that need it most. For example, if your phone is running low, charge it first, and then charge your other devices like your camera or headphones....\n...With your Anker PowerCore 20000 and your new Samsung Galaxy S22, you'll be well-equipped to capture stunning photos and stay connected during your trip to Maui. Don't forget to take in the breathtaking views and enjoy the moment, too!...\n...2. **Iao Valley State Park Trails**: This park offers several trails, including the 0.6-mile Iao Valley Stream Trail, which is a gentle, family-friendly hike that takes you through a lush valley and to the Iao Needle rock formation....\n...4. **Haleakala National Park Trails**: While Haleakala is famous for its sunrise summit hike, it also offers several beginner-friendly trails, such as the 1.5-mile Halemau'u Trail, which takes you through a lush forest and offers scenic views of the park....\n...* Bring plenty of water, snacks, and a first-aid kit...\n...user: I'm also planning to visit the Road to Hana, which I've heard is a scenic drive with many waterfalls and hiking trails along the way. Can you recommend any good stops or attractions along the way?...\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Dell XPS 13; Product named Dell XPS 13.\n- entity entity:<1> [PRODUCT]: Samsung Galaxy S22; Product named Samsung Galaxy S22.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2312f94c",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Samsung Galaxy S22\",\"reason\":\"The memory states the user got the Samsung Galaxy S22 on February 20, 2023, while the Dell XPS 13 arrived on February 25, 2023.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2024,
+                "completionTokens": 127,
+                "thinkingTokens": 58,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "44aeb05cf91fb6d5d54095a38ca3b24f747781c6a6d86f42120e719bb55c8187",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which vehicle did I take care of first in February, the bike or the car?\n\n                                Question date:\n                                2023/03/10 (Fri) 23:15\n\n                                Expected answer:\n                                bike\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_76048e76\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-93924a14ea84-claim-11 [ACTIVE] attended_event family=attended_event: The user had their bike repaired by a bike shop in mid-February 2023 because the gears were acting up and they could not shift properly.; scope=Applies to the user's hybrid bike repair history.; evidence=DIRECT source=external:provided-text:a845ecc706579ca3fd078cc6092b5d2b quote=\"I got my bike repaired back in mid-February. The gears were acting up, and I couldn't shift properly, but the bike shop fixed it for me.\"\n- claim hot-path-b2bf4699ed95-claim-6 [ACTIVE] attended_event family=attended_event: The user washed and detailed their current Toyota Corolla on 2023-02-27 after more than a month without washing it.; scope=User's vehicle maintenance history for the current Toyota Corolla.; evidence=IMPORTED source=external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 quote=\"I just washed my current Corolla on Monday, February 27th, after not doing so for over a month\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 [external_record ref=longmemeval:gpt4_76048e76:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...pending on your location, and it's always best to check with your local Toyota dealership for the most up-to-date information.\n\nBy the way, kudos on washing your current Corolla! It's great that you're taking good care of your vehicle. I'm sure it felt refreshing to get rid of all the dirt and grime from that snowstorm.\n\nDo you have any specific questions about the Corolla Hybrid or would you like me to look into other models that might fit your needs?\nuser: I'd like to know more about the maintenance costs of the Corolla Hybrid. I've been doing some maintenance on my current car myself, like washing and vacuuming, but I had to take it to the dealership for a routine checkup this Friday because my friend said the \"check engine\" light came on when she borrowed it.\nassistant: Wise decision to get the \"check engine\" light checked out!\n\nMaintenance costs are an essential factor to consider when buying a new car, and the Toyota Corolla Hybrid is known for being relatively low-maintenance. Here are some points to keep in mind:\n\n1. **Oil changes**: The Corolla Hybrid requires synthetic oil changes, which can cost around $75-$100 per change, depending on the dealership or service center. Toyota recommends oil changes every 5,000 to 7,500 miles.\n2. **Tire rotation**: Regular tire rotation is essential for even wear and tear. You can expect to pay around $20-$30 per rotation, and it's recommended every 5,000 to 8,000 miles.\n3. **Battery maintenance**: The Corolla Hybrid's battery is designed to last the life of the vehicle, but it's still important to keep the terminals clean and secure. You can expect to pay around $20-$50 for a battery maintenance check.\n4. **Hybrid system mainte...\n...s. You can expect to replace them every 30,000 to 50,000 miles, with costs ranging from $200-$300 per axle.\n\nIt's great that you've been taking care of your current Corolla, and it's even more impressive that you've been doing some maintenance tasks yourself! However, it's always a good idea to have a professional inspect your vehicle regularly to catch any potential issues before they become major problems.\n\nAs for your current Corolla's \"check engine\" light, it's great that you're getting it checked out. The dealership will be able to diagnose the issue and provide a quote for any necessary repairs.\n\nDo you have any concerns about the maintenance costs or would you like to know more about the Corolla Hybrid's features and technologies?\nuser: I spent about $20 on detailing my Corolla when I washed it, which included vacuuming the interior and cleaning the wheels and tires. Do you think the hybrid model would require more maintenance in these areas, or would it be similar to my current car?\nassistant: You're a detail-oriented owner, I like that!\n\nThe Toyota Corolla Hybrid's exterior and interior maintenance requirements are similar to your current Corolla. The hybrid model doesn't have any unique requirements in terms of washing, vacuuming, or cleaning the wheels and tires.\n\nIn fact, the Corolla Hybrid's exterior is designed to be just as easy to maintain as your current Corolla. The wheels and tires are similar, and the paint job is just as durable. You can expect to spend around the same amount, $20-$30, for a detailing session, including vacuuming the interior and cleaning the wheels and tires.\n\nHowever, it's worth noting that the Corolla Hybrid's interior might requir...\n- source external:provided-text:a845ecc706579ca3fd078cc6092b5d2b [external_record ref=longmemeval:gpt4_76048e76:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...ut that bike rack... There are many great options out there, but it depends on your specific needs and preferences. Here are a few questions to help narrow down some recommendations:\n\n1. What type of bike do you have (road, mountain, hybrid, electric)?\n2. How many bikes do you want to carry?\n3. What's your car's make and model?\n4. Do you prefer a roof-mounted, hitch-mounted, or trunk-mounted rack?\n5. Are you looking for a budget-friendly option or are you willing to invest in a high-end rack?\n6. Do you need any additional features, such as tilt functionality or integrated locks?\n\nSome popular bike rack brands include Thule, Yakima, Saris, and Kuat. I can give you more specific recommendations based on your answers to these questions.\n\nLet me know, and we can get started on finding the perfect bike rack for you!\nuser: I have a hybrid bike, and I want to carry just one bike. My car is a Toyota Corolla. I'm not sure about the type of mount, but I'd like something easy to install and remove. I'm open to different price ranges, but I'd like to know what I'm getting for my money.\nassistant: With a hybrid bike and a Toyota Corolla, you've got a great combo for commuting or casual rides.\n\nBased on your preferences, here are some bike rack options to consider:\n\n**Roof-Mounted Racks**\n\n* **Thule Evo 1-Bike Carrier** (around $100-$150): A popular, easy-to-install roof rack that's compatible with your Corolla. It's a great value for the price, and Thule is a trusted brand in the industry.\n* **Yakima FullBack 1-Bike Carrier** (around $150-$200): Another well-known brand, Yakima's FullBack is a sleek, low-profile rack that's easy to install and remove. It's a bit pricier than the Thule...\n...it for your bike.\n3. **Frame clamp:** The frame clamp is the component that attaches to your bike's frame, providing additional stability and security. It's designed to fit a wide range of frame sizes and styles.\n\nWhen you load your bike onto the Transfer, the ratcheting arm and wheel cradles work together to hold your bike in place. The arm pivots to accommodate your bike's wheel size, and the cradles adjust to fit snugly around your wheels. The frame clamp provides additional stability, ensuring your bike is securely attached to the rack.\n\nThe Kuat Transfer's Pivot System provides excellent bike protection in several ways:\n\n* **Stability:** The system ensures your bike is held securely in place, reducing the risk of damage or movement during transport.\n* **Protection from scratches:** The wheel cradles and frame clamp are designed to protect your bike's wheels and frame from scratches and damage.\n* **Security:** The integrated cable lock provides an added layer of security, deterring theft and vandalism.\n\nThe Kuat Transfer is designed to accommodate a wide range of bike sizes and styles, including hybrid bikes like yours. The adjustable design ensures a customizable fit, and the Pivot System provides excellent bike protection and stability.\n\nI think you'll really appreciate the Kuat Transfer's premium feel and design, as well as its excellent bike protection features. It's a great choice for anyone who wants a high-quality, reliable bike rack that can handle heavier bikes.\n\nDo you have any other questions about the Kuat Transfer or its bike protection features?\nuser: By the way, speaking of bikes, I'm glad I got my bike repaired back in mid-February. The gears were acti...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_76048e76",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which vehicle did I take care of first in February, the bike or the car?\n\n                                Question date:\n                                2023/03/10 (Fri) 23:15\n\n                                Expected answer:\n                                bike\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_76048e76\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-93924a14ea84-claim-11 [ACTIVE] attended_event family=attended_event: The user had their bike repaired by a bike shop in mid-February 2023 because the gears were acting up and they could not shift properly.; scope=Applies to the user's hybrid bike repair history.; evidence=DIRECT source=external:provided-text:a845ecc706579ca3fd078cc6092b5d2b quote=\"I got my bike repaired back in mid-February. The gears were acting up, and I couldn't shift properly, but the bike shop fixed it for me.\"\n- claim hot-path-b2bf4699ed95-claim-6 [ACTIVE] attended_event family=attended_event: The user washed and detailed their current Toyota Corolla on 2023-02-27 after more than a month without washing it.; scope=User's vehicle maintenance history for the current Toyota Corolla.; evidence=IMPORTED source=external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 quote=\"I just washed my current Corolla on Monday, February 27th, after not doing so for over a month\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8c88d79710db52dbb24c8b3d3fce5712 [external_record ref=longmemeval:gpt4_76048e76:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...pending on your location, and it's always best to check with your local Toyota dealership for the most up-to-date information.\n\nBy the way, kudos on washing your current Corolla! It's great that you're taking good care of your vehicle. I'm sure it felt refreshing to get rid of all the dirt and grime from that snowstorm.\n\nDo you have any specific questions about the Corolla Hybrid or would you like me to look into other models that might fit your needs?\nuser: I'd like to know more about the maintenance costs of the Corolla Hybrid. I've been doing some maintenance on my current car myself, like washing and vacuuming, but I had to take it to the dealership for a routine checkup this Friday because my friend said the \"check engine\" light came on when she borrowed it.\nassistant: Wise decision to get the \"check engine\" light checked out!\n\nMaintenance costs are an essential factor to consider when buying a new car, and the Toyota Corolla Hybrid is known for being relatively low-maintenance. Here are some points to keep in mind:\n\n1. **Oil changes**: The Corolla Hybrid requires synthetic oil changes, which can cost around $75-$100 per change, depending on the dealership or service center. Toyota recommends oil changes every 5,000 to 7,500 miles.\n2. **Tire rotation**: Regular tire rotation is essential for even wear and tear. You can expect to pay around $20-$30 per rotation, and it's recommended every 5,000 to 8,000 miles.\n3. **Battery maintenance**: The Corolla Hybrid's battery is designed to last the life of the vehicle, but it's still important to keep the terminals clean and secure. You can expect to pay around $20-$50 for a battery maintenance check.\n4. **Hybrid system mainte...\n...s. You can expect to replace them every 30,000 to 50,000 miles, with costs ranging from $200-$300 per axle.\n\nIt's great that you've been taking care of your current Corolla, and it's even more impressive that you've been doing some maintenance tasks yourself! However, it's always a good idea to have a professional inspect your vehicle regularly to catch any potential issues before they become major problems.\n\nAs for your current Corolla's \"check engine\" light, it's great that you're getting it checked out. The dealership will be able to diagnose the issue and provide a quote for any necessary repairs.\n\nDo you have any concerns about the maintenance costs or would you like to know more about the Corolla Hybrid's features and technologies?\nuser: I spent about $20 on detailing my Corolla when I washed it, which included vacuuming the interior and cleaning the wheels and tires. Do you think the hybrid model would require more maintenance in these areas, or would it be similar to my current car?\nassistant: You're a detail-oriented owner, I like that!\n\nThe Toyota Corolla Hybrid's exterior and interior maintenance requirements are similar to your current Corolla. The hybrid model doesn't have any unique requirements in terms of washing, vacuuming, or cleaning the wheels and tires.\n\nIn fact, the Corolla Hybrid's exterior is designed to be just as easy to maintain as your current Corolla. The wheels and tires are similar, and the paint job is just as durable. You can expect to spend around the same amount, $20-$30, for a detailing session, including vacuuming the interior and cleaning the wheels and tires.\n\nHowever, it's worth noting that the Corolla Hybrid's interior might requir...\n- source external:provided-text:a845ecc706579ca3fd078cc6092b5d2b [external_record ref=longmemeval:gpt4_76048e76:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...ut that bike rack... There are many great options out there, but it depends on your specific needs and preferences. Here are a few questions to help narrow down some recommendations:\n\n1. What type of bike do you have (road, mountain, hybrid, electric)?\n2. How many bikes do you want to carry?\n3. What's your car's make and model?\n4. Do you prefer a roof-mounted, hitch-mounted, or trunk-mounted rack?\n5. Are you looking for a budget-friendly option or are you willing to invest in a high-end rack?\n6. Do you need any additional features, such as tilt functionality or integrated locks?\n\nSome popular bike rack brands include Thule, Yakima, Saris, and Kuat. I can give you more specific recommendations based on your answers to these questions.\n\nLet me know, and we can get started on finding the perfect bike rack for you!\nuser: I have a hybrid bike, and I want to carry just one bike. My car is a Toyota Corolla. I'm not sure about the type of mount, but I'd like something easy to install and remove. I'm open to different price ranges, but I'd like to know what I'm getting for my money.\nassistant: With a hybrid bike and a Toyota Corolla, you've got a great combo for commuting or casual rides.\n\nBased on your preferences, here are some bike rack options to consider:\n\n**Roof-Mounted Racks**\n\n* **Thule Evo 1-Bike Carrier** (around $100-$150): A popular, easy-to-install roof rack that's compatible with your Corolla. It's a great value for the price, and Thule is a trusted brand in the industry.\n* **Yakima FullBack 1-Bike Carrier** (around $150-$200): Another well-known brand, Yakima's FullBack is a sleek, low-profile rack that's easy to install and remove. It's a bit pricier than the Thule...\n...it for your bike.\n3. **Frame clamp:** The frame clamp is the component that attaches to your bike's frame, providing additional stability and security. It's designed to fit a wide range of frame sizes and styles.\n\nWhen you load your bike onto the Transfer, the ratcheting arm and wheel cradles work together to hold your bike in place. The arm pivots to accommodate your bike's wheel size, and the cradles adjust to fit snugly around your wheels. The frame clamp provides additional stability, ensuring your bike is securely attached to the rack.\n\nThe Kuat Transfer's Pivot System provides excellent bike protection in several ways:\n\n* **Stability:** The system ensures your bike is held securely in place, reducing the risk of damage or movement during transport.\n* **Protection from scratches:** The wheel cradles and frame clamp are designed to protect your bike's wheels and frame from scratches and damage.\n* **Security:** The integrated cable lock provides an added layer of security, deterring theft and vandalism.\n\nThe Kuat Transfer is designed to accommodate a wide range of bike sizes and styles, including hybrid bikes like yours. The adjustable design ensures a customizable fit, and the Pivot System provides excellent bike protection and stability.\n\nI think you'll really appreciate the Kuat Transfer's premium feel and design, as well as its excellent bike protection features. It's a great choice for anyone who wants a high-quality, reliable bike rack that can handle heavier bikes.\n\nDo you have any other questions about the Kuat Transfer or its bike protection features?\nuser: By the way, speaking of bikes, I'm glad I got my bike repaired back in mid-February. The gears were acti...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_76048e76",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"bike\",\"reason\":\"The memory dates bike repair to mid-February 2023 and car care to February 27, so the bike came first.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2522,
+                "completionTokens": 101,
+                "thinkingTokens": 46,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

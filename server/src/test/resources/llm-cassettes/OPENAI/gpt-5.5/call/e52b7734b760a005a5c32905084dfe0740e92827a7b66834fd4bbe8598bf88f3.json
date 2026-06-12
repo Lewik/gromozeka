@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "e52b7734b760a005a5c32905084dfe0740e92827a7b66834fd4bbe8598bf88f3",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some accessories that would complement my current photography setup?\n\n                                Question date:\n                                2023/05/30 (Tue) 05:04\n\n                                Expected answer:\n                                The user would prefer suggestions of Sony-compatible accessories or high-quality photography gear that can enhance their photography experience. They may not prefer suggestions of other brands' equipment or low-quality gear.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:06878be2\n            Answer mode: MIXED\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0cff0b363ed9-claim-11 [ACTIVE] has_goal family=has_goal: The user is interested in upgrading to a more comfortable and durable camera bag designed for Sony camera gear.; scope=User photography gear shopping context; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I've been thinking about upgrading my camera bag to something more comfortable and durable\"\n- claim hot-path-0cff0b363ed9-claim-10 [ACTIVE] prefers family=prefers: The user chose the Godox V1 as their camera flash upgrade.; scope=User camera flash purchase decision in the 2023-05-28 photography gear session; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I think I'll go with the Godox V1.\"\n- claim hot-path-0cff0b363ed9-claim-8 [ACTIVE] works_with family=works_with: The user works with a Sony A7R IV camera.; scope=User photography gear context; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"my Sony A7R IV\"\n- claim hot-path-0cff0b363ed9-claim-9 [ACTIVE] works_with family=works_with: The user works with a Sony 24-70mm f/2.8 lens.; scope=User photography gear context; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"my Sony 24-70mm f/2.8 lens\"\n\n            Retrieved notes:\n            - note hot-path-0cff0b363ed9-note-7 [PLAN/ACTIVE]: Camera bag upgrade discovery criteria for Sony setup; When the user asked about a more comfortable and durable camera bag for a Sony camera setup, the useful recommendation path was to first clarify budget, amount of gear, preferred format (backpack, messenger, shoulder bag), and whether the bag is for travel or everyday use. Candidate high-quality compatible brands mentioned were Think Tank Photo, Lowepro, F-Stop Gear, Peak Design, and MindShift Gear.; scope=Camera bag recommendation context for the user's Sony camera gear upgrade interest; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I've been thinking about upgrading my camera bag to something more comfortable and durable.\"\n- note hot-path-0cff0b363ed9-note-4 [CONTEXT/ACTIVE]: External battery pack criteria for Sony A7R IV field charging; For charging the Sony A7R IV and other devices on the go, the reusable selection criteria were at least about 15,000mAh capacity, USB-C PD support for efficient camera charging, manageable size/weight, and multiple USB ports if charging several devices. Recommended examples included Anker PowerCore 20000 PD, Mophie Powerstation XXL, and Jackery Titan S 20000.; scope=Battery-pack recommendation context for the user's Sony A7R IV mobile charging needs; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"Make sure the battery pack supports USB-C PD (Power Delivery) to charge your A7R IV quickly and efficiently.\"\n- note hot-path-0cff0b363ed9-note-2 [DECISION/ACTIVE]: Godox V1 chosen over Sony HVL-F60RM for flash upgrade; In the Sony A7R IV flash-upgrade discussion, the user moved from leaning toward the Godox V1 to deciding to buy it; the key trade-off was accepting less premium build/weather sealing than the Sony HVL-F60RM in exchange for affordability, compactness, longer battery life, and faster recycle time.; scope=User's camera flash upgrade choice for a Sony A7R IV setup; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I think I'll go with the Godox V1.\"\n- note hot-path-0cff0b363ed9-note-3 [LESSON/ACTIVE]: Safe cleaning procedure for Sony 24-70mm f/2.8 lens; For the Sony 24-70mm f/2.8 lens, the recommended cleaning workflow is: inspect first, blow away loose debris with a blower/soft brush, wipe gently from center outward with a dry lens microfiber cloth, use lens tissue/pre-moistened wipe only for stubborn marks, and apply lens cleaning solution only to the cloth rather than directly to the lens. Avoid paper towels, household cleaners, bare-hand contact, and excessive pressure to prevent streaks or scratches.; scope=Reusable lens-cleaning guidance for the user's Sony 24-70mm f/2.8 lens; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"Apply a small amount of solution to the microfiber cloth, not directly to the lens.\"\n\n            Retrieved evidence:\n            - source external:provided-text:a7418f53c033d7b40a91b148afe4c32c [external_record ref=longmemeval:06878be2:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...assistant: Upgrading your camera flash can make a significant difference in your photography. I'd be happy to help you find a compatible flash for your Sony A7R IV. Here are some excellent options to consider:...\n...* **LED Light**: A built-in LED light can be useful for video or continuous lighting applications....\n...user: I'm leaning towards the Godox V1, but how does it compare to the Sony HVL-F60RM in terms of build quality and durability?...\n...* **Godox V1**: The V1 has a plastic body with a metal hot shoe and a partial metal chassis. It's lightweight and compact, weighing around 237g (8.4 oz). The build quality is good, but not as premium as some other flashes in its class. The V1 has a more minimalist design, which can make it feel slightly less robust than the Sony HVL-F60RM....\n...* **Godox V1**: The V1 is built to withstand normal use, but it may not be as resistant to rough handling or harsh environments. The plastic body can be more prone to scratches and cracks than a metal body. However, Godox is known for producing reliable flashes, and the V1 has a good track record for durability....\n...user: I think I'll go with the Godox V1. Can you recommend some good cases or pouches to protect my new flash?...\n...2. **Nanuk 915 Hard Case**: Nanuk is a well-known brand in the photography industry, and their 915 case is a popular choice among photographers. It's a bit larger than the Godox case, but it's still compact and provides excellent protection. ($40)...\n...1. **Think Tank Photo Flash Pouch**: Think Tank Photo is a well-respected brand in the photography industry, and their flash pouch is a great option for the Godox V1. It's a soft, padded pouch that provides excellent protection and has a compact design. ($15)...\n...user: What are some good external battery packs that can charge my Sony A7R IV and other devices on the go?...\n...user: What's the best way to clean my Sony 24-70mm f/2.8 lens? I've heard that using a soft cloth and some cleaning solution can leave streaks or scratches on the lens....\n...* A soft, dry microfiber cloth (specifically designed for cleaning lenses)...\n...4. **Use a lens cleaning solution (optional)**: If you need to remove more stubborn stains or grime, you can use a lens cleaning solution. Apply a small amount of solution to the microfiber cloth, not directly to the lens. Gently wipe the lens in the same circular motion as before. Make sure to choose a solution that's specifically designed for cleaning lenses, and follow the instructions carefully....\n...user: I'm thinking of getting a new tripod, specifically the Gitzo GT3543LS. Can you tell me more about it?...\n...* **Systematic Series 3**: This tripod is part of Gitzo's Systematic Series 3, which means it's designed for heavy-duty use and can support cameras up to 39.7 lbs (18 kg)....\n...assistant: The G-Lock Ultra system is a proprietary technology developed by Gitzo, a renowned manufacturer of tripods and camera accessories. It's a key feature of many Gitzo tripods, including the GT3543LS I mentioned earlier....\n...user: As a Sony camera user, I've been thinking about upgrading my camera bag to something more comfortable and durable. Do you have any recommendations for camera bags that are specifically designed for Sony cameras?...\n...assistant: I'm happy to help you with that. As a Sony camera user, you're in luck because there are many great camera bags out there that are specifically designed for Sony cameras....\n...2. How much gear do you need to carry? Are you looking for a bag that can fit just your camera and a few lenses, or do you need something that can fit a lot of accessories as well?...\n...* F-Stop Gear...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Camera bag; Concept named Camera bag.\n- entity entity:<1> [ORGANIZATION]: Sony; Organization named Sony.\n- entity entity:<2> [PRODUCT]: Godox V1; Product named Godox V1.\n- entity entity:<3> [PRODUCT]: Sony 24-70mm f/2.8 lens; Product named Sony 24-70mm f/2.8 lens.\n- entity entity:<4> [PRODUCT]: Sony A7R IV; Product named Sony A7R IV.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "06878be2",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some accessories that would complement my current photography setup?\n\n                                Question date:\n                                2023/05/30 (Tue) 05:04\n\n                                Expected answer:\n                                The user would prefer suggestions of Sony-compatible accessories or high-quality photography gear that can enhance their photography experience. They may not prefer suggestions of other brands' equipment or low-quality gear.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:06878be2\n            Answer mode: MIXED\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0cff0b363ed9-claim-11 [ACTIVE] has_goal family=has_goal: The user is interested in upgrading to a more comfortable and durable camera bag designed for Sony camera gear.; scope=User photography gear shopping context; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I've been thinking about upgrading my camera bag to something more comfortable and durable\"\n- claim hot-path-0cff0b363ed9-claim-10 [ACTIVE] prefers family=prefers: The user chose the Godox V1 as their camera flash upgrade.; scope=User camera flash purchase decision in the 2023-05-28 photography gear session; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I think I'll go with the Godox V1.\"\n- claim hot-path-0cff0b363ed9-claim-8 [ACTIVE] works_with family=works_with: The user works with a Sony A7R IV camera.; scope=User photography gear context; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"my Sony A7R IV\"\n- claim hot-path-0cff0b363ed9-claim-9 [ACTIVE] works_with family=works_with: The user works with a Sony 24-70mm f/2.8 lens.; scope=User photography gear context; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"my Sony 24-70mm f/2.8 lens\"\n\n            Retrieved notes:\n            - note hot-path-0cff0b363ed9-note-7 [PLAN/ACTIVE]: Camera bag upgrade discovery criteria for Sony setup; When the user asked about a more comfortable and durable camera bag for a Sony camera setup, the useful recommendation path was to first clarify budget, amount of gear, preferred format (backpack, messenger, shoulder bag), and whether the bag is for travel or everyday use. Candidate high-quality compatible brands mentioned were Think Tank Photo, Lowepro, F-Stop Gear, Peak Design, and MindShift Gear.; scope=Camera bag recommendation context for the user's Sony camera gear upgrade interest; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I've been thinking about upgrading my camera bag to something more comfortable and durable.\"\n- note hot-path-0cff0b363ed9-note-4 [CONTEXT/ACTIVE]: External battery pack criteria for Sony A7R IV field charging; For charging the Sony A7R IV and other devices on the go, the reusable selection criteria were at least about 15,000mAh capacity, USB-C PD support for efficient camera charging, manageable size/weight, and multiple USB ports if charging several devices. Recommended examples included Anker PowerCore 20000 PD, Mophie Powerstation XXL, and Jackery Titan S 20000.; scope=Battery-pack recommendation context for the user's Sony A7R IV mobile charging needs; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"Make sure the battery pack supports USB-C PD (Power Delivery) to charge your A7R IV quickly and efficiently.\"\n- note hot-path-0cff0b363ed9-note-2 [DECISION/ACTIVE]: Godox V1 chosen over Sony HVL-F60RM for flash upgrade; In the Sony A7R IV flash-upgrade discussion, the user moved from leaning toward the Godox V1 to deciding to buy it; the key trade-off was accepting less premium build/weather sealing than the Sony HVL-F60RM in exchange for affordability, compactness, longer battery life, and faster recycle time.; scope=User's camera flash upgrade choice for a Sony A7R IV setup; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"I think I'll go with the Godox V1.\"\n- note hot-path-0cff0b363ed9-note-3 [LESSON/ACTIVE]: Safe cleaning procedure for Sony 24-70mm f/2.8 lens; For the Sony 24-70mm f/2.8 lens, the recommended cleaning workflow is: inspect first, blow away loose debris with a blower/soft brush, wipe gently from center outward with a dry lens microfiber cloth, use lens tissue/pre-moistened wipe only for stubborn marks, and apply lens cleaning solution only to the cloth rather than directly to the lens. Avoid paper towels, household cleaners, bare-hand contact, and excessive pressure to prevent streaks or scratches.; scope=Reusable lens-cleaning guidance for the user's Sony 24-70mm f/2.8 lens; evidence=DIRECT source=external:provided-text:a7418f53c033d7b40a91b148afe4c32c quote=\"Apply a small amount of solution to the microfiber cloth, not directly to the lens.\"\n\n            Retrieved evidence:\n            - source external:provided-text:a7418f53c033d7b40a91b148afe4c32c [external_record ref=longmemeval:06878be2:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...assistant: Upgrading your camera flash can make a significant difference in your photography. I'd be happy to help you find a compatible flash for your Sony A7R IV. Here are some excellent options to consider:...\n...* **LED Light**: A built-in LED light can be useful for video or continuous lighting applications....\n...user: I'm leaning towards the Godox V1, but how does it compare to the Sony HVL-F60RM in terms of build quality and durability?...\n...* **Godox V1**: The V1 has a plastic body with a metal hot shoe and a partial metal chassis. It's lightweight and compact, weighing around 237g (8.4 oz). The build quality is good, but not as premium as some other flashes in its class. The V1 has a more minimalist design, which can make it feel slightly less robust than the Sony HVL-F60RM....\n...* **Godox V1**: The V1 is built to withstand normal use, but it may not be as resistant to rough handling or harsh environments. The plastic body can be more prone to scratches and cracks than a metal body. However, Godox is known for producing reliable flashes, and the V1 has a good track record for durability....\n...user: I think I'll go with the Godox V1. Can you recommend some good cases or pouches to protect my new flash?...\n...2. **Nanuk 915 Hard Case**: Nanuk is a well-known brand in the photography industry, and their 915 case is a popular choice among photographers. It's a bit larger than the Godox case, but it's still compact and provides excellent protection. ($40)...\n...1. **Think Tank Photo Flash Pouch**: Think Tank Photo is a well-respected brand in the photography industry, and their flash pouch is a great option for the Godox V1. It's a soft, padded pouch that provides excellent protection and has a compact design. ($15)...\n...user: What are some good external battery packs that can charge my Sony A7R IV and other devices on the go?...\n...user: What's the best way to clean my Sony 24-70mm f/2.8 lens? I've heard that using a soft cloth and some cleaning solution can leave streaks or scratches on the lens....\n...* A soft, dry microfiber cloth (specifically designed for cleaning lenses)...\n...4. **Use a lens cleaning solution (optional)**: If you need to remove more stubborn stains or grime, you can use a lens cleaning solution. Apply a small amount of solution to the microfiber cloth, not directly to the lens. Gently wipe the lens in the same circular motion as before. Make sure to choose a solution that's specifically designed for cleaning lenses, and follow the instructions carefully....\n...user: I'm thinking of getting a new tripod, specifically the Gitzo GT3543LS. Can you tell me more about it?...\n...* **Systematic Series 3**: This tripod is part of Gitzo's Systematic Series 3, which means it's designed for heavy-duty use and can support cameras up to 39.7 lbs (18 kg)....\n...assistant: The G-Lock Ultra system is a proprietary technology developed by Gitzo, a renowned manufacturer of tripods and camera accessories. It's a key feature of many Gitzo tripods, including the GT3543LS I mentioned earlier....\n...user: As a Sony camera user, I've been thinking about upgrading my camera bag to something more comfortable and durable. Do you have any recommendations for camera bags that are specifically designed for Sony cameras?...\n...assistant: I'm happy to help you with that. As a Sony camera user, you're in luck because there are many great camera bags out there that are specifically designed for Sony cameras....\n...2. How much gear do you need to carry? Are you looking for a bag that can fit just your camera and a few lenses, or do you need something that can fit a lot of accessories as well?...\n...* F-Stop Gear...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Camera bag; Concept named Camera bag.\n- entity entity:<1> [ORGANIZATION]: Sony; Organization named Sony.\n- entity entity:<2> [PRODUCT]: Godox V1; Product named Godox V1.\n- entity entity:<3> [PRODUCT]: Sony 24-70mm f/2.8 lens; Product named Sony 24-70mm f/2.8 lens.\n- entity entity:<4> [PRODUCT]: Sony A7R IV; Product named Sony A7R IV.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "06878be2",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest Sony-compatible, high-quality accessories for the user's Sony A7R IV setup, such as items compatible with their Sony body/lens, a Godox V1 flash and protective pouch/case, USB-C PD battery pack, durable camera bag, tripod, and lens-cleaning gear.\",\"reason\":\"The memory establishes the user's Sony A7R IV/24-70mm setup and prior interest in compatible, durable, reputable photography accessories, including specific high-quality accessory categories.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2887,
+                "completionTokens": 318,
+                "thinkingTokens": 198,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

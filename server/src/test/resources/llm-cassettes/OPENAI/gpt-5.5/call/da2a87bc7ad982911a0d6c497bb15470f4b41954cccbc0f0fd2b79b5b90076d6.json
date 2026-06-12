@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "da2a87bc7ad982911a0d6c497bb15470f4b41954cccbc0f0fd2b79b5b90076d6",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest a hotel for my upcoming trip to Miami?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:40\n\n                                Expected answer:\n                                The user would prefer suggestions of hotels in Miami that offer great views, possibly of the ocean or the city skyline, and have unique features such as a rooftop pool or a hot tub on the balcony. They may not prefer suggestions of basic or budget hotels without these features.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0edc2aef\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-028b38e7b341-claim-3 [ACTIVE] has_goal family=has_goal: The user planned a trip to Seattle and wanted a hotel with a great city view.; scope=Past Seattle trip-planning conversation from 2023-05-27.; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"I'm planning a trip to Seattle and need help finding a hotel with a great view of the city.\"\n- claim hot-path-028b38e7b341-claim-6 [ACTIVE] has_constraint family=has_constraint: For the Seattle hotel stay, the user wanted a hot tub on the balcony with a view of the Space Needle, complimentary room service breakfast, and a $100 credit toward a couples' massage.; scope=Past Seattle trip-planning conversation from 2023-05-27.; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba [external_record ref=longmemeval:0edc2aef:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a trip to Seattle and need help finding a hotel with a great view of the city. Do you have any recommendations?...\n...1. **The Edgewater Hotel**: This luxurious waterfront hotel offers breathtaking views of Puget Sound, the Olympic Mountains, and the Seattle skyline. Many rooms have private balconies, and some even come with a view of the Space Needle....\n...5. **Pan Pacific Seattle**: This hotel is situated in the trendy Belltown neighborhood and offers rooms with views of the Space Needle, Puget Sound, and the Olympic Mountains....\n...user: Besides great views, I also like hotels with unique features, such as a rooftop pool or a hot tub on the balcony. Do you know if any of these hotels have those features?...\n...**Other Hotels with Rooftop Amenities:**...\n...user: Do any of these hotels have a hot tub on the balcony with a view of the city skyline?...\n...If you're looking for alternative options, you might consider searching for luxury apartments or vacation rentals in Seattle that offer hot tubs on the balcony with city views. These types of accommodations might provide more options, but keep in mind that they may not offer the same level of service as a hotel....\n...2. Be flexible with your travel dates, as weekdays might offer better availability than weekends....\n...user: I'm thinking of staying at The Edgewater Hotel, but I want to know more about the room service breakfast. Can I get a room service breakfast delivered to my room, and are there any options available that cater to my dietary restrictions?...\n...* Be sure to specify any dietary restrictions or preferences when you place your order....\n...user: I'd like to know if they have any special packages or promotions that include a room with a hot tub on the balcony and a complimentary room service breakfast....\n...**Seasonal Promotions:** The Edgewater Hotel often offers seasonal promotions and packages, such as a \"Summer Lovin'\" package or a \"Winter Wonderland\" package. These packages might include perks like a complimentary room service breakfast, a hot tub on the balcony, and other luxurious amenities....\n...user: Do they have any packages or promotions that include a room with a hot tub on the balcony that faces the Space Needle?...\n...Be sure to check the hotel's website or contact their reservations team directly to inquire about current packages and promotions. They might have other offers that fit your needs and preferences....\n...user: Can I get a room with a hot tub on the balcony that faces the Space Needle and also includes a complimentary room service breakfast and a $100 credit towards a couples' massage at the hotel's spa?...\n...This package is specifically designed for couples looking to relax and rejuvenate in style. The hot tub on the balcony offers breathtaking views of the Space Needle, and the complimentary room service breakfast ensures a delicious start to your day. The $100 credit towards a couples' massage at the hotel's spa is the perfect way to unwind and enjoy some quality time with your partner....\n...Here's a tip: Be sure to ask about any additional amenities or upgrades that might be available, such as a private dinner at the hotel's restaurant or a personalized welcome amenity. The hotel's staff is always happy to help make your stay even more special!...\n...user: I think I'll stick with the Space Needle Romance Package at The Edgewater Hotel. The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks. Thank you for your help in booking this package!...\n...Congratulations on planning a wonderful romantic getaway! I hope you and your partner have a fantastic time at The Edgewater Hotel and create many special memories together....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0edc2aef",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest a hotel for my upcoming trip to Miami?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:40\n\n                                Expected answer:\n                                The user would prefer suggestions of hotels in Miami that offer great views, possibly of the ocean or the city skyline, and have unique features such as a rooftop pool or a hot tub on the balcony. They may not prefer suggestions of basic or budget hotels without these features.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0edc2aef\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-028b38e7b341-claim-3 [ACTIVE] has_goal family=has_goal: The user planned a trip to Seattle and wanted a hotel with a great city view.; scope=Past Seattle trip-planning conversation from 2023-05-27.; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"I'm planning a trip to Seattle and need help finding a hotel with a great view of the city.\"\n- claim hot-path-028b38e7b341-claim-6 [ACTIVE] has_constraint family=has_constraint: For the Seattle hotel stay, the user wanted a hot tub on the balcony with a view of the Space Needle, complimentary room service breakfast, and a $100 credit toward a couples' massage.; scope=Past Seattle trip-planning conversation from 2023-05-27.; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba [external_record ref=longmemeval:0edc2aef:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a trip to Seattle and need help finding a hotel with a great view of the city. Do you have any recommendations?...\n...1. **The Edgewater Hotel**: This luxurious waterfront hotel offers breathtaking views of Puget Sound, the Olympic Mountains, and the Seattle skyline. Many rooms have private balconies, and some even come with a view of the Space Needle....\n...5. **Pan Pacific Seattle**: This hotel is situated in the trendy Belltown neighborhood and offers rooms with views of the Space Needle, Puget Sound, and the Olympic Mountains....\n...user: Besides great views, I also like hotels with unique features, such as a rooftop pool or a hot tub on the balcony. Do you know if any of these hotels have those features?...\n...**Other Hotels with Rooftop Amenities:**...\n...user: Do any of these hotels have a hot tub on the balcony with a view of the city skyline?...\n...If you're looking for alternative options, you might consider searching for luxury apartments or vacation rentals in Seattle that offer hot tubs on the balcony with city views. These types of accommodations might provide more options, but keep in mind that they may not offer the same level of service as a hotel....\n...2. Be flexible with your travel dates, as weekdays might offer better availability than weekends....\n...user: I'm thinking of staying at The Edgewater Hotel, but I want to know more about the room service breakfast. Can I get a room service breakfast delivered to my room, and are there any options available that cater to my dietary restrictions?...\n...* Be sure to specify any dietary restrictions or preferences when you place your order....\n...user: I'd like to know if they have any special packages or promotions that include a room with a hot tub on the balcony and a complimentary room service breakfast....\n...**Seasonal Promotions:** The Edgewater Hotel often offers seasonal promotions and packages, such as a \"Summer Lovin'\" package or a \"Winter Wonderland\" package. These packages might include perks like a complimentary room service breakfast, a hot tub on the balcony, and other luxurious amenities....\n...user: Do they have any packages or promotions that include a room with a hot tub on the balcony that faces the Space Needle?...\n...Be sure to check the hotel's website or contact their reservations team directly to inquire about current packages and promotions. They might have other offers that fit your needs and preferences....\n...user: Can I get a room with a hot tub on the balcony that faces the Space Needle and also includes a complimentary room service breakfast and a $100 credit towards a couples' massage at the hotel's spa?...\n...This package is specifically designed for couples looking to relax and rejuvenate in style. The hot tub on the balcony offers breathtaking views of the Space Needle, and the complimentary room service breakfast ensures a delicious start to your day. The $100 credit towards a couples' massage at the hotel's spa is the perfect way to unwind and enjoy some quality time with your partner....\n...Here's a tip: Be sure to ask about any additional amenities or upgrades that might be available, such as a private dinner at the hotel's restaurant or a personalized welcome amenity. The hotel's staff is always happy to help make your stay even more special!...\n...user: I think I'll stick with the Space Needle Romance Package at The Edgewater Hotel. The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks. Thank you for your help in booking this package!...\n...Congratulations on planning a wonderful romantic getaway! I hope you and your partner have a fantastic time at The Edgewater Hotel and create many special memories together....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0edc2aef",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The user likely prefers Miami hotel suggestions with impressive views and distinctive luxury amenities, such as a rooftop pool or a balcony hot tub, rather than basic budget options.\",\"reason\":\"The memory shows the user previously sought hotels with great views and unique features like rooftop pools or balcony hot tubs, ultimately choosing a package for those amenities.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1830,
+                "completionTokens": 167,
+                "thinkingTokens": 78,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -24,18 +24,19 @@ internal object MemoryReadSelectorCandidateRenderer {
     fun render(
         hits: List<MemoryStore.SearchHit>,
         snapshot: MemoryNamespaceSnapshot?,
+        query: String,
     ): String =
         if (hits.isEmpty()) {
             "none"
         } else {
             hits.mapIndexed { index, hit ->
-                "${index + 1}. ${json.encodeToString(hit.toCandidateView(snapshot))}"
+                "${index + 1}. ${json.encodeToString(hit.toCandidateView(snapshot, query))}"
             }.joinToString("\n")
         }
 
-    private fun MemoryStore.SearchHit.toCandidateView(snapshot: MemoryNamespaceSnapshot?): CandidateView =
+    private fun MemoryStore.SearchHit.toCandidateView(snapshot: MemoryNamespaceSnapshot?, query: String): CandidateView =
         when (this) {
-            is MemoryStore.SearchHit.SourceHit -> source.toSourceCandidateView(score, snapshot)
+            is MemoryStore.SearchHit.SourceHit -> source.toSourceCandidateView(score, snapshot, query)
             is MemoryStore.SearchHit.EntityHit -> CandidateView(
                 type = "entity",
                 id = entity.id.value,
@@ -75,6 +76,7 @@ internal object MemoryReadSelectorCandidateRenderer {
     private fun MemorySource.toSourceCandidateView(
         score: Double,
         snapshot: MemoryNamespaceSnapshot?,
+        query: String,
     ): CandidateView {
         val supports = snapshot?.typedRefsSupportedBy(id).orEmpty()
         val overriddenBy = snapshot?.activeTypedReplacementsForSource(id).orEmpty()
@@ -96,7 +98,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             retentionClass = retentionClass.name,
             usagePolicy = usagePolicyForSelectorView(),
             lifecycleState = lifecycleState,
-            text = sourceTextForSelectorView(),
+            text = sourceTextForSelectorView(query),
             supports = supports,
             overriddenBy = overriddenBy,
             selectionHint = when {
@@ -110,7 +112,7 @@ internal object MemoryReadSelectorCandidateRenderer {
         )
     }
 
-    private fun MemorySource.sourceTextForSelectorView(): String =
+    private fun MemorySource.sourceTextForSelectorView(query: String): String =
         listOfNotNull(
             searchText
                 ?.trim()
@@ -119,7 +121,7 @@ internal object MemoryReadSelectorCandidateRenderer {
                 ?.let { "search_text:\n$it" },
             contentText
                 .trim()
-                .limitForSelectorView(MAX_SOURCE_CONTENT_TEXT_CHARS)
+                .let { RuntimeMemorySourceExcerpt.queryFocused(text = it, query = query, maxChars = MAX_SOURCE_CONTENT_TEXT_CHARS) }
                 .let { "source_text:\n$it" },
         ).distinct().joinToString("\n\n")
 

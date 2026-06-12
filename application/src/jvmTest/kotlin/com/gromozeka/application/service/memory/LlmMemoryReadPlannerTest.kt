@@ -1,0 +1,195 @@
+package com.gromozeka.application.service.memory
+
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryReadPlan
+import com.gromozeka.domain.model.memory.MemoryReadRequest
+import com.gromozeka.domain.model.memory.MemorySemanticType
+import com.gromozeka.domain.model.memory.MemoryThreadContext
+import com.gromozeka.domain.service.AiRuntime
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Instant
+
+class LlmMemoryReadPlannerTest {
+    @Test
+    fun plansSourceEvidenceFallbackForPriorConversationRecommendationRecall() = runBlocking {
+        val runtime = CapturingJsonRuntime(
+            """
+            {
+              "need_memory": true,
+              "answer_mode": "factual",
+              "coverage_mode": "minimal",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 2,
+                "notes": 1,
+                "action_items": 0,
+                "sources": 2,
+                "episodes": 0
+              },
+              "retrieval_requests": [
+                {
+                  "memory_type": "claim",
+                  "why": "Check typed facts first.",
+                  "query": "Orlando dessert shop giant milkshakes previous recommendation",
+                  "top_k": 2,
+                  "filters": {},
+                  "preferred_claim_predicates": [],
+                  "deprioritized_claim_predicates": []
+                },
+                {
+                  "memory_type": "source",
+                  "why": "Prior assistant recommendation may exist only in raw conversation evidence.",
+                  "query": "Orlando dessert shop giant milkshakes previous recommendation",
+                  "top_k": 2,
+                  "filters": {},
+                  "preferred_claim_predicates": [],
+                  "deprioritized_claim_predicates": []
+                }
+              ],
+              "require_evidence_fallback": true
+            }
+            """.trimIndent()
+        )
+
+        val plan = LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(
+            readRequest(
+                "I'm planning to revisit Orlando. Remind me of the unique dessert shop with giant milkshakes we talked about last time."
+            )
+        )
+
+        val prompt = runtime.requests.single().messages.asText()
+        assertTrue(prompt.contains("recall what was discussed, suggested, recommended, listed, or mentioned"))
+        assertTrue(prompt.contains("prior assistant-generated recommendations"))
+        assertEquals(true, plan.requireEvidenceFallback)
+        assertEquals(2, plan.retrievalBudget.sources)
+        assertEquals(
+            listOf(MemorySemanticType.CLAIM, MemorySemanticType.SOURCE),
+            plan.retrievalRequests.map { it.memoryType },
+        )
+    }
+
+    @Test
+    fun verifierRequestsSourceForPriorConversationRecallAfterNoMemoryPlan() = runBlocking {
+        val runtime = CapturingJsonRuntime(
+            """
+            {
+              "need_memory": false,
+              "answer_mode": "factual",
+              "coverage_mode": "minimal",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 0,
+                "notes": 0,
+                "action_items": 0,
+                "sources": 0,
+                "episodes": 0
+              },
+              "retrieval_requests": [],
+              "require_evidence_fallback": false
+            }
+            """.trimIndent(),
+            """
+            {
+              "needs_memory": true,
+              "answer_mode": "factual",
+              "needs_source": true,
+              "query": "Orlando dessert shop giant milkshakes previous recommendation",
+              "reason": "The target asks for prior conversation recall."
+            }
+            """.trimIndent(),
+        )
+
+        val plan = LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(
+            readRequest(
+                "What was the dessert shop with giant milkshakes you suggested before?"
+            )
+        )
+
+        val verifierPrompt = runtime.requests.last().messages.asText()
+        assertTrue(verifierPrompt.contains("recall what was discussed, suggested, recommended, listed, or mentioned"))
+        assertTrue(verifierPrompt.contains("prior assistant recommendation recall"))
+        assertEquals(true, plan.requireEvidenceFallback)
+        assertTrue(plan.retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE })
+    }
+
+    private class CapturingJsonRuntime(
+        vararg responses: String,
+    ) : AiRuntime {
+        private val responses = ArrayDeque(responses.toList())
+        val requests = mutableListOf<AiRuntimeRequest>()
+        override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            requests += request
+            return AiRuntimeResponse(
+                messages = listOf(
+                    AiAssistantMessage(
+                        content = listOf(
+                            Conversation.Message.ContentItem.AssistantMessage(
+                                structured = Conversation.Message.StructuredText(responses.removeFirst()),
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+    }
+
+    private companion object {
+        val TEST_NAMESPACE = MemoryNamespace("read-planner-test")
+        val NOW: Instant = Instant.parse("2026-01-02T03:04:05Z")
+
+        fun readRequest(text: String): MemoryReadRequest {
+            val message = Conversation.Message(
+                id = Conversation.Message.Id("target-message"),
+                conversationId = Conversation.Id("conversation"),
+                role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
+                createdAt = NOW,
+            )
+            return MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("thread"),
+                    targetMessageId = message.id,
+                    messages = listOf(message),
+                ),
+            )
+        }
+
+        fun List<Conversation.Message>.asText(): String =
+            joinToString("\n") { message ->
+                message.content.joinToString("\n") { item ->
+                    when (item) {
+                        is Conversation.Message.ContentItem.UserMessage -> item.text
+                        is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                        is Conversation.Message.ContentItem.System -> item.content
+                        else -> item.toString()
+                    }
+                }
+            }
+    }
+}

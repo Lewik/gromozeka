@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "0c5a6abf0a30ca445d80f8bb222d3023ba11fe4b720ef3abc55d38b51aee720a",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many projects have I led or am currently leading?\n\n                                Question date:\n                                2023/05/30 (Tue) 04:18\n\n                                Expected answer:\n                                2\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6d550036\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-4ca5e78d8b60-claim-11 [ACTIVE] responsible_for family=responsible_for: The user led the data analysis team in a Marketing Research class project.; scope=User's role in the Marketing Research class project; evidence=DIRECT source=external:provided-text:50958df7c28675146533a29701ca023e quote=\"where I led the data analysis team\"\n- claim hot-path-c39d2f62f676-claim-7 [ACTIVE] works_on_project family=works_on_project: The user was working on a solo project for their Data Mining class.; scope=Data Mining class project; evidence=DIRECT source=external:provided-text:0d6efad1cbe35c5ada57b1462b656a3f quote=\"I've been working on a solo project for my Data Mining class\"\n- claim hot-path-4ca5e78d8b60-claim-13 [ACTIVE] has_chosen_visualization_strategy family=has_chosen_visualization_strategy: For the customer-data clustering project, the user planned to start with scatter plots and heatmaps to visualize relationships between customer features.; scope=Visualization strategy for the user's customer-data clustering project; evidence=DIRECT source=external:provided-text:50958df7c28675146533a29701ca023e quote=\"I'll start with some scatter plots and heatmaps to visualize the relationships between my customer features\"\n- claim hot-path-54ed7c6145b8-claim-6 [ACTIVE] works_on_project family=works_on_project: The user worked on research about the effects of social media influencers on consumer purchasing decisions.; scope=User's research on social media influencers and consumer purchasing decisions; evidence=DIRECT source=external:provided-text:5e23ca6d151280a5934dacee6e8a59fb quote=\"my research on the effects of social media influencers on consumer purchasing decisions\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:50958df7c28675146533a29701ca023e [external_record ref=longmemeval:6d550036:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/28 (Sun) 17:25...\n...assistant: With your background in marketing research and experience leading a data analysis team, you're off to a great start!...\n...1. **Sensitive to initial placement of centroids**: The algorithm's performance depends on the initial placement of centroids, which can lead to suboptimal solutions....\n...3. **Requires predefined number of clusters (k)**: You need to specify the number of clusters beforehand, which can be challenging if you're not sure how many clusters exist in your data....\n...**Considerations for your project:**...\n...2. **How complex is my data?** If your data has many features or varying densities, hierarchical clustering might be a better fit....\n...Based on your background and project goals, I recommend starting with k-means clustering, as it's a more straightforward and efficient algorithm. However, if you're unsure about the number of clusters or expect complex structures in your data, hierarchical clustering might be a better choice....\n...user: I was thinking of using k-means clustering initially, but I'm not sure about the number of clusters. Can you suggest any methods to determine the optimal number of clusters?...\n...Split your data into training and testing sets, and apply k-means clustering to the training set with different values of k. Evaluate the clustering performance on the testing set using metrics like accuracy, precision, or recall. The optimal number of clusters is the one that maximizes the performance metric....\n...user: I think I'll try the elbow method and silhouette analysis first. I'll also take a look at the data visualization to see if I can identify any patterns or structures that might help me decide on the number of clusters. By the way, do you have any recommendations on how to prepare my data for clustering? Should I normalize or scale my data?...\n...user: I'll definitely take those data preparation steps into consideration. I've also been thinking about how to visualize my data to identify patterns or structures that might help me decide on the number of clusters. Do you have any recommendations on what types of plots or visualizations I should use to visualize my customer data?...\n...6. **Dimensionality Reduction**: Use dimensionality reduction techniques like PCA (Principal Component Analysis), t-SNE (t-Distributed Stochastic Neighbor Embedding), or UMAP (Uniform Manifold Approximation and Projection) to visualize high-dimensional data in 2D or 3D. This can help you:...\n...user: I think I'll start with some scatter plots and heatmaps to visualize the relationships between my customer features. I also want to try out dimensionality reduction techniques like PCA or t-SNE to see if I can identify any clusters or patterns in my high-dimensional data. By the way, I've had some experience with data visualization from my Marketing Research class project, where we had to create reports and presentations to communicate our findings to stakeholders. Do you think I should use any specific color schemes or visual encoding techniques to make my visualizations more effective?...\n...user: I think I'll try out some of these visualization techniques and see what works best for my customer data. I'll also keep in mind the best practices for visualizing high-dimensional data using dimensionality reduction techniques. Thanks for the tips!...\n...If you have any more questions or need further guidance, feel free to ask. Good luck with your analysis, and I hope you uncover some valuable insights from your customer data!...\n- source external:provided-text:5e23ca6d151280a5934dacee6e8a59fb [external_record ref=longmemeval:6d550036:session:4 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/30 (Tue) 02:38...\n...This systematic review of 35 studies on social media influencers' impact on consumer behavior provides a comprehensive overview of the current state of research in this area. The authors identify key themes, including credibility, trust, and social identity, and highlight areas for future research....\n...user: Can you provide more information on the credibility and trust factors mentioned in the systematic review by Hussain and Ali? I'm particularly interested in how social media influencers establish credibility with their followers....\n...7. **Showcasing user-generated content**: Featuring content created by followers or customers can help influencers build social proof and credibility....\n...user: I'm particularly interested in the role of authenticity in establishing credibility. Can you provide more information on how influencers can demonstrate authenticity on social media, and how consumers perceive authenticity in influencer marketing?...\n...5. **Engage in real-time conversations**: Respond to comments, answer questions, and participate in discussions to show you're actively listening and care about your audience....\n...2. **Inauthenticity can be a turn-off**: Audiences can quickly spot fake or scripted content, which can lead to a loss of trust and credibility....\n...user: I'm interested in learning more about the role of social identity in influencer marketing. Can you provide more information on how social identity theory can explain the effectiveness of social media influencer marketing, and how influencers can leverage social identity to build a stronger connection with their audience?...\n...3. **Developing a unique voice and tone**: Use language, humor, and style that resonates with the target audience and reinforces their sense of identity....\n...6. **Encouraging user-generated content**: Encourage followers to create and share content that showcases their own identity, which can increase engagement and loyalty....\n...user: I'd like to explore more about the role of social identity in influencer marketing, particularly in the context of my research on the effects of social media influencers on consumer purchasing decisions. Can you provide more information on how influencers can use social identity to increase brand awareness and drive sales?...\n...1. **Identify and target specific social groups**: Influencers can focus on specific social groups, such as fitness enthusiasts, gamers, or beauty enthusiasts, to create content that resonates with their interests and values....\n...3. **Use social media platforms strategically**: Influencers can use platforms that align with the target social group's preferences, such as TikTok for younger audiences or LinkedIn for professionals....\n...5. **Encourage user-generated content**: Influencers can encourage followers to create and share content that showcases their own identity, increasing engagement and brand awareness....\n...1. **Develop a unique voice and tone**: Influencers should develop a unique voice and tone that resonates with their target social group....\n...1. **Fashion influencer**: A fashion influencer targets young women who are interested in fashion and beauty. They create content that showcases the latest trends and styles, using hashtags like #fashionista and #beautylover. They collaborate with other fashion influencers and offer exclusive promotions to their followers....\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Marketing Research class project data analysis team; Organization named Marketing Research class project data analysis team.\n- entity entity:<1> [PROJECT]: Data Mining class project; Project named Data Mining class project.\n- entity entity:<2> [PROJECT]: User's research on social media influencers and consumer purchasing decisions; Project named User's research on social media influencers and consumer purchasing decisions.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6d550036",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many projects have I led or am currently leading?\n\n                                Question date:\n                                2023/05/30 (Tue) 04:18\n\n                                Expected answer:\n                                2\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6d550036\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-4ca5e78d8b60-claim-11 [ACTIVE] responsible_for family=responsible_for: The user led the data analysis team in a Marketing Research class project.; scope=User's role in the Marketing Research class project; evidence=DIRECT source=external:provided-text:50958df7c28675146533a29701ca023e quote=\"where I led the data analysis team\"\n- claim hot-path-c39d2f62f676-claim-7 [ACTIVE] works_on_project family=works_on_project: The user was working on a solo project for their Data Mining class.; scope=Data Mining class project; evidence=DIRECT source=external:provided-text:0d6efad1cbe35c5ada57b1462b656a3f quote=\"I've been working on a solo project for my Data Mining class\"\n- claim hot-path-4ca5e78d8b60-claim-13 [ACTIVE] has_chosen_visualization_strategy family=has_chosen_visualization_strategy: For the customer-data clustering project, the user planned to start with scatter plots and heatmaps to visualize relationships between customer features.; scope=Visualization strategy for the user's customer-data clustering project; evidence=DIRECT source=external:provided-text:50958df7c28675146533a29701ca023e quote=\"I'll start with some scatter plots and heatmaps to visualize the relationships between my customer features\"\n- claim hot-path-54ed7c6145b8-claim-6 [ACTIVE] works_on_project family=works_on_project: The user worked on research about the effects of social media influencers on consumer purchasing decisions.; scope=User's research on social media influencers and consumer purchasing decisions; evidence=DIRECT source=external:provided-text:5e23ca6d151280a5934dacee6e8a59fb quote=\"my research on the effects of social media influencers on consumer purchasing decisions\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:50958df7c28675146533a29701ca023e [external_record ref=longmemeval:6d550036:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/28 (Sun) 17:25...\n...assistant: With your background in marketing research and experience leading a data analysis team, you're off to a great start!...\n...1. **Sensitive to initial placement of centroids**: The algorithm's performance depends on the initial placement of centroids, which can lead to suboptimal solutions....\n...3. **Requires predefined number of clusters (k)**: You need to specify the number of clusters beforehand, which can be challenging if you're not sure how many clusters exist in your data....\n...**Considerations for your project:**...\n...2. **How complex is my data?** If your data has many features or varying densities, hierarchical clustering might be a better fit....\n...Based on your background and project goals, I recommend starting with k-means clustering, as it's a more straightforward and efficient algorithm. However, if you're unsure about the number of clusters or expect complex structures in your data, hierarchical clustering might be a better choice....\n...user: I was thinking of using k-means clustering initially, but I'm not sure about the number of clusters. Can you suggest any methods to determine the optimal number of clusters?...\n...Split your data into training and testing sets, and apply k-means clustering to the training set with different values of k. Evaluate the clustering performance on the testing set using metrics like accuracy, precision, or recall. The optimal number of clusters is the one that maximizes the performance metric....\n...user: I think I'll try the elbow method and silhouette analysis first. I'll also take a look at the data visualization to see if I can identify any patterns or structures that might help me decide on the number of clusters. By the way, do you have any recommendations on how to prepare my data for clustering? Should I normalize or scale my data?...\n...user: I'll definitely take those data preparation steps into consideration. I've also been thinking about how to visualize my data to identify patterns or structures that might help me decide on the number of clusters. Do you have any recommendations on what types of plots or visualizations I should use to visualize my customer data?...\n...6. **Dimensionality Reduction**: Use dimensionality reduction techniques like PCA (Principal Component Analysis), t-SNE (t-Distributed Stochastic Neighbor Embedding), or UMAP (Uniform Manifold Approximation and Projection) to visualize high-dimensional data in 2D or 3D. This can help you:...\n...user: I think I'll start with some scatter plots and heatmaps to visualize the relationships between my customer features. I also want to try out dimensionality reduction techniques like PCA or t-SNE to see if I can identify any clusters or patterns in my high-dimensional data. By the way, I've had some experience with data visualization from my Marketing Research class project, where we had to create reports and presentations to communicate our findings to stakeholders. Do you think I should use any specific color schemes or visual encoding techniques to make my visualizations more effective?...\n...user: I think I'll try out some of these visualization techniques and see what works best for my customer data. I'll also keep in mind the best practices for visualizing high-dimensional data using dimensionality reduction techniques. Thanks for the tips!...\n...If you have any more questions or need further guidance, feel free to ask. Good luck with your analysis, and I hope you uncover some valuable insights from your customer data!...\n- source external:provided-text:5e23ca6d151280a5934dacee6e8a59fb [external_record ref=longmemeval:6d550036:session:4 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/30 (Tue) 02:38...\n...This systematic review of 35 studies on social media influencers' impact on consumer behavior provides a comprehensive overview of the current state of research in this area. The authors identify key themes, including credibility, trust, and social identity, and highlight areas for future research....\n...user: Can you provide more information on the credibility and trust factors mentioned in the systematic review by Hussain and Ali? I'm particularly interested in how social media influencers establish credibility with their followers....\n...7. **Showcasing user-generated content**: Featuring content created by followers or customers can help influencers build social proof and credibility....\n...user: I'm particularly interested in the role of authenticity in establishing credibility. Can you provide more information on how influencers can demonstrate authenticity on social media, and how consumers perceive authenticity in influencer marketing?...\n...5. **Engage in real-time conversations**: Respond to comments, answer questions, and participate in discussions to show you're actively listening and care about your audience....\n...2. **Inauthenticity can be a turn-off**: Audiences can quickly spot fake or scripted content, which can lead to a loss of trust and credibility....\n...user: I'm interested in learning more about the role of social identity in influencer marketing. Can you provide more information on how social identity theory can explain the effectiveness of social media influencer marketing, and how influencers can leverage social identity to build a stronger connection with their audience?...\n...3. **Developing a unique voice and tone**: Use language, humor, and style that resonates with the target audience and reinforces their sense of identity....\n...6. **Encouraging user-generated content**: Encourage followers to create and share content that showcases their own identity, which can increase engagement and loyalty....\n...user: I'd like to explore more about the role of social identity in influencer marketing, particularly in the context of my research on the effects of social media influencers on consumer purchasing decisions. Can you provide more information on how influencers can use social identity to increase brand awareness and drive sales?...\n...1. **Identify and target specific social groups**: Influencers can focus on specific social groups, such as fitness enthusiasts, gamers, or beauty enthusiasts, to create content that resonates with their interests and values....\n...3. **Use social media platforms strategically**: Influencers can use platforms that align with the target social group's preferences, such as TikTok for younger audiences or LinkedIn for professionals....\n...5. **Encourage user-generated content**: Influencers can encourage followers to create and share content that showcases their own identity, increasing engagement and brand awareness....\n...1. **Develop a unique voice and tone**: Influencers should develop a unique voice and tone that resonates with their target social group....\n...1. **Fashion influencer**: A fashion influencer targets young women who are interested in fashion and beauty. They create content that showcases the latest trends and styles, using hashtags like #fashionista and #beautylover. They collaborate with other fashion influencers and offer exclusive promotions to their followers....\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Marketing Research class project data analysis team; Organization named Marketing Research class project data analysis team.\n- entity entity:<1> [PROJECT]: Data Mining class project; Project named Data Mining class project.\n- entity entity:<2> [PROJECT]: User's research on social media influencers and consumer purchasing decisions; Project named User's research on social media influencers and consumer purchasing decisions.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6d550036",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"2\",\"reason\":\"The context supports one past led project (Marketing Research data analysis team) and one current solo Data Mining project, which entails the user is leading it.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2669,
+                "completionTokens": 274,
+                "thinkingTokens": 215,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

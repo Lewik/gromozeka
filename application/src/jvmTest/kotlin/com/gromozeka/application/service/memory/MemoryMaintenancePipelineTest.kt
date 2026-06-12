@@ -2905,7 +2905,7 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
-    fun runtimeReadDefersRawSourceCandidatesWhenActiveTypedFactExists() = runBlocking {
+    fun runtimeReadKeepsExplicitSourceEvidenceFallbackWhenActiveTypedFactExists() = runBlocking {
         val bookNestEntityId = MemoryEntity.Id("entity-booknest")
         val parquetEntityId = MemoryEntity.Id("entity-parquet")
         val activeSource = source("booknest-parquet-source", "BookNest primary export is now Parquet.")
@@ -2975,11 +2975,90 @@ class MemoryMaintenancePipelineTest {
         val prompt = assertNotNull(result.runtimePrompt)
 
         assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
-        assertTrue(capturedRefs.none { it.type == MemoryItemRef.Type.SOURCE })
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, activeSource.id.value)))
         assertTrue(resultRefs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, activeSource.id.value)))
         assertTrue(resultRefs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, unrelatedSource.id.value) })
         assertTrue(prompt.contains("BookNest primary export is now Parquet."))
         assertTrue(!prompt.contains("PantryPilot"))
+    }
+
+    @Test
+    fun runtimeReadKeepsExplicitSourceEvidenceFallbackDespiteBroadTypedFacts() = runBlocking {
+        val transcriptSource = source(
+            "orlando-dessert-source",
+            """
+            Past chat transcript:
+            user: Please suggest some family-friendly activities to do in Orlando.
+            assistant: ${"Orlando family activity recommendation. ".repeat(90)}
+            user: Can you recommend any places to eat in Orlando that are family-friendly?
+            assistant: ${"Family-friendly Orlando dining option. ".repeat(90)}
+            user: Do you have any recommendations for a fun dessert spot that my family can check out after dinner?
+            assistant: Here are some fun dessert spots:
+
+            1. The Sugar Factory at Icon Park offers specialty drinks and giant milkshakes.
+            2. Wondermade is a gourmet marshmallow shop near Orlando.
+            3. Gideon's Bakehouse is a bakery at Disney Springs.
+            ${"Other Orlando dessert and activity chatter. ".repeat(90)}
+            """.trimIndent(),
+            searchText = "Past Orlando chat about family activities, dining, dessert spots, and dessert crawl planning.",
+        )
+        val broadClaim = claim(
+            id = "orlando-dessert-goal-claim",
+            sourceId = transcriptSource.id.value,
+            predicate = "has_goal",
+            normalizedText = "The user wanted recommendations for a fun dessert spot in Orlando.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(transcriptSource),
+                entities = listOf(entity()),
+                claims = listOf(broadClaim),
+            )
+        )
+        val sourceRef = MemoryItemRef(MemoryItemRef.Type.SOURCE, transcriptSource.id.value)
+        val selector = CapturingReadSelector(selectedRefs = listOf(sourceRef))
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Typed memory may contain a direct reusable answer.",
+                            query = "Orlando dessert shop giant milkshakes",
+                            topK = 2,
+                        ),
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Prior assistant recommendation may exist only in raw conversation evidence.",
+                            query = "Orlando dessert shop giant milkshakes previous recommendation",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(
+            memoryReadRequest(
+                "orlando-dessert-target",
+                """
+                LongMemEval recall target.
+                Current date: 2023/05/30 (Tue) 09:10
+                Question: I'm planning to revisit Orlando. I was wondering if you could remind me of that unique dessert shop with the giant milkshakes we talked about last time?
+                """.trimIndent(),
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(selector.capturedRefs.contains(sourceRef))
+        assertTrue(result.retrievedHits.map { it.toTestItemRef() }.contains(sourceRef))
+        assertTrue(prompt.contains("The Sugar Factory at Icon Park"), prompt)
     }
 
     @Test
@@ -3173,8 +3252,12 @@ class MemoryMaintenancePipelineTest {
         assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
         assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, oldSource.id.value) })
         assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, newSource.id.value)))
-        assertTrue(result.trace.sourceSafety.suppressedSources.isEmpty())
+        assertTrue(
+            result.trace.sourceSafety.suppressedSources
+                .any { it.ref == MemoryItemRef(MemoryItemRef.Type.SOURCE, oldSource.id.value) }
+        )
         assertTrue(prompt.contains("The primary export format for ShelfLog is currently JSON Lines."))
+        assertTrue(!prompt.contains("The primary export format for ShelfLog is currently CSV."))
         assertTrue(!prompt.contains("ShelfLog primary export is currently CSV."))
     }
 
@@ -3210,6 +3293,7 @@ class MemoryMaintenancePipelineTest {
                 MemoryStore.SearchHit.ClaimHit(activeClaim, score = 0.8),
             ),
             snapshot = snapshot,
+            query = "ShelfLog primary export format",
         )
 
         assertTrue(rendered.contains("\"lifecycle_state\":\"overridden_evidence\""))
@@ -3233,12 +3317,13 @@ class MemoryMaintenancePipelineTest {
         val rendered = MemoryReadSelectorCandidateRenderer.render(
             hits = listOf(MemoryStore.SearchHit.SourceHit(longSource, score = 0.9)),
             snapshot = MemoryNamespaceSnapshot(sources = listOf(longSource)),
+            query = "beginning",
         )
 
         assertTrue(rendered.contains("short search paraphrase"))
         assertFalse(rendered.contains("selector-source-marker-after-selector-limit"))
         assertTrue(rendered.contains("source_text"))
-        assertTrue(rendered.contains("[truncated"))
+        assertTrue(rendered.contains("[matching excerpts]"))
     }
 
     @Test

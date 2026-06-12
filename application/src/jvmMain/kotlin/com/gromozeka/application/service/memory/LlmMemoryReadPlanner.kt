@@ -196,6 +196,8 @@ class LlmMemoryReadPlanner(
 
         Use needs_source=true only when exact quote, evidence, source, or wording-level grounding is needed.
         Use needs_source=true when the target asks according to, from, or in a named/pasted/imported document and the target does not include the document content.
+        Use needs_source=true when the target asks to recall what was discussed, suggested, recommended, listed, or mentioned in a previous conversation/session.
+        Use needs_source=true for prior assistant recommendation recall because the precise named option may exist only in raw conversation/source evidence.
         If unsure, set needs_memory=true. False negatives are worse than a small extra recall.
 
         TARGET_CONTEXT text:
@@ -420,6 +422,8 @@ class LlmMemoryReadPlanner(
             - For questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer "current_metric_value" claims and deprioritize contextual event/goal claims unless the target asks for the event or goal itself.
             - For questions about where a person, user, organization, project, or concrete subject is currently located, lives, is based, or ended up after relocation, prefer "current_location" claims and deprioritize historical move/event claims unless the target asks for the history itself.
             - For questions about what a past generated story, image description, draft, specification, or artifact said/showed/included, prefer "generated_artifact_detail" claims and include source retrieval as evidence fallback when exact wording matters.
+            - For questions asking to recall what was discussed, suggested, recommended, listed, or mentioned in a previous conversation/session, include source retrieval as evidence fallback. Broad claims or notes may preserve the topic while the precise named option exists only in raw conversation/source evidence.
+            - For prior assistant-generated recommendations, ranked lists, itineraries, or option lists, retrieve source evidence when the target asks for the specific item that matched a clue.
             - Leave predicate priority arrays empty when no predicate ranking is needed.
             - Keep retrieval bounded.
             - Include source retrieval when conflicts, uncertainty, or quotation-quality grounding is needed.

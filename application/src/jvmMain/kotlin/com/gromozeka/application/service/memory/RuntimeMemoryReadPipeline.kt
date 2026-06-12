@@ -322,7 +322,9 @@ class RuntimeMemoryReadPipeline(
             .enforceBudget(plan, expandForSelector = true)
             .sortedForRuntimeMemoryRead(plan)
         val selectorSnapshot = rawSelectorCandidateHits.toReadPartialSnapshot(request.namespace)
-        val selectorCandidateHits = rawSelectorCandidateHits.sortedForRuntimeMemoryRead(plan)
+        val selectorCandidateHits = rawSelectorCandidateHits
+            .filterNot { it.isInactiveTypedHitForRead() }
+            .sortedForRuntimeMemoryRead(plan)
         val selectionResult = selector.select(
             MemoryReadSelectionRequest(
                 readRequest = request,
@@ -1234,7 +1236,7 @@ private fun List<MemoryStore.SearchHit>.currentTruthBearingTypedRefs(): List<Mem
         .distinct()
 
 private fun MemoryReadPlan.defersRawSourcesWhenTypedMemoryExists(): Boolean =
-    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET || shouldIncludeSourceEvidence()) {
         false
     } else {
         when (answerMode) {
@@ -1264,6 +1266,13 @@ private fun MemoryStore.SearchHit.isCurrentTruthBearingTypedHit(): Boolean =
         is MemoryStore.SearchHit.SourceHit,
         is MemoryStore.SearchHit.RunHit,
         -> false
+    }
+
+private fun MemoryStore.SearchHit.isInactiveTypedHitForRead(): Boolean =
+    when (this) {
+        is MemoryStore.SearchHit.ClaimHit -> claim.status != MemoryClaim.Status.ACTIVE
+        is MemoryStore.SearchHit.NoteHit -> note.status != MemoryNote.Status.ACTIVE
+        else -> false
     }
 
 private fun List<MemoryStore.SearchHit>.prioritizeForReadRequest(
@@ -1328,11 +1337,11 @@ private fun MemoryStore.SearchHit.isAnswerCandidateForRecall(): Boolean =
 
 private fun MemoryReadRequest.sourceFallbackSearchQuery(plan: MemoryReadPlan): String =
     buildList {
-        add(targetQueryText())
         plan.retrievalRequests
             .map { it.query }
             .distinct()
             .forEach(::add)
+        add(targetQueryText())
     }.joinToString("\n").trim()
 
 private fun MemoryStore.SearchHit.claimPredicatePriority(retrievalRequest: MemoryReadPlan.RetrievalRequest): Int {
