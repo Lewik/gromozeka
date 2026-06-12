@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "10644ff01bd2c29edad76355f116ce151543a6cdba5f0207aaf80f39a021f60d",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many tanks do I currently have, including the one I set up for my friend's kid?\n\n                                Question date:\n                                2023/05/24 (Wed) 18:37\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:46a3abf7\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-25db6a7bf541-claim-11 [ACTIVE] responsible_for family=responsible_for: The user is taking care of a small 1-gallon aquarium tank set up for a friend's kid.; scope=Applies to the friend's kid's 1-gallon aquarium tank.; evidence=DIRECT source=external:provided-text:19e96568ee6ce08d7fb6432042f8b1cf quote=\"I've also been taking care of a small 1-gallon tank that I set up for a friend's kid\"\n- claim hot-path-237cb49b603d-claim-9 [ACTIVE] has_experience_with family=has_experience_with: The user has experience setting up a 20-gallon community aquarium tank.; scope=User's current aquarium setup; evidence=DIRECT source=external:provided-text:6091fdb7ac1ea4c5830edbf29be4e5c2 quote=\"I've since set up a new 20-gallon community tank\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:19e96568ee6ce08d7fb6432042f8b1cf [external_record ref=longmemeval:46a3abf7:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 15:56\nTranscript:\nuser: I'm looking for some advice on live plants for my community tank. I've got an anacharis and a java moss, but I'm interested in adding some more variety. Do you have any recommendations for beginner-friendly plants that are easy to care for?\nassistant: Live plants are a wonderful addition to any aquarium, and there are many beginner-friendly options that are easy to care for. I'd be happy to help you with some recommendations.\n\nFor your community tank, here are some easy-to-care-for plants that can thrive in a variety of lighting conditions:\n\n1. **Amazon Swords (Echinocorys spp.)**: These plants are very hardy and can tolerate a range of lighting conditions. They come in various shapes and sizes, and are great for creating a natural-looking aquarium....\n...3. **Water Wisteria (Hygrophila difformis)**: This plant is a great choice for beginners, as it's easy to care for and can thrive in a variety of lighting conditions. It's also a great choice for creating a natural-looking aquarium.\n4. **Anubias (Anubias spp.)**: Anubias plants are low-maintenance and can thrive in low to moderate lighting conditions. They're also great for creating a natural-looking aquarium.\n5. **Hornwort (Ceratophyllum demersum)**: This plant is a great choice for beginners, as it's easy to care for and can thrive in a variety of lighting conditions. It's also a great choice for creating a natural-looking aquarium.\n\nRemember to research the specific care requirements for each plant you're interested in, including lighting, water temperature, and fertilization needs. It's also important to choose plants that are compatible with your tank's water parameters and the types of fish you're keeping....\n...user: I'm interested in the Amazon Swords and the Water Wisteria for my community tank. Can you tell me more about how to care for them and what kind of lighting they require?...\n...* **Substrate:** Amazon Swords have a small root system, so they don't require a lot of substrate. A nutrient-rich substrate with a depth of 1-2 inches (2.5-5 cm) is sufficient....\n...* **Lighting:** Water Wisteria prefers moderate to high lighting (2-4 watts per gallon), but it can tolerate low lighting conditions as well. However, it may not produce as many leaves or grow as quickly in low light....\n...If you have any further questions or concerns, feel free to ask!...\n...* **Consider the tank's overall ecosystem**: Remember that temperature affects not only plants but also fish and other aquatic organisms in your tank.\n\nTo maintain an ideal temperature for your plants, you can use a reliable aquarium heater, such as a submersible heater or a hang-on-back heater. Just be sure to choose a heater suitable for your tank size and type....\n...user: I've also been taking care of a small 1-gallon tank that I set up for a friend's kid, which has a few guppies and some plants. I was wondering if the temperature requirements are the same for these plants in a smaller tank like that?\nassistant: When it comes to temperature requirements, the same principles apply to plants in smaller tanks, like your 1-gallon tank. However, there are some considerations to keep in mind:\n\n1. **Temperature stability**: Smaller tanks are more prone to temperature fluctuations, which can be stressful for plants. It's essential to maintain a consistent temperature, with minimal daily changes.\n2. **Heater considerations**: In a small tank, a heater might not be necessary, especially if the room temperature is stable and within the ideal range for your plants. However, if you do need a heater, choose a small, low-wattage heater specifically designed for small tanks....\n...By following these guidelines and tips, you'll be able to create a thriving environment for your plants and fish in the 1-gallon tank.\n- source external:provided-text:6091fdb7ac1ea4c5830edbf29be4e5c2 [external_record ref=longmemeval:46a3abf7:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm having some issues with high nitrite levels in my tank. I've been doing partial water changes, but I'm not sure if I'm doing it correctly. Can you walk me through the process? By the way, I've had some experience with aquariums - I have a 5-gallon tank with a solitary betta fish named Finley, which I got from my cousin....\n...2. **Remove fish and decorations (optional)**: If you have a small tank or a lot of decorations, you might want to remove your fish and decorations to prevent them from getting stressed or sucked up by the gravel vacuum. Use a fish net to gently scoop up your fish and place them in a separate container filled with water from the tank....\n...4. **Remove old water**: While siphoning the gravel, you'll also be removing some old water. Try to remove about 25-50% of the tank's water volume. For example, if you have a 10-gallon tank, you'll remove 2.5-5 gallons of water....\n...By following these steps, you should be able to perform a successful partial water change and help reduce those nitrite levels in your tank. Good luck, and let me know if you have any further questions or concerns!\nuser: Now I'm wondering if I should also be monitoring the ammonia levels in my tank, as I've heard it's related to nitrite levels. Can you tell me more about the nitrogen cycle and how ammonia, nitrite, and nitrate levels are connected?...\n...3. **Nitrite (NO2-)**: Nitrite is still toxic to fish, although less so than ammonia. Nitrite can cause damage to fish gills, kidneys, and liver....\n...* Ammonia levels can spike during the initial setup of a new tank or after a large water change, as the beneficial bacteria colony takes time to establish....\n...By monitoring ammonia levels and understanding the nitrogen cycle, you'll be better equipped to maintain a healthy environment for your fish. Remember, a balanced nitrogen cycle is crucial for the well-being of your aquatic friends!\nuser: I've been learning about aquarium keeping for about 6 months now, and I've had some experience with cycling a tank. My old tank was a 5-gallon one that I got from my cousin, and I kept a solitary betta fish named Finley. I've since set up a new 20-gallon community tank, and I want to make sure I'm doing everything right. Can you tell me more about how to maintain a healthy biological filter in my tank?\nassistant: Finley the betta, I'm sure he was a great teacher! Congratulations on setting up your new 20-gallon community tank! Maintaining a healthy biological filter is crucial for a thriving aquarium, and I'm happy to guide you through it....\n...user: I've been thinking about the nitrogen cycle and how it affects my tank. Since I've had experience with a 5-gallon tank and now have a 20-gallon community tank, I'm wondering if I can use some of the beneficial bacteria from my old tank to seed the new one. Can you tell me more about transferring beneficial bacteria and if it's a good idea?...\n...1. **Tank Compatibility**: Ensure the water parameters (pH, temperature, etc.) of both tanks are similar to prevent shocking the beneficial bacteria....\n...user: I'm thinking about setting up a separate quarantine tank for my new fish before introducing them to my main tank. Can you tell me more about the importance of quarantine and how to set up a quarantine tank?\nassistant: You're thinking of setting up a quarantine tank! That's a great idea! Quarantining new fish is an essential step in responsible aquarium keeping, and it can help prevent the introduction of diseases and parasites into your main tank....\n...4. **Introduce to Main Tank**: Once the fish have been cleared, introduce them to your main tank....\n...By setting up a quarantine tank and following proper procedures, you'll be able to ensure the health and safety of both your new fish and your existing fish in the main tank.\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: Friend's kid's 1-gallon aquarium tank; Entity named Friend's kid's 1-gallon aquarium tank.\n- entity entity:<1> [OTHER]: User's 20-gallon community aquarium tank; Entity named User's 20-gallon community aquarium tank.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "46a3abf7",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many tanks do I currently have, including the one I set up for my friend's kid?\n\n                                Question date:\n                                2023/05/24 (Wed) 18:37\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:46a3abf7\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-25db6a7bf541-claim-11 [ACTIVE] responsible_for family=responsible_for: The user is taking care of a small 1-gallon aquarium tank set up for a friend's kid.; scope=Applies to the friend's kid's 1-gallon aquarium tank.; evidence=DIRECT source=external:provided-text:19e96568ee6ce08d7fb6432042f8b1cf quote=\"I've also been taking care of a small 1-gallon tank that I set up for a friend's kid\"\n- claim hot-path-237cb49b603d-claim-9 [ACTIVE] has_experience_with family=has_experience_with: The user has experience setting up a 20-gallon community aquarium tank.; scope=User's current aquarium setup; evidence=DIRECT source=external:provided-text:6091fdb7ac1ea4c5830edbf29be4e5c2 quote=\"I've since set up a new 20-gallon community tank\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:19e96568ee6ce08d7fb6432042f8b1cf [external_record ref=longmemeval:46a3abf7:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 15:56\nTranscript:\nuser: I'm looking for some advice on live plants for my community tank. I've got an anacharis and a java moss, but I'm interested in adding some more variety. Do you have any recommendations for beginner-friendly plants that are easy to care for?\nassistant: Live plants are a wonderful addition to any aquarium, and there are many beginner-friendly options that are easy to care for. I'd be happy to help you with some recommendations.\n\nFor your community tank, here are some easy-to-care-for plants that can thrive in a variety of lighting conditions:\n\n1. **Amazon Swords (Echinocorys spp.)**: These plants are very hardy and can tolerate a range of lighting conditions. They come in various shapes and sizes, and are great for creating a natural-looking aquarium....\n...3. **Water Wisteria (Hygrophila difformis)**: This plant is a great choice for beginners, as it's easy to care for and can thrive in a variety of lighting conditions. It's also a great choice for creating a natural-looking aquarium.\n4. **Anubias (Anubias spp.)**: Anubias plants are low-maintenance and can thrive in low to moderate lighting conditions. They're also great for creating a natural-looking aquarium.\n5. **Hornwort (Ceratophyllum demersum)**: This plant is a great choice for beginners, as it's easy to care for and can thrive in a variety of lighting conditions. It's also a great choice for creating a natural-looking aquarium.\n\nRemember to research the specific care requirements for each plant you're interested in, including lighting, water temperature, and fertilization needs. It's also important to choose plants that are compatible with your tank's water parameters and the types of fish you're keeping....\n...user: I'm interested in the Amazon Swords and the Water Wisteria for my community tank. Can you tell me more about how to care for them and what kind of lighting they require?...\n...* **Substrate:** Amazon Swords have a small root system, so they don't require a lot of substrate. A nutrient-rich substrate with a depth of 1-2 inches (2.5-5 cm) is sufficient....\n...* **Lighting:** Water Wisteria prefers moderate to high lighting (2-4 watts per gallon), but it can tolerate low lighting conditions as well. However, it may not produce as many leaves or grow as quickly in low light....\n...If you have any further questions or concerns, feel free to ask!...\n...* **Consider the tank's overall ecosystem**: Remember that temperature affects not only plants but also fish and other aquatic organisms in your tank.\n\nTo maintain an ideal temperature for your plants, you can use a reliable aquarium heater, such as a submersible heater or a hang-on-back heater. Just be sure to choose a heater suitable for your tank size and type....\n...user: I've also been taking care of a small 1-gallon tank that I set up for a friend's kid, which has a few guppies and some plants. I was wondering if the temperature requirements are the same for these plants in a smaller tank like that?\nassistant: When it comes to temperature requirements, the same principles apply to plants in smaller tanks, like your 1-gallon tank. However, there are some considerations to keep in mind:\n\n1. **Temperature stability**: Smaller tanks are more prone to temperature fluctuations, which can be stressful for plants. It's essential to maintain a consistent temperature, with minimal daily changes.\n2. **Heater considerations**: In a small tank, a heater might not be necessary, especially if the room temperature is stable and within the ideal range for your plants. However, if you do need a heater, choose a small, low-wattage heater specifically designed for small tanks....\n...By following these guidelines and tips, you'll be able to create a thriving environment for your plants and fish in the 1-gallon tank.\n- source external:provided-text:6091fdb7ac1ea4c5830edbf29be4e5c2 [external_record ref=longmemeval:46a3abf7:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm having some issues with high nitrite levels in my tank. I've been doing partial water changes, but I'm not sure if I'm doing it correctly. Can you walk me through the process? By the way, I've had some experience with aquariums - I have a 5-gallon tank with a solitary betta fish named Finley, which I got from my cousin....\n...2. **Remove fish and decorations (optional)**: If you have a small tank or a lot of decorations, you might want to remove your fish and decorations to prevent them from getting stressed or sucked up by the gravel vacuum. Use a fish net to gently scoop up your fish and place them in a separate container filled with water from the tank....\n...4. **Remove old water**: While siphoning the gravel, you'll also be removing some old water. Try to remove about 25-50% of the tank's water volume. For example, if you have a 10-gallon tank, you'll remove 2.5-5 gallons of water....\n...By following these steps, you should be able to perform a successful partial water change and help reduce those nitrite levels in your tank. Good luck, and let me know if you have any further questions or concerns!\nuser: Now I'm wondering if I should also be monitoring the ammonia levels in my tank, as I've heard it's related to nitrite levels. Can you tell me more about the nitrogen cycle and how ammonia, nitrite, and nitrate levels are connected?...\n...3. **Nitrite (NO2-)**: Nitrite is still toxic to fish, although less so than ammonia. Nitrite can cause damage to fish gills, kidneys, and liver....\n...* Ammonia levels can spike during the initial setup of a new tank or after a large water change, as the beneficial bacteria colony takes time to establish....\n...By monitoring ammonia levels and understanding the nitrogen cycle, you'll be better equipped to maintain a healthy environment for your fish. Remember, a balanced nitrogen cycle is crucial for the well-being of your aquatic friends!\nuser: I've been learning about aquarium keeping for about 6 months now, and I've had some experience with cycling a tank. My old tank was a 5-gallon one that I got from my cousin, and I kept a solitary betta fish named Finley. I've since set up a new 20-gallon community tank, and I want to make sure I'm doing everything right. Can you tell me more about how to maintain a healthy biological filter in my tank?\nassistant: Finley the betta, I'm sure he was a great teacher! Congratulations on setting up your new 20-gallon community tank! Maintaining a healthy biological filter is crucial for a thriving aquarium, and I'm happy to guide you through it....\n...user: I've been thinking about the nitrogen cycle and how it affects my tank. Since I've had experience with a 5-gallon tank and now have a 20-gallon community tank, I'm wondering if I can use some of the beneficial bacteria from my old tank to seed the new one. Can you tell me more about transferring beneficial bacteria and if it's a good idea?...\n...1. **Tank Compatibility**: Ensure the water parameters (pH, temperature, etc.) of both tanks are similar to prevent shocking the beneficial bacteria....\n...user: I'm thinking about setting up a separate quarantine tank for my new fish before introducing them to my main tank. Can you tell me more about the importance of quarantine and how to set up a quarantine tank?\nassistant: You're thinking of setting up a quarantine tank! That's a great idea! Quarantining new fish is an essential step in responsible aquarium keeping, and it can help prevent the introduction of diseases and parasites into your main tank....\n...4. **Introduce to Main Tank**: Once the fish have been cleared, introduce them to your main tank....\n...By setting up a quarantine tank and following proper procedures, you'll be able to ensure the health and safety of both your new fish and your existing fish in the main tank.\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: Friend's kid's 1-gallon aquarium tank; Entity named Friend's kid's 1-gallon aquarium tank.\n- entity entity:<1> [OTHER]: User's 20-gallon community aquarium tank; Entity named User's 20-gallon community aquarium tank.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "46a3abf7",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"3\",\"reason\":\"The context mentions the user's 5-gallon betta tank, new 20-gallon community tank, and the 1-gallon tank set up for a friend's kid.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2789,
+                "completionTokens": 464,
+                "thinkingTokens": 400,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "99a636f13e5c989a45f603e6ee8485a3c500e524af611cd8875a7e25a9d195cf",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning to go back to the Natural Park of Moncayo mountain in Aragón and I was wondering, what was the name of that hiking trail you recommended that takes you through the park's most stunning landscapes and offers panoramic views of the surrounding mountainside?\n\n                                Question date:\n                                2023/05/29 (Mon) 19:48\n\n                                Expected answer:\n                                The GR-90 trail.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:488d3006\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-ef695faf2258-note-3 [CONTEXT/ACTIVE]: Natural Park of Moncayo activity and lodging recommendations; For the Natural Park of Moncayo mountain in Aragón, reusable advice from the session was: prioritize hiking for landscapes and flora/fauna; consider GR-90 for panoramic views, Moncayo summit, Fuenfría waterfall, villages, meadows, forests, and rock formations; visit in spring or autumn for hiking; and compare rural cottages, camping, guesthouses/hotels in Tarazona, Veruela, and Borja, or hostels depending on budget and preferences.; scope=Destination advice for the Natural Park of Moncayo mountain in Aragón; evidence=SUMMARIZED source=external:provided-text:877b50e69c0a44fb9ba112e7828323c1 quote=\"One of the best hiking trails with breathtaking views in the Natural Park of the Moncayo mountain in Aragón is the GR-90.\"\n\n            Retrieved evidence:\n            - source external:provided-text:877b50e69c0a44fb9ba112e7828323c1 [external_record ref=longmemeval:488d3006:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: What activities or attractions can be enjoyed in the natural park of the Moncayo mountain in Aragón?\nassistant: The Natural Park of the Moncayo mountain in Aragón offers various activities and attractions, some of which are:\n\n1. Hiking: The park has many hiking trails that offer stunning views of the surrounding landscape....\n...5. Mountain biking: There are various mountain biking trails in the park for cycling enthusiasts....\n...assistant: As an AI language model, I do not have personal preferences or opinions. However, I can suggest that hiking is a must-try activity in the Natural Park of the Moncayo mountain in Aragón. It allows visitors to explore the park's beautiful landscapes and provides an opportunity to get up close with the flora and fauna. Besides, there are many different hiking trails to choose from, depending on the level of difficulty and time constraints, making it an accessible activity for most visitors.\nuser: Sounds great! Do you have any suggestions for the best hiking trail with amazing views?\nassistant: Certainly! One of the best hiking trails with breathtaking views in the Natural Park of the Moncayo mountain in Aragón is the GR-90. This trail takes you through the park's most stunning landscapes and offers panoramic views of the surrounding mountainside.\n\nThe GR-90 is a circular hiking trail that runs for approximately 36 kilometers, and it takes between two to three days to complete. The trail passes through several small towns and villages in the area and offers the opportunity to learn more about the local culture and history. \n\nSome highlights of this trail include reaching the summit of Moncayo mountain, which is the highest peak in the park, and experiencing the beautiful Fuenfría waterfall. Along the trail, you'll also get to see beautiful meadows, forests, and rock formations.\n\nOverall, the GR-90 is an unforgettable hiking experience that combines beautiful nature, stunning views, and cultural and historical landmarks.\nuser: That sounds like an amazing hike! Do you recommend any particular time of year to go?\nassistant: The ideal time to visit the Natural Park of Moncayo mountain in Aragón for hiking largely depends on your personal preferences and interests. However, the best time to go hiking is during the spring and autumn seasons....\n...During the summer season, hiking can be quite challenging due to the high temperatures, and it can be overcrowded. If you choose to visit during summer, it is best to avoid hiking during the hottest hours of the day and to drink plenty of water to stay hydrated.\n\nIn winter, the park receives snowfalls, and hiking may not be possible; however, the park offers skiing activities during this season....\n...assistant: Certainly. The Natural Park of the Moncayo mountain in Aragón offers several options for accommodation to suit different budgets and preferences. Some of the options include:...\n...user: I think I'll look into renting a rural cottage. Do you have any specific recommendations?\nassistant: As an AI language model, I don't have access to real-time information, prices, or specific recommendations. However, I recommend searching on travel websites or platforms like booking.com, Airbnb, or TripAdvisor. You can refine your search by specifying your preferred location, amenities, and dates of stay. These websites provide detailed and verified information about the rural cottages' facilities, location, and reviews from previous guests, which can help you narrow down your options and make an informed decision.\nuser: I can't wait to plan my visit to the Natural Park of Moncayo mountain in Aragón. You've given me so many great ideas and recommendations.\nassistant: I'm glad that I could be of help, and I hope you have a wonderful time exploring the Natural Park of Moncayo mountain in Aragón. It is a truly spectacular destination, and I am sure you will enjoy your trip!\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Aragón; Location named Aragón.\n- entity entity:<1> [LOCATION]: GR-90; Location named GR-90.\n- entity entity:<2> [LOCATION]: Moncayo mountain; Location named Moncayo mountain.\n- entity entity:<3> [LOCATION]: Natural Park of Moncayo mountain in Aragón; Location named Natural Park of Moncayo mountain in Aragón.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "488d3006",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning to go back to the Natural Park of Moncayo mountain in Aragón and I was wondering, what was the name of that hiking trail you recommended that takes you through the park's most stunning landscapes and offers panoramic views of the surrounding mountainside?\n\n                                Question date:\n                                2023/05/29 (Mon) 19:48\n\n                                Expected answer:\n                                The GR-90 trail.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:488d3006\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-ef695faf2258-note-3 [CONTEXT/ACTIVE]: Natural Park of Moncayo activity and lodging recommendations; For the Natural Park of Moncayo mountain in Aragón, reusable advice from the session was: prioritize hiking for landscapes and flora/fauna; consider GR-90 for panoramic views, Moncayo summit, Fuenfría waterfall, villages, meadows, forests, and rock formations; visit in spring or autumn for hiking; and compare rural cottages, camping, guesthouses/hotels in Tarazona, Veruela, and Borja, or hostels depending on budget and preferences.; scope=Destination advice for the Natural Park of Moncayo mountain in Aragón; evidence=SUMMARIZED source=external:provided-text:877b50e69c0a44fb9ba112e7828323c1 quote=\"One of the best hiking trails with breathtaking views in the Natural Park of the Moncayo mountain in Aragón is the GR-90.\"\n\n            Retrieved evidence:\n            - source external:provided-text:877b50e69c0a44fb9ba112e7828323c1 [external_record ref=longmemeval:488d3006:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: What activities or attractions can be enjoyed in the natural park of the Moncayo mountain in Aragón?\nassistant: The Natural Park of the Moncayo mountain in Aragón offers various activities and attractions, some of which are:\n\n1. Hiking: The park has many hiking trails that offer stunning views of the surrounding landscape....\n...5. Mountain biking: There are various mountain biking trails in the park for cycling enthusiasts....\n...assistant: As an AI language model, I do not have personal preferences or opinions. However, I can suggest that hiking is a must-try activity in the Natural Park of the Moncayo mountain in Aragón. It allows visitors to explore the park's beautiful landscapes and provides an opportunity to get up close with the flora and fauna. Besides, there are many different hiking trails to choose from, depending on the level of difficulty and time constraints, making it an accessible activity for most visitors.\nuser: Sounds great! Do you have any suggestions for the best hiking trail with amazing views?\nassistant: Certainly! One of the best hiking trails with breathtaking views in the Natural Park of the Moncayo mountain in Aragón is the GR-90. This trail takes you through the park's most stunning landscapes and offers panoramic views of the surrounding mountainside.\n\nThe GR-90 is a circular hiking trail that runs for approximately 36 kilometers, and it takes between two to three days to complete. The trail passes through several small towns and villages in the area and offers the opportunity to learn more about the local culture and history. \n\nSome highlights of this trail include reaching the summit of Moncayo mountain, which is the highest peak in the park, and experiencing the beautiful Fuenfría waterfall. Along the trail, you'll also get to see beautiful meadows, forests, and rock formations.\n\nOverall, the GR-90 is an unforgettable hiking experience that combines beautiful nature, stunning views, and cultural and historical landmarks.\nuser: That sounds like an amazing hike! Do you recommend any particular time of year to go?\nassistant: The ideal time to visit the Natural Park of Moncayo mountain in Aragón for hiking largely depends on your personal preferences and interests. However, the best time to go hiking is during the spring and autumn seasons....\n...During the summer season, hiking can be quite challenging due to the high temperatures, and it can be overcrowded. If you choose to visit during summer, it is best to avoid hiking during the hottest hours of the day and to drink plenty of water to stay hydrated.\n\nIn winter, the park receives snowfalls, and hiking may not be possible; however, the park offers skiing activities during this season....\n...assistant: Certainly. The Natural Park of the Moncayo mountain in Aragón offers several options for accommodation to suit different budgets and preferences. Some of the options include:...\n...user: I think I'll look into renting a rural cottage. Do you have any specific recommendations?\nassistant: As an AI language model, I don't have access to real-time information, prices, or specific recommendations. However, I recommend searching on travel websites or platforms like booking.com, Airbnb, or TripAdvisor. You can refine your search by specifying your preferred location, amenities, and dates of stay. These websites provide detailed and verified information about the rural cottages' facilities, location, and reviews from previous guests, which can help you narrow down your options and make an informed decision.\nuser: I can't wait to plan my visit to the Natural Park of Moncayo mountain in Aragón. You've given me so many great ideas and recommendations.\nassistant: I'm glad that I could be of help, and I hope you have a wonderful time exploring the Natural Park of Moncayo mountain in Aragón. It is a truly spectacular destination, and I am sure you will enjoy your trip!\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Aragón; Location named Aragón.\n- entity entity:<1> [LOCATION]: GR-90; Location named GR-90.\n- entity entity:<2> [LOCATION]: Moncayo mountain; Location named Moncayo mountain.\n- entity entity:<3> [LOCATION]: Natural Park of Moncayo mountain in Aragón; Location named Natural Park of Moncayo mountain in Aragón.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "488d3006",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The trail was the GR-90.\",\"reason\":\"The retrieved note and evidence explicitly state that the recommended hiking trail with breathtaking panoramic views in the Natural Park of Moncayo was the GR-90.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1899,
+                "completionTokens": 82,
+                "thinkingTokens": 17,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

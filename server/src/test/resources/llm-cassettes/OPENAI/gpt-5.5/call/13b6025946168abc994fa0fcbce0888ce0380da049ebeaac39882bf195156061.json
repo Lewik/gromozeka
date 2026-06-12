@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "13b6025946168abc994fa0fcbce0888ce0380da049ebeaac39882bf195156061",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:28dc39ac\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 02:05\nTranscript:\nuser: I'm looking for some recommendations on games similar to The Last of Us Part II. By the way, I just finished it on normal difficulty and it took me 25 hours to complete.\nassistant: Congratulations on completing The Last of Us Part II! That's a great achievement.\n\nIf you're looking for games similar to The Last of Us Part II, here are some recommendations that you might enjoy:\n\n1. **The Last of Us (Remastered)**: If you haven't already, play the first game in the series to experience the origin story of Ellie and Joel's journey.\n2. **God of War (2018)**: This action-adventure game shares a similar atmosphere and emotional depth with The Last of Us Part II. It's a soft reboot of the God of War series, and it's an excellent game in its own right.\n3. **Horizon Zero Dawn**: This action RPG has a strong narrative focus, a strong protagonist, and a post-apocalyptic world to explore. The combat is also similar to The Last of Us Part II.\n4. **Uncharted 4: A Thief's End**: While more action-oriented, Uncharted 4 has a strong narrative focus and well-developed characters, similar to The Last of Us Part II.\n5. **The Witcher 3: Wild Hunt**: This RPG has a deep storyline, engaging combat, and a vast open world to explore. While not as emotionally intense as The Last of Us Part II, it's an excellent game with a similar scope and depth.\n6. **Days Gone**: This open-world action-adventure game is set in a post-apocalyptic Oregon, where you play as a bounty hunter fighting against hordes of zombies-like creatures.\n7. **State of Decay 2**: This open-world survival game is set in a post-apocalyptic world, where you must build a community and fight against hordes of zombies.\n8. **Resident Evil 7: Biohazard**: This survival horror game shares some similarities with The Last of Us Part II in terms of its atmospheric tension and horror elements.\n9. **Death Stranding**: This game has a strong narrative focus, a unique blend of exploration and combat, and a post-apocalyptic world to explore.\n10. **Bioshock Infinite**: While not as recent as some of the other games on this list, Bioshock Infinite is a classic game with a strong narrative focus, engaging combat, and a thought-provoking story.\n\nThese games all have elements of action, adventure, and storytelling that made The Last of Us Part II so compelling. Of course, each game has its own unique twists and gameplay mechanics, so you're sure to find something that suits your tastes.\n\nBy the way, 25 hours is a great completion time for The Last of Us Part II on normal difficulty! Did you find the game's difficulty level to be challenging, or was it more of a narrative-driven experience for you?\nuser: I found the normal difficulty to be a good balance between challenge and storytelling. I was able to focus on the narrative and characters without getting too frustrated with the gameplay. Speaking of which, I'm curious about the game's development process. How long did it take the developers to create The Last of Us Part II, and what was the most challenging part of its development?\nassistant: The development of The Last of Us Part II was a massive undertaking, and it's fascinating to learn about the process behind this critically acclaimed game.\n\n**Development Time:**\nThe development of The Last of Us Part II began in 2014, shortly after the release of The Last of Us Remastered for the PlayStation 4. The game was officially announced in October 2017, and it took around 5-6 years to complete. The development team at Naughty Dog grew significantly during this period, with a team size of around 200-300 people at its peak.\n\n**Challenging Aspects:**\nIn an interview with Game Informer, Neil Druckmann, the creative director and writer of The Last of Us Part II, shared some insights into the most challenging aspects of the game's development:\n\n1. **Emotional Storytelling:** One of the biggest challenges was capturing the emotional intensity and authenticity of the story, particularly when it came to portraying the characters' emotional journeys. The team wanted to create a narrative that would resonate with players, and this required a deep understanding of human emotions and relationships.\n2. **Gameplay and Pacing:** The team aimed to create a perfect balance between action, stealth, and exploration. They experimented with different gameplay mechanics, pacing, and level design to ensure that the game felt engaging and responsive.\n3. **Technical Challenges:** The game's engine, animation systems, and AI had to be heavily modified to accommodate the game's ambitious scope. The team had to develop new tools and techniques to achieve the desired visual fidelity and performance.\n4. **Team Dynamics:** With a large team working on the game, managing team dynamics and ensuring that everyone was aligned with the game's vision was a significant challenge. Druckmann mentioned that maintaining a sense of collaboration and open communication was crucial to the game's success.\n5. ** Crunch Time:** The game's development was not without its crunch periods, where the team had to work long hours to meet deadlines. Druckmann acknowledged that this was a challenging aspect of the development process, but the team's dedication and passion for the project helped them push through.\n\n**Interesting Facts:**\n\n* The game's script was over 2,000 pages long, which is roughly equivalent to 4-5 novels.\n* The team recorded over 100,000 lines of dialogue, making it one of the most dialogue-heavy games ever created.\n* The game's motion capture process involved recording over 10,000 individual performances.\n* The team built a custom tool to create the game's complex facial animations, which allowed for a more realistic and nuanced portrayal of emotions.\n\nThe dedication, passion, and attention to detail invested by the team at Naughty Dog are a testament to the game's critical and commercial success. The Last of Us Part II is a masterclass in game development, and its impact will be felt in the gaming industry for years to come.\nuser: That's really interesting. I didn't know it took them 5-6 years to develop the game. I can imagine the emotional storytelling part was a challenge, considering how emotional the game can be. By the way, have you got any recommendations for games with similar emotional storytelling, but maybe in a different setting or genre?\nassistant: The Last of Us Part II's emotional storytelling is indeed one of its strongest aspects. If you're looking for games with similar emotional depth, but in different settings or genres, here are some recommendations:\n\n1. **What Remains of Edith Finch**: This narrative-driven exploration game tells the story of a family's history and their strange and tragic fate. It's a beautifully crafted game that explores themes of love, loss, and family.\n2. **Firewatch**: Set in a Wyoming wilderness lookout tower in the 1980s, Firewatch is a first-person narrative-driven game that delves into themes of loneliness, human connection, and the power of relationships.\n3. **Gone Home**: This critically acclaimed game tells the story of a family's struggles and secrets through environmental storytelling. It's a powerful exploration of identity, family, and self-discovery.\n4. **Life is Strange**: This episodic graphic adventure game follows the story of Max, a high school student with the ability to rewind time. It explores themes of friendship, love, and the consequences of choice.\n5. **TellTale's The Walking Dead** (Season 1): While not entirely different from The Last of Us in terms of setting, this adventure game series focuses more on character development and emotional storytelling, making it a great choice for those who enjoy narrative-driven games.\n6. **Her Story**: This detective game involves searching through police interviews with a woman who's suspected of murder. As you dig deeper, you'll uncover a complex and emotional story that explores themes of love, loss, and identity.\n7. **Night in the Woods**: This narrative-driven adventure game follows the story of Mae, a cat who returns to her hometown after dropping out of college. It's a heartwarming and relatable exploration of mental health, relationships, and small-town life.\n\nThese games all share some elements of emotional storytelling, character development, and narrative focus that made The Last of Us Part II so impactful. They might not be as action-oriented, but they'll definitely provide a similar emotional resonance.\n\nHave you played any of these games before, or is there a particular genre or setting that interests you?\nuser: I haven't played any of those games, but I've heard great things about What Remains of Edith Finch and Firewatch. I think I'll give one of those a try. By the way, do you have any recommendations for gaming communities or forums where I can discuss games with other players and get more recommendations?\nassistant: What Remains of Edith Finch and Firewatch are both excellent choices.\n\nFor gaming communities and forums, I've got some recommendations:\n\n1. **ResetEra**: A popular gaming forum with a vast community of gamers, ResetEra has dedicated threads for various games, including The Last of Us Part II. You can discuss the game, share tips, and get recommendations from fellow players.\n2. **Reddit's r/Games**: The Games subreddit is a massive community with thousands of users discussing various games, including indie titles and AAA releases. You can find threads dedicated to specific games, genres, or topics, and engage with other gamers.\n3. **GameFAQs**: A classic gaming forum with a dedicated community, GameFAQs has boards for various games, including The Last of Us Part II. You can discuss the game, ask questions, and share tips with other players.\n4. **NeoGAF**: Another popular gaming forum, NeoGAF has a dedicated community discussing various games, including The Last of Us Part II. Be prepared for in-depth discussions and debates about games, industry trends, and more.\n5. **Steam Community**: If you're a PC gamer, the Steam Community is an excellent place to connect with other players. Join groups dedicated to specific games, genres, or topics, and engage in discussions, share tips, and participate in events.\n6. **Discord Servers**: Many gaming communities, YouTubers, and streamers have their own Discord servers where you can chat with other gamers, discuss games, and participate in events. You can search for servers dedicated to The Last of Us Part II or other games you're interested in.\n7. **Gaming Subreddits**: There are many subreddits dedicated to specific games, genres, or topics. For example, r/TheLastOfUs, r/Gaming, r/PS4, and r/IndieGaming are all great communities to explore.\n\nRemember to always follow community guidelines and rules, and be respectful of other users' opinions and preferences.\n\nWhich of these communities resonates with you, or do you have any specific preferences (e.g., platform, genre, or type of discussion)?\nuser: I think I'll check out ResetEra and Reddit's r/Games. I've heard good things about both communities, and they seem like great places to discuss games with other players. Thanks for the recommendations! By the way, I'm also interested in learning more about the gaming industry and staying up-to-date with the latest news and developments. Are there any good websites or YouTube channels you'd recommend for gaming news and analysis?\nassistant: ResetEra and Reddit's r/Games are both excellent communities for discussing games with other players.\n\nFor gaming news and analysis, I've got some top recommendations:\n\n**Websites:**\n\n1. **Polygon**: A leading gaming website with in-depth articles, reviews, and analysis on the gaming industry.\n2. **Kotaku**: A popular gaming website with a focus on news, reviews, and feature articles on the gaming industry.\n3. **Game Informer**: A well-established gaming magazine with a strong online presence, featuring news, reviews, and previews.\n4. **IGN**: A leading gaming media outlet with news, reviews, and feature articles on the gaming industry.\n5. **Destructoid**: A gaming website with a focus on indie games, news, and community-driven content.\n\n**YouTube Channels:**\n\n1. **GameSpot**: A popular YouTube channel with news, reviews, and feature content on the gaming industry.\n2. **IGN**: IGN's YouTube channel features news, reviews, and analysis on the gaming industry.\n3. **Polygon**: Polygon's YouTube channel offers in-depth analysis, reviews, and feature content on the gaming industry.\n4. **Jimquisition**: A popular YouTube channel hosted by Jim Sterling, known for his in-depth analysis and critique of the gaming industry.\n5. **Super Bunnyhop**: A YouTube channel featuring in-depth analysis and critique of games, as well as industry trends and news.\n6. ** Errant Signal**: A YouTube channel focusing on game design analysis, critique, and industry trends.\n7. **ProJared**: A popular YouTube channel featuring gaming news, reviews, and analysis, with a focus on Nintendo and indie games.\n\n**Podcasts:**\n\n1. **The Game Informer Show**: A weekly podcast from Game Informer, featuring news, reviews, and discussion on the gaming industry.\n2. **The Polygon Show**: A weekly podcast from Polygon, featuring in-depth discussion and analysis on the gaming industry.\n3. **The Tested Podcast**: A podcast from the team behind Tested.com, featuring discussion on games, tech, and pop culture.\n4. **The Kinda Funny Podcast**: A weekly podcast featuring discussion on games, pop culture, and industry trends.\n\nThese resources will keep you up-to-date with the latest gaming news, trends, and analysis. You can also find many other great websites, YouTube channels, and podcasts by exploring these recommendations and discovering what resonates with you.\n\nDo you have a preferred type of content or format (e.g., written articles, video analysis, podcasts) that you enjoy for gaming news and analysis?\nuser: I think I'll start with Polygon and Kotaku for written articles, and then check out some YouTube channels like GameSpot and Jimquisition. I've heard great things about Jim Sterling's in-depth analysis and critique of the gaming industry. I might also give the Game Informer Show podcast a listen, as I've enjoyed their magazine in the past.\n\nBy the way, I've been thinking about getting a new gaming keyboard. Do you have any recommendations for good gaming keyboards, or any specific features I should look for?\nassistant: Polygon and Kotaku are both excellent sources for written articles, and GameSpot and Jimquisition are great YouTube channels for in-depth analysis and critique. The Game Informer Show podcast is also a great choice, especially if you're familiar with their magazine.\n\nNow, about that gaming keyboard...\n\n**Gaming Keyboard Recommendations:**\n\n1. **Razer BlackWidow**: A popular choice among gamers, the BlackWidow series offers customizable backlighting, macro keys, and a sleek design.\n2. **Logitech G512**: A high-end gaming keyboard with Romer-G switches, customizable lighting, and a built-in wrist rest.\n3. **SteelSeries Apex 7**: A compact, tenkeyless keyboard with SteelSeries' proprietary switches, customizable lighting, and a sleek design.\n4. **Corsair K95 RGB Platinum**: A high-end gaming keyboard with Cherry MX switches, customizable lighting, and a range of macro keys.\n5. **WASD Code 104**: A compact, tenkeyless keyboard designed specifically for coders and gamers, with customizable backlighting and a durable design.\n\n**Features to Look for:**\n\n1. **Switch Type**: Mechanical switches (e.g., Cherry MX, Romer-G, SteelSeries) offer better tactile feedback and durability than membrane switches.\n2. **Customizable Lighting**: RGB lighting can enhance the gaming experience, and customizable lighting options allow you to personalize your keyboard.\n3. **Macro Keys**: Programmable keys can be useful for complex game commands or shortcuts.\n4. **Wrist Rest**: A built-in wrist rest can provide comfort during long gaming sessions.\n5. **N-Key Rollover (NKRO)**: This feature ensures that each key press is registered correctly, even when multiple keys are pressed simultaneously.\n6. **USB Passthrough**: A USB passthrough allows you to connect other devices, like a mouse or flash drive, directly to the keyboard.\n7. **Media Controls**: Dedicated media controls can be convenient for adjusting volume, play/pause, and skip functions.\n8. **Ergonomic Design**: An ergonomic design can reduce fatigue and discomfort during long gaming sessions.\n\nWhen choosing a gaming keyboard, consider your budget, preferred switch type, and the features that matter most to you.\n\nDo you have any specific preferences or requirements for your gaming keyboard, such as a particular switch type or feature set?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Emotional story game recommendation context after The Last of Us Part II summary=After finishing The Last of Us Part II, the user sought games with similar emotional storytelling but different settings or genres; the recommendation context centered on narrative-driven, character-focused titles such as What Remains of Edith Finch, Firewatch, Gone Home, Life is Strange, The Walking Dead: Season One, Her Story, and Night in the Woods. scope=User game recommendation context for emotional storytelling after The Last of Us Part II entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<8> keywords=The Last of Us Part II,emotional storytelling,What Remains of Edith Finch,Firewatch,narrative games tags=gaming,recommendations,emotional_storytelling evidence=have you got any recommendations for games with similar emotional storytelling, but maybe in a different setting or genre?\n[1] type=CONTEXT title=Gaming community and media discovery preferences summary=The user selected ResetEra and Reddit r/Games as communities to explore for game discussion, and planned to start with Polygon and Kotaku for written news, GameSpot and Jimquisition for YouTube analysis, and The Game Informer Show as a podcast due to prior familiarity with Game Informer magazine. scope=User preferences for gaming communities, news sources, video analysis, and podcasts entities=entity:<0>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15>,entity:<16>,entity:<17> keywords=ResetEra,Reddit r/Games,Polygon,Kotaku,GameSpot,Jimquisition,The Game Informer Show tags=gaming,communities,news_sources,media_preferences evidence=I think I'll start with Polygon and Kotaku for written articles, and then check out some YouTube channels like GameSpot and Jimquisition.\n[2] type=CONTEXT title=Gaming keyboard shopping context and feature priorities summary=The user was considering buying a new gaming keyboard and asked for both product recommendations and feature guidance; the reusable advice context emphasized mechanical switch type, customizable lighting, macro keys, wrist rest, NKRO, USB passthrough, media controls, ergonomic design, and balancing these against budget and preferred feel. scope=User hardware shopping context for gaming keyboard recommendations entities=entity:<0>,entity:<18>,entity:<19>,entity:<20>,entity:<21>,entity:<22> keywords=gaming keyboard,mechanical switches,RGB lighting,macro keys,NKRO,Razer BlackWidow,Logitech G512,SteelSeries Apex 7,Corsair K95 RGB Platinum,WASD Code 104 tags=hardware,shopping,gaming_keyboard evidence=I've been thinking about getting a new gaming keyboard. Do you have any recommendations for good gaming keyboards, or any specific features I should look for?\n\n        Existing active notes:\n        id=hot-path-8790843a787c-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Open-world story game recommendation context after Assassin's Creed Odyssey summary=The user sought open-world games with engaging storylines after finishing Assassin's Creed Odyssey, and the recommendation context centered on titles with large explorable worlds, narrative focus, and RPG/adventure progression: The Witcher 3: Wild Hunt, Red Dead Redemption 2, Horizon Zero Dawn, Far Cry 5, Dragon Age: Inquisition, Middle-earth: Shadow of Mordor, and Sea of Thieves. scope=User entertainment preferences and game recommendation context from the 2023-05-20 session keywords=open-world games,engaging storylines,Assassin's Creed Odyssey,The Witcher 3,Red Dead Redemption 2,Horizon Zero Dawn,Dragon Age: Inquisition tags=gaming_preferences,recommendation_context,open_world,story_driven useCount=0\nid=hot-path-8790843a787c-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=The Witcher 3 vs Dragon Age: Inquisition preference trade-off summary=When comparing The Witcher 3: Wild Hunt and Dragon Age: Inquisition for this user, the key trade-off was framed as darker mature storytelling, character development, and more tactical combat in The Witcher 3 versus epic high-fantasy, party dynamics, branching choices, and more accessible combat in Dragon Age: Inquisition. scope=Reusable comparison rationale for recommending The Witcher 3: Wild Hunt or Dragon Age: Inquisition to the user keywords=The Witcher 3,Dragon Age: Inquisition,dark fantasy,high fantasy,tactical combat,party dynamics,combat accessibility tags=game_comparison,recommendation_rationale,story_tone,combat useCount=0\nid=hot-path-8790843a787c-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Horizon Zero Dawn storytelling appeal context summary=The user's interest in Horizon Zero Dawn focused on story and atmosphere, especially Aloy's self-discovery in a post-apocalyptic world combining tribal cultures, machine-dominated threats, ancient technology, natural beauty, and themes of identity, humanity, and technology versus nature. scope=Horizon Zero Dawn recommendation context for the user's story and atmosphere interests keywords=Horizon Zero Dawn,Aloy,post-apocalyptic,tribal cultures,machines,identity,technology and nature,atmosphere tags=horizon_zero_dawn,story_context,atmosphere,gaming_preferences useCount=0\nid=hot-path-8790843a787c-note-4 type=LESSON status=ACTIVE maturity=FRESH title=Transition strategy from Assassin's Creed Odyssey to The Witcher 3 combat summary=For a smoother move from Assassin's Creed Odyssey to The Witcher 3, the reusable strategy was to treat The Witcher 3 as more precise and tactical: learn Geralt's signs, potions, oils, stamina management, enemy weaknesses, careful parry/dodge timing, and use lower difficulty or retreating when overwhelmed. scope=Combat transition guidance for the user if starting The Witcher 3 after Assassin's Creed Odyssey keywords=Assassin's Creed Odyssey combat,The Witcher 3 combat,Geralt signs,potions,stamina,parry,dodge,transition tips tags=gaming_tips,combat_strategy,witcher3,assassins_creed_odyssey useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:28dc39ac",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:a0cfe3e56427076c9b2d45f428bea3cb"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:28dc39ac\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 02:05\nTranscript:\nuser: I'm looking for some recommendations on games similar to The Last of Us Part II. By the way, I just finished it on normal difficulty and it took me 25 hours to complete.\nassistant: Congratulations on completing The Last of Us Part II! That's a great achievement.\n\nIf you're looking for games similar to The Last of Us Part II, here are some recommendations that you might enjoy:\n\n1. **The Last of Us (Remastered)**: If you haven't already, play the first game in the series to experience the origin story of Ellie and Joel's journey.\n2. **God of War (2018)**: This action-adventure game shares a similar atmosphere and emotional depth with The Last of Us Part II. It's a soft reboot of the God of War series, and it's an excellent game in its own right.\n3. **Horizon Zero Dawn**: This action RPG has a strong narrative focus, a strong protagonist, and a post-apocalyptic world to explore. The combat is also similar to The Last of Us Part II.\n4. **Uncharted 4: A Thief's End**: While more action-oriented, Uncharted 4 has a strong narrative focus and well-developed characters, similar to The Last of Us Part II.\n5. **The Witcher 3: Wild Hunt**: This RPG has a deep storyline, engaging combat, and a vast open world to explore. While not as emotionally intense as The Last of Us Part II, it's an excellent game with a similar scope and depth.\n6. **Days Gone**: This open-world action-adventure game is set in a post-apocalyptic Oregon, where you play as a bounty hunter fighting against hordes of zombies-like creatures.\n7. **State of Decay 2**: This open-world survival game is set in a post-apocalyptic world, where you must build a community and fight against hordes of zombies.\n8. **Resident Evil 7: Biohazard**: This survival horror game shares some similarities with The Last of Us Part II in terms of its atmospheric tension and horror elements.\n9. **Death Stranding**: This game has a strong narrative focus, a unique blend of exploration and combat, and a post-apocalyptic world to explore.\n10. **Bioshock Infinite**: While not as recent as some of the other games on this list, Bioshock Infinite is a classic game with a strong narrative focus, engaging combat, and a thought-provoking story.\n\nThese games all have elements of action, adventure, and storytelling that made The Last of Us Part II so compelling. Of course, each game has its own unique twists and gameplay mechanics, so you're sure to find something that suits your tastes.\n\nBy the way, 25 hours is a great completion time for The Last of Us Part II on normal difficulty! Did you find the game's difficulty level to be challenging, or was it more of a narrative-driven experience for you?\nuser: I found the normal difficulty to be a good balance between challenge and storytelling. I was able to focus on the narrative and characters without getting too frustrated with the gameplay. Speaking of which, I'm curious about the game's development process. How long did it take the developers to create The Last of Us Part II, and what was the most challenging part of its development?\nassistant: The development of The Last of Us Part II was a massive undertaking, and it's fascinating to learn about the process behind this critically acclaimed game.\n\n**Development Time:**\nThe development of The Last of Us Part II began in 2014, shortly after the release of The Last of Us Remastered for the PlayStation 4. The game was officially announced in October 2017, and it took around 5-6 years to complete. The development team at Naughty Dog grew significantly during this period, with a team size of around 200-300 people at its peak.\n\n**Challenging Aspects:**\nIn an interview with Game Informer, Neil Druckmann, the creative director and writer of The Last of Us Part II, shared some insights into the most challenging aspects of the game's development:\n\n1. **Emotional Storytelling:** One of the biggest challenges was capturing the emotional intensity and authenticity of the story, particularly when it came to portraying the characters' emotional journeys. The team wanted to create a narrative that would resonate with players, and this required a deep understanding of human emotions and relationships.\n2. **Gameplay and Pacing:** The team aimed to create a perfect balance between action, stealth, and exploration. They experimented with different gameplay mechanics, pacing, and level design to ensure that the game felt engaging and responsive.\n3. **Technical Challenges:** The game's engine, animation systems, and AI had to be heavily modified to accommodate the game's ambitious scope. The team had to develop new tools and techniques to achieve the desired visual fidelity and performance.\n4. **Team Dynamics:** With a large team working on the game, managing team dynamics and ensuring that everyone was aligned with the game's vision was a significant challenge. Druckmann mentioned that maintaining a sense of collaboration and open communication was crucial to the game's success.\n5. ** Crunch Time:** The game's development was not without its crunch periods, where the team had to work long hours to meet deadlines. Druckmann acknowledged that this was a challenging aspect of the development process, but the team's dedication and passion for the project helped them push through.\n\n**Interesting Facts:**\n\n* The game's script was over 2,000 pages long, which is roughly equivalent to 4-5 novels.\n* The team recorded over 100,000 lines of dialogue, making it one of the most dialogue-heavy games ever created.\n* The game's motion capture process involved recording over 10,000 individual performances.\n* The team built a custom tool to create the game's complex facial animations, which allowed for a more realistic and nuanced portrayal of emotions.\n\nThe dedication, passion, and attention to detail invested by the team at Naughty Dog are a testament to the game's critical and commercial success. The Last of Us Part II is a masterclass in game development, and its impact will be felt in the gaming industry for years to come.\nuser: That's really interesting. I didn't know it took them 5-6 years to develop the game. I can imagine the emotional storytelling part was a challenge, considering how emotional the game can be. By the way, have you got any recommendations for games with similar emotional storytelling, but maybe in a different setting or genre?\nassistant: The Last of Us Part II's emotional storytelling is indeed one of its strongest aspects. If you're looking for games with similar emotional depth, but in different settings or genres, here are some recommendations:\n\n1. **What Remains of Edith Finch**: This narrative-driven exploration game tells the story of a family's history and their strange and tragic fate. It's a beautifully crafted game that explores themes of love, loss, and family.\n2. **Firewatch**: Set in a Wyoming wilderness lookout tower in the 1980s, Firewatch is a first-person narrative-driven game that delves into themes of loneliness, human connection, and the power of relationships.\n3. **Gone Home**: This critically acclaimed game tells the story of a family's struggles and secrets through environmental storytelling. It's a powerful exploration of identity, family, and self-discovery.\n4. **Life is Strange**: This episodic graphic adventure game follows the story of Max, a high school student with the ability to rewind time. It explores themes of friendship, love, and the consequences of choice.\n5. **TellTale's The Walking Dead** (Season 1): While not entirely different from The Last of Us in terms of setting, this adventure game series focuses more on character development and emotional storytelling, making it a great choice for those who enjoy narrative-driven games.\n6. **Her Story**: This detective game involves searching through police interviews with a woman who's suspected of murder. As you dig deeper, you'll uncover a complex and emotional story that explores themes of love, loss, and identity.\n7. **Night in the Woods**: This narrative-driven adventure game follows the story of Mae, a cat who returns to her hometown after dropping out of college. It's a heartwarming and relatable exploration of mental health, relationships, and small-town life.\n\nThese games all share some elements of emotional storytelling, character development, and narrative focus that made The Last of Us Part II so impactful. They might not be as action-oriented, but they'll definitely provide a similar emotional resonance.\n\nHave you played any of these games before, or is there a particular genre or setting that interests you?\nuser: I haven't played any of those games, but I've heard great things about What Remains of Edith Finch and Firewatch. I think I'll give one of those a try. By the way, do you have any recommendations for gaming communities or forums where I can discuss games with other players and get more recommendations?\nassistant: What Remains of Edith Finch and Firewatch are both excellent choices.\n\nFor gaming communities and forums, I've got some recommendations:\n\n1. **ResetEra**: A popular gaming forum with a vast community of gamers, ResetEra has dedicated threads for various games, including The Last of Us Part II. You can discuss the game, share tips, and get recommendations from fellow players.\n2. **Reddit's r/Games**: The Games subreddit is a massive community with thousands of users discussing various games, including indie titles and AAA releases. You can find threads dedicated to specific games, genres, or topics, and engage with other gamers.\n3. **GameFAQs**: A classic gaming forum with a dedicated community, GameFAQs has boards for various games, including The Last of Us Part II. You can discuss the game, ask questions, and share tips with other players.\n4. **NeoGAF**: Another popular gaming forum, NeoGAF has a dedicated community discussing various games, including The Last of Us Part II. Be prepared for in-depth discussions and debates about games, industry trends, and more.\n5. **Steam Community**: If you're a PC gamer, the Steam Community is an excellent place to connect with other players. Join groups dedicated to specific games, genres, or topics, and engage in discussions, share tips, and participate in events.\n6. **Discord Servers**: Many gaming communities, YouTubers, and streamers have their own Discord servers where you can chat with other gamers, discuss games, and participate in events. You can search for servers dedicated to The Last of Us Part II or other games you're interested in.\n7. **Gaming Subreddits**: There are many subreddits dedicated to specific games, genres, or topics. For example, r/TheLastOfUs, r/Gaming, r/PS4, and r/IndieGaming are all great communities to explore.\n\nRemember to always follow community guidelines and rules, and be respectful of other users' opinions and preferences.\n\nWhich of these communities resonates with you, or do you have any specific preferences (e.g., platform, genre, or type of discussion)?\nuser: I think I'll check out ResetEra and Reddit's r/Games. I've heard good things about both communities, and they seem like great places to discuss games with other players. Thanks for the recommendations! By the way, I'm also interested in learning more about the gaming industry and staying up-to-date with the latest news and developments. Are there any good websites or YouTube channels you'd recommend for gaming news and analysis?\nassistant: ResetEra and Reddit's r/Games are both excellent communities for discussing games with other players.\n\nFor gaming news and analysis, I've got some top recommendations:\n\n**Websites:**\n\n1. **Polygon**: A leading gaming website with in-depth articles, reviews, and analysis on the gaming industry.\n2. **Kotaku**: A popular gaming website with a focus on news, reviews, and feature articles on the gaming industry.\n3. **Game Informer**: A well-established gaming magazine with a strong online presence, featuring news, reviews, and previews.\n4. **IGN**: A leading gaming media outlet with news, reviews, and feature articles on the gaming industry.\n5. **Destructoid**: A gaming website with a focus on indie games, news, and community-driven content.\n\n**YouTube Channels:**\n\n1. **GameSpot**: A popular YouTube channel with news, reviews, and feature content on the gaming industry.\n2. **IGN**: IGN's YouTube channel features news, reviews, and analysis on the gaming industry.\n3. **Polygon**: Polygon's YouTube channel offers in-depth analysis, reviews, and feature content on the gaming industry.\n4. **Jimquisition**: A popular YouTube channel hosted by Jim Sterling, known for his in-depth analysis and critique of the gaming industry.\n5. **Super Bunnyhop**: A YouTube channel featuring in-depth analysis and critique of games, as well as industry trends and news.\n6. ** Errant Signal**: A YouTube channel focusing on game design analysis, critique, and industry trends.\n7. **ProJared**: A popular YouTube channel featuring gaming news, reviews, and analysis, with a focus on Nintendo and indie games.\n\n**Podcasts:**\n\n1. **The Game Informer Show**: A weekly podcast from Game Informer, featuring news, reviews, and discussion on the gaming industry.\n2. **The Polygon Show**: A weekly podcast from Polygon, featuring in-depth discussion and analysis on the gaming industry.\n3. **The Tested Podcast**: A podcast from the team behind Tested.com, featuring discussion on games, tech, and pop culture.\n4. **The Kinda Funny Podcast**: A weekly podcast featuring discussion on games, pop culture, and industry trends.\n\nThese resources will keep you up-to-date with the latest gaming news, trends, and analysis. You can also find many other great websites, YouTube channels, and podcasts by exploring these recommendations and discovering what resonates with you.\n\nDo you have a preferred type of content or format (e.g., written articles, video analysis, podcasts) that you enjoy for gaming news and analysis?\nuser: I think I'll start with Polygon and Kotaku for written articles, and then check out some YouTube channels like GameSpot and Jimquisition. I've heard great things about Jim Sterling's in-depth analysis and critique of the gaming industry. I might also give the Game Informer Show podcast a listen, as I've enjoyed their magazine in the past.\n\nBy the way, I've been thinking about getting a new gaming keyboard. Do you have any recommendations for good gaming keyboards, or any specific features I should look for?\nassistant: Polygon and Kotaku are both excellent sources for written articles, and GameSpot and Jimquisition are great YouTube channels for in-depth analysis and critique. The Game Informer Show podcast is also a great choice, especially if you're familiar with their magazine.\n\nNow, about that gaming keyboard...\n\n**Gaming Keyboard Recommendations:**\n\n1. **Razer BlackWidow**: A popular choice among gamers, the BlackWidow series offers customizable backlighting, macro keys, and a sleek design.\n2. **Logitech G512**: A high-end gaming keyboard with Romer-G switches, customizable lighting, and a built-in wrist rest.\n3. **SteelSeries Apex 7**: A compact, tenkeyless keyboard with SteelSeries' proprietary switches, customizable lighting, and a sleek design.\n4. **Corsair K95 RGB Platinum**: A high-end gaming keyboard with Cherry MX switches, customizable lighting, and a range of macro keys.\n5. **WASD Code 104**: A compact, tenkeyless keyboard designed specifically for coders and gamers, with customizable backlighting and a durable design.\n\n**Features to Look for:**\n\n1. **Switch Type**: Mechanical switches (e.g., Cherry MX, Romer-G, SteelSeries) offer better tactile feedback and durability than membrane switches.\n2. **Customizable Lighting**: RGB lighting can enhance the gaming experience, and customizable lighting options allow you to personalize your keyboard.\n3. **Macro Keys**: Programmable keys can be useful for complex game commands or shortcuts.\n4. **Wrist Rest**: A built-in wrist rest can provide comfort during long gaming sessions.\n5. **N-Key Rollover (NKRO)**: This feature ensures that each key press is registered correctly, even when multiple keys are pressed simultaneously.\n6. **USB Passthrough**: A USB passthrough allows you to connect other devices, like a mouse or flash drive, directly to the keyboard.\n7. **Media Controls**: Dedicated media controls can be convenient for adjusting volume, play/pause, and skip functions.\n8. **Ergonomic Design**: An ergonomic design can reduce fatigue and discomfort during long gaming sessions.\n\nWhen choosing a gaming keyboard, consider your budget, preferred switch type, and the features that matter most to you.\n\nDo you have any specific preferences or requirements for your gaming keyboard, such as a particular switch type or feature set?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Emotional story game recommendation context after The Last of Us Part II summary=After finishing The Last of Us Part II, the user sought games with similar emotional storytelling but different settings or genres; the recommendation context centered on narrative-driven, character-focused titles such as What Remains of Edith Finch, Firewatch, Gone Home, Life is Strange, The Walking Dead: Season One, Her Story, and Night in the Woods. scope=User game recommendation context for emotional storytelling after The Last of Us Part II entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<8> keywords=The Last of Us Part II,emotional storytelling,What Remains of Edith Finch,Firewatch,narrative games tags=gaming,recommendations,emotional_storytelling evidence=have you got any recommendations for games with similar emotional storytelling, but maybe in a different setting or genre?\n[1] type=CONTEXT title=Gaming community and media discovery preferences summary=The user selected ResetEra and Reddit r/Games as communities to explore for game discussion, and planned to start with Polygon and Kotaku for written news, GameSpot and Jimquisition for YouTube analysis, and The Game Informer Show as a podcast due to prior familiarity with Game Informer magazine. scope=User preferences for gaming communities, news sources, video analysis, and podcasts entities=entity:<0>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15>,entity:<16>,entity:<17> keywords=ResetEra,Reddit r/Games,Polygon,Kotaku,GameSpot,Jimquisition,The Game Informer Show tags=gaming,communities,news_sources,media_preferences evidence=I think I'll start with Polygon and Kotaku for written articles, and then check out some YouTube channels like GameSpot and Jimquisition.\n[2] type=CONTEXT title=Gaming keyboard shopping context and feature priorities summary=The user was considering buying a new gaming keyboard and asked for both product recommendations and feature guidance; the reusable advice context emphasized mechanical switch type, customizable lighting, macro keys, wrist rest, NKRO, USB passthrough, media controls, ergonomic design, and balancing these against budget and preferred feel. scope=User hardware shopping context for gaming keyboard recommendations entities=entity:<0>,entity:<18>,entity:<19>,entity:<20>,entity:<21>,entity:<22> keywords=gaming keyboard,mechanical switches,RGB lighting,macro keys,NKRO,Razer BlackWidow,Logitech G512,SteelSeries Apex 7,Corsair K95 RGB Platinum,WASD Code 104 tags=hardware,shopping,gaming_keyboard evidence=I've been thinking about getting a new gaming keyboard. Do you have any recommendations for good gaming keyboards, or any specific features I should look for?\n\n        Existing active notes:\n        id=hot-path-8790843a787c-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Open-world story game recommendation context after Assassin's Creed Odyssey summary=The user sought open-world games with engaging storylines after finishing Assassin's Creed Odyssey, and the recommendation context centered on titles with large explorable worlds, narrative focus, and RPG/adventure progression: The Witcher 3: Wild Hunt, Red Dead Redemption 2, Horizon Zero Dawn, Far Cry 5, Dragon Age: Inquisition, Middle-earth: Shadow of Mordor, and Sea of Thieves. scope=User entertainment preferences and game recommendation context from the 2023-05-20 session keywords=open-world games,engaging storylines,Assassin's Creed Odyssey,The Witcher 3,Red Dead Redemption 2,Horizon Zero Dawn,Dragon Age: Inquisition tags=gaming_preferences,recommendation_context,open_world,story_driven useCount=0\nid=hot-path-8790843a787c-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=The Witcher 3 vs Dragon Age: Inquisition preference trade-off summary=When comparing The Witcher 3: Wild Hunt and Dragon Age: Inquisition for this user, the key trade-off was framed as darker mature storytelling, character development, and more tactical combat in The Witcher 3 versus epic high-fantasy, party dynamics, branching choices, and more accessible combat in Dragon Age: Inquisition. scope=Reusable comparison rationale for recommending The Witcher 3: Wild Hunt or Dragon Age: Inquisition to the user keywords=The Witcher 3,Dragon Age: Inquisition,dark fantasy,high fantasy,tactical combat,party dynamics,combat accessibility tags=game_comparison,recommendation_rationale,story_tone,combat useCount=0\nid=hot-path-8790843a787c-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Horizon Zero Dawn storytelling appeal context summary=The user's interest in Horizon Zero Dawn focused on story and atmosphere, especially Aloy's self-discovery in a post-apocalyptic world combining tribal cultures, machine-dominated threats, ancient technology, natural beauty, and themes of identity, humanity, and technology versus nature. scope=Horizon Zero Dawn recommendation context for the user's story and atmosphere interests keywords=Horizon Zero Dawn,Aloy,post-apocalyptic,tribal cultures,machines,identity,technology and nature,atmosphere tags=horizon_zero_dawn,story_context,atmosphere,gaming_preferences useCount=0\nid=hot-path-8790843a787c-note-4 type=LESSON status=ACTIVE maturity=FRESH title=Transition strategy from Assassin's Creed Odyssey to The Witcher 3 combat summary=For a smoother move from Assassin's Creed Odyssey to The Witcher 3, the reusable strategy was to treat The Witcher 3 as more precise and tactical: learn Geralt's signs, potions, oils, stamina management, enemy weaknesses, careful parry/dodge timing, and use lower difficulty or retreating when overwhelmed. scope=Combat transition guidance for the user if starting The Witcher 3 after Assassin's Creed Odyssey keywords=Assassin's Creed Odyssey combat,The Witcher 3 combat,Geralt signs,potions,stamina,parry,dodge,transition tips tags=gaming_tips,combat_strategy,witcher3,assassins_creed_odyssey useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:28dc39ac",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:a0cfe3e56427076c9b2d45f428bea3cb"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-8790843a787c-note-5\"}],\"patch\":null,\"reason\":\"New distinct recommendation context focused on emotional narrative games after The Last of Us Part II, not covered by existing open-world/story notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Captures distinct reusable preferences for gaming communities and media/news sources, absent from existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Captures a new hardware shopping context for gaming keyboards and relevant feature criteria, not represented in existing notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5880,
+                "completionTokens": 192,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
