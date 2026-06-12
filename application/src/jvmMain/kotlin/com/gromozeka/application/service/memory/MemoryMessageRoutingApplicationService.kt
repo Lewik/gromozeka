@@ -412,6 +412,7 @@ class MemoryMessageRoutingApplicationService(
     ): DirectStructuredMemoryWriteResult? = collectMemoryRunTimings { timingCollector ->
         val startedAt = Clock.System.now()
         val runtimes = MemoryWriteStageRuntimes(project)
+        val memoryStageTools = emptyList<AiToolCallback>()
         val focusedThreadContext = threadContext?.let {
             MemoryThreadContextCompactor(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CONTEXT_COMPACTOR),
@@ -429,47 +430,47 @@ class MemoryMessageRoutingApplicationService(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_ROUTER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             retrievalPlanner = LlmMemoryWriteRetrievalPlanner(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_RETRIEVAL_PLANNER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             entityCanonicalizer = LlmMemoryEntityCanonicalizer(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_ENTITY_CANONICALIZER),
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             noteConstructor = LlmMemoryNoteConstructor(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_NOTE_CONSTRUCTOR),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             noteReconciler = LlmMemoryNoteReconciler(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_NOTE_RECONCILER),
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             claimExtractor = LlmMemoryClaimExtractor(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CLAIM_EXTRACTOR),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             claimReconciler = LlmMemoryClaimReconciler(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CLAIM_RECONCILER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             actionItemUpdater = LlmMemoryActionItemUpdater(
                 runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_ACTION_ITEM_UPDATER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
+                runtimeTools = memoryStageTools,
             ),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 memoryIdFactory("hot-path", source)
@@ -480,7 +481,7 @@ class MemoryMessageRoutingApplicationService(
                 planner = LlmMemoryForgetPlanner(
                     runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_FORGET_PLANNER),
                     runtimeSystemPrompts = runtimeSystemPrompts,
-                    runtimeTools = runtimeTools,
+                    runtimeTools = memoryStageTools,
                 ),
                 idFactory = memoryIdFactory("hot-path-forget", source),
                 profileUpdater = ProjectionMemoryProfileUpdater(store),

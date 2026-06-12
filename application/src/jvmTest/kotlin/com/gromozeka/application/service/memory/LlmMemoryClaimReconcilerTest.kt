@@ -6,12 +6,14 @@ import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
+import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryClaimCandidate
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalogDefaults
 import com.gromozeka.domain.model.memory.MemoryReconciliationAction
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.service.AiRuntime
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -23,6 +25,33 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 class LlmMemoryClaimReconcilerTest {
+
+    @Test
+    fun directInsertsWhenNoActiveClaimsWereRetrieved() = runBlocking {
+        val runtime = SequencedJsonRuntime(responses = ArrayDeque())
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("I usually prefer concise technical answers."),
+            ),
+            claimCandidates = listOf(conciseAnswersCandidate()),
+            retrievedHits = emptyList(),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.INSERT, ops.single().action)
+        assertEquals("has_constraint", ops.single().candidate?.predicate)
+        assertEquals("has_constraint", ops.single().candidate?.predicatePolicy?.predicate)
+        assertEquals(0, runtime.requests.size)
+    }
 
     @Test
     fun repairsGenericDescriptionCanonicalPredicateBeforeReturningOps() = runBlocking {
@@ -46,25 +75,8 @@ class LlmMemoryClaimReconcilerTest {
                 namespace = TEST_NAMESPACE,
                 source = source("I usually prefer concise technical answers."),
             ),
-            claimCandidates = listOf(
-                MemoryClaimCandidate(
-                    subjectEntityId = USER_ENTITY_ID,
-                    predicate = "has_constraint",
-                    objectValue = JsonPrimitive("concise technical answers"),
-                    normalizedText = "The user prefers concise technical answers.",
-                    scope = MemoryScope.Global(
-                        text = "Namespace-wide memory",
-                        basis = MemoryScope.Basis.EXPLICIT,
-                    ),
-                    qualifiers = JsonObject(emptyMap()),
-                    confidence = 0.88,
-                    importance = 7,
-                    evidenceQuote = "prefer concise technical answers",
-                    evidenceReason = "The target explicitly states the preference.",
-                    reason = "This is a durable answer style preference.",
-                )
-            ),
-            retrievedHits = emptyList(),
+            claimCandidates = listOf(conciseAnswersCandidate()),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingClaim(), score = 0.9)),
             predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
         )
 
@@ -103,6 +115,47 @@ class LlmMemoryClaimReconcilerTest {
         val TEST_NAMESPACE = com.gromozeka.domain.model.memory.MemoryNamespace("claim-reconciler-test")
         val USER_ENTITY_ID = MemoryEntity.Id("entity-user")
         val NOW: Instant = Instant.parse("2026-01-02T03:04:05Z")
+
+        fun conciseAnswersCandidate(): MemoryClaimCandidate =
+            MemoryClaimCandidate(
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "has_constraint",
+                objectValue = JsonPrimitive("concise technical answers"),
+                normalizedText = "The user prefers concise technical answers.",
+                scope = MemoryScope.Global(
+                    text = "Namespace-wide memory",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                qualifiers = JsonObject(emptyMap()),
+                confidence = 0.88,
+                importance = 7,
+                evidenceQuote = "prefer concise technical answers",
+                evidenceReason = "The target explicitly states the preference.",
+                reason = "This is a durable answer style preference.",
+            )
+
+        fun existingClaim(): MemoryClaim =
+            MemoryClaim(
+                id = MemoryClaim.Id("claim-existing"),
+                namespace = TEST_NAMESPACE,
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "has_constraint",
+                predicateFamily = "has_constraint",
+                predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE)
+                    .first { it.predicate == "has_constraint" },
+                objectValue = JsonPrimitive("brief answers"),
+                normalizedText = "The user prefers brief answers.",
+                scope = MemoryScope.Global(
+                    text = "Namespace-wide memory",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                confidence = 0.8,
+                importance = 6,
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                createdAt = NOW,
+                updatedAt = NOW,
+            )
 
         fun source(text: String): MemorySource =
             MemorySource.ChatTurn(

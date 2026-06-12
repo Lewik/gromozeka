@@ -1,0 +1,351 @@
+{
+    "version": 1,
+    "hash": "850e72b92db6c9d474ec405f2f281a4ea94cb6887a6ef76e21a398cc4c3985b1",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=CONCEPT; name=MemoryRun (memory data model); aliases=none; summary=Concept named MemoryRun (memory data model).\n- id=entity:<1>; type=CONCEPT; name=Claim (memory data model); aliases=none; summary=Concept named Claim (memory data model).\n- id=entity:<2>; type=CONCEPT; name=Entity (memory data model); aliases=none; summary=Concept named Entity (memory data model).\n- id=entity:<3>; type=CONCEPT; name=Episode (memory data model); aliases=none; summary=Concept named Episode (memory data model).\n- id=entity:<4>; type=CONCEPT; name=Note (memory data model); aliases=none; summary=Concept named Note (memory data model).\n- id=entity:<5>; type=CONCEPT; name=Note maturity (memory data model); aliases=none; summary=Concept named Note maturity (memory data model).\n- id=entity:<6>; type=CONCEPT; name=Profile (memory data model); aliases=none; summary=Concept named Profile (memory data model).\n- id=entity:<7>; type=CONCEPT; name=Source (memory data model); aliases=none; summary=Concept named Source (memory data model).\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:8fa55469a066ca10b666d96d6b7c1f26: Document title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 8. Модель данных в одной строке\nDocument lines: 619-628\n\n## 8. Модель данных в одной строке\n\n- `Source` = что было сказано / увидено\n- `Entity` = кто/что это вообще\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\n- `Claim` = что мы считаем нормализованным фактом\n- `Profile` = компактная проекция устойчивого контекста\n- `Task` = что должно быть сделано\n- `Episode` = чему система научилась\n- `MemoryRun` = как именно память обновлялась\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff data-model document, not as an immediate task.\n\nFile: agent_memory_handoff/02_data_model.md\n\n# 02. Data Model\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope\n[truncated 15083 chars]\n- note hot-path:note:<0> v3 memory data model layered architecture; The `v3` memory data model is designed to support typed memory, lineage, temporal truth, reconcilable updates, richer semantic context, lifecycle/retention, and repairability by separating memory into layers: `Source` as evidence, `Entity`/`Claim` as graph-shaped semantics, `Note` as rich intermediate context, `Profile`/`Task`/`Episode` as operational projections, and `MemoryRun` as audit.\n- claim hot-path:claim:<0> In the v3 memory data model, Entity is an anchor for claims, tasks, notes, and episodes.\n- note hot-path:note:<1> Note represents durable intermediate semantic context; In `agent_memory_handoff/02_data_model.md`, `Note` is an intermediate semantic memory fragment for important retrieval-useful context that should not yet be hardened into final claims, such as design directions, decision rationale, evolving plans, hypotheses, lessons, doc digests, and contextual framing.\n- note hot-path:note:<2> Entity is the canonical memory node for aliases, merges, and semantic anchors; In `agent_memory_handoff/02_data_model.md`, `Entity` is the canonical memory node that unifies multiple mentions of the same object, anchors claims/tasks/notes/episodes, and supports aliases and merge. Its invariants require merges to preserve history, aliases to point to the current canonical entity, and mistaken merges to be reversible through an audit trail.\n- claim hot-path:claim:<1> In the v3 memory data model, Note must not be treated as a Source, a final Claim, or chain-of-thought.\n- note hot-path:note:<3> Note and Claim serve different memory roles; In `agent_memory_handoff/02_data_model.md`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The document warns that storing everything as `Claim` creates false precision, while storing everything as `Note` makes memory too soft.\n- note hot-path:note:<4> Note invariants require one self-contained semantic fragment; `Note` invariants in `agent_memory_handoff/02_data_model.md` require each note to be one self-contained semantic fragment that adds value beyond duplicating the source; `candidate_claims_json` is only hints, and a note may remain long-lived without becoming a claim if it stays useful for retrieval.\n- note hot-path:note:<5> Recommended schema field semantics for Note, Claim, Task, and Profile; In `agent_memory_handoff/02_data_model.md`, recommended Pydantic/schema descriptions define how memory fields should constrain behavior: `Note.summary` must be self-contained and preserve uncertainty, `scope_json` prevents leakage or over-generalization, `Claim.normalized_text` is a stand-alone factual statement, `Claim.retrieval_state` is search temperature distinct from truth status, `Task.acceptance_criteria_json` is observable completion criteria, and `Profile.soft_signals` should remain low-confidence or omitted.\n- claim hot-path:claim:<2> In the v3 memory data model, Note does not replace Claim because they serve different purposes.\n- note hot-path:note:<6> Profile is a short rebuildable always-in-context projection; In `agent_memory_handoff/02_data_model.md`, `Profile` is a compact always-in-context projection over explicit user instructions, stable claims, and selected long-lived context, not a source of truth. Its invariants emphasize keeping it short, prioritizing explicit facts over inference, leaving disputed facts in claim/note, and making the profile rebuildable.\n\n        Retrieval plan context:\n        entity_queries=02. Data Model|agent_memory_handoff/02_data_model.md|02. Data Model / 8. Модель данных в одной строке|MARKDOWN\n        text_queries=02. Data Model agent_memory_handoff/02_data_model.md 02. Data Model / 8. Модель данных в одной строке MARKDOWN Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 8. Модель данных в одной строке Document lines: 619-628 ## 8. Модель данных в одной строке - `Source` = что было сказано / увидено - `Entity` = кто/что это вообще - `Note` = что уже важно и полезно, но еще не хочется цементировать как факт - `Claim` = что мы считаем нормализованным фактом - `Profile` = компактная проекция устойчивого контекста - `Task` = что должно быть сделано - `Episode` = чему система научилась - `MemoryRun` = как именно память обновлялась\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:8fa55469a066ca10b666d96d6b7c1f26] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/02_data_model.md; title=02. Data Model; heading=02. Data Model / 8. Модель данных в одной строке; imported_at=1970-01-01T00:00:00Z\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 8. Модель данных в одной строке\nDocument lines: 619-628\n\n## 8. Модель данных в одной строке\n\n- `Source` = что было сказано / увидено\n- `Entity` = кто/что это вообще\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\n- `Claim` = что мы считаем нормализованным фактом\n- `Profile` = компактная проекция устойчивого контекста\n- `Task` = что должно быть сделано\n- `Episode` = чему система научилась\n- `MemoryRun` = как именно память обновлялась",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:8fa55469a066ca10b666d96d6b7c1f26"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=CONCEPT; name=MemoryRun (memory data model); aliases=none; summary=Concept named MemoryRun (memory data model).\n- id=entity:<1>; type=CONCEPT; name=Claim (memory data model); aliases=none; summary=Concept named Claim (memory data model).\n- id=entity:<2>; type=CONCEPT; name=Entity (memory data model); aliases=none; summary=Concept named Entity (memory data model).\n- id=entity:<3>; type=CONCEPT; name=Episode (memory data model); aliases=none; summary=Concept named Episode (memory data model).\n- id=entity:<4>; type=CONCEPT; name=Note (memory data model); aliases=none; summary=Concept named Note (memory data model).\n- id=entity:<5>; type=CONCEPT; name=Note maturity (memory data model); aliases=none; summary=Concept named Note maturity (memory data model).\n- id=entity:<6>; type=CONCEPT; name=Profile (memory data model); aliases=none; summary=Concept named Profile (memory data model).\n- id=entity:<7>; type=CONCEPT; name=Source (memory data model); aliases=none; summary=Concept named Source (memory data model).\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:8fa55469a066ca10b666d96d6b7c1f26: Document title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 8. Модель данных в одной строке\nDocument lines: 619-628\n\n## 8. Модель данных в одной строке\n\n- `Source` = что было сказано / увидено\n- `Entity` = кто/что это вообще\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\n- `Claim` = что мы считаем нормализованным фактом\n- `Profile` = компактная проекция устойчивого контекста\n- `Task` = что должно быть сделано\n- `Episode` = чему система научилась\n- `MemoryRun` = как именно память обновлялась\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff data-model document, not as an immediate task.\n\nFile: agent_memory_handoff/02_data_model.md\n\n# 02. Data Model\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope\n[truncated 15083 chars]\n- note hot-path:note:<0> v3 memory data model layered architecture; The `v3` memory data model is designed to support typed memory, lineage, temporal truth, reconcilable updates, richer semantic context, lifecycle/retention, and repairability by separating memory into layers: `Source` as evidence, `Entity`/`Claim` as graph-shaped semantics, `Note` as rich intermediate context, `Profile`/`Task`/`Episode` as operational projections, and `MemoryRun` as audit.\n- claim hot-path:claim:<0> In the v3 memory data model, Entity is an anchor for claims, tasks, notes, and episodes.\n- note hot-path:note:<1> Note represents durable intermediate semantic context; In `agent_memory_handoff/02_data_model.md`, `Note` is an intermediate semantic memory fragment for important retrieval-useful context that should not yet be hardened into final claims, such as design directions, decision rationale, evolving plans, hypotheses, lessons, doc digests, and contextual framing.\n- note hot-path:note:<2> Entity is the canonical memory node for aliases, merges, and semantic anchors; In `agent_memory_handoff/02_data_model.md`, `Entity` is the canonical memory node that unifies multiple mentions of the same object, anchors claims/tasks/notes/episodes, and supports aliases and merge. Its invariants require merges to preserve history, aliases to point to the current canonical entity, and mistaken merges to be reversible through an audit trail.\n- claim hot-path:claim:<1> In the v3 memory data model, Note must not be treated as a Source, a final Claim, or chain-of-thought.\n- note hot-path:note:<3> Note and Claim serve different memory roles; In `agent_memory_handoff/02_data_model.md`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The document warns that storing everything as `Claim` creates false precision, while storing everything as `Note` makes memory too soft.\n- note hot-path:note:<4> Note invariants require one self-contained semantic fragment; `Note` invariants in `agent_memory_handoff/02_data_model.md` require each note to be one self-contained semantic fragment that adds value beyond duplicating the source; `candidate_claims_json` is only hints, and a note may remain long-lived without becoming a claim if it stays useful for retrieval.\n- note hot-path:note:<5> Recommended schema field semantics for Note, Claim, Task, and Profile; In `agent_memory_handoff/02_data_model.md`, recommended Pydantic/schema descriptions define how memory fields should constrain behavior: `Note.summary` must be self-contained and preserve uncertainty, `scope_json` prevents leakage or over-generalization, `Claim.normalized_text` is a stand-alone factual statement, `Claim.retrieval_state` is search temperature distinct from truth status, `Task.acceptance_criteria_json` is observable completion criteria, and `Profile.soft_signals` should remain low-confidence or omitted.\n- claim hot-path:claim:<2> In the v3 memory data model, Note does not replace Claim because they serve different purposes.\n- note hot-path:note:<6> Profile is a short rebuildable always-in-context projection; In `agent_memory_handoff/02_data_model.md`, `Profile` is a compact always-in-context projection over explicit user instructions, stable claims, and selected long-lived context, not a source of truth. Its invariants emphasize keeping it short, prioritizing explicit facts over inference, leaving disputed facts in claim/note, and making the profile rebuildable.\n\n        Retrieval plan context:\n        entity_queries=02. Data Model|agent_memory_handoff/02_data_model.md|02. Data Model / 8. Модель данных в одной строке|MARKDOWN\n        text_queries=02. Data Model agent_memory_handoff/02_data_model.md 02. Data Model / 8. Модель данных в одной строке MARKDOWN Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 8. Модель данных в одной строке Document lines: 619-628 ## 8. Модель данных в одной строке - `Source` = что было сказано / увидено - `Entity` = кто/что это вообще - `Note` = что уже важно и полезно, но еще не хочется цементировать как факт - `Claim` = что мы считаем нормализованным фактом - `Profile` = компактная проекция устойчивого контекста - `Task` = что должно быть сделано - `Episode` = чему система научилась - `MemoryRun` = как именно память обновлялась\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:8fa55469a066ca10b666d96d6b7c1f26] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/02_data_model.md; title=02. Data Model; heading=02. Data Model / 8. Модель данных в одной строке; imported_at=1970-01-01T00:00:00Z\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 8. Модель данных в одной строке\nDocument lines: 619-628\n\n## 8. Модель данных в одной строке\n\n- `Source` = что было сказано / увидено\n- `Entity` = кто/что это вообще\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\n- `Claim` = что мы считаем нормализованным фактом\n- `Profile` = компактная проекция устойчивого контекста\n- `Task` = что должно быть сделано\n- `Episode` = чему система научилась\n- `MemoryRun` = как именно память обновлялась",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:8fa55469a066ca10b666d96d6b7c1f26"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<7>\",\"mention\":\"Source\",\"new_entity\":null,\"reason\":\"Mention matches existing memory data model concept Source.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<2>\",\"mention\":\"Entity\",\"new_entity\":null,\"reason\":\"Mention matches existing memory data model concept Entity.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<4>\",\"mention\":\"Note\",\"new_entity\":null,\"reason\":\"Mention matches existing memory data model concept Note.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<1>\",\"mention\":\"Claim\",\"new_entity\":null,\"reason\":\"Mention matches existing memory data model concept Claim.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<6>\",\"mention\":\"Profile\",\"new_entity\":null,\"reason\":\"Mention matches existing memory data model concept Profile.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.96,\"entity_id\":null,\"mention\":\"Task\",\"new_entity\":{\"canonical_name\":\"Task (memory data model)\",\"entity_type\":\"concept\",\"summary\":\"Concept named Task in the memory data model.\"},\"reason\":\"Target section defines Task as a memory data model concept, and no existing Task candidate is present.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<3>\",\"mention\":\"Episode\",\"new_entity\":null,\"reason\":\"Mention matches existing memory data model concept Episode.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<0>\",\"mention\":\"MemoryRun\",\"new_entity\":null,\"reason\":\"Mention matches existing memory data model concept MemoryRun.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3388,
+                "completionTokens": 520,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

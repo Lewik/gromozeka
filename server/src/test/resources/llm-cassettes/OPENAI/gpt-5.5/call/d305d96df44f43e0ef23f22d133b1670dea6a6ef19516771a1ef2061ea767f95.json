@@ -1,0 +1,363 @@
+{
+    "version": 1,
+    "hash": "d305d96df44f43e0ef23f22d133b1670dea6a6ef19516771a1ef2061ea767f95",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        none\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:22b71459a2c768f0b9721fd3a6223954: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2\nDocument lines: 239-415\n\n## 4. Note Constructor v2\n\n### Когда вызывать\nКогда router выбрал `note_write` или `mixed`.\n\n### Цель\nСоздать candidate notes как reusable semantic fragments.\n\n### Выход\n\n```json\n[\n  {\n    \"note_type\": \"decision\",\n    \"title\": \"...\",\n    \"summary\": \"...\",\n    \"scope_text\": \"...\",\n    \"scope_json\": {},\n    \"status\": \"active\",\n    \"entity_refs\": [\n      {\"entity_id\": \"uuid\", \"role\": \"primary\"}\n    ],\n    \"keywords\": [\"...\"],\n    \"tags\": [\"...\"],\n    \"candidate_claims\": [],\n    \"confidence\": 0.0,\n    \"imp\n[truncated 4046 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff prompt-pack document, not as an immediate task.\n\nFile: agent_memory_handoff/03_prompts.md\n\n# 03. Prompt Pack\n\nНиже — стартовый prompt pack для `v3`.\n\nОн не пытается засунуть весь memory lifecycle в один гигантский prompt.\nНаоборот, идея в том, чтобы держать каждый шаг узким и проверяемым.\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует ч\n[truncated 24131 chars]\n- claim hot-path:claim:<0> The v3 prompt pack requires semantic memory rules that prefer noop over bad memory, explicit statements over inference, newer explicit statements over older inferred statements, absolute normalization of relative time, one reusable unit per memory item, no hypothetical facts, separation of requests from facts, scoped claims, and no provisional notes as hard facts.\n- claim hot-path:claim:<1> The v3 prompt pack requires memory prompts to receive current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, only necessary retrieved context, predicate_catalog_excerpt when working with claims, and retrieval_budget when planning reads.\n- source external:document-section:e61471277609e2eeef0f7ba7476af6e7: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3\nDocument lines: 8-92\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует чтение\n\n### Технические правила\n- structured output / JSON schema enforcement\n- низкая температура\n- строгая валидация результата\n- invalid JSON -> retry с vali\n[truncated 2067 chars]\n- source external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1\nDocument lines: 93-238\n\n## 2. Write-Time Retrieval Planner v3\n\n### Когда вызывать\nПосле router, перед extraction/reconciliation.\n\n### Цель\nСформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment.\n\n### Выход\n\n```json\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n \n[truncated 2935 chars]\n- claim hot-path:claim:<2> Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.\n- claim hot-path:claim:<3> Write-Time Retrieval Planner v3 should add time filters when turns mention “now,” “before,” “used to,” “from now on,” “no longer,” deadlines, or relative dates.\n- note hot-path:note:<0> Memory Router v3 write-mode decision policy; `Memory Router v3` runs immediately after saving a `Source` to decide whether the latest turns are durable enough for the memory write pipeline and which mode to use: `noop`, `direct_structured_write`, `note_write`, or `mixed`. Its policy maps transient content to `noop`, explicit facts/status/deadlines/commitments to structured writes, rationale and design context to notes, and combined material to `mixed`, while avoiding task inflation and forced claims.\n- claim hot-path:claim:<4> The v3 prompt pack is designed to keep each memory lifecycle step narrow and verifiable instead of putting the entire lifecycle into one giant prompt.\n- note hot-path:note:<1> Common rules for all v3 memory prompts; In `agent_memory_handoff/03_prompts.md`, all memory prompts should receive only the necessary context and required runtime fields, use structured/validated low-temperature outputs, version each prompt, and follow semantic safeguards such as preferring `noop` over memory pollution, converting relative time to absolute time, and keeping each memory item to one reusable unit.\n- claim hot-path:claim:<5> The v3 prompt pack requires structured output or JSON schema enforcement, low temperature, strict validation, retry with validator feedback for invalid JSON, and versioned prompt names.\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2 MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2 Document lines: 239-415 ## 4. Note Constructor v2 ### Когда вызывать Когда router выбрал `note_write` или `mixed`. ### Цель Создать candidate notes как reusable semantic fragments. ### Выход ```json [ { \"note_type\": \"decision\", \"title\": \"...\", \"summary\": \"...\", \"scope_text\": \"...\", \"scope_json\": {}, \"status\": \"active\", \"entity_refs\": [ {\"entity_id\": \"uuid\", \"role\": \"primary\"} ], \"keywords\": [\"...\"], \"tags\": [\"...\"], \"candidate_claims\": [], \"confidence\": 0.0, \"importance\": 1, \"maturity_hint\": \"fresh | stabilizing | mature\", \"valid_from\": null, \"valid_to\": null, \"rationale\": \"short explanation\" } ] ``` ### Prompt ```text You are NoteConstructor v2 for a long-term AI agent. Goal: Create reusable semantic notes from the latest turns. A note is not a raw transcript and not a hard fact. It is a compact self-contained memory fragment that is already useful, but may still be too soft, contextual, or evolving to store only as atomic claims. Current time: {{current_time_iso}} Timezone: {{timezone}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Relevant sources: {{retrieved_sources}} Relevant notes: {{retrieved_notes}} Relevant entities: {{resolved_entities}} Return a JSON array: [ { \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\", \"title\": \"short label\", \"summary\": \"self-contained semantic fragment\", \"scope_text\": \"what this applies to and what limits it\", \"scope_json\": {}, \"status\": \"active | candidate | resolved\", \"entity_refs\": [ {\"entity_id\": \"uuid\", \"role\": \"primary | secondary | mentioned | owner | subject\"} ], \"keywords\": [\"...\"], \"tags\": [\"...\"], \"candidate_claims\": [], \"confidence\": 0.0, \"importance\": 1, \"maturity_hint\": \"fresh | stabilizing | mature\", \"valid_from\": \"ISO-8601 or null\", \"valid_to\": \"ISO-8601 or null\", \"rationale\": \"short explanation\" } ] Rules: - One note = one reusable semantic fragment. - The note must be understandable without the original chat. - Preserve ambiguity when the evidence is still soft. - Use scope_json to prevent over-generalization. - Good note targets: rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests. - Bad note targets: filler, greetings, raw paraphrases, and chain-of-thought. - Keep candidate_claims optional and conservative. - Prefer zero or one strong note over many weak ones. - Return valid JSON only. ``` ## 5. Note Reconciler v2 ### Когда вызывать После `NoteConstructor`. ### Цель Решить, что делать с candidate note и как меняется его lifecycle. ### Выход ```json [ { \"action\": \"insert | update | supersede | retract | noop\", \"target_note_id\": \"uuid-or-null\", \"updated_note\": { \"title\": \"...\", \"summary\": \"...\", \"scope_text\": \"...\", \"scope_json\": {}, \"status\": \"active\", \"retrieval_state\": \"active\", \"maturity_state\": \"fresh\" }, \"links_to_create\": [], \"reason\": \"short explanation\" } ] ``` ### Prompt ```text You are NoteReconciler v2. Goal: Compare candidate notes against existing notes and decide the correct update operation. Current time: {{current_time_iso}} Namespace: {{namespace_id}} Candidate notes: {{candidate_notes}} Nearby existing notes: {{existing_notes}} Return a JSON array: [ { \"action\": \"insert | update | supersede | retract | noop\", \"target_note_id\": \"uuid-or-null\", \"updated_note\": { \"title\": \"string\", \"summary\": \"string\", \"scope_text\": \"string or null\", \"scope_json\": {}, \"status\": \"active | superseded | retracted | resolved | stale | candidate\", \"retrieval_state\": \"active | warm | cold | archived | deleted\", \"maturity_state\": \"fresh | stabilizing | mature | consolidated\" }, \"links_to_create\": [ { \"to_note_id\": \"uuid\", \"link_type\": \"supports | contradicts | refines | related | superse\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:22b71459a2c768f0b9721fd3a6223954] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2\nDocument lines: 239-415\n\n## 4. Note Constructor v2\n\n### Когда вызывать\nКогда router выбрал `note_write` или `mixed`.\n\n### Цель\nСоздать candidate notes как reusable semantic fragments.\n\n### Выход\n\n```json\n[\n  {\n    \"note_type\": \"decision\",\n    \"title\": \"...\",\n    \"summary\": \"...\",\n    \"scope_text\": \"...\",\n    \"scope_json\": {},\n    \"status\": \"active\",\n    \"entity_refs\": [\n      {\"entity_id\": \"uuid\", \"role\": \"primary\"}\n    ],\n    \"keywords\": [\"...\"],\n    \"tags\": [\"...\"],\n    \"candidate_claims\": [],\n    \"confidence\": 0.0,\n    \"importance\": 1,\n    \"maturity_hint\": \"fresh | stabilizing | mature\",\n    \"valid_from\": null,\n    \"valid_to\": null,\n    \"rationale\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are NoteConstructor v2 for a long-term AI agent.\n\nGoal:\nCreate reusable semantic notes from the latest turns.\nA note is not a raw transcript and not a hard fact. It is a compact self-contained memory fragment that is already useful, but may still be too soft, contextual, or evolving to store only as atomic claims.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nRelevant sources:\n{{retrieved_sources}}\n\nRelevant notes:\n{{retrieved_notes}}\n\nRelevant entities:\n{{resolved_entities}}\n\nReturn a JSON array:\n[\n  {\n    \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n    \"title\": \"short label\",\n    \"summary\": \"self-contained semantic fragment\",\n    \"scope_text\": \"what this applies to and what limits it\",\n    \"scope_json\": {},\n    \"status\": \"active | candidate | resolved\",\n    \"entity_refs\": [\n      {\"entity_id\": \"uuid\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n    ],\n    \"keywords\": [\"...\"],\n    \"tags\": [\"...\"],\n    \"candidate_claims\": [],\n    \"confidence\": 0.0,\n    \"importance\": 1,\n    \"maturity_hint\": \"fresh | stabilizing | mature\",\n    \"valid_from\": \"ISO-8601 or null\",\n    \"valid_to\": \"ISO-8601 or null\",\n    \"rationale\": \"short explanation\"\n  }\n]\n\nRules:\n- One note = one reusable semantic fragment.\n- The note must be understandable without the original chat.\n- Preserve ambiguity when the evidence is still soft.\n- Use scope_json to prevent over-generalization.\n- Good note targets: rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests.\n- Bad note targets: filler, greetings, raw paraphrases, and chain-of-thought.\n- Keep candidate_claims optional and conservative.\n- Prefer zero or one strong note over many weak ones.\n- Return valid JSON only.\n```\n\n## 5. Note Reconciler v2\n\n### Когда вызывать\nПосле `NoteConstructor`.\n\n### Цель\nРешить, что делать с candidate note и как меняется его lifecycle.\n\n### Выход\n\n```json\n[\n  {\n    \"action\": \"insert | update | supersede | retract | noop\",\n    \"target_note_id\": \"uuid-or-null\",\n    \"updated_note\": {\n      \"title\": \"...\",\n      \"summary\": \"...\",\n      \"scope_text\": \"...\",\n      \"scope_json\": {},\n      \"status\": \"active\",\n      \"retrieval_state\": \"active\",\n      \"maturity_state\": \"fresh\"\n    },\n    \"links_to_create\": [],\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are NoteReconciler v2.\n\nGoal:\nCompare candidate notes against existing notes and decide the correct update operation.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nCandidate notes:\n{{candidate_notes}}\n\nNearby existing notes:\n{{existing_notes}}\n\nReturn a JSON array:\n[\n  {\n    \"action\": \"insert | update | supersede | retract | noop\",\n    \"target_note_id\": \"uuid-or-null\",\n    \"updated_note\": {\n      \"title\": \"string\",\n      \"summary\": \"string\",\n      \"scope_text\": \"string or null\",\n      \"scope_json\": {},\n      \"status\": \"active | superseded | retracted | resolved | stale | candidate\",\n      \"retrieval_state\": \"active | warm | cold | archived | deleted\",\n      \"maturity_state\": \"fresh | stabilizing | mature | consolidated\"\n    },\n    \"links_to_create\": [\n      {\n        \"to_note_id\": \"uuid\",\n        \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n        \"link_weight\": 0.0\n      }\n    ],\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- Use \"noop\" for near-duplicates with no meaningful improvement.\n- Use \"update\" when the same note becomes clearer without changing core meaning.\n- Use \"supersede\" when the new note replaces an earlier direction or plan.\n- Keep both notes when the scope differs by time, project, entity, or modality.\n- Do not delete useful rationale just because a newer note exists; prefer supersede + link.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:22b71459a2c768f0b9721fd3a6223954"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        none\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:22b71459a2c768f0b9721fd3a6223954: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2\nDocument lines: 239-415\n\n## 4. Note Constructor v2\n\n### Когда вызывать\nКогда router выбрал `note_write` или `mixed`.\n\n### Цель\nСоздать candidate notes как reusable semantic fragments.\n\n### Выход\n\n```json\n[\n  {\n    \"note_type\": \"decision\",\n    \"title\": \"...\",\n    \"summary\": \"...\",\n    \"scope_text\": \"...\",\n    \"scope_json\": {},\n    \"status\": \"active\",\n    \"entity_refs\": [\n      {\"entity_id\": \"uuid\", \"role\": \"primary\"}\n    ],\n    \"keywords\": [\"...\"],\n    \"tags\": [\"...\"],\n    \"candidate_claims\": [],\n    \"confidence\": 0.0,\n    \"imp\n[truncated 4046 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff prompt-pack document, not as an immediate task.\n\nFile: agent_memory_handoff/03_prompts.md\n\n# 03. Prompt Pack\n\nНиже — стартовый prompt pack для `v3`.\n\nОн не пытается засунуть весь memory lifecycle в один гигантский prompt.\nНаоборот, идея в том, чтобы держать каждый шаг узким и проверяемым.\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует ч\n[truncated 24131 chars]\n- claim hot-path:claim:<0> The v3 prompt pack requires semantic memory rules that prefer noop over bad memory, explicit statements over inference, newer explicit statements over older inferred statements, absolute normalization of relative time, one reusable unit per memory item, no hypothetical facts, separation of requests from facts, scoped claims, and no provisional notes as hard facts.\n- claim hot-path:claim:<1> The v3 prompt pack requires memory prompts to receive current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, only necessary retrieved context, predicate_catalog_excerpt when working with claims, and retrieval_budget when planning reads.\n- source external:document-section:e61471277609e2eeef0f7ba7476af6e7: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3\nDocument lines: 8-92\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует чтение\n\n### Технические правила\n- structured output / JSON schema enforcement\n- низкая температура\n- строгая валидация результата\n- invalid JSON -> retry с vali\n[truncated 2067 chars]\n- source external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1\nDocument lines: 93-238\n\n## 2. Write-Time Retrieval Planner v3\n\n### Когда вызывать\nПосле router, перед extraction/reconciliation.\n\n### Цель\nСформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment.\n\n### Выход\n\n```json\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n \n[truncated 2935 chars]\n- claim hot-path:claim:<2> Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.\n- claim hot-path:claim:<3> Write-Time Retrieval Planner v3 should add time filters when turns mention “now,” “before,” “used to,” “from now on,” “no longer,” deadlines, or relative dates.\n- note hot-path:note:<0> Memory Router v3 write-mode decision policy; `Memory Router v3` runs immediately after saving a `Source` to decide whether the latest turns are durable enough for the memory write pipeline and which mode to use: `noop`, `direct_structured_write`, `note_write`, or `mixed`. Its policy maps transient content to `noop`, explicit facts/status/deadlines/commitments to structured writes, rationale and design context to notes, and combined material to `mixed`, while avoiding task inflation and forced claims.\n- claim hot-path:claim:<4> The v3 prompt pack is designed to keep each memory lifecycle step narrow and verifiable instead of putting the entire lifecycle into one giant prompt.\n- note hot-path:note:<1> Common rules for all v3 memory prompts; In `agent_memory_handoff/03_prompts.md`, all memory prompts should receive only the necessary context and required runtime fields, use structured/validated low-temperature outputs, version each prompt, and follow semantic safeguards such as preferring `noop` over memory pollution, converting relative time to absolute time, and keeping each memory item to one reusable unit.\n- claim hot-path:claim:<5> The v3 prompt pack requires structured output or JSON schema enforcement, low temperature, strict validation, retry with validator feedback for invalid JSON, and versioned prompt names.\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2 MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2 Document lines: 239-415 ## 4. Note Constructor v2 ### Когда вызывать Когда router выбрал `note_write` или `mixed`. ### Цель Создать candidate notes как reusable semantic fragments. ### Выход ```json [ { \"note_type\": \"decision\", \"title\": \"...\", \"summary\": \"...\", \"scope_text\": \"...\", \"scope_json\": {}, \"status\": \"active\", \"entity_refs\": [ {\"entity_id\": \"uuid\", \"role\": \"primary\"} ], \"keywords\": [\"...\"], \"tags\": [\"...\"], \"candidate_claims\": [], \"confidence\": 0.0, \"importance\": 1, \"maturity_hint\": \"fresh | stabilizing | mature\", \"valid_from\": null, \"valid_to\": null, \"rationale\": \"short explanation\" } ] ``` ### Prompt ```text You are NoteConstructor v2 for a long-term AI agent. Goal: Create reusable semantic notes from the latest turns. A note is not a raw transcript and not a hard fact. It is a compact self-contained memory fragment that is already useful, but may still be too soft, contextual, or evolving to store only as atomic claims. Current time: {{current_time_iso}} Timezone: {{timezone}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Relevant sources: {{retrieved_sources}} Relevant notes: {{retrieved_notes}} Relevant entities: {{resolved_entities}} Return a JSON array: [ { \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\", \"title\": \"short label\", \"summary\": \"self-contained semantic fragment\", \"scope_text\": \"what this applies to and what limits it\", \"scope_json\": {}, \"status\": \"active | candidate | resolved\", \"entity_refs\": [ {\"entity_id\": \"uuid\", \"role\": \"primary | secondary | mentioned | owner | subject\"} ], \"keywords\": [\"...\"], \"tags\": [\"...\"], \"candidate_claims\": [], \"confidence\": 0.0, \"importance\": 1, \"maturity_hint\": \"fresh | stabilizing | mature\", \"valid_from\": \"ISO-8601 or null\", \"valid_to\": \"ISO-8601 or null\", \"rationale\": \"short explanation\" } ] Rules: - One note = one reusable semantic fragment. - The note must be understandable without the original chat. - Preserve ambiguity when the evidence is still soft. - Use scope_json to prevent over-generalization. - Good note targets: rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests. - Bad note targets: filler, greetings, raw paraphrases, and chain-of-thought. - Keep candidate_claims optional and conservative. - Prefer zero or one strong note over many weak ones. - Return valid JSON only. ``` ## 5. Note Reconciler v2 ### Когда вызывать После `NoteConstructor`. ### Цель Решить, что делать с candidate note и как меняется его lifecycle. ### Выход ```json [ { \"action\": \"insert | update | supersede | retract | noop\", \"target_note_id\": \"uuid-or-null\", \"updated_note\": { \"title\": \"...\", \"summary\": \"...\", \"scope_text\": \"...\", \"scope_json\": {}, \"status\": \"active\", \"retrieval_state\": \"active\", \"maturity_state\": \"fresh\" }, \"links_to_create\": [], \"reason\": \"short explanation\" } ] ``` ### Prompt ```text You are NoteReconciler v2. Goal: Compare candidate notes against existing notes and decide the correct update operation. Current time: {{current_time_iso}} Namespace: {{namespace_id}} Candidate notes: {{candidate_notes}} Nearby existing notes: {{existing_notes}} Return a JSON array: [ { \"action\": \"insert | update | supersede | retract | noop\", \"target_note_id\": \"uuid-or-null\", \"updated_note\": { \"title\": \"string\", \"summary\": \"string\", \"scope_text\": \"string or null\", \"scope_json\": {}, \"status\": \"active | superseded | retracted | resolved | stale | candidate\", \"retrieval_state\": \"active | warm | cold | archived | deleted\", \"maturity_state\": \"fresh | stabilizing | mature | consolidated\" }, \"links_to_create\": [ { \"to_note_id\": \"uuid\", \"link_type\": \"supports | contradicts | refines | related | superse\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:22b71459a2c768f0b9721fd3a6223954] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2\nDocument lines: 239-415\n\n## 4. Note Constructor v2\n\n### Когда вызывать\nКогда router выбрал `note_write` или `mixed`.\n\n### Цель\nСоздать candidate notes как reusable semantic fragments.\n\n### Выход\n\n```json\n[\n  {\n    \"note_type\": \"decision\",\n    \"title\": \"...\",\n    \"summary\": \"...\",\n    \"scope_text\": \"...\",\n    \"scope_json\": {},\n    \"status\": \"active\",\n    \"entity_refs\": [\n      {\"entity_id\": \"uuid\", \"role\": \"primary\"}\n    ],\n    \"keywords\": [\"...\"],\n    \"tags\": [\"...\"],\n    \"candidate_claims\": [],\n    \"confidence\": 0.0,\n    \"importance\": 1,\n    \"maturity_hint\": \"fresh | stabilizing | mature\",\n    \"valid_from\": null,\n    \"valid_to\": null,\n    \"rationale\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are NoteConstructor v2 for a long-term AI agent.\n\nGoal:\nCreate reusable semantic notes from the latest turns.\nA note is not a raw transcript and not a hard fact. It is a compact self-contained memory fragment that is already useful, but may still be too soft, contextual, or evolving to store only as atomic claims.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nRelevant sources:\n{{retrieved_sources}}\n\nRelevant notes:\n{{retrieved_notes}}\n\nRelevant entities:\n{{resolved_entities}}\n\nReturn a JSON array:\n[\n  {\n    \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n    \"title\": \"short label\",\n    \"summary\": \"self-contained semantic fragment\",\n    \"scope_text\": \"what this applies to and what limits it\",\n    \"scope_json\": {},\n    \"status\": \"active | candidate | resolved\",\n    \"entity_refs\": [\n      {\"entity_id\": \"uuid\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n    ],\n    \"keywords\": [\"...\"],\n    \"tags\": [\"...\"],\n    \"candidate_claims\": [],\n    \"confidence\": 0.0,\n    \"importance\": 1,\n    \"maturity_hint\": \"fresh | stabilizing | mature\",\n    \"valid_from\": \"ISO-8601 or null\",\n    \"valid_to\": \"ISO-8601 or null\",\n    \"rationale\": \"short explanation\"\n  }\n]\n\nRules:\n- One note = one reusable semantic fragment.\n- The note must be understandable without the original chat.\n- Preserve ambiguity when the evidence is still soft.\n- Use scope_json to prevent over-generalization.\n- Good note targets: rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests.\n- Bad note targets: filler, greetings, raw paraphrases, and chain-of-thought.\n- Keep candidate_claims optional and conservative.\n- Prefer zero or one strong note over many weak ones.\n- Return valid JSON only.\n```\n\n## 5. Note Reconciler v2\n\n### Когда вызывать\nПосле `NoteConstructor`.\n\n### Цель\nРешить, что делать с candidate note и как меняется его lifecycle.\n\n### Выход\n\n```json\n[\n  {\n    \"action\": \"insert | update | supersede | retract | noop\",\n    \"target_note_id\": \"uuid-or-null\",\n    \"updated_note\": {\n      \"title\": \"...\",\n      \"summary\": \"...\",\n      \"scope_text\": \"...\",\n      \"scope_json\": {},\n      \"status\": \"active\",\n      \"retrieval_state\": \"active\",\n      \"maturity_state\": \"fresh\"\n    },\n    \"links_to_create\": [],\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are NoteReconciler v2.\n\nGoal:\nCompare candidate notes against existing notes and decide the correct update operation.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nCandidate notes:\n{{candidate_notes}}\n\nNearby existing notes:\n{{existing_notes}}\n\nReturn a JSON array:\n[\n  {\n    \"action\": \"insert | update | supersede | retract | noop\",\n    \"target_note_id\": \"uuid-or-null\",\n    \"updated_note\": {\n      \"title\": \"string\",\n      \"summary\": \"string\",\n      \"scope_text\": \"string or null\",\n      \"scope_json\": {},\n      \"status\": \"active | superseded | retracted | resolved | stale | candidate\",\n      \"retrieval_state\": \"active | warm | cold | archived | deleted\",\n      \"maturity_state\": \"fresh | stabilizing | mature | consolidated\"\n    },\n    \"links_to_create\": [\n      {\n        \"to_note_id\": \"uuid\",\n        \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n        \"link_weight\": 0.0\n      }\n    ],\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- Use \"noop\" for near-duplicates with no meaningful improvement.\n- Use \"update\" when the same note becomes clearer without changing core meaning.\n- Use \"supersede\" when the new note replaces an earlier direction or plan.\n- Keep both notes when the scope differs by time, project, entity, or modality.\n- Do not delete useful rationale just because a newer note exists; prefer supersede + link.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:22b71459a2c768f0b9721fd3a6223954"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"NoteConstructor v2\",\"new_entity\":{\"canonical_name\":\"NoteConstructor v2\",\"entity_type\":\"agent\",\"summary\":\"A prompt-stage agent that creates reusable semantic notes from latest turns for a long-term AI agent memory system.\"},\"reason\":\"The document section explicitly defines NoteConstructor v2 as a durable prompt-stage component.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Note Reconciler v2\",\"new_entity\":{\"canonical_name\":\"Note Reconciler v2\",\"entity_type\":\"agent\",\"summary\":\"A prompt-stage agent that compares candidate notes against existing notes and decides note lifecycle update operations.\"},\"reason\":\"The document section explicitly defines Note Reconciler v2 as a durable prompt-stage component.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5010,
+                "completionTokens": 453,
+                "thinkingTokens": 244,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

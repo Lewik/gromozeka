@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "a62b067d64a206f8e4e5a9039d80491af221819920a9184dfc293854d6bb56a0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path:claim:<0> has_constraint; The v3 prompt pack requires semantic memory rules that prefer noop over bad memory, explicit statements over inference, newer explicit statements over older inferred statements, absolute normalization of relative time, one reusable unit per memory item, no hypothetical facts, separation of requests from facts, scoped claims, and no provisional notes as hard facts.; scope=Applies to the v3 memory prompt pack in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<1> has_constraint; The v3 prompt pack requires memory prompts to receive current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, only necessary retrieved context, predicate_catalog_excerpt when working with claims, and retrieval_budget when planning reads.; scope=Applies to the v3 memory prompt pack in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<2> has_goal; Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.\n- note hot-path:note:<0> DOC_DIGEST; Memory Router v3 write-mode decision policy; `Memory Router v3` runs immediately after saving a `Source` to decide whether the latest turns are durable enough for the memory write pipeline and which mode to use: `noop`, `direct_structured_write`, `note_write`, or `mixed`. Its policy maps transient content to `noop`, explicit facts/status/deadlines/commitments to structured writes, rationale and design context to notes, and combined material to `mixed`, while avoiding task inflation and forced claims.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 1. Memory Router v3`, lines 39-92\n- note hot-path:note:<1> DOC_DIGEST; Common rules for all v3 memory prompts; In `agent_memory_handoff/03_prompts.md`, all memory prompts should receive only the necessary context and required runtime fields, use structured/validated low-temperature outputs, version each prompt, and follow semantic safeguards such as preferring `noop` over memory pollution, converting relative time to absolute time, and keeping each memory item to one reusable unit.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 0. Общие правила для всех memory prompts`, lines 8-37\n- claim hot-path:claim:<3> has_constraint; The v3 prompt pack requires structured output or JSON schema enforcement, low temperature, strict validation, retry with validator feedback for invalid JSON, and versioned prompt names.; scope=Applies to the v3 memory prompt pack in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<4> has_constraint; The v3 prompt pack is designed to keep each memory lifecycle step narrow and verifiable instead of putting the entire lifecycle into one giant prompt.; scope=Applies to the v3 prompt pack described in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<5> has_constraint; Memory Router v3 should be called immediately after saving Source.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<6> has_constraint; Memory Router v3 must return JSON containing decision, memory_types, salience, and reason.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.\n- note hot-path:note:<2> DIRECTION; v3 prompt pack favors narrow verifiable memory lifecycle steps; The document `agent_memory_handoff/03_prompts.md` introduces `03. Prompt Pack` as a starter prompt pack for `v3` whose design direction is to avoid one giant prompt for the full memory lifecycle and instead keep each step narrow and verifiable.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack`, lines 1-7\n\n        Resolved entities:\n        - mention=Write-Time Retrieval Planner v3; action=CREATE_NEW; id=entity:<0>; type=AGENT; name=Write-Time Retrieval Planner v3; reason=The section defines this named memory prompt component and its purpose; no existing entities are available.\n- mention=Entity Canonicalizer v1; action=CREATE_NEW; id=entity:<1>; type=AGENT; name=Entity Canonicalizer v1; reason=The section defines this named memory prompt component and its purpose; no existing entities are available.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1 MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1 Document lines: 93-238 ## 2. Write-Time Retrieval Planner v3 ### Когда вызывать После router, перед extraction/reconciliation. ### Цель Сформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment. ### Выход ```json { \"need_retrieval\": true, \"entity_queries\": [\"...\"], \"text_queries\": [\"...\"], \"predicate_hints\": [\"...\"], \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"], \"time_filters\": { \"from_iso\": null, \"to_iso\": null }, \"limits\": { \"claims\": 20, \"notes\": 10, \"tasks\": 10, \"sources\": 8 } } ``` ### Prompt ```text You are WriteTimeRetrievalPlanner v3. Goal: Create a retrieval plan for memory update. Fetch only the memories and evidence most likely to help with deduplication, contradiction detection, scope alignment, and temporal updates. Current time: {{current_time_iso}} Timezone: {{timezone}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Return JSON: { \"need_retrieval\": true, \"entity_queries\": [\"...\"], \"text_queries\": [\"...\"], \"predicate_hints\": [\"...\"], \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"], \"time_filters\": { \"from_iso\": null, \"to_iso\": null }, \"limits\": { \"claims\": 20, \"notes\": 10, \"tasks\": 10, \"sources\": 8 } } Rules: - Bias retrieval toward possible duplicates, contradictions, and relevant scope boundaries. - Include notes when the material looks rationale-heavy or plan-heavy. - Include claims when preferences, status, or factual updates are likely. - Add time filters when the turns mention \"now\", \"before\", \"used to\", \"from now on\", \"no longer\", deadlines, or relative dates. - Include source retrieval when conflicts or grounding-quality checks are likely to matter. - Keep the plan precise; fewer better queries are preferred. - Return valid JSON only. ``` ## 3. Entity Canonicalizer v1 ### Когда вызывать После retrieval candidate entities / aliases. ### Цель Привязать entity mentions к существующим сущностям или создать новые. ### Выход ```json [ { \"mention\": \"Postgres\", \"action\": \"link_existing | create_new | add_alias | noop\", \"entity_id\": \"uuid-or-null\", \"new_entity\": { \"entity_type\": \"technology\", \"canonical_name\": \"PostgreSQL\", \"summary\": \"Open-source relational database.\" }, \"alias_text\": \"Postgres\", \"confidence\": 0.96, \"reason\": \"short explanation\" } ] ``` ### Prompt ```text You are EntityCanonicalizer v1. Goal: Resolve entity mentions from the latest turns into canonical entities. Current time: {{current_time_iso}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Detected raw mentions: {{raw_entity_mentions}} Candidate existing entities: {{candidate_entities}} Return JSON array: [ { \"mention\": \"text\", \"action\": \"link_existing | create_new | add_alias | noop\", \"entity_id\": \"uuid-or-null\", \"new_entity\": { \"entity_type\": \"person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service\", \"canonical_name\": \"text\", \"summary\": \"text\" }, \"alias_text\": \"text-or-null\", \"confidence\": 0.0, \"reason\": \"short explanation\" } ] Rules: - Prefer precision over recall. - Do not merge distinct entities on weak evidence. - Create new entities only when no candidate is a safe match. - Return valid JSON only. ```\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1\nDocument lines: 93-238\n\n## 2. Write-Time Retrieval Planner v3\n\n### Когда вызывать\nПосле router, перед extraction/reconciliation.\n\n### Цель\nСформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment.\n\n### Выход\n\n```json\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n  \"limits\": {\n    \"claims\": 20,\n    \"notes\": 10,\n    \"tasks\": 10,\n    \"sources\": 8\n  }\n}\n```\n\n### Prompt\n\n```text\nYou are WriteTimeRetrievalPlanner v3.\n\nGoal:\nCreate a retrieval plan for memory update. Fetch only the memories and evidence most likely to help with deduplication, contradiction detection, scope alignment, and temporal updates.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nReturn JSON:\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n  \"limits\": {\n    \"claims\": 20,\n    \"notes\": 10,\n    \"tasks\": 10,\n    \"sources\": 8\n  }\n}\n\nRules:\n- Bias retrieval toward possible duplicates, contradictions, and relevant scope boundaries.\n- Include notes when the material looks rationale-heavy or plan-heavy.\n- Include claims when preferences, status, or factual updates are likely.\n- Add time filters when the turns mention \"now\", \"before\", \"used to\", \"from now on\", \"no longer\", deadlines, or relative dates.\n- Include source retrieval when conflicts or grounding-quality checks are likely to matter.\n- Keep the plan precise; fewer better queries are preferred.\n- Return valid JSON only.\n```\n\n## 3. Entity Canonicalizer v1\n\n### Когда вызывать\nПосле retrieval candidate entities / aliases.\n\n### Цель\nПривязать entity mentions к существующим сущностям или создать новые.\n\n### Выход\n\n```json\n[\n  {\n    \"mention\": \"Postgres\",\n    \"action\": \"link_existing | create_new | add_alias | noop\",\n    \"entity_id\": \"uuid-or-null\",\n    \"new_entity\": {\n      \"entity_type\": \"technology\",\n      \"canonical_name\": \"PostgreSQL\",\n      \"summary\": \"Open-source relational database.\"\n    },\n    \"alias_text\": \"Postgres\",\n    \"confidence\": 0.96,\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nDetected raw mentions:\n{{raw_entity_mentions}}\n\nCandidate existing entities:\n{{candidate_entities}}\n\nReturn JSON array:\n[\n  {\n    \"mention\": \"text\",\n    \"action\": \"link_existing | create_new | add_alias | noop\",\n    \"entity_id\": \"uuid-or-null\",\n    \"new_entity\": {\n      \"entity_type\": \"person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service\",\n      \"canonical_name\": \"text\",\n      \"summary\": \"text\"\n    },\n    \"alias_text\": \"text-or-null\",\n    \"confidence\": 0.0,\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path:claim:<0> has_constraint; The v3 prompt pack requires semantic memory rules that prefer noop over bad memory, explicit statements over inference, newer explicit statements over older inferred statements, absolute normalization of relative time, one reusable unit per memory item, no hypothetical facts, separation of requests from facts, scoped claims, and no provisional notes as hard facts.; scope=Applies to the v3 memory prompt pack in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<1> has_constraint; The v3 prompt pack requires memory prompts to receive current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, only necessary retrieved context, predicate_catalog_excerpt when working with claims, and retrieval_budget when planning reads.; scope=Applies to the v3 memory prompt pack in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<2> has_goal; Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.\n- note hot-path:note:<0> DOC_DIGEST; Memory Router v3 write-mode decision policy; `Memory Router v3` runs immediately after saving a `Source` to decide whether the latest turns are durable enough for the memory write pipeline and which mode to use: `noop`, `direct_structured_write`, `note_write`, or `mixed`. Its policy maps transient content to `noop`, explicit facts/status/deadlines/commitments to structured writes, rationale and design context to notes, and combined material to `mixed`, while avoiding task inflation and forced claims.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 1. Memory Router v3`, lines 39-92\n- note hot-path:note:<1> DOC_DIGEST; Common rules for all v3 memory prompts; In `agent_memory_handoff/03_prompts.md`, all memory prompts should receive only the necessary context and required runtime fields, use structured/validated low-temperature outputs, version each prompt, and follow semantic safeguards such as preferring `noop` over memory pollution, converting relative time to absolute time, and keeping each memory item to one reusable unit.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 0. Общие правила для всех memory prompts`, lines 8-37\n- claim hot-path:claim:<3> has_constraint; The v3 prompt pack requires structured output or JSON schema enforcement, low temperature, strict validation, retry with validator feedback for invalid JSON, and versioned prompt names.; scope=Applies to the v3 memory prompt pack in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<4> has_constraint; The v3 prompt pack is designed to keep each memory lifecycle step narrow and verifiable instead of putting the entire lifecycle into one giant prompt.; scope=Applies to the v3 prompt pack described in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<5> has_constraint; Memory Router v3 should be called immediately after saving Source.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.\n- claim hot-path:claim:<6> has_constraint; Memory Router v3 must return JSON containing decision, memory_types, salience, and reason.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.\n- note hot-path:note:<2> DIRECTION; v3 prompt pack favors narrow verifiable memory lifecycle steps; The document `agent_memory_handoff/03_prompts.md` introduces `03. Prompt Pack` as a starter prompt pack for `v3` whose design direction is to avoid one giant prompt for the full memory lifecycle and instead keep each step narrow and verifiable.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack`, lines 1-7\n\n        Resolved entities:\n        - mention=Write-Time Retrieval Planner v3; action=CREATE_NEW; id=entity:<0>; type=AGENT; name=Write-Time Retrieval Planner v3; reason=The section defines this named memory prompt component and its purpose; no existing entities are available.\n- mention=Entity Canonicalizer v1; action=CREATE_NEW; id=entity:<1>; type=AGENT; name=Entity Canonicalizer v1; reason=The section defines this named memory prompt component and its purpose; no existing entities are available.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1 MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1 Document lines: 93-238 ## 2. Write-Time Retrieval Planner v3 ### Когда вызывать После router, перед extraction/reconciliation. ### Цель Сформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment. ### Выход ```json { \"need_retrieval\": true, \"entity_queries\": [\"...\"], \"text_queries\": [\"...\"], \"predicate_hints\": [\"...\"], \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"], \"time_filters\": { \"from_iso\": null, \"to_iso\": null }, \"limits\": { \"claims\": 20, \"notes\": 10, \"tasks\": 10, \"sources\": 8 } } ``` ### Prompt ```text You are WriteTimeRetrievalPlanner v3. Goal: Create a retrieval plan for memory update. Fetch only the memories and evidence most likely to help with deduplication, contradiction detection, scope alignment, and temporal updates. Current time: {{current_time_iso}} Timezone: {{timezone}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Return JSON: { \"need_retrieval\": true, \"entity_queries\": [\"...\"], \"text_queries\": [\"...\"], \"predicate_hints\": [\"...\"], \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"], \"time_filters\": { \"from_iso\": null, \"to_iso\": null }, \"limits\": { \"claims\": 20, \"notes\": 10, \"tasks\": 10, \"sources\": 8 } } Rules: - Bias retrieval toward possible duplicates, contradictions, and relevant scope boundaries. - Include notes when the material looks rationale-heavy or plan-heavy. - Include claims when preferences, status, or factual updates are likely. - Add time filters when the turns mention \"now\", \"before\", \"used to\", \"from now on\", \"no longer\", deadlines, or relative dates. - Include source retrieval when conflicts or grounding-quality checks are likely to matter. - Keep the plan precise; fewer better queries are preferred. - Return valid JSON only. ``` ## 3. Entity Canonicalizer v1 ### Когда вызывать После retrieval candidate entities / aliases. ### Цель Привязать entity mentions к существующим сущностям или создать новые. ### Выход ```json [ { \"mention\": \"Postgres\", \"action\": \"link_existing | create_new | add_alias | noop\", \"entity_id\": \"uuid-or-null\", \"new_entity\": { \"entity_type\": \"technology\", \"canonical_name\": \"PostgreSQL\", \"summary\": \"Open-source relational database.\" }, \"alias_text\": \"Postgres\", \"confidence\": 0.96, \"reason\": \"short explanation\" } ] ``` ### Prompt ```text You are EntityCanonicalizer v1. Goal: Resolve entity mentions from the latest turns into canonical entities. Current time: {{current_time_iso}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Detected raw mentions: {{raw_entity_mentions}} Candidate existing entities: {{candidate_entities}} Return JSON array: [ { \"mention\": \"text\", \"action\": \"link_existing | create_new | add_alias | noop\", \"entity_id\": \"uuid-or-null\", \"new_entity\": { \"entity_type\": \"person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service\", \"canonical_name\": \"text\", \"summary\": \"text\" }, \"alias_text\": \"text-or-null\", \"confidence\": 0.0, \"reason\": \"short explanation\" } ] Rules: - Prefer precision over recall. - Do not merge distinct entities on weak evidence. - Create new entities only when no candidate is a safe match. - Return valid JSON only. ```\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1\nDocument lines: 93-238\n\n## 2. Write-Time Retrieval Planner v3\n\n### Когда вызывать\nПосле router, перед extraction/reconciliation.\n\n### Цель\nСформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment.\n\n### Выход\n\n```json\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n  \"limits\": {\n    \"claims\": 20,\n    \"notes\": 10,\n    \"tasks\": 10,\n    \"sources\": 8\n  }\n}\n```\n\n### Prompt\n\n```text\nYou are WriteTimeRetrievalPlanner v3.\n\nGoal:\nCreate a retrieval plan for memory update. Fetch only the memories and evidence most likely to help with deduplication, contradiction detection, scope alignment, and temporal updates.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nReturn JSON:\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n  \"limits\": {\n    \"claims\": 20,\n    \"notes\": 10,\n    \"tasks\": 10,\n    \"sources\": 8\n  }\n}\n\nRules:\n- Bias retrieval toward possible duplicates, contradictions, and relevant scope boundaries.\n- Include notes when the material looks rationale-heavy or plan-heavy.\n- Include claims when preferences, status, or factual updates are likely.\n- Add time filters when the turns mention \"now\", \"before\", \"used to\", \"from now on\", \"no longer\", deadlines, or relative dates.\n- Include source retrieval when conflicts or grounding-quality checks are likely to matter.\n- Keep the plan precise; fewer better queries are preferred.\n- Return valid JSON only.\n```\n\n## 3. Entity Canonicalizer v1\n\n### Когда вызывать\nПосле retrieval candidate entities / aliases.\n\n### Цель\nПривязать entity mentions к существующим сущностям или создать новые.\n\n### Выход\n\n```json\n[\n  {\n    \"mention\": \"Postgres\",\n    \"action\": \"link_existing | create_new | add_alias | noop\",\n    \"entity_id\": \"uuid-or-null\",\n    \"new_entity\": {\n      \"entity_type\": \"technology\",\n      \"canonical_name\": \"PostgreSQL\",\n      \"summary\": \"Open-source relational database.\"\n    },\n    \"alias_text\": \"Postgres\",\n    \"confidence\": 0.96,\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nDetected raw mentions:\n{{raw_entity_mentions}}\n\nCandidate existing entities:\n{{candidate_entities}}\n\nReturn JSON array:\n[\n  {\n    \"mention\": \"text\",\n    \"action\": \"link_existing | create_new | add_alias | noop\",\n    \"entity_id\": \"uuid-or-null\",\n    \"new_entity\": {\n      \"entity_type\": \"person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service\",\n      \"canonical_name\": \"text\",\n      \"summary\": \"text\"\n    },\n    \"alias_text\": \"text-or-null\",\n    \"confidence\": 0.0,\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"Write-Time Retrieval Planner v3 is called after router and before extraction/reconciliation.\",\"Write-Time Retrieval Planner v3 creates precise retrieval plans for memory updates.\"],\"confidence\":0.99,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Сформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment.\",\"evidence_reason\":\"The quoted goal states the component's purpose and the surrounding section states when it is called and how retrieval should be scoped.\",\"importance\":4,\"keywords\":[\"Write-Time Retrieval Planner v3\",\"retrieval plan\",\"dedupe\",\"contradiction detection\",\"scope alignment\",\"temporal updates\",\"agent_memory_handoff/03_prompts.md\"],\"note_type\":\"doc_digest\",\"rationale\":\"This captures the component role and workflow context from a prompt-pack section, which is reusable design context rather than a single atomic fact.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"document\",\"text\":\"Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 2. Write-Time Retrieval Planner v3`, lines 93-174\"},\"summary\":\"In `agent_memory_handoff/03_prompts.md`, `Write-Time Retrieval Planner v3` is called after the router and before extraction/reconciliation to create a precise retrieval plan for memory updates, focused on deduplication, contradiction detection, temporal updates, and scope alignment. Its prompt should fetch only memories and evidence most likely to help those checks.\",\"tags\":[\"doc_digest\",\"memory_prompt\",\"retrieval_planning\"],\"title\":\"Write-Time Retrieval Planner v3 retrieval-planning role\",\"valid_from\":null,\"valid_to\":null},{\"candidate_claim_hints\":[\"Write-Time Retrieval Planner v3 adds time filters when turns mention temporal language.\",\"Write-Time Retrieval Planner v3 includes source retrieval when conflicts or grounding-quality checks matter.\"],\"confidence\":0.99,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Keep the plan precise; fewer better queries are preferred.\",\"evidence_reason\":\"The section lists operational rules for choosing retrieval targets and keeping plans precise; the quote anchors the selection policy.\",\"importance\":4,\"keywords\":[\"Write-Time Retrieval Planner v3\",\"time filters\",\"source retrieval\",\"notes\",\"claims\",\"fewer better queries\"],\"note_type\":\"doc_digest\",\"rationale\":\"The note condenses a reusable procedure and trade-off policy spanning multiple rules, not just one precise claim.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"document\",\"text\":\"Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 2. Write-Time Retrieval Planner v3`, lines 142-174\"},\"summary\":\"`Write-Time Retrieval Planner v3` should bias retrieval toward possible duplicates, contradictions, and scope boundaries; include notes for rationale-heavy or plan-heavy material; include claims for preferences, status, or factual updates; add time filters for temporal language; include sources when conflicts or grounding checks matter; and prefer fewer, precise queries.\",\"tags\":[\"doc_digest\",\"memory_prompt\",\"retrieval_rules\"],\"title\":\"Write-Time Retrieval Planner v3 query selection rules\",\"valid_from\":null,\"valid_to\":null},{\"candidate_claim_hints\":[\"Entity Canonicalizer v1 is called after retrieval candidate entities / aliases.\",\"Entity Canonicalizer v1 resolves entity mentions from latest turns into canonical entities.\"],\"confidence\":0.99,\"entity_refs\":[{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Resolve entity mentions from the latest turns into canonical entities.\",\"evidence_reason\":\"The prompt goal directly states the component's entity-resolution purpose, and the section output schema defines allowed actions.\",\"importance\":4,\"keywords\":[\"Entity Canonicalizer v1\",\"entity mentions\",\"canonical entities\",\"aliases\",\"link_existing\",\"create_new\",\"add_alias\",\"noop\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is reusable component-context and workflow information from a document section, better represented as a digest note than only atomic claims.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"document\",\"text\":\"Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 3. Entity Canonicalizer v1`, lines 176-238\"},\"summary\":\"In `agent_memory_handoff/03_prompts.md`, `Entity Canonicalizer v1` is called after retrieval of candidate entities or aliases to resolve entity mentions from latest turns into canonical entities, either linking existing entities, creating new ones, adding aliases, or nooping.\",\"tags\":[\"doc_digest\",\"memory_prompt\",\"entity_resolution\"],\"title\":\"Entity Canonicalizer v1 entity-resolution role\",\"valid_from\":null,\"valid_to\":null},{\"candidate_claim_hints\":[\"Entity Canonicalizer v1 prefers precision over recall.\",\"Entity Canonicalizer v1 should not merge distinct entities on weak evidence.\"],\"confidence\":0.99,\"entity_refs\":[{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Do not merge distinct entities on weak evidence.\",\"evidence_reason\":\"The rules explicitly define the canonicalizer's precision-first policy and safe-match threshold.\",\"importance\":4,\"keywords\":[\"Entity Canonicalizer v1\",\"precision over recall\",\"weak evidence\",\"safe match\",\"create new entities\"],\"note_type\":\"doc_digest\",\"rationale\":\"This captures a reusable policy and rationale for entity canonicalization decisions rather than a generic summary.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"document\",\"text\":\"Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 3. Entity Canonicalizer v1`, lines 231-238\"},\"summary\":\"`Entity Canonicalizer v1` follows a precision-first canonicalization policy: do not merge distinct entities on weak evidence, create new entities only when no candidate is a safe match, and return valid JSON only.\",\"tags\":[\"doc_digest\",\"memory_prompt\",\"canonicalization_policy\"],\"title\":\"Entity Canonicalizer v1 precision-first merge policy\",\"valid_from\":null,\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4589,
+                "completionTokens": 1344,
+                "thinkingTokens": 30,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

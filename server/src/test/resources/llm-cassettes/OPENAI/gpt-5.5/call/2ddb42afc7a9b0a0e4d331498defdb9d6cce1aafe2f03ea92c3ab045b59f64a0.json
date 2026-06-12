@@ -1,0 +1,415 @@
+{
+    "version": 1,
+    "hash": "2ddb42afc7a9b0a0e4d331498defdb9d6cce1aafe2f03ea92c3ab045b59f64a0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: ClaimReconciler v1.\n        Runtime processing time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Decide how candidate claims should update active memory and assign predicate policy.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_claim_id\": \"existing-claim-id-or-null\",\n              \"canonical_predicate\": \"stable_snake_case_predicate_or_null\",\n              \"predicate_family\": \"stable_conceptual_family_or_null\",\n              \"predicate_description\": \"short policy meaning or null\",\n              \"object_kind\": \"entity | string | number | boolean | json | null\",\n              \"cardinality\": \"single | multi | null\",\n              \"temporal_policy\": \"atemporal | time_scoped | status_like | null\",\n              \"conflict_policy\": \"replace | coexist | range_split | null\",\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new durable information.\n        - noop: candidate is duplicate, low-value, or should not become active memory.\n        - supersede: candidate is the new current value and target_claim_id is the old active claim it replaces.\n        - retract: target_claim_id should stop being active because the target message retracts it without a replacement candidate.\n        - update: target_claim_id should be patched without adding a new candidate; use sparingly.\n\n        Predicate policy fields:\n        - canonical_predicate: normalized predicate to store for the candidate. Reuse an existing predicate only if it is the same semantic relation; otherwise choose a concise snake_case relation.\n        - predicate_family: stable conceptual family used for future reconciliation.\n        - cardinality: single if one subject can have only one active value in this family and scope; multi if several values can coexist.\n        - temporal_policy: atemporal for timeless facts, time_scoped for facts true in explicit time windows, status_like for current states, current preferences, decisions, and other evolving values.\n        - conflict_policy: replace when a new value invalidates the old active value, coexist when both can remain true, range_split when old and new values are both temporally meaningful.\n\n        Rules:\n        - Use the target source and full thread context to understand corrections, replacements, pronouns, temporal meaning, and scope.\n        - Do not decide by literal predicate names. Infer the semantic predicate family from the claim meaning, subject, object, qualifiers, evidence, scope, and temporal fields.\n        - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.\n        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.\n        - Invent a new canonical_predicate only when no active catalog predicate captures the relation.\n        - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as \"is_described_as\", \"has_property\", \"is_a\", or \"defined_as\". Choose a specific durable relation or return noop.\n        - For ordinary positive preferences, use catalog predicate \"prefers\"; do not keep category-specific variants such as \"prefers_car_brand\" unless they represent a named current/default slot.\n        - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.\n        - For named metric, record, score, benchmark, quota, threshold, or personal-best values, use catalog predicate \"current_metric_value\" when present. Preserve the metric/domain in scope or qualifiers so unrelated metrics do not replace each other.\n        - For current place, residence, base, or relocation-result values, use catalog predicate \"current_location\" when present. It is a status-like single-value slot for the same subject and scope; newer explicit current-location values replace older active values.\n        - For concrete details inside imported generated artifacts, use catalog predicate \"generated_artifact_detail\" when no more specific catalog predicate fits. These details usually coexist unless a later artifact version explicitly supersedes an earlier version.\n        - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.\n        - If multiple candidates from the same target source express the same durable point at different abstraction levels, keep the most specific/actionable candidate and return noop for weaker broader candidates.\n        - If one candidate captures the target source's explicit current/default/status value and another candidate is only a generic preference or affinity inferred from the same words, return noop for the generic candidate unless the target source independently asserts it.\n        - Do not insert redundant broader candidates merely because they use a different predicate or family.\n        - For exclusive current/default/status values in the same subject, scope, and environment, use cardinality=single and conflict_policy=replace unless simultaneous active values are explicitly allowed.\n        - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.\n        - Runtime processing time is not evidence that a pending obligation has expired, completed, or become stale. For catalog pending_* claims and other independently completeable duties, insert the explicit pending fact unless the target source or existing active memory explicitly says it was completed, cancelled, returned, picked up, superseded, or otherwise no longer pending.\n        - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.\n        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.\n        - If predicate policy says coexist, insert the candidate unless it is a duplicate.\n        - If predicate policy says range_split, insert the candidate and supersede only an old current-state claim that should no longer be retrieved as current.\n        - Attributed viewpoints, independent owners, independent events, and historical facts usually coexist unless the target source explicitly retracts them.\n        - Use catalog predicate \"believes\" for third-party viewpoints such as \"Alice thinks X\"; do not canonicalize those claims to \"prefers\" or \"avoids\" unless the source explicitly asserts preference or avoidance.\n        - Prefer insert over destructive actions when policy or evidence is unclear.\n        - Return one operation for each candidate unless the right action is a target-only retract/update.\n        - candidate_index is zero-based from Candidate claims below.\n        - target_claim_id must be one of Existing active claims below or null.\n        - Fill predicate policy fields for every operation with a candidate, including noop.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 15. Retention / forgetting .. 16. Optional fast/slow execution path\nDocument lines: 509-546\n\n## 15. Retention / forgetting\n\nВ `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\n\nМинимальные действия:\n- downgrade retrieval state\n- archive\n- soft delete\n- hard delete by request\n\nМинимальные триггеры:\n- namespace policy\n- age\n- low use_count\n- legal/privacy request\n- explicit user forget/delete command\n\n## 16. Optional fast/slow execution path\n\nЭто уже не обязательный MVP, но хороший следующий шаг.\n\n### Fast path\n- user-facing\n- lower latency\n- cheap retrieval\n- cheap draft\n- escalation gate\n\n### Slow path\n- stronger model / worker\n- conflict resolution\n- answer verification\n- note consolidation\n- memory repair\n\n### Важный момент\nМежду fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\n\n        Candidate claims:\n        - candidate[<index>] subject=entity:<0> predicate=answers_question object=\"In Memory v3, forgetting is a policy rather than random reduced retrieval of older memory.\" scope=agent_memory_handoff/01_architecture.md section 15, Retention / forgetting validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In Memory v3, Retention / forgetting treats forgetting as a policy rather than as random reduced retrieval of older memory. evidence=В `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\n- candidate[<index>] subject=entity:<0> predicate=generated_artifact_detail object=\"Minimum retention/forgetting actions are downgrade retrieval state, archive, soft delete, and hard delete by request.\" scope=agent_memory_handoff/01_architecture.md section 15, Retention / forgetting validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Retention / forgetting policy defines minimum actions: downgrade retrieval state, archive, soft delete, and hard delete by request. evidence=Минимальные действия: - downgrade retrieval state - archive - soft delete - hard delete by request\n- candidate[<index>] subject=entity:<0> predicate=generated_artifact_detail object=\"Minimum retention/forgetting triggers are namespace policy, age, low use_count, legal/privacy request, and explicit user forget/delete command.\" scope=agent_memory_handoff/01_architecture.md section 15, Retention / forgetting validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Retention / forgetting policy defines minimum triggers: namespace policy, age, low use_count, legal/privacy request, and explicit user forget/delete command. evidence=Минимальные триггеры: - namespace policy - age - low use_count - legal/privacy request - explicit user forget/delete command\n- candidate[<index>] subject=entity:<1> predicate=generated_artifact_detail object=\"Fast path characteristics are user-facing, lower latency, cheap retrieval, cheap draft, and escalation gate.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The optional Fast path is characterized by being user-facing, lower-latency, using cheap retrieval and cheap drafts, and having an escalation gate. evidence=### Fast path - user-facing - lower latency - cheap retrieval - cheap draft - escalation gate\n- candidate[<index>] subject=entity:<2> predicate=generated_artifact_detail object=\"Slow path responsibilities are stronger model/worker, conflict resolution, answer verification, note consolidation, and memory repair.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The optional Slow path is responsible for stronger model or worker processing, conflict resolution, answer verification, note consolidation, and memory repair. evidence=### Slow path - stronger model / worker - conflict resolution - answer verification - note consolidation - memory repair\n- candidate[<index>] subject=entity:<3> predicate=has_goal object=\"Add an optional fast/slow execution path after the MVP.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The architecture treats an optional fast/slow execution path as a good next step after the MVP, not as a required MVP feature. evidence=Это уже не обязательный MVP, но хороший следующий шаг.\n- candidate[<index>] subject=entity:<1> predicate=generated_artifact_detail object=\"Fast and slow paths should exchange typed handoff objects rather than free text.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Fast path and Slow path should exchange typed handoff objects rather than free text. evidence=Между fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\n\n        Existing active claims:\n        - id=hot-path:claim:<0> subject=entity:<4> predicate=responsible_for object=\"routing, retrieval-before-update, canonicalization, note/claim extraction, reconciliation, consolidation, repair, and retention\" family=responsible_for policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 10.2 status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Memory worker / manager is responsible for routing, retrieval-before-update, canonicalization, note/claim extraction, reconciliation, consolidation, repair, and retention.\n- id=hot-path:claim:<1> subject=entity:<5> predicate=has_constraint object=\"The Read path answer composer must distinguish verified versus provisional information, account for conflicts, respect scope boundaries, be able to abstain, and avoid presenting a note as a hard fact without qualification.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 12 Read path status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Read path answer composer must distinguish verified from provisional information, account for conflicts, respect scope boundaries, abstain when needed, and avoid treating notes as hard facts without qualification.\n- id=hot-path:claim:<2> subject=entity:<6> predicate=indexes_memory_content_for_retrieval object=\"vector indexes, full-text indexes, and filters for sources, notes, claims, episodes, content text, summaries, normalized text, namespace, entity, status, retrieval state, time, and type\" family=indexes_memory_content_for_retrieval policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=Applies to the storage-tier architecture described in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Retrieval indexes storage tier indexes memory content for retrieval using vector indexes, full-text indexes, and filters.\n- id=hot-path:claim:<3> subject=entity:<7> predicate=answers_question object=\"How this should be searched for and kept in the hot path.\" family=answers_question policy=cardinality=SINGLE,temporal=ATEMPORAL,conflict=REPLACE scope=Applies to the memory architecture rules in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=Retrieval state answers how a memory item should be searched for and kept in the hot path.\n- id=hot-path:claim:<4> subject=entity:<8> predicate=improves_memory_reconciliation_and_retrieval object=\"predictable reconciliation, less overgeneralized retrieval, and fewer false note conflicts\" family=improves_memory_reconciliation_and_retrieval policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=Applies to structured scope in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=Structured scope improves memory behavior by making reconciliation more predictable, reducing retrieval overgeneralization, and preventing false note conflicts.\n- id=hot-path:claim:<5> subject=entity:<9> predicate=should_be_written_when object=\"Information should be written as a Claim when it is explicit, normalizable, suitable for precise answers, and comparable with other claims by predicate policy.\" family=should_be_written_when policy=cardinality=SINGLE,temporal=STATUS_LIKE,conflict=REPLACE scope=Applies to the memory architecture rules in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=A Claim should be written when information is explicit, normalizable, suitable for precise answers, and comparable with other claims by predicate policy.\n- id=hot-path:claim:<6> subject=entity:<10> predicate=responsible_for object=\"dialogue, tool orchestration, read-time retrieval, and cheap routing/escalation\" family=responsible_for policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 10.1 status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The User-facing runtime is responsible for dialogue, tool orchestration, read-time retrieval, and cheap routing/escalation.\n- id=hot-path:claim:<7> subject=entity:<11> predicate=serves_as_intermediate_semantic_layer object=\"rich note memory for design direction, rationale, local conclusions, plan fragments, document digests, and lessons\" family=serves_as_intermediate_semantic_layer policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=Applies to the storage-tier architecture described in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Rich note memory storage tier serves as an intermediate semantic layer for design direction, rationale, local conclusions, plan fragments, document digests, and lessons.\n- id=hot-path:claim:<8> subject=entity:<10> predicate=has_constraint object=\"The User-facing runtime should not carry heavy reconciliation and repair.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 10.1 status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The User-facing runtime should not be responsible for heavy reconciliation and repair.\n- id=hot-path:claim:<9> subject=entity:<5> predicate=has_constraint object=\"Memory v3 requires explicit retrieval budget caps in the Read path.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 12 Read path status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Read path in Memory v3 requires explicit retrieval budget caps.\n- id=hot-path:claim:<10> subject=entity:<12> predicate=should_be_written_when object=\"Information should be written as a Note when it is already important, useful for future retrieval, but too context-rich or too early for a hard fact.\" family=should_be_written_when policy=cardinality=SINGLE,temporal=STATUS_LIKE,conflict=REPLACE scope=Applies to the memory architecture rules in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=A Note should be written when information is already important and useful for future retrieval, but too context-rich or too early for a hard fact.\n\n        Predicate catalog excerpt:\n        - answers_question: Question or semantic role answered by a state concept.; subject=any; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- assigned_to_shift: Person or agent assignment to a shift, schedule slot, day, route, or rotation cell; subject=PERSON; object=STRING; cardinality=MULTI; temporal=TIME_SCOPED; conflict=COEXIST; importance=7\n- attended_event: Subject attended or was present at a dated event, appointment, meeting, or gathering; subject=PERSON; object=STRING; cardinality=MULTI; temporal=TIME_SCOPED; conflict=COEXIST; importance=6\n- avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- can_share_physical_storage_backend: Component or tier may physically reside in the same backend as other storage.; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- converts_mature_notes_to_structured_memory: A maintenance path converts mature notes into structured memory when criteria are met.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- current_location: Current physical residence, base, or location of a person, user, organization, project, or concrete subject; subject=any; object=JSON; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- current_metric_value: Current value of a named metric, record, benchmark, score, quota, threshold, or personal best; subject=any; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- excludes_from_tier: Storage tier explicitly excludes specified content types.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- generated_artifact_detail: Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_architecture_axis: Learned predicate for Memory v3 architecture has Representation as one of its four axes.; subject=any; object=JSON; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_maintenance_path: Architecture includes a maintenance path option.; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- has_maturity_stages: Stages in the Note maturity lifecycle pattern.; subject=any; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- has_semantic_write_path: Architecture includes a semantic write path option.; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- improves_memory_health: Maintenance process improves memory health by correcting degradation.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- improves_memory_reconciliation_and_retrieval: Design feature improves reconciliation, retrieval precision, or conflict behavior.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- improves_memory_richness: Maintenance process enriches memory content or structure.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- indexes_memory_content_for_retrieval: Storage tier provides retrieval indexes and filters over memory content.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- maturity_decreases_or_closes_when: Criteria that can lower or close a Note's maturity state.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- maturity_increases_when: Criteria that can raise a Note's maturity.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- pending_pickup: Subject needs to collect, pick up, retrieve, or receive a concrete item from a place or party; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- pending_return: Subject needs to return, send back, drop off, or bring back a concrete item to a place or party; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- repairs_memory_degradation: A maintenance path repairs specified classes of memory degradation.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- requires_scope_representations: Structured scope requires specified human-readable and machine-readable representations.; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=5\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- runs_as_background_workflow: Process is designed to run as a separate background workflow.; subject=any; object=BOOLEAN; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- serves_as_intermediate_semantic_layer: Storage tier functions as an intermediate semantic layer for specified note-like uses.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- serves_as_typed_memory_store: Storage tier functions as the main typed memory store.; subject=any; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- should_be_written_when: Criteria under which a memory item type should be written.; subject=any; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=5\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- stores_raw_evidence: Storage tier stores raw evidence records, usually immutably.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- supplies_prompt_context: Storage tier provides content intended to be included in prompt context.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile claim candidates against active memory claims.",
+                "name": "memory_claim_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "canonical_predicate": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "cardinality": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "single",
+                                                    "multi"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "conflict_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "replace",
+                                                    "coexist",
+                                                    "range_split"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "object_kind": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "entity",
+                                                    "string",
+                                                    "number",
+                                                    "boolean",
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "predicate_description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "predicate_family": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_claim_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "temporal_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "atemporal",
+                                                    "time_scoped",
+                                                    "status_like"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_claim_id",
+                                    "canonical_predicate",
+                                    "predicate_family",
+                                    "predicate_description",
+                                    "object_kind",
+                                    "cardinality",
+                                    "temporal_policy",
+                                    "conflict_policy",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryClaimReconciler": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:5830e695351ef9d0d5fe11e08b843471"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: ClaimReconciler v1.\n        Runtime processing time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Decide how candidate claims should update active memory and assign predicate policy.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_claim_id\": \"existing-claim-id-or-null\",\n              \"canonical_predicate\": \"stable_snake_case_predicate_or_null\",\n              \"predicate_family\": \"stable_conceptual_family_or_null\",\n              \"predicate_description\": \"short policy meaning or null\",\n              \"object_kind\": \"entity | string | number | boolean | json | null\",\n              \"cardinality\": \"single | multi | null\",\n              \"temporal_policy\": \"atemporal | time_scoped | status_like | null\",\n              \"conflict_policy\": \"replace | coexist | range_split | null\",\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new durable information.\n        - noop: candidate is duplicate, low-value, or should not become active memory.\n        - supersede: candidate is the new current value and target_claim_id is the old active claim it replaces.\n        - retract: target_claim_id should stop being active because the target message retracts it without a replacement candidate.\n        - update: target_claim_id should be patched without adding a new candidate; use sparingly.\n\n        Predicate policy fields:\n        - canonical_predicate: normalized predicate to store for the candidate. Reuse an existing predicate only if it is the same semantic relation; otherwise choose a concise snake_case relation.\n        - predicate_family: stable conceptual family used for future reconciliation.\n        - cardinality: single if one subject can have only one active value in this family and scope; multi if several values can coexist.\n        - temporal_policy: atemporal for timeless facts, time_scoped for facts true in explicit time windows, status_like for current states, current preferences, decisions, and other evolving values.\n        - conflict_policy: replace when a new value invalidates the old active value, coexist when both can remain true, range_split when old and new values are both temporally meaningful.\n\n        Rules:\n        - Use the target source and full thread context to understand corrections, replacements, pronouns, temporal meaning, and scope.\n        - Do not decide by literal predicate names. Infer the semantic predicate family from the claim meaning, subject, object, qualifiers, evidence, scope, and temporal fields.\n        - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.\n        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.\n        - Invent a new canonical_predicate only when no active catalog predicate captures the relation.\n        - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as \"is_described_as\", \"has_property\", \"is_a\", or \"defined_as\". Choose a specific durable relation or return noop.\n        - For ordinary positive preferences, use catalog predicate \"prefers\"; do not keep category-specific variants such as \"prefers_car_brand\" unless they represent a named current/default slot.\n        - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.\n        - For named metric, record, score, benchmark, quota, threshold, or personal-best values, use catalog predicate \"current_metric_value\" when present. Preserve the metric/domain in scope or qualifiers so unrelated metrics do not replace each other.\n        - For current place, residence, base, or relocation-result values, use catalog predicate \"current_location\" when present. It is a status-like single-value slot for the same subject and scope; newer explicit current-location values replace older active values.\n        - For concrete details inside imported generated artifacts, use catalog predicate \"generated_artifact_detail\" when no more specific catalog predicate fits. These details usually coexist unless a later artifact version explicitly supersedes an earlier version.\n        - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.\n        - If multiple candidates from the same target source express the same durable point at different abstraction levels, keep the most specific/actionable candidate and return noop for weaker broader candidates.\n        - If one candidate captures the target source's explicit current/default/status value and another candidate is only a generic preference or affinity inferred from the same words, return noop for the generic candidate unless the target source independently asserts it.\n        - Do not insert redundant broader candidates merely because they use a different predicate or family.\n        - For exclusive current/default/status values in the same subject, scope, and environment, use cardinality=single and conflict_policy=replace unless simultaneous active values are explicitly allowed.\n        - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.\n        - Runtime processing time is not evidence that a pending obligation has expired, completed, or become stale. For catalog pending_* claims and other independently completeable duties, insert the explicit pending fact unless the target source or existing active memory explicitly says it was completed, cancelled, returned, picked up, superseded, or otherwise no longer pending.\n        - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.\n        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.\n        - If predicate policy says coexist, insert the candidate unless it is a duplicate.\n        - If predicate policy says range_split, insert the candidate and supersede only an old current-state claim that should no longer be retrieved as current.\n        - Attributed viewpoints, independent owners, independent events, and historical facts usually coexist unless the target source explicitly retracts them.\n        - Use catalog predicate \"believes\" for third-party viewpoints such as \"Alice thinks X\"; do not canonicalize those claims to \"prefers\" or \"avoids\" unless the source explicitly asserts preference or avoidance.\n        - Prefer insert over destructive actions when policy or evidence is unclear.\n        - Return one operation for each candidate unless the right action is a target-only retract/update.\n        - candidate_index is zero-based from Candidate claims below.\n        - target_claim_id must be one of Existing active claims below or null.\n        - Fill predicate policy fields for every operation with a candidate, including noop.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 15. Retention / forgetting .. 16. Optional fast/slow execution path\nDocument lines: 509-546\n\n## 15. Retention / forgetting\n\nВ `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\n\nМинимальные действия:\n- downgrade retrieval state\n- archive\n- soft delete\n- hard delete by request\n\nМинимальные триггеры:\n- namespace policy\n- age\n- low use_count\n- legal/privacy request\n- explicit user forget/delete command\n\n## 16. Optional fast/slow execution path\n\nЭто уже не обязательный MVP, но хороший следующий шаг.\n\n### Fast path\n- user-facing\n- lower latency\n- cheap retrieval\n- cheap draft\n- escalation gate\n\n### Slow path\n- stronger model / worker\n- conflict resolution\n- answer verification\n- note consolidation\n- memory repair\n\n### Важный момент\nМежду fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\n\n        Candidate claims:\n        - candidate[<index>] subject=entity:<0> predicate=answers_question object=\"In Memory v3, forgetting is a policy rather than random reduced retrieval of older memory.\" scope=agent_memory_handoff/01_architecture.md section 15, Retention / forgetting validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=In Memory v3, Retention / forgetting treats forgetting as a policy rather than as random reduced retrieval of older memory. evidence=В `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\n- candidate[<index>] subject=entity:<0> predicate=generated_artifact_detail object=\"Minimum retention/forgetting actions are downgrade retrieval state, archive, soft delete, and hard delete by request.\" scope=agent_memory_handoff/01_architecture.md section 15, Retention / forgetting validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Retention / forgetting policy defines minimum actions: downgrade retrieval state, archive, soft delete, and hard delete by request. evidence=Минимальные действия: - downgrade retrieval state - archive - soft delete - hard delete by request\n- candidate[<index>] subject=entity:<0> predicate=generated_artifact_detail object=\"Minimum retention/forgetting triggers are namespace policy, age, low use_count, legal/privacy request, and explicit user forget/delete command.\" scope=agent_memory_handoff/01_architecture.md section 15, Retention / forgetting validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Retention / forgetting policy defines minimum triggers: namespace policy, age, low use_count, legal/privacy request, and explicit user forget/delete command. evidence=Минимальные триггеры: - namespace policy - age - low use_count - legal/privacy request - explicit user forget/delete command\n- candidate[<index>] subject=entity:<1> predicate=generated_artifact_detail object=\"Fast path characteristics are user-facing, lower latency, cheap retrieval, cheap draft, and escalation gate.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The optional Fast path is characterized by being user-facing, lower-latency, using cheap retrieval and cheap drafts, and having an escalation gate. evidence=### Fast path - user-facing - lower latency - cheap retrieval - cheap draft - escalation gate\n- candidate[<index>] subject=entity:<2> predicate=generated_artifact_detail object=\"Slow path responsibilities are stronger model/worker, conflict resolution, answer verification, note consolidation, and memory repair.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The optional Slow path is responsible for stronger model or worker processing, conflict resolution, answer verification, note consolidation, and memory repair. evidence=### Slow path - stronger model / worker - conflict resolution - answer verification - note consolidation - memory repair\n- candidate[<index>] subject=entity:<3> predicate=has_goal object=\"Add an optional fast/slow execution path after the MVP.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The architecture treats an optional fast/slow execution path as a good next step after the MVP, not as a required MVP feature. evidence=Это уже не обязательный MVP, но хороший следующий шаг.\n- candidate[<index>] subject=entity:<1> predicate=generated_artifact_detail object=\"Fast and slow paths should exchange typed handoff objects rather than free text.\" scope=agent_memory_handoff/01_architecture.md section 16, Optional fast/slow execution path validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Fast path and Slow path should exchange typed handoff objects rather than free text. evidence=Между fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\n\n        Existing active claims:\n        - id=hot-path:claim:<0> subject=entity:<4> predicate=responsible_for object=\"routing, retrieval-before-update, canonicalization, note/claim extraction, reconciliation, consolidation, repair, and retention\" family=responsible_for policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 10.2 status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Memory worker / manager is responsible for routing, retrieval-before-update, canonicalization, note/claim extraction, reconciliation, consolidation, repair, and retention.\n- id=hot-path:claim:<1> subject=entity:<5> predicate=has_constraint object=\"The Read path answer composer must distinguish verified versus provisional information, account for conflicts, respect scope boundaries, be able to abstain, and avoid presenting a note as a hard fact without qualification.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 12 Read path status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Read path answer composer must distinguish verified from provisional information, account for conflicts, respect scope boundaries, abstain when needed, and avoid treating notes as hard facts without qualification.\n- id=hot-path:claim:<2> subject=entity:<6> predicate=indexes_memory_content_for_retrieval object=\"vector indexes, full-text indexes, and filters for sources, notes, claims, episodes, content text, summaries, normalized text, namespace, entity, status, retrieval state, time, and type\" family=indexes_memory_content_for_retrieval policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=Applies to the storage-tier architecture described in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Retrieval indexes storage tier indexes memory content for retrieval using vector indexes, full-text indexes, and filters.\n- id=hot-path:claim:<3> subject=entity:<7> predicate=answers_question object=\"How this should be searched for and kept in the hot path.\" family=answers_question policy=cardinality=SINGLE,temporal=ATEMPORAL,conflict=REPLACE scope=Applies to the memory architecture rules in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=Retrieval state answers how a memory item should be searched for and kept in the hot path.\n- id=hot-path:claim:<4> subject=entity:<8> predicate=improves_memory_reconciliation_and_retrieval object=\"predictable reconciliation, less overgeneralized retrieval, and fewer false note conflicts\" family=improves_memory_reconciliation_and_retrieval policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=Applies to structured scope in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=Structured scope improves memory behavior by making reconciliation more predictable, reducing retrieval overgeneralization, and preventing false note conflicts.\n- id=hot-path:claim:<5> subject=entity:<9> predicate=should_be_written_when object=\"Information should be written as a Claim when it is explicit, normalizable, suitable for precise answers, and comparable with other claims by predicate policy.\" family=should_be_written_when policy=cardinality=SINGLE,temporal=STATUS_LIKE,conflict=REPLACE scope=Applies to the memory architecture rules in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=A Claim should be written when information is explicit, normalizable, suitable for precise answers, and comparable with other claims by predicate policy.\n- id=hot-path:claim:<6> subject=entity:<10> predicate=responsible_for object=\"dialogue, tool orchestration, read-time retrieval, and cheap routing/escalation\" family=responsible_for policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 10.1 status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The User-facing runtime is responsible for dialogue, tool orchestration, read-time retrieval, and cheap routing/escalation.\n- id=hot-path:claim:<7> subject=entity:<11> predicate=serves_as_intermediate_semantic_layer object=\"rich note memory for design direction, rationale, local conclusions, plan fragments, document digests, and lessons\" family=serves_as_intermediate_semantic_layer policy=cardinality=MULTI,temporal=ATEMPORAL,conflict=COEXIST scope=Applies to the storage-tier architecture described in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Rich note memory storage tier serves as an intermediate semantic layer for design direction, rationale, local conclusions, plan fragments, document digests, and lessons.\n- id=hot-path:claim:<8> subject=entity:<10> predicate=has_constraint object=\"The User-facing runtime should not carry heavy reconciliation and repair.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 10.1 status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The User-facing runtime should not be responsible for heavy reconciliation and repair.\n- id=hot-path:claim:<9> subject=entity:<5> predicate=has_constraint object=\"Memory v3 requires explicit retrieval budget caps in the Read path.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=agent_memory_handoff/01_architecture.md, section 12 Read path status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The Read path in Memory v3 requires explicit retrieval budget caps.\n- id=hot-path:claim:<10> subject=entity:<12> predicate=should_be_written_when object=\"Information should be written as a Note when it is already important, useful for future retrieval, but too context-rich or too early for a hard fact.\" family=should_be_written_when policy=cardinality=SINGLE,temporal=STATUS_LIKE,conflict=REPLACE scope=Applies to the memory architecture rules in agent_memory_handoff/01_architecture.md. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=A Note should be written when information is already important and useful for future retrieval, but too context-rich or too early for a hard fact.\n\n        Predicate catalog excerpt:\n        - answers_question: Question or semantic role answered by a state concept.; subject=any; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- assigned_to_shift: Person or agent assignment to a shift, schedule slot, day, route, or rotation cell; subject=PERSON; object=STRING; cardinality=MULTI; temporal=TIME_SCOPED; conflict=COEXIST; importance=7\n- attended_event: Subject attended or was present at a dated event, appointment, meeting, or gathering; subject=PERSON; object=STRING; cardinality=MULTI; temporal=TIME_SCOPED; conflict=COEXIST; importance=6\n- avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- can_share_physical_storage_backend: Component or tier may physically reside in the same backend as other storage.; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- converts_mature_notes_to_structured_memory: A maintenance path converts mature notes into structured memory when criteria are met.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- current_location: Current physical residence, base, or location of a person, user, organization, project, or concrete subject; subject=any; object=JSON; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- current_metric_value: Current value of a named metric, record, benchmark, score, quota, threshold, or personal best; subject=any; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- excludes_from_tier: Storage tier explicitly excludes specified content types.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- generated_artifact_detail: Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_architecture_axis: Learned predicate for Memory v3 architecture has Representation as one of its four axes.; subject=any; object=JSON; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_maintenance_path: Architecture includes a maintenance path option.; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- has_maturity_stages: Stages in the Note maturity lifecycle pattern.; subject=any; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- has_semantic_write_path: Architecture includes a semantic write path option.; subject=any; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- improves_memory_health: Maintenance process improves memory health by correcting degradation.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- improves_memory_reconciliation_and_retrieval: Design feature improves reconciliation, retrieval precision, or conflict behavior.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- improves_memory_richness: Maintenance process enriches memory content or structure.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- indexes_memory_content_for_retrieval: Storage tier provides retrieval indexes and filters over memory content.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- maturity_decreases_or_closes_when: Criteria that can lower or close a Note's maturity state.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- maturity_increases_when: Criteria that can raise a Note's maturity.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- pending_pickup: Subject needs to collect, pick up, retrieve, or receive a concrete item from a place or party; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- pending_return: Subject needs to return, send back, drop off, or bring back a concrete item to a place or party; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- repairs_memory_degradation: A maintenance path repairs specified classes of memory degradation.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- requires_scope_representations: Structured scope requires specified human-readable and machine-readable representations.; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=5\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- runs_as_background_workflow: Process is designed to run as a separate background workflow.; subject=any; object=BOOLEAN; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- serves_as_intermediate_semantic_layer: Storage tier functions as an intermediate semantic layer for specified note-like uses.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- serves_as_typed_memory_store: Storage tier functions as the main typed memory store.; subject=any; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=5\n- should_be_written_when: Criteria under which a memory item type should be written.; subject=any; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=5\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- stores_raw_evidence: Storage tier stores raw evidence records, usually immutably.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- supplies_prompt_context: Storage tier provides content intended to be included in prompt context.; subject=any; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=5\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_claim_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "canonical_predicate": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "cardinality": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "single",
+                                                    "multi"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "conflict_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "replace",
+                                                    "coexist",
+                                                    "range_split"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "object_kind": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "entity",
+                                                    "string",
+                                                    "number",
+                                                    "boolean",
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "predicate_description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "predicate_family": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_claim_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "temporal_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "atemporal",
+                                                    "time_scoped",
+                                                    "status_like"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_claim_id",
+                                    "canonical_predicate",
+                                    "predicate_family",
+                                    "predicate_description",
+                                    "object_kind",
+                                    "cardinality",
+                                    "temporal_policy",
+                                    "conflict_policy",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile claim candidates against active memory claims.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryClaimReconciler": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:5830e695351ef9d0d5fe11e08b843471"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"generated_artifact_detail\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact\",\"predicate_family\":\"generated_artifact_detail\",\"reason\":\"New architectural detail from the imported document; answers_question does not fit this factual design statement.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":1,\"canonical_predicate\":\"generated_artifact_detail\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact\",\"predicate_family\":\"generated_artifact_detail\",\"reason\":\"New concrete retention/forgetting action list from the artifact.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":2,\"canonical_predicate\":\"generated_artifact_detail\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact\",\"predicate_family\":\"generated_artifact_detail\",\"reason\":\"New concrete retention/forgetting trigger list from the artifact.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":3,\"canonical_predicate\":\"generated_artifact_detail\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact\",\"predicate_family\":\"generated_artifact_detail\",\"reason\":\"New concrete detail describing optional fast path characteristics.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":4,\"canonical_predicate\":\"generated_artifact_detail\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact\",\"predicate_family\":\"generated_artifact_detail\",\"reason\":\"New concrete detail describing optional slow path responsibilities.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"},{\"action\":\"insert\",\"candidate_index\":5,\"canonical_predicate\":\"has_goal\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Active or declared goal\",\"predicate_family\":\"has_goal\",\"reason\":\"The document declares the optional fast/slow execution path as a good post-MVP next step.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":6,\"canonical_predicate\":\"generated_artifact_detail\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Concrete reusable detail contained in an imported generated artifact, draft, story, image description, specification, or code artifact\",\"predicate_family\":\"generated_artifact_detail\",\"reason\":\"New architectural detail about using typed handoff objects between fast and slow paths.\",\"target_claim_id\":null,\"temporal_policy\":\"atemporal\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6987,
+                "completionTokens": 922,
+                "thinkingTokens": 237,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

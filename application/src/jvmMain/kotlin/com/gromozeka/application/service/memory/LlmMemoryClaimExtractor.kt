@@ -365,6 +365,9 @@ class LlmMemoryClaimExtractor(
             - If TARGET_MESSAGE updates, replaces, or says "instead of" an older value, normalize the new claim to the same semantic slot/family as the replaced claim when context identifies it.
             - Every returned claim must be supported by TARGET_MESSAGE itself.
             - If TARGET_MESSAGE is an imported document or document section, the document text itself is valid imported evidence. Extract stable facts/rules stated by the document with document scope; do not require the user to personally assert them in chat.
+            - For imported documents, do not explode reference lists, schema field lists, enum value lists, table columns, API parameters, or checklist-like inventory into one claim per item. Preserve those as Note/Source context unless a listed item is itself a durable rule, invariant, current/default value, responsibility, or independently recall-worthy fact.
+            - For schema/reference documents, prefer claims for high-level semantics such as purpose, invariants, lifecycle rules, scope rules, conflict rules, and current architectural decisions. Prefer zero claims for plain "field X exists" details when the surrounding Note/Source already preserves the list.
+            - If a document section would require many parallel claims of the same predicate just to enumerate a list, emit only the few claims that are semantically important outside the list; otherwise return zero claims and let Note/Source carry the complete list.
             - evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.
             - Do not use Relevant persisted memory as evidence for a new claim; it is only dedup/context.
             - Do not emit lifecycle/reconciliation predicates such as "supersedes", "replaces", "updates", "retracts", or "corrects" as semantic claims. Emit the current semantic fact only; reconciliation handles old claim status.

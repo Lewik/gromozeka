@@ -107,6 +107,8 @@ class LongMemEvalMemorySmokeTest {
                 "gromozeka.memory.llm.maxAttempts" to "1",
                 "gromozeka.memory.llm.timeoutMs" to
                     System.getProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "1200000"),
+                "gromozeka.memory.write.parallelism" to
+                    System.getProperty(MEMORY_WRITE_PARALLELISM_PROPERTY, "2"),
                 "gromozeka.memory.routing.failFast" to "true",
                 "gromozeka.memory.routing.deterministicIds" to "true",
             ),
@@ -858,6 +860,7 @@ class LongMemEvalMemorySmokeTest {
         const val WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.websocketResponseTimeoutMs"
         const val WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.websocketTransportTimeoutMs"
         const val MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.memoryLlmStageTimeoutMs"
+        const val MEMORY_WRITE_PARALLELISM_PROPERTY = "gromozeka.longmemeval.memoryWriteParallelism"
         const val DEFAULT_MODEL_NAME = "gpt-5.5"
         const val LONGMEMEVAL_NAMESPACE = "benchmark:longmemeval"
         const val MEMORY_CONTEXT_REPORT_CHARS = 20_000

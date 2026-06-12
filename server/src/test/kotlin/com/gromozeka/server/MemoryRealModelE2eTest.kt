@@ -134,6 +134,8 @@ class MemoryRealModelE2eTest {
                 "gromozeka.memory.llm.maxAttempts" to "1",
                 "gromozeka.memory.llm.timeoutMs" to
                     System.getProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "1200000"),
+                "gromozeka.memory.write.parallelism" to
+                    System.getProperty(MEMORY_WRITE_PARALLELISM_PROPERTY, "2"),
                 "gromozeka.memory.routing.failFast" to "true",
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
@@ -2881,6 +2883,7 @@ class MemoryRealModelE2eTest {
         const val WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.websocketTransportTimeoutMs"
         const val TURN_COMPLETION_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.turnCompletionTimeoutMs"
         const val MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.memoryLlmStageTimeoutMs"
+        const val MEMORY_WRITE_PARALLELISM_PROPERTY = "gromozeka.memory.e2e.memoryWriteParallelism"
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
         const val DEFAULT_MODEL_NAME = "gpt-5.5"
 

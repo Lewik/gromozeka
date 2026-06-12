@@ -44,6 +44,20 @@ class LlmMemoryClaimReconciler(
             .map { it.claim }
             .filter { it.status == MemoryClaim.Status.ACTIVE }
 
+        if (existingClaims.isEmpty()) {
+            log.info {
+                "Memory claim reconciler direct insert: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "reason=no_existing_active_claims candidates=${claimCandidates.size}"
+            }
+            return claimCandidates.map {
+                MemoryClaimReconciliationOp(
+                    action = MemoryReconciliationAction.INSERT,
+                    candidate = it.withPredicatePolicy(request, predicateCatalog),
+                    reason = "No existing active claims were retrieved.",
+                )
+            }
+        }
+
         val stageMessages = request.toMemoryStageMessages(
             stageName = "claim-reconciler",
             taskPrompt = buildReconcilerPrompt(request, claimCandidates, existingClaims, predicateCatalog),
@@ -228,7 +242,17 @@ class LlmMemoryClaimReconciler(
             request: DirectStructuredMemoryWriteRequest,
             predicateCatalog: MemoryPredicateCatalog,
         ): MemoryClaimReconciliationOp? {
-            val candidate = candidateIndex?.let { candidates.getOrNull(it) }?.withPredicatePolicy(request, predicateCatalog)
+            val candidate = candidateIndex?.let { candidates.getOrNull(it) }?.withPredicatePolicy(
+                request = request,
+                predicateCatalog = predicateCatalog,
+                canonicalPredicate = canonicalPredicate,
+                predicateFamily = predicateFamily,
+                predicateDescription = predicateDescription,
+                objectKind = objectKind,
+                cardinality = cardinality,
+                temporalPolicy = temporalPolicy,
+                conflictPolicy = conflictPolicy,
+            )
             val target = targetClaimId?.trim()?.takeIf { it.isNotBlank() && it != "null" }?.let { MemoryClaim.Id(it) }
             val targetExists = target == null || existingClaims.any { it.id == target }
             if (!targetExists) return null
@@ -299,72 +323,80 @@ class LlmMemoryClaimReconciler(
             }
         }
 
-        private fun MemoryClaimCandidate.withPredicatePolicy(
-            request: DirectStructuredMemoryWriteRequest,
-            predicateCatalog: MemoryPredicateCatalog,
-        ): MemoryClaimCandidate {
-            val canonical = canonicalPredicate
-                ?.trim()
-                ?.takeIf { it.isNotBlank() && it != "null" }
-                ?: predicate
-            val family = predicateFamily
-                ?.trim()
-                ?.takeIf { it.isNotBlank() && it != "null" }
-                ?: canonical
-            val catalogDefinition = predicateCatalog.resolvePredicateDefinition(canonical, family)
-            val explicitObjectKind = objectKind.toEnumValueOrNull<MemoryPredicateDefinition.ObjectValueKind>()
-            val explicitCardinality = cardinality.toEnumValueOrNull<MemoryPredicateDefinition.Cardinality>()
-            val explicitTemporalPolicy = temporalPolicy.toEnumValueOrNull<MemoryPredicateDefinition.TemporalPolicy>()
-            val explicitConflictPolicy = conflictPolicy.toEnumValueOrNull<MemoryPredicateDefinition.ConflictPolicy>()
-
-            if (catalogDefinition != null &&
-                (catalogDefinition.matchesExplicitPolicy(
-                    objectKind = explicitObjectKind,
-                    cardinality = explicitCardinality,
-                    temporalPolicy = explicitTemporalPolicy,
-                    conflictPolicy = explicitConflictPolicy,
-                ) || !hasLearnedSlotSignal(canonical, family, predicateDescription, normalizedText))
-            ) {
-                val scopedDefinition = catalogDefinition.scopedTo(request.namespace)
-                return copy(
-                    predicate = scopedDefinition.predicate,
-                    predicateFamily = scopedDefinition.predicate,
-                    predicatePolicy = scopedDefinition,
-                )
-            }
-
-            val learnedPredicate = if (catalogDefinition == null) {
-                canonical
-            } else {
-                learnedSlotPredicateName(
-                    canonical = canonical,
-                    family = family,
-                    description = predicateDescription,
-                    normalizedText = normalizedText,
-                )
-            }
-            val learnedDefinition = MemoryPredicateDefinition(
-                predicate = learnedPredicate,
-                namespace = request.namespace,
-                description = predicateDescription?.trim()?.takeIf { it.isNotBlank() }
-                    ?: "Learned predicate for ${normalizedText.take(160)}",
-                objectKind = explicitObjectKind ?: catalogDefinition?.objectKind ?: MemoryPredicateDefinition.ObjectValueKind.JSON,
-                cardinality = explicitCardinality ?: catalogDefinition?.cardinality ?: MemoryPredicateDefinition.Cardinality.MULTI,
-                temporalPolicy = explicitTemporalPolicy ?: catalogDefinition?.temporalPolicy ?: MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
-                conflictPolicy = explicitConflictPolicy ?: catalogDefinition?.conflictPolicy ?: MemoryPredicateDefinition.ConflictPolicy.COEXIST,
-                profileSync = catalogDefinition?.profileSync == true,
-                actionItemSync = catalogDefinition?.actionItemSync == true,
-                defaultImportance = catalogDefinition?.defaultImportance ?: 5,
-            )
-
-            return copy(
-                predicate = learnedDefinition.predicate,
-                predicateFamily = learnedDefinition.predicate,
-                predicatePolicy = learnedDefinition,
-            )
-        }
-
     }
+}
+
+private fun MemoryClaimCandidate.withPredicatePolicy(
+    request: DirectStructuredMemoryWriteRequest,
+    predicateCatalog: MemoryPredicateCatalog,
+    canonicalPredicate: String? = null,
+    predicateFamily: String? = null,
+    predicateDescription: String? = null,
+    objectKind: String? = null,
+    cardinality: String? = null,
+    temporalPolicy: String? = null,
+    conflictPolicy: String? = null,
+): MemoryClaimCandidate {
+    val canonical = canonicalPredicate
+        ?.trim()
+        ?.takeIf { it.isNotBlank() && it != "null" }
+        ?: predicate
+    val family = predicateFamily
+        ?.trim()
+        ?.takeIf { it.isNotBlank() && it != "null" }
+        ?: this.predicateFamily
+        ?: canonical
+    val catalogDefinition = predicateCatalog.resolvePredicateDefinition(canonical, family)
+    val explicitObjectKind = objectKind.toEnumValueOrNull<MemoryPredicateDefinition.ObjectValueKind>()
+    val explicitCardinality = cardinality.toEnumValueOrNull<MemoryPredicateDefinition.Cardinality>()
+    val explicitTemporalPolicy = temporalPolicy.toEnumValueOrNull<MemoryPredicateDefinition.TemporalPolicy>()
+    val explicitConflictPolicy = conflictPolicy.toEnumValueOrNull<MemoryPredicateDefinition.ConflictPolicy>()
+
+    if (catalogDefinition != null &&
+        (catalogDefinition.matchesExplicitPolicy(
+            objectKind = explicitObjectKind,
+            cardinality = explicitCardinality,
+            temporalPolicy = explicitTemporalPolicy,
+            conflictPolicy = explicitConflictPolicy,
+        ) || !hasLearnedSlotSignal(canonical, family, predicateDescription, normalizedText))
+    ) {
+        val scopedDefinition = catalogDefinition.scopedTo(request.namespace)
+        return copy(
+            predicate = scopedDefinition.predicate,
+            predicateFamily = scopedDefinition.predicate,
+            predicatePolicy = scopedDefinition,
+        )
+    }
+
+    val learnedPredicate = if (catalogDefinition == null) {
+        canonical
+    } else {
+        learnedSlotPredicateName(
+            canonical = canonical,
+            family = family,
+            description = predicateDescription,
+            normalizedText = normalizedText,
+        )
+    }
+    val learnedDefinition = MemoryPredicateDefinition(
+        predicate = learnedPredicate,
+        namespace = request.namespace,
+        description = predicateDescription?.trim()?.takeIf { it.isNotBlank() }
+            ?: "Learned predicate for ${normalizedText.take(160)}",
+        objectKind = explicitObjectKind ?: catalogDefinition?.objectKind ?: MemoryPredicateDefinition.ObjectValueKind.JSON,
+        cardinality = explicitCardinality ?: catalogDefinition?.cardinality ?: MemoryPredicateDefinition.Cardinality.MULTI,
+        temporalPolicy = explicitTemporalPolicy ?: catalogDefinition?.temporalPolicy ?: MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
+        conflictPolicy = explicitConflictPolicy ?: catalogDefinition?.conflictPolicy ?: MemoryPredicateDefinition.ConflictPolicy.COEXIST,
+        profileSync = catalogDefinition?.profileSync == true,
+        actionItemSync = catalogDefinition?.actionItemSync == true,
+        defaultImportance = catalogDefinition?.defaultImportance ?: 5,
+    )
+
+    return copy(
+        predicate = learnedDefinition.predicate,
+        predicateFamily = learnedDefinition.predicate,
+        predicatePolicy = learnedDefinition,
+    )
 }
 
 internal fun MemoryClaimCandidate.shouldCoexistWithTemporalTargetForMemoryReconciliation(target: MemoryClaim): Boolean {
