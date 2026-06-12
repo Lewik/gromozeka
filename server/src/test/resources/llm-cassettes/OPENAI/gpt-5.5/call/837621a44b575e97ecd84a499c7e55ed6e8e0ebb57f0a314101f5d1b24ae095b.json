@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "837621a44b575e97ecd84a499c7e55ed6e8e0ebb57f0a314101f5d1b24ae095b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm going back to our previous conversation about the children's book on dinosaurs. Can you remind me what color was the scaly body of the Plesiosaur in the image?\n\n                                Question date:\n                                2023/05/24 (Wed) 21:34\n\n                                Expected answer:\n                                The Plesiosaur had a blue scaly body.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:89527b6b\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a50bd1408378-claim-11 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The Plesiosaur Image shows a blue scaly Plesiosaur swimming in the ocean, with its long neck and flippers in motion, eyes fixed on something in the distance, colorful fish around it, and bright sun shining.; scope=Details of the imported generated image artifact \"Plesiosaur Image\" within \"The Amazing Adventures of Dinosaurs\".; evidence=IMPORTED source=external:provided-text:105608cb95c63466652687b17fa63eb6 quote=\"::Plesiosaur Image:: == A Plesiosaur is shown swimming in the ocean, with its long neck and flippers in motion.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:105608cb95c63466652687b17fa63eb6 [external_record ref=longmemeval:89527b6b:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 10:20\nTranscript:\nuser: pretend you're an author, write a children's book about dinosaurs. the book will include images of the dinosaurs. Wherever it's appropriate to insert an image, insert the image by writing the image title and an elaborate description of the image in the format \"::title:: == ::description::\"\nassistant: \"The Amazing Adventures of Dinosaurs\"\n\nOnce upon a time, in a land far, far away, there lived a group of incredible creatures called dinosaurs. These fascinating creatures roamed the earth, ruled the skies, and swam in the oceans.\n\nJoin us on a journey to discover the exciting world of dinosaurs and learn about their incredible abilities and traits.\n\nChapter 1: The Mighty T-Rex\n\nThe T-Rex was a giant dinosaur that lived millions of years ago. It was one of the largest carnivorous dinosaurs that ever lived, and it had sharp teeth and strong jaws that could crush anything in its path.\n\n::T-Rex Image:: == A large, fierce-looking T-Rex stands on its hind legs, roaring loudly with its sharp teeth showing. The T-Rex has a green scaly body, with small arms, and a long tail to help it balance. In the background, there is a lush forest with tall trees.\n\nChapter 2: The Flying Pterodactyl\n\nThe Pterodactyl was a flying dinosaur that lived in the skies. It had large wings that helped it soar high above the ground, and a sharp beak to catch its prey.\n\n::Pterodactyl Image:: == A Pterodactyl is shown in mid-flight, with its wings spread wide and its sharp beak open. The Pterodactyl has a green scaly body and long, thin legs. The background is a beautiful blue sky with fluffy clouds.\n\nChapter 3: The Swimming Plesiosaur\n\nThe Plesiosaur was a dinosaur that lived in the oceans. It had a long neck and powerful flippers that helped it swim gracefully through the water.\n\n::Plesiosaur Image:: == A Plesiosaur is shown swimming in the ocean, with its long neck and flippers in motion. The Plesiosaur has a blue scaly body, and its eyes are fixed on something in the distance. In the background, there are colorful fish swimming along with it and the sun shining brightly.\n\nChapter 4: The Cuddly Triceratops\n\nThe Triceratops was a herbivorous dinosaur with a large head and three horns. It was a gentle giant that lived on the land and ate only plants.\n\n::Triceratops Image:: == A Triceratops is shown grazing in a field, surrounded by tall green grasses. The Triceratops has a brown scaly body, with a large head and three horns. Its eyes are closed, and it looks happy and content. In the background, there is a beautiful sunset with orange and pink clouds.\n\nThe end\n\nThis was just the beginning of our journey through the amazing world of dinosaurs. There are many more incredible creatures to discover, and we hope you enjoyed learning about these fascinating creatures.\n\n            Retrieved entities:\n            - entity entity:<0> [DOCUMENT]: Plesiosaur Image; Document named Plesiosaur Image.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "89527b6b",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm going back to our previous conversation about the children's book on dinosaurs. Can you remind me what color was the scaly body of the Plesiosaur in the image?\n\n                                Question date:\n                                2023/05/24 (Wed) 21:34\n\n                                Expected answer:\n                                The Plesiosaur had a blue scaly body.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:89527b6b\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a50bd1408378-claim-11 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The Plesiosaur Image shows a blue scaly Plesiosaur swimming in the ocean, with its long neck and flippers in motion, eyes fixed on something in the distance, colorful fish around it, and bright sun shining.; scope=Details of the imported generated image artifact \"Plesiosaur Image\" within \"The Amazing Adventures of Dinosaurs\".; evidence=IMPORTED source=external:provided-text:105608cb95c63466652687b17fa63eb6 quote=\"::Plesiosaur Image:: == A Plesiosaur is shown swimming in the ocean, with its long neck and flippers in motion.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:105608cb95c63466652687b17fa63eb6 [external_record ref=longmemeval:89527b6b:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 10:20\nTranscript:\nuser: pretend you're an author, write a children's book about dinosaurs. the book will include images of the dinosaurs. Wherever it's appropriate to insert an image, insert the image by writing the image title and an elaborate description of the image in the format \"::title:: == ::description::\"\nassistant: \"The Amazing Adventures of Dinosaurs\"\n\nOnce upon a time, in a land far, far away, there lived a group of incredible creatures called dinosaurs. These fascinating creatures roamed the earth, ruled the skies, and swam in the oceans.\n\nJoin us on a journey to discover the exciting world of dinosaurs and learn about their incredible abilities and traits.\n\nChapter 1: The Mighty T-Rex\n\nThe T-Rex was a giant dinosaur that lived millions of years ago. It was one of the largest carnivorous dinosaurs that ever lived, and it had sharp teeth and strong jaws that could crush anything in its path.\n\n::T-Rex Image:: == A large, fierce-looking T-Rex stands on its hind legs, roaring loudly with its sharp teeth showing. The T-Rex has a green scaly body, with small arms, and a long tail to help it balance. In the background, there is a lush forest with tall trees.\n\nChapter 2: The Flying Pterodactyl\n\nThe Pterodactyl was a flying dinosaur that lived in the skies. It had large wings that helped it soar high above the ground, and a sharp beak to catch its prey.\n\n::Pterodactyl Image:: == A Pterodactyl is shown in mid-flight, with its wings spread wide and its sharp beak open. The Pterodactyl has a green scaly body and long, thin legs. The background is a beautiful blue sky with fluffy clouds.\n\nChapter 3: The Swimming Plesiosaur\n\nThe Plesiosaur was a dinosaur that lived in the oceans. It had a long neck and powerful flippers that helped it swim gracefully through the water.\n\n::Plesiosaur Image:: == A Plesiosaur is shown swimming in the ocean, with its long neck and flippers in motion. The Plesiosaur has a blue scaly body, and its eyes are fixed on something in the distance. In the background, there are colorful fish swimming along with it and the sun shining brightly.\n\nChapter 4: The Cuddly Triceratops\n\nThe Triceratops was a herbivorous dinosaur with a large head and three horns. It was a gentle giant that lived on the land and ate only plants.\n\n::Triceratops Image:: == A Triceratops is shown grazing in a field, surrounded by tall green grasses. The Triceratops has a brown scaly body, with a large head and three horns. Its eyes are closed, and it looks happy and content. In the background, there is a beautiful sunset with orange and pink clouds.\n\nThe end\n\nThis was just the beginning of our journey through the amazing world of dinosaurs. There are many more incredible creatures to discover, and we hope you enjoyed learning about these fascinating creatures.\n\n            Retrieved entities:\n            - entity entity:<0> [DOCUMENT]: Plesiosaur Image; Document named Plesiosaur Image.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "89527b6b",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The Plesiosaur had a blue scaly body.\",\"reason\":\"The retrieved transcript and active claim explicitly state that the Plesiosaur has a blue scaly body.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1606,
+                "completionTokens": 83,
+                "thinkingTokens": 23,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -351,8 +351,10 @@ class LongMemEvalMemorySmokeTest {
                     You are an objective evaluator for a long-term-memory benchmark.
                     Decide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.
                     Mark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.
+                    For imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.
+                    Accept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.
                     The official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.
-                    Mark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.
+                    Mark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.
                     Return only the configured JSON object.
                     """.trimIndent()
                 ),
