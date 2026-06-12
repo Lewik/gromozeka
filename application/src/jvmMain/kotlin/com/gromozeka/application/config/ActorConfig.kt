@@ -15,9 +15,11 @@ import com.gromozeka.domain.service.SettingsProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Spring configuration for actor-based components.
@@ -74,9 +76,17 @@ class ActorConfig {
      * Uses SupervisorJob to prevent failure propagation between engines.
      * Uses Dispatchers.Default for CPU-bound work (event broadcasting).
      */
-    @Bean
+    @Bean(destroyMethod = "close")
     @Qualifier("supervisorScope")
     fun supervisorScope(): CoroutineScope {
-        return CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        return SpringManagedCoroutineScope()
+    }
+}
+
+private class SpringManagedCoroutineScope : CoroutineScope, AutoCloseable {
+    override val coroutineContext: CoroutineContext = SupervisorJob() + Dispatchers.Default
+
+    override fun close() {
+        cancel()
     }
 }
