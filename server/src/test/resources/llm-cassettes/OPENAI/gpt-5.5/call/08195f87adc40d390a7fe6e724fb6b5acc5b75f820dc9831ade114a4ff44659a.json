@@ -1,0 +1,400 @@
+{
+    "version": 1,
+    "hash": "08195f87adc40d390a7fe6e724fb6b5acc5b75f820dc9831ade114a4ff44659a",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "LongMemEval recall target.\nCurrent date: 2023/05/05 (Fri) 19:59\nQuestion: How much total money have I spent on bike-related expenses since the start of the year?",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: benchmark:longmemeval:gpt4_d84a3211\n        Pass mode: intermediate_recall\n\n        Goal:\n        Preserve candidates that may be useful for a later global selector. This pass is recall-oriented, not final.\n\n        Selection rules:\n        - This is an intermediate pass over one candidate batch. A later global selector will rerank survivors from all batches.\n- When uncertain, select the candidate so the final pass can compare it globally.\n- Reject only candidates that are clearly irrelevant, stale compared to stronger active memory, or pure lexical noise. Do not treat an ACTIVE pending obligation as stale solely because its source is old; completion, cancellation, supersession, or a stronger contradictory active memory must be explicit.\n- Aim for at most 8 selected_items. Exceed that when many distinct dated facts or complete-set candidates are required together.\n        - Select the complete relevant set: every distinct candidate that may represent a separate matching item, event, assignment, source, or ordered fact needed to avoid an incomplete answer.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.\n        - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Planned coverage mode: COMPLETE_SET\n        Require evidence fallback: true\n        Retrieval budget: claims=10 notes=0 actionItems=0 sources=5 episodes=0\n        Target message:\n        LongMemEval recall target.\nCurrent date: 2023/05/05 (Fri) 19:59\nQuestion: How much total money have I spent on bike-related expenses since the start of the year?\n\n        Candidate memory items:\n        1. {\"type\":\"claim\",\"id\":\"hot-path-78d8ce6ecf94-claim-14\",\"score\":0.418,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_experience_with\",\"predicate_family\":\"has_experience_with\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<1>\",\"text\":\"The user has experience using the new bike lights for early morning rides.\",\"context\":\"Imported past chat session about the benefit of bike lights for low-light cycling.\",\"confidence\":0.96,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"IMPORTED\",\"quote\":\"it's made a huge difference for my early morning rides\"}]}\n2. {\"type\":\"note\",\"id\":\"hot-path-5498a0d53dd6-note-4\",\"score\":0.3935483870967742,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Chain lubrication procedure due May 15\",\"text\":\"For the User's bike chain lubrication maintenance, the reusable procedure is to choose bike-chain-specific lubricant suited to riding conditions, clean the chain first, apply a small amount to the inside links and pins, wipe off excess, inspect for a thin even coating, wipe cassette and chainrings, re-check after the first ride, and record the date and lubricant type in a maintenance log; avoid over-lubricating and use a chain wear indicator when needed.\",\"confidence\":0.96,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"SUMMARIZED\",\"quote\":\"I'm due to lubricate my chain on May 15th.\"}]}\n3. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-9\",\"score\":0.3916666666666666,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_goal\",\"predicate_family\":\"has_goal\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"The user intended to schedule a bike tune-up appointment soon with the local bike shop downtown.\",\"context\":\"The user said this after deciding they might return to the same downtown shop for the next tune-up.\",\"confidence\":0.9,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"I'll make sure to schedule an appointment with them soon\"}]}\n4. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-6\",\"score\":0.3790322580645161,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"owns\",\"predicate_family\":\"owns\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<2>\",\"text\":\"The user owns a Bell Zephyr helmet bought from the local bike shop downtown for $120.\",\"context\":\"The user mentioned buying the Bell Zephyr helmet at the local bike shop downtown while discussing bike tune-up services.\",\"confidence\":0.95,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"where I bought my Bell Zephyr helmet for $120\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path-1439f70c7a6d-note-4\",\"score\":0.3790322580645161,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"CONTEXT\",\"title\":\"Downtown bike shop preferred for recurring tune-ups\",\"text\":\"The User has a positive prior-service context with the local bike shop downtown: it is where the User bought a Bell Zephyr helmet for $120, the previous tune-up was done well, and the mechanic was knowledgeable and friendly, making it the likely choice for the next tune-up appointment.\",\"confidence\":0.95,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"They did a great job with the tune-up last time, and the mechanic was knowledgeable and friendly.\"}]}\n6. {\"type\":\"note\",\"id\":\"hot-path-78d8ce6ecf94-note-2\",\"score\":0.3790322580645161,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Bike preparation checklist for User's June mountain road trip\",\"text\":\"For the User's June mountain road trip, bike readiness planning centered on a full inspection/tune-up, replacing worn parts such as chain/brake pads/tires, cleaning and lubricating drivetrain and pivot points, checking tires and suspension, packing repair tools and spares, test-riding before departure, and planning bike-friendly routes and essential accessories.\",\"confidence\":0.86,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"SUMMARIZED\",\"quote\":\"I'm planning a road trip to the mountains in June and I want to make sure my bike is ready for the trip.\"}]}\n7. {\"type\":\"claim\",\"id\":\"hot-path-78d8ce6ecf94-claim-9\",\"score\":0.36451612903225805,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_goal\",\"predicate_family\":\"has_goal\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"The user wants to track bike mileage more accurately and calculate average cycling speed.\",\"context\":\"Imported past chat session about cycling metrics and bike mileage tracking.\",\"confidence\":0.94,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"IMPORTED\",\"quote\":\"Can you give me some tips on how to track my bike mileage more accurately, and also, do you know any way to calculate my average speed?\"}]}\n8. {\"type\":\"claim\",\"id\":\"hot-path-5498a0d53dd6-claim-7\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_experience_with\",\"predicate_family\":\"has_experience_with\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<3>\",\"text\":\"The user uses the user's bike for daily commutes to work.\",\"context\":\"The user's daily bike commute to work is about 10 miles round trip.\",\"confidence\":0.98,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"DIRECT\",\"quote\":\"I've been using my bike for my daily commutes to work\"}]}\n9. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-7\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"prefers\",\"predicate_family\":\"prefers\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<4>\",\"text\":\"The user is inclined to return to the local bike shop downtown for the user's next bike tune-up.\",\"context\":\"The user said the local bike shop downtown did a great tune-up last time and that the user might go back there for the next tune-up.\",\"confidence\":0.82,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"I might just go back there for my next tune-up\"}]}\n10. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-5\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_experience_with\",\"predicate_family\":\"has_experience_with\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<4>\",\"text\":\"The user has had good experiences with the local bike shop downtown.\",\"context\":\"The user said the shop did a great tune-up previously and had a knowledgeable, friendly mechanic.\",\"confidence\":0.97,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"I've had good experiences with the local bike shop downtown\"}]}\n11. {\"type\":\"claim\",\"id\":\"hot-path-5498a0d53dd6-claim-9\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_goal\",\"predicate_family\":\"has_goal\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"The user plans to look into bike insurance to protect the user's bike investment.\",\"context\":\"The user is considering bike insurance because the user uses the bike for daily commutes and will take it on longer trips.\",\"confidence\":0.94,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"DIRECT\",\"quote\":\"I'll definitely look into it\"}]}\n12. {\"type\":\"claim\",\"id\":\"hot-path-5498a0d53dd6-claim-6\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"owns_vehicle\",\"predicate_family\":\"owns_vehicle\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<5>\",\"text\":\"The user owns or uses a car.\",\"context\":\"The user is considering getting a bike rack for the user's car so the user can take the user's bike on longer trips.\",\"confidence\":0.92,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"DIRECT\",\"quote\":\"a bike rack for my car\"}]}\n13. {\"type\":\"claim\",\"id\":\"hot-path-78d8ce6ecf94-claim-11\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"prefers\",\"predicate_family\":\"prefers\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<6>\",\"text\":\"The user favored the Saris Bones 2-Bike Trunk Rack for transporting bikes by car.\",\"context\":\"The user said they thought they would order the Saris Bones 2-Bike Trunk Rack and cited sturdiness and easy installation.\",\"confidence\":0.82,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"IMPORTED\",\"quote\":\"I think I'm going to order a Saris Bones 2-Bike Trunk Rack next week. It's supposed to be really sturdy and easy to install.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "benchmark:longmemeval:gpt4_d84a3211",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "LongMemEval recall target.\nCurrent date: 2023/05/05 (Fri) 19:59\nQuestion: How much total money have I spent on bike-related expenses since the start of the year?",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "memoryToolOrigin": "provided_context",
+                    "standalone": true
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: benchmark:longmemeval:gpt4_d84a3211\n        Pass mode: intermediate_recall\n\n        Goal:\n        Preserve candidates that may be useful for a later global selector. This pass is recall-oriented, not final.\n\n        Selection rules:\n        - This is an intermediate pass over one candidate batch. A later global selector will rerank survivors from all batches.\n- When uncertain, select the candidate so the final pass can compare it globally.\n- Reject only candidates that are clearly irrelevant, stale compared to stronger active memory, or pure lexical noise. Do not treat an ACTIVE pending obligation as stale solely because its source is old; completion, cancellation, supersession, or a stronger contradictory active memory must be explicit.\n- Aim for at most 8 selected_items. Exceed that when many distinct dated facts or complete-set candidates are required together.\n        - Select the complete relevant set: every distinct candidate that may represent a separate matching item, event, assignment, source, or ordered fact needed to avoid an incomplete answer.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.\n        - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Planned coverage mode: COMPLETE_SET\n        Require evidence fallback: true\n        Retrieval budget: claims=10 notes=0 actionItems=0 sources=5 episodes=0\n        Target message:\n        LongMemEval recall target.\nCurrent date: 2023/05/05 (Fri) 19:59\nQuestion: How much total money have I spent on bike-related expenses since the start of the year?\n\n        Candidate memory items:\n        1. {\"type\":\"claim\",\"id\":\"hot-path-78d8ce6ecf94-claim-14\",\"score\":0.418,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_experience_with\",\"predicate_family\":\"has_experience_with\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<1>\",\"text\":\"The user has experience using the new bike lights for early morning rides.\",\"context\":\"Imported past chat session about the benefit of bike lights for low-light cycling.\",\"confidence\":0.96,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"IMPORTED\",\"quote\":\"it's made a huge difference for my early morning rides\"}]}\n2. {\"type\":\"note\",\"id\":\"hot-path-5498a0d53dd6-note-4\",\"score\":0.3935483870967742,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Chain lubrication procedure due May 15\",\"text\":\"For the User's bike chain lubrication maintenance, the reusable procedure is to choose bike-chain-specific lubricant suited to riding conditions, clean the chain first, apply a small amount to the inside links and pins, wipe off excess, inspect for a thin even coating, wipe cassette and chainrings, re-check after the first ride, and record the date and lubricant type in a maintenance log; avoid over-lubricating and use a chain wear indicator when needed.\",\"confidence\":0.96,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"SUMMARIZED\",\"quote\":\"I'm due to lubricate my chain on May 15th.\"}]}\n3. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-9\",\"score\":0.3916666666666666,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_goal\",\"predicate_family\":\"has_goal\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"The user intended to schedule a bike tune-up appointment soon with the local bike shop downtown.\",\"context\":\"The user said this after deciding they might return to the same downtown shop for the next tune-up.\",\"confidence\":0.9,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"I'll make sure to schedule an appointment with them soon\"}]}\n4. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-6\",\"score\":0.3790322580645161,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"owns\",\"predicate_family\":\"owns\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<2>\",\"text\":\"The user owns a Bell Zephyr helmet bought from the local bike shop downtown for $120.\",\"context\":\"The user mentioned buying the Bell Zephyr helmet at the local bike shop downtown while discussing bike tune-up services.\",\"confidence\":0.95,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"where I bought my Bell Zephyr helmet for $120\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path-1439f70c7a6d-note-4\",\"score\":0.3790322580645161,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"CONTEXT\",\"title\":\"Downtown bike shop preferred for recurring tune-ups\",\"text\":\"The User has a positive prior-service context with the local bike shop downtown: it is where the User bought a Bell Zephyr helmet for $120, the previous tune-up was done well, and the mechanic was knowledgeable and friendly, making it the likely choice for the next tune-up appointment.\",\"confidence\":0.95,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"They did a great job with the tune-up last time, and the mechanic was knowledgeable and friendly.\"}]}\n6. {\"type\":\"note\",\"id\":\"hot-path-78d8ce6ecf94-note-2\",\"score\":0.3790322580645161,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Bike preparation checklist for User's June mountain road trip\",\"text\":\"For the User's June mountain road trip, bike readiness planning centered on a full inspection/tune-up, replacing worn parts such as chain/brake pads/tires, cleaning and lubricating drivetrain and pivot points, checking tires and suspension, packing repair tools and spares, test-riding before departure, and planning bike-friendly routes and essential accessories.\",\"confidence\":0.86,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"SUMMARIZED\",\"quote\":\"I'm planning a road trip to the mountains in June and I want to make sure my bike is ready for the trip.\"}]}\n7. {\"type\":\"claim\",\"id\":\"hot-path-78d8ce6ecf94-claim-9\",\"score\":0.36451612903225805,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_goal\",\"predicate_family\":\"has_goal\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"The user wants to track bike mileage more accurately and calculate average cycling speed.\",\"context\":\"Imported past chat session about cycling metrics and bike mileage tracking.\",\"confidence\":0.94,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"IMPORTED\",\"quote\":\"Can you give me some tips on how to track my bike mileage more accurately, and also, do you know any way to calculate my average speed?\"}]}\n8. {\"type\":\"claim\",\"id\":\"hot-path-5498a0d53dd6-claim-7\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_experience_with\",\"predicate_family\":\"has_experience_with\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<3>\",\"text\":\"The user uses the user's bike for daily commutes to work.\",\"context\":\"The user's daily bike commute to work is about 10 miles round trip.\",\"confidence\":0.98,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"DIRECT\",\"quote\":\"I've been using my bike for my daily commutes to work\"}]}\n9. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-7\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"prefers\",\"predicate_family\":\"prefers\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<4>\",\"text\":\"The user is inclined to return to the local bike shop downtown for the user's next bike tune-up.\",\"context\":\"The user said the local bike shop downtown did a great tune-up last time and that the user might go back there for the next tune-up.\",\"confidence\":0.82,\"importance\":7,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"I might just go back there for my next tune-up\"}]}\n10. {\"type\":\"claim\",\"id\":\"hot-path-1439f70c7a6d-claim-5\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_experience_with\",\"predicate_family\":\"has_experience_with\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<4>\",\"text\":\"The user has had good experiences with the local bike shop downtown.\",\"context\":\"The user said the shop did a great tune-up previously and had a knowledgeable, friendly mechanic.\",\"confidence\":0.97,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:347563691e0a1508a0b73aab21b1e825\",\"kind\":\"DIRECT\",\"quote\":\"I've had good experiences with the local bike shop downtown\"}]}\n11. {\"type\":\"claim\",\"id\":\"hot-path-5498a0d53dd6-claim-9\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_goal\",\"predicate_family\":\"has_goal\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"The user plans to look into bike insurance to protect the user's bike investment.\",\"context\":\"The user is considering bike insurance because the user uses the bike for daily commutes and will take it on longer trips.\",\"confidence\":0.94,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"DIRECT\",\"quote\":\"I'll definitely look into it\"}]}\n12. {\"type\":\"claim\",\"id\":\"hot-path-5498a0d53dd6-claim-6\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"owns_vehicle\",\"predicate_family\":\"owns_vehicle\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<5>\",\"text\":\"The user owns or uses a car.\",\"context\":\"The user is considering getting a bike rack for the user's car so the user can take the user's bike on longer trips.\",\"confidence\":0.92,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:0f0c3411a193a1274254b00500c7629b\",\"kind\":\"DIRECT\",\"quote\":\"a bike rack for my car\"}]}\n13. {\"type\":\"claim\",\"id\":\"hot-path-78d8ce6ecf94-claim-11\",\"score\":0.35,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"prefers\",\"predicate_family\":\"prefers\",\"subject_entity_id\":\"entity:<0>\",\"object_entity_id\":\"entity:<6>\",\"text\":\"The user favored the Saris Bones 2-Bike Trunk Rack for transporting bikes by car.\",\"context\":\"The user said they thought they would order the Saris Bones 2-Bike Trunk Rack and cited sturdiness and easy installation.\",\"confidence\":0.82,\"importance\":6,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:provided-text:939397181cbd02a5318f953762dbf902\",\"kind\":\"IMPORTED\",\"quote\":\"I think I'm going to order a Saris Bones 2-Bike Trunk Rack next week. It's supposed to be really sturdy and easy to install.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "benchmark:longmemeval:gpt4_d84a3211",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"hot-path-78d8ce6ecf94-claim-14\",\"item_type\":\"claim\",\"reason\":\"Bike-related but no expense amount.\"},{\"item_id\":\"hot-path-5498a0d53dd6-note-4\",\"item_type\":\"note\",\"reason\":\"Maintenance procedure and due date, no money spent.\"},{\"item_id\":\"hot-path-1439f70c7a6d-claim-9\",\"item_type\":\"claim\",\"reason\":\"Future tune-up scheduling intent, no money spent.\"},{\"item_id\":\"hot-path-1439f70c7a6d-note-4\",\"item_type\":\"note\",\"reason\":\"Includes the same $120 helmet purchase but is a contextual note; direct claim is preferred.\"},{\"item_id\":\"hot-path-78d8ce6ecf94-note-2\",\"item_type\":\"note\",\"reason\":\"Bike preparation plan, no concrete expense amount.\"},{\"item_id\":\"hot-path-78d8ce6ecf94-claim-9\",\"item_type\":\"claim\",\"reason\":\"Bike mileage tracking goal, no expense.\"},{\"item_id\":\"hot-path-5498a0d53dd6-claim-7\",\"item_type\":\"claim\",\"reason\":\"Bike commuting fact, no expense.\"},{\"item_id\":\"hot-path-1439f70c7a6d-claim-7\",\"item_type\":\"claim\",\"reason\":\"Preference for future tune-up shop, no money spent.\"},{\"item_id\":\"hot-path-1439f70c7a6d-claim-5\",\"item_type\":\"claim\",\"reason\":\"Experience with bike shop, no concrete expense amount.\"},{\"item_id\":\"hot-path-5498a0d53dd6-claim-9\",\"item_type\":\"claim\",\"reason\":\"Plan to look into insurance, not an expense already spent.\"},{\"item_id\":\"hot-path-5498a0d53dd6-claim-6\",\"item_type\":\"claim\",\"reason\":\"Car ownership/use context, no bike-related expense amount.\"},{\"item_id\":\"hot-path-78d8ce6ecf94-claim-11\",\"item_type\":\"claim\",\"reason\":\"Future intention to order bike rack, not yet money spent.\"}],\"selected_items\":[{\"item_id\":\"hot-path-1439f70c7a6d-claim-6\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Contains a concrete bike-related purchase amount: Bell Zephyr helmet for $120.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Only one candidate in this batch gives a concrete bike-related amount already spent: $120 for a helmet.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4568,
+                "completionTokens": 549,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

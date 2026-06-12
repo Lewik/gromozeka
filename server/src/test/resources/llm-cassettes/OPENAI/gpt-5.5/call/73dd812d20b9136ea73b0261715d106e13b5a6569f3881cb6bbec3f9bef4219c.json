@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "73dd812d20b9136ea73b0261715d106e13b5a6569f3881cb6bbec3f9bef4219c",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many hours in total did I spend driving to my three road trip destinations combined?\n\n                                Question date:\n                                2023/05/30 (Tue) 07:22\n\n                                Expected answer:\n                                15 hours for getting to the three destinations (or 30 hours for the round trip)\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:aae3761f\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-b9e6afe4a7a8-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has experience with a road trip to the Outer Banks in North Carolina.; scope=User's travel experience with Outer Banks, North Carolina.; evidence=IMPORTED source=external:provided-text:39b52e771b5ca70330a2e8c1b4ab47b3 quote=\"my recent trip to Outer Banks in North Carolina - it only took me four hours to drive there from my place\"\n- claim hot-path-c1871b0a6779-claim-7 [ACTIVE] has_experience_with family=has_experience_with: The user has experience using a GPS device on a recent six-hour drive to Washington, D.C.; scope=User's reusable road-trip planning context.; evidence=DIRECT source=external:provided-text:1e6d6ce614da965707dcf1d2b5f86934 quote=\"I've had some great experiences with my GPS device, like when I drove for six hours to Washington D.C. recently\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:1e6d6ce614da965707dcf1d2b5f86934 [external_record ref=longmemeval:aae3761f:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a new road trip and need some help with route planning. I've had some great experiences with my GPS device, like when I drove for six hours to Washington D.C. recently, but I'm not sure about the best route to take for my next trip. Can you suggest some options for me?...\n...Here are some questions to help me get started:...\n...3. **How long do you want the trip to be?** Are you looking for a quick weekend getaway or a longer road trip?...\n...* Avoiding highways/toll roads...\n...Once I have this information, I can provide you with some personalized route options and suggestions to make your next road trip a success!...\n...assistant: A national park road trip out west sounds like an amazing adventure! With 7-10 days, you have a good amount of time to explore some of the most beautiful parks and scenic routes in the country. Here are a few options to consider:...\n...* Visit Grand Teton National Park and explore the scenic roads, hiking trails, and lakes...\n...* Take the scenic Beartooth Highway (US-212) to Montana and visit the Beartooth Mountains (approx. 4 hours)...\n...* Start from your hometown and head west on I-70 to Moab, Utah (approx. 16 hours)...\n...* Drive to Capitol Reef National Park and explore the scenic drives, hiking trails, and historic sites (approx. 2.5 hours)...\n...* End at Zion National Park and explore the scenic drives, hiking trails, and canyons (approx. 1.5 hours)...\n...* Drive to Sequoia National Park and explore the scenic drives, hiking trails, and giant sequoia groves (approx. 4 hours)...\n...* Return to your hometown via I-80 (approx. 20 hours)...\n...user: I really like the sound of Option 1, the Grand Teton and Yellowstone Loop. I've always wanted to visit Yellowstone and the Beartooth Highway looks amazing. Can you give me more information about the road conditions on the Beartooth Highway, especially since I'll be driving there in the summer?...\n...The Beartooth Highway (US-212) is a 68-mile scenic road that connects Cooke City, Montana, to Red Lodge, Montana, passing through the Beartooth Mountains. It's considered one of the most scenic drives in the US, with stunning mountain vistas, alpine lakes, and abundant wildlife....\n...1. **Paved road**: The entire highway is paved, making it suitable for most vehicles, including RVs and trailers....\n...**Summer Driving Tips**...\n...2. **Watch for wildlife**: The Beartooth Mountains are home to a variety of wildlife, including bears, elk, deer, and bighorn sheep. Be cautious when driving, especially at dawn and dusk when animals are most active....\n...5. **Check road conditions**: Before you start your drive, check the Montana Department of Transportation's website for any road closures or construction updates....\n...user: I was thinking about camping in the Grand Teton National Park area, but I'm not sure if I can find a campsite that fits my needs. Can you suggest some campgrounds in the area that can accommodate my vehicle and provide amenities like flush toilets and showers?...\n...1. **Colter Bay Campground**: Located on the shores of Jackson Lake, Colter Bay Campground has 350 campsites that can accommodate RVs and trailers up to 45 feet in length. Amenities include flush toilets, showers, and potable water. Reservations can be made through recreation.gov....\n...3. **Signal Mountain Campground**: Located on the shores of Jackson Lake, Signal Mountain Campground has 235 campsites that can accommodate RVs and trailers up to 30 feet in length. Amenities include flush toilets, showers, and potable water. Reservations can be made through recreation.gov....\n...2. **Curtis Canyon Campground**: Also located in the Bridger-Teton National Forest, Curtis Canyon Campground has 12 campsites that can accommodate RVs and trailers up to 30 feet in length. Amenities include vault toilets and potable water. Reservations can be made through recreation.gov....\n- source external:provided-text:39b52e771b5ca70330a2e8c1b4ab47b3 [external_record ref=longmemeval:aae3761f:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning another road trip and I'm thinking of going to a coastal town. Do you have any recommendations? By the way, I've had some great experiences with coastal trips, like my recent trip to Outer Banks in North Carolina - it only took me four hours to drive there from my place....\n...1. **Bar Harbor, Maine**: A charming coastal town near Acadia National Park, known for its stunning natural beauty, hiking trails, and delicious seafood. (~7-8 hours from NC)...\n...1. **Gulf Shores, Alabama**: A popular beach destination with white sandy beaches, golf courses, and a variety of outdoor activities like kayaking and paddleboarding. (~7-8 hours from NC)...\n...3. **St. Pete Beach, Florida**: A vibrant beach town near St. Petersburg, known for its beautiful beaches, waterfront restaurants, and a thriving arts scene. (~8-9 hours from NC)...\n...2. **Half Moon Bay, California**: A charming coastal town about 30 miles south of San Francisco, known for its beautiful beaches, surfing, and scenic drives. (~26-28 hours from NC, with stops)...\n...user: I'm thinking of a more relaxed, laid-back vibe for this trip. I'd like to focus on beach activities and water sports. Based on your previous suggestions, which one would you recommend between Chincoteague Island and Tybee Island?...\n...* Water sports like kayaking, paddleboarding, and fishing are popular, but the island's layout and currents might make surfing and other high-adrenaline activities more challenging...\n...user: I think I'll go with Tybee Island. I've heard great things about the surfing there. By the way, I've had some experience with road trips to coastal towns, and I'm comfortable with the driving distance. My last trip to Outer Banks only took about four hours, so I'm sure I can handle the drive to Tybee Island....\n...However, I should let you know that the driving distance from your location to Tybee Island might be a bit longer than you expect. According to Google Maps, the driving distance from the Outer Banks to Tybee Island is around 7-8 hours, depending on traffic and the route you take....\n...Additionally, you might want to check the road conditions and traffic updates before you leave to ensure a smooth trip. And don't forget to pack accordingly, with plenty of snacks, water, and entertainment for the road....\n...user: I'm thinking of stopping at Topsail Island, NC for a quick lunch break and maybe a short walk on the beach. I've heard great things about the seafood there, and it'll be nice to stretch my legs after a few hours of driving. Plus, it's not too far out of the way, so it shouldn't add too much time to my overall trip....\n...As you mentioned, Topsail Island is not too far out of the way, so it won't add too much time to your overall trip. From the Outer Banks, it's about a 2-hour drive to Topsail Island, and then another 4-5 hours to Tybee Island from there. So, you'll still have plenty of time to enjoy the rest of your drive and arrive at your destination in the afternoon....\n- source external:provided-text:b4ab91790382c91efd833a0abc1413bc [external_record ref=longmemeval:aae3761f:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a camping trip and need some advice on what gear to bring. I've had some experience with camping, like on my recent trip to the mountains in Tennessee - I drove for five hours to get there and it was totally worth it. What are some must-haves for a comfortable camping trip?...\n...Remember to check the weather forecast and campsite regulations before your trip to ensure you're prepared for any specific conditions. It's also a good idea to check with the campsite for any specific gear restrictions or recommendations....\n...* Compact and lightweight grills are ideal for backpacking or small camping trips....\n...user: Based on my experience with portable grills, like the one I used in Tennessee, I think I'll look for one with a propane fuel type and a compact design. I'm planning a solo trip, so a smaller grill should be sufficient. What are some good propane portable grills that are compact and lightweight?...\n...These grills are all high-quality, compact, and lightweight options that should meet your needs for a solo trip. Be sure to check the product reviews and specifications to ensure the grill you choose fits your specific requirements....\n...assistant: Safety first! Portable grills can be a wonderful addition to your camping trip, but it's crucial to use them responsibly and follow proper safety guidelines to avoid accidents and ensure a enjoyable experience. Here are some general safety tips and precautions to keep in mind when using a portable grill in a camping setting:...\n...2. **Check the propane tank**: Ensure the propane tank is filled and in good condition. Check the expiration date and follow the manufacturer's instructions for tank maintenance....\n...By following these safety guidelines and precautions, you'll be well on your way to a safe and enjoyable camping trip with your portable grill. Happy camping!...\n...2. **Prep ahead**: Prepare ingredients and marinate meats before your trip to save time and effort....\n...user: I'm planning to try out some new camping recipes on my next trip, and I was thinking of trying out some Dutch oven recipes. Do you have any suggestions for Dutch oven recipes that can be prepared using a portable grill?...\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Outer Banks, North Carolina; Location named Outer Banks, North Carolina.\n- entity entity:<1> [LOCATION]: Washington, D.C.; Location named Washington, D.C..\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "aae3761f",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many hours in total did I spend driving to my three road trip destinations combined?\n\n                                Question date:\n                                2023/05/30 (Tue) 07:22\n\n                                Expected answer:\n                                15 hours for getting to the three destinations (or 30 hours for the round trip)\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:aae3761f\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-b9e6afe4a7a8-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has experience with a road trip to the Outer Banks in North Carolina.; scope=User's travel experience with Outer Banks, North Carolina.; evidence=IMPORTED source=external:provided-text:39b52e771b5ca70330a2e8c1b4ab47b3 quote=\"my recent trip to Outer Banks in North Carolina - it only took me four hours to drive there from my place\"\n- claim hot-path-c1871b0a6779-claim-7 [ACTIVE] has_experience_with family=has_experience_with: The user has experience using a GPS device on a recent six-hour drive to Washington, D.C.; scope=User's reusable road-trip planning context.; evidence=DIRECT source=external:provided-text:1e6d6ce614da965707dcf1d2b5f86934 quote=\"I've had some great experiences with my GPS device, like when I drove for six hours to Washington D.C. recently\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:1e6d6ce614da965707dcf1d2b5f86934 [external_record ref=longmemeval:aae3761f:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a new road trip and need some help with route planning. I've had some great experiences with my GPS device, like when I drove for six hours to Washington D.C. recently, but I'm not sure about the best route to take for my next trip. Can you suggest some options for me?...\n...Here are some questions to help me get started:...\n...3. **How long do you want the trip to be?** Are you looking for a quick weekend getaway or a longer road trip?...\n...* Avoiding highways/toll roads...\n...Once I have this information, I can provide you with some personalized route options and suggestions to make your next road trip a success!...\n...assistant: A national park road trip out west sounds like an amazing adventure! With 7-10 days, you have a good amount of time to explore some of the most beautiful parks and scenic routes in the country. Here are a few options to consider:...\n...* Visit Grand Teton National Park and explore the scenic roads, hiking trails, and lakes...\n...* Take the scenic Beartooth Highway (US-212) to Montana and visit the Beartooth Mountains (approx. 4 hours)...\n...* Start from your hometown and head west on I-70 to Moab, Utah (approx. 16 hours)...\n...* Drive to Capitol Reef National Park and explore the scenic drives, hiking trails, and historic sites (approx. 2.5 hours)...\n...* End at Zion National Park and explore the scenic drives, hiking trails, and canyons (approx. 1.5 hours)...\n...* Drive to Sequoia National Park and explore the scenic drives, hiking trails, and giant sequoia groves (approx. 4 hours)...\n...* Return to your hometown via I-80 (approx. 20 hours)...\n...user: I really like the sound of Option 1, the Grand Teton and Yellowstone Loop. I've always wanted to visit Yellowstone and the Beartooth Highway looks amazing. Can you give me more information about the road conditions on the Beartooth Highway, especially since I'll be driving there in the summer?...\n...The Beartooth Highway (US-212) is a 68-mile scenic road that connects Cooke City, Montana, to Red Lodge, Montana, passing through the Beartooth Mountains. It's considered one of the most scenic drives in the US, with stunning mountain vistas, alpine lakes, and abundant wildlife....\n...1. **Paved road**: The entire highway is paved, making it suitable for most vehicles, including RVs and trailers....\n...**Summer Driving Tips**...\n...2. **Watch for wildlife**: The Beartooth Mountains are home to a variety of wildlife, including bears, elk, deer, and bighorn sheep. Be cautious when driving, especially at dawn and dusk when animals are most active....\n...5. **Check road conditions**: Before you start your drive, check the Montana Department of Transportation's website for any road closures or construction updates....\n...user: I was thinking about camping in the Grand Teton National Park area, but I'm not sure if I can find a campsite that fits my needs. Can you suggest some campgrounds in the area that can accommodate my vehicle and provide amenities like flush toilets and showers?...\n...1. **Colter Bay Campground**: Located on the shores of Jackson Lake, Colter Bay Campground has 350 campsites that can accommodate RVs and trailers up to 45 feet in length. Amenities include flush toilets, showers, and potable water. Reservations can be made through recreation.gov....\n...3. **Signal Mountain Campground**: Located on the shores of Jackson Lake, Signal Mountain Campground has 235 campsites that can accommodate RVs and trailers up to 30 feet in length. Amenities include flush toilets, showers, and potable water. Reservations can be made through recreation.gov....\n...2. **Curtis Canyon Campground**: Also located in the Bridger-Teton National Forest, Curtis Canyon Campground has 12 campsites that can accommodate RVs and trailers up to 30 feet in length. Amenities include vault toilets and potable water. Reservations can be made through recreation.gov....\n- source external:provided-text:39b52e771b5ca70330a2e8c1b4ab47b3 [external_record ref=longmemeval:aae3761f:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning another road trip and I'm thinking of going to a coastal town. Do you have any recommendations? By the way, I've had some great experiences with coastal trips, like my recent trip to Outer Banks in North Carolina - it only took me four hours to drive there from my place....\n...1. **Bar Harbor, Maine**: A charming coastal town near Acadia National Park, known for its stunning natural beauty, hiking trails, and delicious seafood. (~7-8 hours from NC)...\n...1. **Gulf Shores, Alabama**: A popular beach destination with white sandy beaches, golf courses, and a variety of outdoor activities like kayaking and paddleboarding. (~7-8 hours from NC)...\n...3. **St. Pete Beach, Florida**: A vibrant beach town near St. Petersburg, known for its beautiful beaches, waterfront restaurants, and a thriving arts scene. (~8-9 hours from NC)...\n...2. **Half Moon Bay, California**: A charming coastal town about 30 miles south of San Francisco, known for its beautiful beaches, surfing, and scenic drives. (~26-28 hours from NC, with stops)...\n...user: I'm thinking of a more relaxed, laid-back vibe for this trip. I'd like to focus on beach activities and water sports. Based on your previous suggestions, which one would you recommend between Chincoteague Island and Tybee Island?...\n...* Water sports like kayaking, paddleboarding, and fishing are popular, but the island's layout and currents might make surfing and other high-adrenaline activities more challenging...\n...user: I think I'll go with Tybee Island. I've heard great things about the surfing there. By the way, I've had some experience with road trips to coastal towns, and I'm comfortable with the driving distance. My last trip to Outer Banks only took about four hours, so I'm sure I can handle the drive to Tybee Island....\n...However, I should let you know that the driving distance from your location to Tybee Island might be a bit longer than you expect. According to Google Maps, the driving distance from the Outer Banks to Tybee Island is around 7-8 hours, depending on traffic and the route you take....\n...Additionally, you might want to check the road conditions and traffic updates before you leave to ensure a smooth trip. And don't forget to pack accordingly, with plenty of snacks, water, and entertainment for the road....\n...user: I'm thinking of stopping at Topsail Island, NC for a quick lunch break and maybe a short walk on the beach. I've heard great things about the seafood there, and it'll be nice to stretch my legs after a few hours of driving. Plus, it's not too far out of the way, so it shouldn't add too much time to my overall trip....\n...As you mentioned, Topsail Island is not too far out of the way, so it won't add too much time to your overall trip. From the Outer Banks, it's about a 2-hour drive to Topsail Island, and then another 4-5 hours to Tybee Island from there. So, you'll still have plenty of time to enjoy the rest of your drive and arrive at your destination in the afternoon....\n- source external:provided-text:b4ab91790382c91efd833a0abc1413bc [external_record ref=longmemeval:aae3761f:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning a camping trip and need some advice on what gear to bring. I've had some experience with camping, like on my recent trip to the mountains in Tennessee - I drove for five hours to get there and it was totally worth it. What are some must-haves for a comfortable camping trip?...\n...Remember to check the weather forecast and campsite regulations before your trip to ensure you're prepared for any specific conditions. It's also a good idea to check with the campsite for any specific gear restrictions or recommendations....\n...* Compact and lightweight grills are ideal for backpacking or small camping trips....\n...user: Based on my experience with portable grills, like the one I used in Tennessee, I think I'll look for one with a propane fuel type and a compact design. I'm planning a solo trip, so a smaller grill should be sufficient. What are some good propane portable grills that are compact and lightweight?...\n...These grills are all high-quality, compact, and lightweight options that should meet your needs for a solo trip. Be sure to check the product reviews and specifications to ensure the grill you choose fits your specific requirements....\n...assistant: Safety first! Portable grills can be a wonderful addition to your camping trip, but it's crucial to use them responsibly and follow proper safety guidelines to avoid accidents and ensure a enjoyable experience. Here are some general safety tips and precautions to keep in mind when using a portable grill in a camping setting:...\n...2. **Check the propane tank**: Ensure the propane tank is filled and in good condition. Check the expiration date and follow the manufacturer's instructions for tank maintenance....\n...By following these safety guidelines and precautions, you'll be well on your way to a safe and enjoyable camping trip with your portable grill. Happy camping!...\n...2. **Prep ahead**: Prepare ingredients and marinate meats before your trip to save time and effort....\n...user: I'm planning to try out some new camping recipes on my next trip, and I was thinking of trying out some Dutch oven recipes. Do you have any suggestions for Dutch oven recipes that can be prepared using a portable grill?...\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Outer Banks, North Carolina; Location named Outer Banks, North Carolina.\n- entity entity:<1> [LOCATION]: Washington, D.C.; Location named Washington, D.C..\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "aae3761f",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"15 hours total to get to the three destinations, or 30 hours round trip.\",\"reason\":\"The memory gives one-way drive times of 4 hours to Outer Banks, 6 hours to Washington, D.C., and 5 hours to Tennessee, totaling 15 hours.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3162,
+                "completionTokens": 148,
+                "thinkingTokens": 68,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

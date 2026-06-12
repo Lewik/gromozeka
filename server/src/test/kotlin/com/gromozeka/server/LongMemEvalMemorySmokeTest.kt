@@ -59,7 +59,15 @@ import org.junit.jupiter.api.Timeout
 class LongMemEvalMemorySmokeTest {
 
     @Test
-    @Timeout(value = 90, unit = TimeUnit.MINUTES)
+    fun parsesBalancedSamplePages() {
+        assertEquals(LongMemEvalBalancedSample(perType = 1, page = 1), LongMemEvalBalancedSample.parse("balanced"))
+        assertEquals(LongMemEvalBalancedSample(perType = 4, page = 1), LongMemEvalBalancedSample.parse("balanced:4"))
+        assertEquals(LongMemEvalBalancedSample(perType = 4, page = 2), LongMemEvalBalancedSample.parse("balanced:4@2"))
+        assertEquals(null, LongMemEvalBalancedSample.parse("random:4"))
+    }
+
+    @Test
+    @Timeout(value = 4, unit = TimeUnit.HOURS)
     fun runLongMemEvalMemorySmoke() = runBlocking {
         if (!java.lang.Boolean.getBoolean(ENABLE_PROPERTY)) {
             println(
@@ -576,16 +584,19 @@ class LongMemEvalMemorySmokeTest {
     private fun List<LongMemEvalEntry>.sampleByProperty(): List<LongMemEvalEntry> {
         val sample = System.getProperty(SAMPLE_PROPERTY)?.trim().orEmpty()
         if (sample.isBlank()) return this
-        val balancedPrefix = "balanced"
-        require(sample == balancedPrefix || sample.startsWith("$balancedPrefix:")) {
-            "Unsupported LongMemEval sample mode '$sample'. Supported: balanced or balanced:<per-type-count>."
-        }
-        val perType = sample.substringAfter(":", "1").toIntOrNull()?.takeIf { it > 0 }
-            ?: throw IllegalArgumentException("Invalid LongMemEval balanced sample count: $sample")
+        val balancedSample = LongMemEvalBalancedSample.parse(sample)
+            ?: throw IllegalArgumentException(
+                "Unsupported LongMemEval sample mode '$sample'. Supported: balanced, balanced:<per-type-count>, or balanced:<per-type-count>@<page>."
+            )
+        val originalIndex = withIndex().associate { (index, entry) -> entry.questionId to index }
         return groupBy { it.questionType }
             .values
-            .flatMap { entries -> entries.take(perType) }
-            .sortedBy { indexOf(it) }
+            .flatMap { entries ->
+                entries
+                    .drop(balancedSample.offsetPerType)
+                    .take(balancedSample.perType)
+            }
+            .sortedBy { entry -> originalIndex.getValue(entry.questionId) }
     }
 
     private fun List<LongMemEvalEntry>.limitByProperty(): List<LongMemEvalEntry> {
@@ -1035,6 +1046,29 @@ private data class LongMemEvalSupportJudgement(
     val hypothesis: String,
     val reason: String,
 )
+
+private data class LongMemEvalBalancedSample(
+    val perType: Int,
+    val page: Int,
+) {
+    val offsetPerType: Int
+        get() = perType * (page - 1)
+
+    companion object {
+        fun parse(value: String): LongMemEvalBalancedSample? {
+            if (value == "balanced") return LongMemEvalBalancedSample(perType = 1, page = 1)
+            if (!value.startsWith("balanced:")) return null
+            val body = value.substringAfter("balanced:")
+            val perTypeText = body.substringBefore("@")
+            val pageText = body.substringAfter("@", "1")
+            val perType = perTypeText.toIntOrNull()?.takeIf { it > 0 }
+                ?: throw IllegalArgumentException("Invalid LongMemEval balanced sample count: $value")
+            val page = pageText.toIntOrNull()?.takeIf { it > 0 }
+                ?: throw IllegalArgumentException("Invalid LongMemEval balanced sample page: $value")
+            return LongMemEvalBalancedSample(perType = perType, page = page)
+        }
+    }
+}
 
 @Serializable
 private data class LongMemEvalSmokeCaseResult(

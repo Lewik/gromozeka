@@ -46,9 +46,13 @@ Useful selection knobs:
 ```text
 -Dgromozeka.longmemeval.caseFilter=<question-id-or-substring>
 -Dgromozeka.longmemeval.type=<question_type>[,<question_type>]
--Dgromozeka.longmemeval.sample=balanced[:per-type-count]
+-Dgromozeka.longmemeval.sample=balanced[:per-type-count][@page]
 -Dgromozeka.longmemeval.data=/absolute/path/to/longmemeval_*.json
 ```
+
+`balanced:4` selects the first four cases of each question type. `balanced:4@2`
+selects the next four cases of each type. This keeps benchmark shards
+deterministic and cassette-friendly without random sampling.
 
 Artifacts are written to:
 

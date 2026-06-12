@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "efe358178c4c21aba0ea3ee3f57d58c916ce17dd3f71129933ff9bd363dd4818",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many hours have I spent on my abstract ocean sculpture?\n\n                                Question date:\n                                2023/06/18 (Sun) 14:57\n\n                                Expected answer:\n                                10-12 hours\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:71315a70\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1e988ed1ce05-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's abstract ocean sculpture had 10–12 hours of work invested as of 2023-06-17.; scope=Applies to the user's abstract ocean sculpture work-time benchmark as of 2023-06-17.; evidence=DIRECT source=external:provided-text:bb12fef6e6a5429ac0f1476ea3cb35a5 quote=\"I've already put in 10-12 hours, and it's still a work in progress.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:bb12fef6e6a5429ac0f1476ea3cb35a5 [external_record ref=longmemeval:71315a70:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm thinking of creating a sculpture inspired by the sunset. Do you have any tips on how to capture the colors and texture of the sky in clay? By the way, I've been spending a lot of time on my abstract ocean sculpture lately - I've already put in 10-12 hours, and it's still a work in progress....\n...1. **Observe and reference**: Take photos of sunsets and study the color palette. Notice how the colors gradate from warm oranges and yellows to cool blues and purples. Collect reference images to inspire your color choices....\n...1. **Scale**: Consider the scale of your sculpture and how it will impact the overall effect. A larger piece may allow for more dramatic color and texture contrasts....\n...It's great to hear that you're making progress on your abstract ocean sculpture! 10-12 hours is a significant investment of time, and I'm sure it will be a stunning piece. Remember to take breaks, step back, and evaluate your work regularly to ensure you're achieving the desired effect....\n...user: That's really helpful, thanks for the tips. I'm thinking of using a combination of layering and impasto to create a sense of movement in my sunset sculpture. Do you know any good resources for finding unique sculpting tools or objects to use for stamping and carving?...\n...2. **Thrift stores and flea markets**: You can find unique, one-of-a-kind objects at thrift stores and flea markets that can be repurposed as sculpting tools or incorporated into your sculpture....\n...1. **Ceramic and sculpting forums**: Join online forums or social media groups dedicated to ceramics and sculpture, where members often share tips, resources, and ideas for creating unique tools and techniques....\n...2. **Experiment and test**: Test your found objects on a small scale before using them on your sculpture to ensure they produce the desired effect....\n...user: I've been thinking of using some natural materials like seashells or driftwood in my abstract ocean sculpture. Do you know if I can use them directly in the clay or if I need to do something to prepare them first?...\n...3. **Firing**: When firing your sculpture, make sure to follow the recommended temperature and firing schedule for your clay body. Natural materials may have different thermal expansion rates, so it's crucial to test them in a small, controlled environment before firing your entire piece....\n...3. **Preservation**: Consider applying a sealant or coating to protect the natural materials from damage or degradation over time....\n...By following these tips and taking the necessary precautions, you can successfully incorporate natural materials into your abstract ocean sculpture and create a truly unique piece....\n...user: I'm thinking of creating a series of sculptures inspired by the ocean, and I'd like to explore different techniques and materials for each piece. Do you have any suggestions for a sculpture that incorporates found ocean objects, like sea glass or beach stones, with clay?...\n...4. **Storytelling**: Use the found objects to tell a story or convey a message about the ocean and its importance. This can add an extra layer of meaning to your sculpture....\n...By combining found ocean objects with clay, you can create a unique and captivating sculpture that celebrates the beauty of the ocean. Remember to experiment and play with different techniques and materials to achieve the desired effect....\n...user: I've already spent 10-12 hours on my abstract ocean sculpture, and I'm excited to explore new techniques and materials for my next piece. I think I'll try incorporating some found ocean objects, like sea glass or beach stones, into my next sculpture. Thanks for the tips and ideas!...\n...If you have any more questions or need further guidance, feel free to ask. I'm always here to help. And don't forget to have fun and enjoy the process of creating – it's just as important as the final product!...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: User's abstract ocean sculpture; Concept named User's abstract ocean sculpture.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "71315a70",
+                "questionType": "knowledge-update"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many hours have I spent on my abstract ocean sculpture?\n\n                                Question date:\n                                2023/06/18 (Sun) 14:57\n\n                                Expected answer:\n                                10-12 hours\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:71315a70\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1e988ed1ce05-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's abstract ocean sculpture had 10–12 hours of work invested as of 2023-06-17.; scope=Applies to the user's abstract ocean sculpture work-time benchmark as of 2023-06-17.; evidence=DIRECT source=external:provided-text:bb12fef6e6a5429ac0f1476ea3cb35a5 quote=\"I've already put in 10-12 hours, and it's still a work in progress.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:bb12fef6e6a5429ac0f1476ea3cb35a5 [external_record ref=longmemeval:71315a70:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm thinking of creating a sculpture inspired by the sunset. Do you have any tips on how to capture the colors and texture of the sky in clay? By the way, I've been spending a lot of time on my abstract ocean sculpture lately - I've already put in 10-12 hours, and it's still a work in progress....\n...1. **Observe and reference**: Take photos of sunsets and study the color palette. Notice how the colors gradate from warm oranges and yellows to cool blues and purples. Collect reference images to inspire your color choices....\n...1. **Scale**: Consider the scale of your sculpture and how it will impact the overall effect. A larger piece may allow for more dramatic color and texture contrasts....\n...It's great to hear that you're making progress on your abstract ocean sculpture! 10-12 hours is a significant investment of time, and I'm sure it will be a stunning piece. Remember to take breaks, step back, and evaluate your work regularly to ensure you're achieving the desired effect....\n...user: That's really helpful, thanks for the tips. I'm thinking of using a combination of layering and impasto to create a sense of movement in my sunset sculpture. Do you know any good resources for finding unique sculpting tools or objects to use for stamping and carving?...\n...2. **Thrift stores and flea markets**: You can find unique, one-of-a-kind objects at thrift stores and flea markets that can be repurposed as sculpting tools or incorporated into your sculpture....\n...1. **Ceramic and sculpting forums**: Join online forums or social media groups dedicated to ceramics and sculpture, where members often share tips, resources, and ideas for creating unique tools and techniques....\n...2. **Experiment and test**: Test your found objects on a small scale before using them on your sculpture to ensure they produce the desired effect....\n...user: I've been thinking of using some natural materials like seashells or driftwood in my abstract ocean sculpture. Do you know if I can use them directly in the clay or if I need to do something to prepare them first?...\n...3. **Firing**: When firing your sculpture, make sure to follow the recommended temperature and firing schedule for your clay body. Natural materials may have different thermal expansion rates, so it's crucial to test them in a small, controlled environment before firing your entire piece....\n...3. **Preservation**: Consider applying a sealant or coating to protect the natural materials from damage or degradation over time....\n...By following these tips and taking the necessary precautions, you can successfully incorporate natural materials into your abstract ocean sculpture and create a truly unique piece....\n...user: I'm thinking of creating a series of sculptures inspired by the ocean, and I'd like to explore different techniques and materials for each piece. Do you have any suggestions for a sculpture that incorporates found ocean objects, like sea glass or beach stones, with clay?...\n...4. **Storytelling**: Use the found objects to tell a story or convey a message about the ocean and its importance. This can add an extra layer of meaning to your sculpture....\n...By combining found ocean objects with clay, you can create a unique and captivating sculpture that celebrates the beauty of the ocean. Remember to experiment and play with different techniques and materials to achieve the desired effect....\n...user: I've already spent 10-12 hours on my abstract ocean sculpture, and I'm excited to explore new techniques and materials for my next piece. I think I'll try incorporating some found ocean objects, like sea glass or beach stones, into my next sculpture. Thanks for the tips and ideas!...\n...If you have any more questions or need further guidance, feel free to ask. I'm always here to help. And don't forget to have fun and enjoy the process of creating – it's just as important as the final product!...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: User's abstract ocean sculpture; Concept named User's abstract ocean sculpture.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "71315a70",
+                "questionType": "knowledge-update"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"10–12 hours\",\"reason\":\"The retrieved claim and evidence explicitly state the user had already put 10–12 hours into the abstract ocean sculpture.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1673,
+                "completionTokens": 67,
+                "thinkingTokens": 12,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
