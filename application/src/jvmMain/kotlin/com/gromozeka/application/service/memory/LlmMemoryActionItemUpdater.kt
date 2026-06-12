@@ -272,7 +272,7 @@ class LlmMemoryActionItemUpdater(
                 ?.trim()
                 ?.takeIf { it.isNotBlank() && it != "null" }
 
-            if (quote != null && !request.source.contentText.contains(quote, ignoreCase = true)) {
+            if (quote != null && !MemoryEvidenceQuoteMatcher.matches(request.source.contentText, quote)) {
                 return null
             }
 

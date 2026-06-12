@@ -177,7 +177,7 @@ class LlmMemoryNoteConstructor(
             ?.takeIf { it.isNotBlank() && it != "null" }
             ?: return null
 
-        if (!request.source.contentText.contains(quote, ignoreCase = true)) {
+        if (!MemoryEvidenceQuoteMatcher.matches(request.source.contentText, quote)) {
             log.info {
                 "Memory note constructor dropped candidate without target evidence quote: " +
                     "namespace=${request.namespace.value} source=${request.source.id.value} " +

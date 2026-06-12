@@ -1797,7 +1797,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         val quote = requireNotNull(evidenceQuote?.takeIf { it.isNotBlank() }) {
             "INSERT note candidate must include evidenceQuote"
         }
-        require(input.request.source.contentText.contains(quote, ignoreCase = true)) {
+        require(MemoryEvidenceQuoteMatcher.matches(input.request.source.contentText, quote)) {
             "INSERT note evidenceQuote must be copied from the source text"
         }
 
@@ -1914,7 +1914,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         val quote = requireNotNull(evidenceQuote?.takeIf { it.isNotBlank() }) {
             "INSERT claim candidate must include evidenceQuote"
         }
-        require(input.request.source.contentText.contains(quote, ignoreCase = true)) {
+        require(MemoryEvidenceQuoteMatcher.matches(input.request.source.contentText, quote)) {
             "INSERT claim evidenceQuote must be copied from the source text"
         }
 
@@ -2024,7 +2024,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         val quote = requireNotNull(evidenceQuote?.takeIf { it.isNotBlank() }) {
             "INSERT actionItem draft must include evidenceQuote"
         }
-        require(input.request.source.contentText.contains(quote, ignoreCase = true)) {
+        require(MemoryEvidenceQuoteMatcher.matches(input.request.source.contentText, quote)) {
             "INSERT actionItem evidenceQuote must be copied from the source text"
         }
 
@@ -2063,7 +2063,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         input: DirectStructuredMemoryWriteMaterialization,
     ): List<MemoryEvidenceRef> {
         val quote = this?.evidenceQuote?.takeIf { it.isNotBlank() } ?: return emptyList()
-        if (!input.request.source.contentText.contains(quote, ignoreCase = true)) {
+        if (!MemoryEvidenceQuoteMatcher.matches(input.request.source.contentText, quote)) {
             return emptyList()
         }
         return listOf(

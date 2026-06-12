@@ -213,7 +213,7 @@ class LlmMemoryClaimExtractor(
             ?.takeIf { it.isNotBlank() && it != "null" }
             ?: return null
 
-        if (!request.source.contentText.contains(mappedEvidenceQuote, ignoreCase = true)) {
+        if (!MemoryEvidenceQuoteMatcher.matches(request.source.contentText, mappedEvidenceQuote)) {
             log.info {
                 "Memory claim extractor dropped candidate without target evidence quote: " +
                     "namespace=${request.namespace.value} source=${request.source.id.value} " +
