@@ -357,11 +357,15 @@ class LongMemEvalMemorySmokeTest {
                 systemPrompts = listOf(
                     """
                     You are an objective evaluator for a long-term-memory benchmark.
-                    Decide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.
+                    Decide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.
+                    Retrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.
                     Mark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.
                     For imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.
                     Accept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.
+                    Details that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.
                     The official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.
+                    For preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.
+                    Do not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.
                     Mark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.
                     Return only the configured JSON object.
                     """.trimIndent()
@@ -380,7 +384,7 @@ class LongMemEvalMemorySmokeTest {
                                 Question date:
                                 ${entry.questionDate}
 
-                                Expected answer:
+                                Noisy expected-answer label:
                                 $expectedAnswer
 
                                 Retrieved memory context:

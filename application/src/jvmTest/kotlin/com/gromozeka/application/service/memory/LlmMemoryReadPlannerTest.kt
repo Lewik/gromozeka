@@ -132,6 +132,54 @@ class LlmMemoryReadPlannerTest {
         assertTrue(plan.retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE })
     }
 
+    @Test
+    fun upgradesRelativeTemporalCountPlanToCompleteSetWithSourceFallback() = runBlocking {
+        val runtime = CapturingJsonRuntime(
+            """
+            {
+              "need_memory": true,
+              "answer_mode": "factual",
+              "coverage_mode": "minimal",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 4,
+                "notes": 0,
+                "action_items": 0,
+                "sources": 0,
+                "episodes": 0
+              },
+              "retrieval_requests": [
+                {
+                  "memory_type": "claim",
+                  "why": "Find direct booking facts.",
+                  "query": "Airbnb booking months ago",
+                  "top_k": 4,
+                  "filters": {},
+                  "preferred_claim_predicates": [],
+                  "deprioritized_claim_predicates": []
+                }
+              ],
+              "require_evidence_fallback": false
+            }
+            """.trimIndent()
+        )
+
+        val plan = LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(
+            readRequest("How many months ago did I book the Airbnb in San Francisco?")
+        )
+
+        assertEquals(MemoryReadPlan.CoverageMode.COMPLETE_SET, plan.coverageMode)
+        assertEquals(true, plan.requireEvidenceFallback)
+        assertTrue(plan.retrievalBudget.claims >= 8)
+        assertTrue(plan.retrievalBudget.sources >= 2)
+        assertTrue(plan.retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE })
+    }
+
     private class CapturingJsonRuntime(
         vararg responses: String,
     ) : AiRuntime {

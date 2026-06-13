@@ -60,6 +60,7 @@ class LlmMemoryReadPlanner(
             parse = {
                 json.decodeFromString<ReadPlannerResponse>(it)
                     .toPlan()
+                    .withCoverageGuards(request)
                     .withRationaleNoteRequest(request)
             },
         )
@@ -150,6 +151,7 @@ class LlmMemoryReadPlanner(
                 "query=${verifier.query.oneLineForReadMemoryLog(300)} reason=${verifier.reason.oneLineForReadMemoryLog(300)}"
         }
         return verifier.toFallbackPlan(request)
+            .withCoverageGuards(request)
     }
 
     private fun buildNeedVerifierPrompt(request: MemoryReadRequest): String = """
@@ -459,6 +461,44 @@ private fun MemoryReadPlan.withRationaleNoteRequest(request: MemoryReadRequest):
     )
 }
 
+private fun MemoryReadPlan.withCoverageGuards(request: MemoryReadRequest): MemoryReadPlan {
+    if (!needMemory) return this
+
+    val target = request.targetMessageText()
+    val needsCompleteSet = target.requiresCompleteSetCoverage()
+    val needsTemporalEvidence = target.requiresTemporalEvidenceFallback()
+    if (!needsCompleteSet && !needsTemporalEvidence) return this
+
+    val guardedBudget = retrievalBudget.copy(
+        claims = retrievalBudget.claims.coerceAtLeast(if (needsCompleteSet) 8 else 4),
+        sources = retrievalBudget.sources.coerceAtLeast(if (needsTemporalEvidence || needsCompleteSet) 2 else 0),
+    )
+    val hasSourceRequest = retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE }
+    val guardedRequests = if (hasSourceRequest || (!needsTemporalEvidence && !needsCompleteSet)) {
+        retrievalRequests
+    } else {
+        retrievalRequests + MemoryReadPlan.RetrievalRequest(
+            memoryType = MemorySemanticType.SOURCE,
+            why = "Coverage guard added source evidence for count/temporal recall; typed facts may miss required anchors.",
+            query = target.ifBlank { "temporal count recall source evidence" },
+            topK = 2,
+            preferredClaimPredicates = emptyList(),
+            deprioritizedClaimPredicates = emptyList(),
+        )
+    }
+
+    return copy(
+        coverageMode = if (needsCompleteSet || needsTemporalEvidence) {
+            MemoryReadPlan.CoverageMode.COMPLETE_SET
+        } else {
+            coverageMode
+        },
+        retrievalBudget = guardedBudget,
+        retrievalRequests = guardedRequests,
+        requireEvidenceFallback = requireEvidenceFallback || needsTemporalEvidence || needsCompleteSet,
+    )
+}
+
 private fun MemoryReadRequest.memoryThreadContextSummaryForLog(): String {
     val targetIndex = threadContext.messages.indexOfFirst { it.id == threadContext.targetMessageId }
     return "conversation=${threadContext.conversationId.value} thread=${threadContext.threadId.value} " +
@@ -487,6 +527,36 @@ private fun MemoryReadRequest.targetMessageText(): String {
             is Conversation.Message.ContentItem.Thinking -> null
         }
     }.joinToString("\n").trim()
+}
+
+private fun String.requiresCompleteSetCoverage(): Boolean {
+    val normalized = lowercase().replace(Regex("\\s+"), " ")
+    return normalized.contains("how many") ||
+        normalized.contains("how much") ||
+        normalized.contains("list all") ||
+        normalized.contains("all of") ||
+        normalized.contains("every ") ||
+        normalized.contains("which one") ||
+        normalized.contains("which did") ||
+        normalized.contains("which was") ||
+        normalized.contains("first") ||
+        normalized.contains("second") ||
+        normalized.contains("third") ||
+        normalized.contains("latest") ||
+        normalized.contains("earliest") ||
+        normalized.contains("most recent") ||
+        normalized.contains("before") ||
+        normalized.contains("after")
+}
+
+private fun String.requiresTemporalEvidenceFallback(): Boolean {
+    val normalized = lowercase().replace(Regex("\\s+"), " ")
+    return normalized.contains("how long ago") ||
+        Regex("""how many\s+(seconds?|minutes?|hours?|days?|weeks?|months?|years?)\s+ago""").containsMatchIn(normalized) ||
+        normalized.contains("when did") ||
+        normalized.contains("what date") ||
+        normalized.contains("what day") ||
+        normalized.contains("which date")
 }
 
 private fun String.toAnswerMode(): MemoryReadPlan.AnswerMode =

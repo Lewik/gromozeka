@@ -250,6 +250,44 @@ class RuntimeMemoryReadPipeline(
             }
         }
 
+        if (plan.shouldSweepCompleteSetSources()) {
+            val sourceSweepLimit = plan.completeSetSourceSweepLimit()
+            val sourceSweepSearchLimit = (sourceSweepLimit + request.threadContext.messages.size + 4).coerceAtMost(50)
+            val rawSourceSweepHits = store.search(
+                MemoryStore.SearchRequest(
+                    query = "",
+                    namespace = request.namespace,
+                    scopes = setOf(MemoryStore.SearchScope.SOURCES),
+                    filters = MemoryStore.SearchFilters(),
+                    limit = sourceSweepSearchLimit,
+                )
+            )
+            val sourceSweepSelection = rawSourceSweepHits
+                .excludeCurrentThreadSources(request)
+                .applySourceRetrievalPolicyFor(MemorySemanticType.SOURCE)
+            val sourceSweepHits = sourceSweepSelection.hits
+                .sortedForRuntimeMemoryRead()
+                .take(sourceSweepLimit)
+            hits += sourceSweepHits
+            searchSteps += MemoryReadTrace.SearchStep(
+                stage = "coverage:${MemorySemanticType.SOURCE.name}",
+                query = "",
+                scope = MemoryStore.SearchScope.SOURCES.name,
+                requestedLimit = sourceSweepLimit,
+                rawCount = rawSourceSweepHits.size,
+                candidateCount = sourceSweepSelection.hits.size,
+                selectedCount = sourceSweepHits.size,
+                rawTopHits = rawSourceSweepHits.toTraceHits(limit = 5),
+                selectedTopHits = sourceSweepHits.toTraceHits(limit = 5),
+            )
+            log.info {
+                "Memory read complete-set source sweep: namespace=${request.namespace.value} " +
+                    "limit=$sourceSweepLimit searchLimit=$sourceSweepSearchLimit rawHits=${rawSourceSweepHits.size} " +
+                    "hits=${sourceSweepHits.size} sourcePolicy=${sourceSweepSelection.summaryForLog()} " +
+                    "top=${sourceSweepHits.summaryForRuntimeMemoryLog()}"
+            }
+        }
+
         if (plan.shouldTrySourceFallback(hits)) {
             val sourceFallbackQuery = request.sourceFallbackSearchQuery(plan)
             val sourceFallbackLimit = (plan.retrievalBudget.sources.takeIf { it > 0 } ?: 3).coerceIn(1, 8)
@@ -1350,6 +1388,15 @@ private fun MemoryReadPlan.shouldTrySourceFallback(hits: List<MemoryStore.Search
     needMemory &&
         retrievalRequests.none { it.memoryType == MemorySemanticType.SOURCE } &&
         (requireEvidenceFallback || answerMode == MemoryReadPlan.AnswerMode.RATIONALE || hits.none { it.isAnswerCandidateForRecall() })
+
+private fun MemoryReadPlan.shouldSweepCompleteSetSources(): Boolean =
+    needMemory &&
+        coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET &&
+        (requireEvidenceFallback || retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE })
+
+private fun MemoryReadPlan.completeSetSourceSweepLimit(): Int =
+    (retrievalBudget.sources.takeIf { it > 0 } ?: 6)
+        .coerceIn(4, 12)
 
 private fun MemoryStore.SearchHit.isAnswerCandidateForRecall(): Boolean =
     when (this) {

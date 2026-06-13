@@ -37,17 +37,22 @@ class LlmMemoryReadSelector(
             return MemoryReadSelectionResult(selectedHits = emptyList(), summary = "No candidates.")
         }
 
-        if (request.candidateHits.size <= READ_SELECTOR_CANDIDATE_BATCH_SIZE) {
+        if (request.candidateHits.size <= request.plan.readSelectorDirectFinalCandidateLimit()) {
             val result = selectBatch(
                 request = request,
                 batchLabel = null,
                 passMode = ReadSelectorPassMode.FINAL_SELECTION,
             )
+            val finalSafetyAddedHits = request.finalSelectionSafetyAddedHits(result.selectedHits)
+            val finalSelectedHits = (result.selectedHits + finalSafetyAddedHits)
+                .distinctBy { it.toReadSelectorItemRef() }
             return result.copy(
+                selectedHits = finalSelectedHits,
+                summary = result.summary.withFinalSafetySummary(finalSafetyAddedHits),
                 selectorTrace = MemoryReadSelectorTrace(
                     initialCandidateCount = request.candidateHits.size,
                     finalCandidateCount = request.candidateHits.size,
-                    selectedCount = result.selectedHits.size,
+                    selectedCount = finalSelectedHits.size,
                     stages = listOf(
                         readSelectorTraceStage(
                             mode = MemoryReadSelectorTrace.Mode.FINAL_SELECTION,
@@ -57,8 +62,8 @@ class LlmMemoryReadSelector(
                             inputHits = request.candidateHits,
                             llmSelectedHits = result.selectedHits,
                             llmCarriedHits = emptyList(),
-                            safetyAddedHits = emptyList(),
-                            outputHits = result.selectedHits,
+                            safetyAddedHits = finalSafetyAddedHits,
+                            outputHits = finalSelectedHits,
                         )
                     ),
                 ),
@@ -79,11 +84,12 @@ class LlmMemoryReadSelector(
         val levelSummaries = mutableListOf<String>()
         val traceStages = mutableListOf<MemoryReadSelectorTrace.Stage>()
 
-        while (survivors.size > READ_SELECTOR_CANDIDATE_BATCH_SIZE) {
-            val candidateBatches = survivors.chunked(READ_SELECTOR_CANDIDATE_BATCH_SIZE)
+        while (survivors.size > request.plan.readSelectorDirectFinalCandidateLimit()) {
+            val candidateBatchSize = request.plan.readSelectorCandidateBatchSize()
+            val candidateBatches = survivors.chunked(candidateBatchSize)
             log.info {
                 "Memory read selector hierarchical level start: namespace=${request.readRequest.namespace.value} " +
-                    "level=$level candidates=${survivors.size} batches=${candidateBatches.size} batchSize=$READ_SELECTOR_CANDIDATE_BATCH_SIZE"
+                    "level=$level candidates=${survivors.size} batches=${candidateBatches.size} batchSize=$candidateBatchSize"
             }
 
             val nextSurvivors = candidateBatches.flatMapIndexed { index, batch ->
@@ -136,7 +142,7 @@ class LlmMemoryReadSelector(
                     "Memory read selector hierarchical reduction stopped: namespace=${request.readRequest.namespace.value} " +
                         "level=$level candidates=${survivors.size} survivors=${nextSurvivors.size}"
                 }
-                survivors = nextSurvivors.take(READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT)
+                survivors = nextSurvivors.take(request.plan.readSelectorHardFinalSurvivorLimit())
                 levelSummaries += "hard cap to ${survivors.size}"
                 break
             }
@@ -150,6 +156,10 @@ class LlmMemoryReadSelector(
             batchLabel = "final candidates=${survivors.size} levels=${levelSummaries.size}",
             passMode = ReadSelectorPassMode.FINAL_SELECTION,
         )
+        val finalRequest = request.copy(candidateHits = survivors)
+        val finalSafetyAddedHits = finalRequest.finalSelectionSafetyAddedHits(finalResult.selectedHits)
+        val finalSelectedHits = (finalResult.selectedHits + finalSafetyAddedHits)
+            .distinctBy { it.toReadSelectorItemRef() }
         traceStages += readSelectorTraceStage(
             mode = MemoryReadSelectorTrace.Mode.FINAL_SELECTION,
             level = level,
@@ -158,22 +168,23 @@ class LlmMemoryReadSelector(
             inputHits = survivors,
             llmSelectedHits = finalResult.selectedHits,
             llmCarriedHits = emptyList(),
-            safetyAddedHits = emptyList(),
-            outputHits = finalResult.selectedHits,
+            safetyAddedHits = finalSafetyAddedHits,
+            outputHits = finalSelectedHits,
         )
 
         log.info {
             "Memory read selector hierarchical completed: namespace=${request.readRequest.namespace.value} " +
-                "initialCandidates=${request.candidateHits.size} finalCandidates=${survivors.size} selected=${finalResult.selectedHits.size} " +
+                "initialCandidates=${request.candidateHits.size} finalCandidates=${survivors.size} selected=${finalSelectedHits.size} " +
                 "levels=${levelSummaries.joinToString(";")}"
         }
 
         return finalResult.copy(
-            summary = "Hierarchical selector ${levelSummaries.joinToString("; ")}. Final: ${finalResult.summary}",
+            selectedHits = finalSelectedHits,
+            summary = "Hierarchical selector ${levelSummaries.joinToString("; ")}. Final: ${finalResult.summary.withFinalSafetySummary(finalSafetyAddedHits)}",
             selectorTrace = MemoryReadSelectorTrace(
                 initialCandidateCount = request.candidateHits.size,
                 finalCandidateCount = survivors.size,
-                selectedCount = finalResult.selectedHits.size,
+                selectedCount = finalSelectedHits.size,
                 stages = traceStages,
             ),
         )
@@ -275,7 +286,7 @@ class LlmMemoryReadSelector(
         ${passMode.goalText}
 
         Selection rules:
-        ${passMode.extraRules}
+        ${passMode.extraRules(request.plan)}
         - $selectionRule
         - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.
         - Reject candidates that only have vague lexical overlap.
@@ -288,6 +299,10 @@ class LlmMemoryReadSelector(
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
         - For advice, improvement, troubleshooting, or "how should I do better" questions, select concrete user-specific successes, failures, constraints, goals, preferences, and prior attempts. Do not drop a specific successful/failed example merely because a broader experience claim was selected.
         - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.
+        - For count, list, "how many", and COMPLETE_SET questions, do not require exact target wording. Select plausible action, lifecycle, ownership, ordering, delivery, repair, completion, attendance, and status variants when they may contribute a separate answer item.
+        - For multi-hop temporal questions, keep complementary facts together: event dates, question dates, relative offsets, lead times, durations, and sources with exact timing wording. Do not select only the candidate that contains the last lexical hop.
+        - When one candidate gives a relative time anchored to another event, select the anchor event timing candidate too. A lead time or offset alone is not sufficient for "when" or "how long ago" questions.
+        - For relative-time arithmetic, a selected set is insufficient unless it includes every explicit anchor needed to compute the answer. Rejecting an event-date or question-date anchor as "not needed" is incorrect when another selected candidate only gives a lead time, offset, or duration.
         - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.
         - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.
         - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.
@@ -393,26 +408,34 @@ class LlmMemoryReadSelector(
 private enum class ReadSelectorPassMode(
     val promptLabel: String,
     val goalText: String,
-    val extraRules: String,
     val selectionRule: String,
 ) {
     INTERMEDIATE_RECALL(
         promptLabel = "intermediate_recall",
         goalText = "Preserve candidates that may be useful for a later global selector. This pass is recall-oriented, not final.",
-        extraRules = """
+        selectionRule = "Select a compact survivor set, but prefer keeping a plausible candidate over dropping it too early.",
+    ) {
+        override fun extraRules(plan: MemoryReadPlan): String = """
         - This is an intermediate pass over one candidate batch. A later global selector will rerank survivors from all batches.
         - When uncertain, select the candidate so the final pass can compare it globally.
         - Reject only candidates that are clearly irrelevant, stale compared to stronger active memory, or pure lexical noise. Do not treat an ACTIVE pending obligation as stale solely because its source is old; completion, cancellation, supersession, or a stronger contradictory active memory must be explicit.
-        - Aim for at most $READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH selected_items. Exceed that when many distinct dated facts or complete-set candidates are required together.
-        """.trimIndent(),
-        selectionRule = "Select a compact survivor set, but prefer keeping a plausible candidate over dropping it too early.",
-    ),
+        - Aim for at most ${plan.readSelectorIntermediateLlmSurvivorLimit()} selected_items. Exceed that when many distinct dated facts or complete-set candidates are required together.
+        """.trimIndent()
+    },
     FINAL_SELECTION(
         promptLabel = "final_selection",
         goalText = "Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.",
-        extraRules = "- This is the final global pass. Prefer precision over keeping marginal context.",
         selectionRule = "Select the smallest sufficient set.",
-    ),
+    ) {
+        override fun extraRules(plan: MemoryReadPlan): String =
+            if (plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+                "- This is the final global pass. Prefer precision only after the full relevant set is covered; do not drop a plausible distinct answer item merely because another item is stronger."
+            } else {
+                "- This is the final global pass. Prefer precision over keeping marginal context."
+            }
+    };
+
+    abstract fun extraRules(plan: MemoryReadPlan): String
 }
 
 object PassthroughMemoryReadSelector : MemoryReadSelector {
@@ -491,10 +514,10 @@ private fun String.oneLineForReadSelectorLog(maxChars: Int): String =
     limitForReadSelectorPrompt(maxChars)
 
 private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: MemoryReadPlan): List<MemoryStore.SearchHit> {
-    val scoreLeaders = sortedByReadSelectorStrength().take(READ_SELECTOR_SCORE_SAFETY_PER_BATCH)
+    val scoreLeaders = sortedByReadSelectorStrength().take(plan.readSelectorScoreSafetyLimit())
     val activeTypedLeaders = filter { it.isActiveTypedMemory() }
         .sortedByReadSelectorStrength()
-        .take(READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH)
+        .take(plan.readSelectorActiveTypedSafetyLimit())
     val profileLeaders = if (MemoryReadPlan.CoreBlock.PROFILE in plan.coreBlocks) {
         filterIsInstance<MemoryStore.SearchHit.ProfileHit>()
             .sortedByReadSelectorStrength()
@@ -502,10 +525,10 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
     } else {
         emptyList()
     }
-    val evidenceLeaders = if (plan.requireEvidenceFallback) {
+    val evidenceLeaders = if (plan.readSelectorEvidenceSafetyLimit() > 0) {
         filterIsInstance<MemoryStore.SearchHit.SourceHit>()
             .sortedByReadSelectorStrength()
-            .take(1)
+            .take(plan.readSelectorEvidenceSafetyLimit())
     } else {
         emptyList()
     }
@@ -520,8 +543,74 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
 
     return (scoreLeaders + activeTypedLeaders + profileLeaders + evidenceLeaders + modeLeaders)
         .distinctBy { it.toReadSelectorItemRef() }
-        .take(READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH)
+        .take(plan.readSelectorSafetySurvivorLimit())
 }
+
+private fun MemoryReadSelectionRequest.finalSelectionSafetyAddedHits(
+    selectedHits: List<MemoryStore.SearchHit>,
+): List<MemoryStore.SearchHit> {
+    if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) return emptyList()
+
+    val selectedRefs = selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+    return candidateHits
+        .readSelectorSafetySurvivors(plan)
+        .filterNot { it.toReadSelectorItemRef() in selectedRefs }
+}
+
+private fun String.withFinalSafetySummary(safetyAddedHits: List<MemoryStore.SearchHit>): String =
+    if (safetyAddedHits.isEmpty()) {
+        this
+    } else {
+        "$this Final safety added ${safetyAddedHits.size} complete-set survivor(s)."
+    }
+
+private fun MemoryReadPlan.readSelectorSafetySurvivorLimit(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        READ_SELECTOR_COMPLETE_SET_SAFETY_SURVIVORS_PER_BATCH
+    } else {
+        READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH
+    }
+
+private fun MemoryReadPlan.readSelectorScoreSafetyLimit(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) 4 else READ_SELECTOR_SCORE_SAFETY_PER_BATCH
+
+private fun MemoryReadPlan.readSelectorActiveTypedSafetyLimit(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) 12 else READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH
+
+private fun MemoryReadPlan.readSelectorEvidenceSafetyLimit(): Int =
+    when {
+        coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET -> (retrievalBudget.sources.takeIf { it > 0 } ?: 3)
+        requireEvidenceFallback -> 1
+        else -> 0
+    }
+
+private fun MemoryReadPlan.readSelectorHardFinalSurvivorLimit(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        READ_SELECTOR_COMPLETE_SET_HARD_FINAL_SURVIVOR_LIMIT
+    } else {
+        READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT
+    }
+
+private fun MemoryReadPlan.readSelectorDirectFinalCandidateLimit(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        READ_SELECTOR_COMPLETE_SET_DIRECT_FINAL_CANDIDATE_LIMIT
+    } else {
+        READ_SELECTOR_CANDIDATE_BATCH_SIZE
+    }
+
+private fun MemoryReadPlan.readSelectorCandidateBatchSize(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        READ_SELECTOR_COMPLETE_SET_CANDIDATE_BATCH_SIZE
+    } else {
+        READ_SELECTOR_CANDIDATE_BATCH_SIZE
+    }
+
+private fun MemoryReadPlan.readSelectorIntermediateLlmSurvivorLimit(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        READ_SELECTOR_COMPLETE_SET_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH
+    } else {
+        READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH
+    }
 
 private fun readSelectorTraceStage(
     mode: MemoryReadSelectorTrace.Mode,
@@ -592,9 +681,14 @@ private fun MemoryStore.SearchHit.readSelectorImportance(): Int =
     }
 
 private const val READ_SELECTOR_CANDIDATE_BATCH_SIZE = 20
+private const val READ_SELECTOR_COMPLETE_SET_DIRECT_FINAL_CANDIDATE_LIMIT = 40
+private const val READ_SELECTOR_COMPLETE_SET_CANDIDATE_BATCH_SIZE = 40
 private const val READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH = 8
+private const val READ_SELECTOR_COMPLETE_SET_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH = 16
 private const val READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH = 4
+private const val READ_SELECTOR_COMPLETE_SET_SAFETY_SURVIVORS_PER_BATCH = 16
 private const val READ_SELECTOR_SCORE_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT = 20
+private const val READ_SELECTOR_COMPLETE_SET_HARD_FINAL_SURVIVOR_LIMIT = 40
 private const val READ_SELECTOR_TRACE_REF_LIMIT = 24

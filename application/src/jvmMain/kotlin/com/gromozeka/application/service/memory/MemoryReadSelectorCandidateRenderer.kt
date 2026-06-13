@@ -13,6 +13,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 @OptIn(ExperimentalSerializationApi::class)
 internal object MemoryReadSelectorCandidateRenderer {
@@ -93,8 +94,6 @@ internal object MemoryReadSelectorCandidateRenderer {
             score = score,
             sourceType = sourceTypeForSelectorView(),
             actorRole = actorRoleForSelectorView(),
-            observedAt = observedAt.toString(),
-            createdAt = createdAt.toString(),
             retentionClass = retentionClass.name,
             usagePolicy = usagePolicyForSelectorView(),
             lifecycleState = lifecycleState,
@@ -150,6 +149,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             objectEntityId = objectEntityId?.value,
             text = normalizedText.limitForSelectorView(900),
             context = contextText?.limitForSelectorView(500),
+            qualifiersJson = qualifiers.takeIf { it.isNotEmpty() },
             confidence = confidence,
             importance = importance,
             validFrom = validFrom?.toString(),
@@ -406,6 +406,8 @@ private data class CandidateView(
     val ownerEntityId: String? = null,
     val text: String? = null,
     val context: String? = null,
+    @SerialName("qualifiers_json")
+    val qualifiersJson: JsonObject? = null,
     val confidence: Double? = null,
     val importance: Int? = null,
     @SerialName("valid_from")

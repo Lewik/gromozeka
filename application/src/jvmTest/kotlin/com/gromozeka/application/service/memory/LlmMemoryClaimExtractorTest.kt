@@ -18,6 +18,7 @@ import com.gromozeka.domain.service.AiRuntime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -274,6 +275,52 @@ class LlmMemoryClaimExtractorTest {
         assertEquals("has_constraint", candidates.single().predicate)
         assertEquals(2, runtime.requests.size)
         assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
+    }
+
+    @Test
+    fun promptRequiresExplicitPresenceBeforeEmittingAttendedEvent() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(listOf("""{"claims":[]}"""))
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        extractor.extract(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("My cousin Emily's wedding in the city was really lovely."),
+            ),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target may contain event memory.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("attended_event"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(entityOp("I", userEntityId, MemoryEntity.Type.USER)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        val prompt = runtime.requests.single().messages.joinToString("\n") { message ->
+            message.content.joinToString("\n") { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.UserMessage -> item.text
+                    is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                    else -> item.toString()
+                }
+            }
+        }
+        assertTrue(prompt.contains("Emit attended_event only when the target explicitly establishes"))
+        assertTrue(prompt.contains("Do not infer attendance merely because the user says another person's event"))
     }
 
     private class FixedJsonRuntime(
