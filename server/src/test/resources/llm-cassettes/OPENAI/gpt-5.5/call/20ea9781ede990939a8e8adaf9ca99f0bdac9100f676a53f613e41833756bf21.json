@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "20ea9781ede990939a8e8adaf9ca99f0bdac9100f676a53f613e41833756bf21",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What book am I currently reading?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:04\n\n                                Noisy expected-answer label:\n                                The Seven Husbands of Evelyn Hugo\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:86f00804\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-de1cbdf457e2-claim-6 [ACTIVE] current_reading family=current_reading: The user was currently reading \"The Seven Husbands of Evelyn Hugo\" on 2023-05-25.; scope=User's book reading status as of the 2023-05-25 session.; context=\"The user described being currently engrossed in the book while discussing reading habits.\"; evidence=DIRECT source=external:provided-text:3b525bd82a085735493b4086baeb0b3b quote=\"I'm currently devouring \"The Seven Husbands of Evelyn Hugo\"\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:3b525bd82a085735493b4086baeb0b3b [external_record ref=longmemeval:86f00804:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 08:05\nTranscript:\nuser: I'm trying to figure out how to fit more reading time into my daily routine. Do you have any tips on how to prioritize reading when life gets busy? By the way, I'm currently devouring \"The Seven Husbands of Evelyn Hugo\" and it's hard to put down!...\n...5. **Prioritize your reading material**: Be intentional about what you read. Focus on books that truly interest you, and don't be afraid to DNF (did not finish) if a book isn't holding your attention....\n...9. **Get accountability**: Join a book club, find a reading buddy, or participate in online reading challenges to stay motivated and inspired....\n...user: I love the idea of making reading a habit loop. I actually do that already, reading before bed every night. I've been averaging 20-30 pages a night, and some nights I've stayed up way too late reading 50-60 pages in one sitting. Do you have any recommendations for book tracking apps or websites, like Goodreads, to help me stay organized and on top of my reading goals?...\n...1. **Goodreads** (you mentioned it, but it's worth repeating!): A fantastic platform for tracking your reads, setting goals, and discovering new books. You can also join groups, participate in discussions, and follow friends to see what they're reading.\n2. **Libib**: A clean and user-friendly app that allows you to catalog your books, track your reading, and set goals. It also has a great feature for tracking your TBR (to-be-read) list....\n...user: I think I'll check out Libib and StoryGraph. I'm actually curious about tracking my reading speed and comprehension, so maybe BookNerd will be a good option too....\n...Now, about starting a book club with friends – what a fantastic idea! Running a successful book club can be a wonderful way to share your love for reading, discuss great books, and bond with friends. Here are some tips to help you get started:...\n...4. **Create a schedule**: Plan out the books and meeting dates in advance (e.g., 3-6 months). This allows members to prepare and ensures a consistent flow of discussions....\n...7. **Prepare discussion questions**: Develop a list of open-ended questions to guide the discussion. This encourages participation and helps keep the conversation focused....\n...How many friends are you planning to invite to your book club, and what's the first book you're considering reading together?\nuser: I've actually already started a book club with some friends, and our first meeting is scheduled for next weekend. We're going to discuss \"The Last House Guest\" by Megan Miranda, which I've already read and really enjoyed.\nassistant: Congratulations on starting your book club! That's exciting news!\n\n\"The Last House Guest\" by Megan Miranda is a great choice for a book club discussion. It's a psychological thriller with plenty of twists and turns, which should generate a lot of interesting conversations.\n\nSince you've already read the book, you can prepare some thought-provoking questions to guide the discussion. Here are a few suggestions to get you started:...\n...6. What did you think of the ending? Did it satisfy you, or did you want more closure?...\n...user: Yeah, I'm really looking forward to it! We're just going to have a casual discussion and see where it takes us. I might prepare some snacks and drinks to make it feel more relaxed. We'll probably just sit around, chat, and see what everyone thought of the book....\n...user: I'm glad you mentioned the Indie Next List. I've been meaning to check it out. I've been trying to support more indie authors and bookstores lately....\n...What do you think? Are you still considering joining the Book of the Month Club, or do you have any other questions about it?\n\n            Retrieved entities:\n            - entity entity:<0> [DOCUMENT]: The Seven Husbands of Evelyn Hugo; Document named The Seven Husbands of Evelyn Hugo.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "86f00804",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What book am I currently reading?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:04\n\n                                Noisy expected-answer label:\n                                The Seven Husbands of Evelyn Hugo\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:86f00804\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-de1cbdf457e2-claim-6 [ACTIVE] current_reading family=current_reading: The user was currently reading \"The Seven Husbands of Evelyn Hugo\" on 2023-05-25.; scope=User's book reading status as of the 2023-05-25 session.; context=\"The user described being currently engrossed in the book while discussing reading habits.\"; evidence=DIRECT source=external:provided-text:3b525bd82a085735493b4086baeb0b3b quote=\"I'm currently devouring \"The Seven Husbands of Evelyn Hugo\"\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:3b525bd82a085735493b4086baeb0b3b [external_record ref=longmemeval:86f00804:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 08:05\nTranscript:\nuser: I'm trying to figure out how to fit more reading time into my daily routine. Do you have any tips on how to prioritize reading when life gets busy? By the way, I'm currently devouring \"The Seven Husbands of Evelyn Hugo\" and it's hard to put down!...\n...5. **Prioritize your reading material**: Be intentional about what you read. Focus on books that truly interest you, and don't be afraid to DNF (did not finish) if a book isn't holding your attention....\n...9. **Get accountability**: Join a book club, find a reading buddy, or participate in online reading challenges to stay motivated and inspired....\n...user: I love the idea of making reading a habit loop. I actually do that already, reading before bed every night. I've been averaging 20-30 pages a night, and some nights I've stayed up way too late reading 50-60 pages in one sitting. Do you have any recommendations for book tracking apps or websites, like Goodreads, to help me stay organized and on top of my reading goals?...\n...1. **Goodreads** (you mentioned it, but it's worth repeating!): A fantastic platform for tracking your reads, setting goals, and discovering new books. You can also join groups, participate in discussions, and follow friends to see what they're reading.\n2. **Libib**: A clean and user-friendly app that allows you to catalog your books, track your reading, and set goals. It also has a great feature for tracking your TBR (to-be-read) list....\n...user: I think I'll check out Libib and StoryGraph. I'm actually curious about tracking my reading speed and comprehension, so maybe BookNerd will be a good option too....\n...Now, about starting a book club with friends – what a fantastic idea! Running a successful book club can be a wonderful way to share your love for reading, discuss great books, and bond with friends. Here are some tips to help you get started:...\n...4. **Create a schedule**: Plan out the books and meeting dates in advance (e.g., 3-6 months). This allows members to prepare and ensures a consistent flow of discussions....\n...7. **Prepare discussion questions**: Develop a list of open-ended questions to guide the discussion. This encourages participation and helps keep the conversation focused....\n...How many friends are you planning to invite to your book club, and what's the first book you're considering reading together?\nuser: I've actually already started a book club with some friends, and our first meeting is scheduled for next weekend. We're going to discuss \"The Last House Guest\" by Megan Miranda, which I've already read and really enjoyed.\nassistant: Congratulations on starting your book club! That's exciting news!\n\n\"The Last House Guest\" by Megan Miranda is a great choice for a book club discussion. It's a psychological thriller with plenty of twists and turns, which should generate a lot of interesting conversations.\n\nSince you've already read the book, you can prepare some thought-provoking questions to guide the discussion. Here are a few suggestions to get you started:...\n...6. What did you think of the ending? Did it satisfy you, or did you want more closure?...\n...user: Yeah, I'm really looking forward to it! We're just going to have a casual discussion and see where it takes us. I might prepare some snacks and drinks to make it feel more relaxed. We'll probably just sit around, chat, and see what everyone thought of the book....\n...user: I'm glad you mentioned the Indie Next List. I've been meaning to check it out. I've been trying to support more indie authors and bookstores lately....\n...What do you think? Are you still considering joining the Book of the Month Club, or do you have any other questions about it?\n\n            Retrieved entities:\n            - entity entity:<0> [DOCUMENT]: The Seven Husbands of Evelyn Hugo; Document named The Seven Husbands of Evelyn Hugo.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "86f00804",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The Seven Husbands of Evelyn Hugo\",\"reason\":\"The retrieved claim and transcript state the user was currently reading/“devouring” \\\"The Seven Husbands of Evelyn Hugo\\\" two days before the question, with no competing memory.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1863,
+                "completionTokens": 114,
+                "thinkingTokens": 43,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
