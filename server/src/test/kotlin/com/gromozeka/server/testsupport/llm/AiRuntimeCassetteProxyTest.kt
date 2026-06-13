@@ -133,6 +133,42 @@ class AiRuntimeCassetteProxyTest {
     }
 
     @Test
+    fun recordMissingReturnsReplayShapedResponseToDownstreamCallers() = runBlocking {
+        val root = Files.createTempDirectory("llm-cassettes-test-")
+        try {
+            val provider = cassetteProvider(
+                backends = listOf(
+                    FixedTextBackend(
+                        """{"operations":[{"mention":"I","action":"link_existing","entity_id":"entity:actual-user","confidence":1}]}"""
+                    )
+                ),
+                settings = AiRuntimeCassetteSettings(
+                    mode = AiRuntimeCassetteMode.RECORD_MISSING,
+                    rootDirectory = root,
+                ),
+            )
+            val runtime = provider.getRuntime(
+                selection = runtimeSelection("fake/model:1"),
+                projectPath = "/tmp/gromozeka-e2e-111/projects/case-a",
+            )
+
+            val response = runtime.call(
+                requestWithDynamicIds(
+                    dynamicPart = "111",
+                    text = "Candidate existing entities:\n- id=entity:actual-user; type=USER; name=User",
+                )
+            )
+
+            assertEquals(
+                """{"operations":[{"action":"link_existing","confidence":1,"entity_id":"entity:actual-user","mention":"I"}]}""",
+                response.text(),
+            )
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun embeddingRecordMissingWritesCassetteAndReplaysByCanonicalRequest() = runBlocking {
         val root = Files.createTempDirectory("embedding-cassettes-test-")
         try {

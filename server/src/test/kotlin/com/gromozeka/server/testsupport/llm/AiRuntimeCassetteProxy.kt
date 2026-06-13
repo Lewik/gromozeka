@@ -207,7 +207,7 @@ private class CassetteAiRuntime(
         val response = delegate.call(request)
         store.write(key, listOf(response))
         AiRuntimeCassetteUsageRegistry.markUsed(key, if (mode == AiRuntimeCassetteMode.REFRESH) AiRuntimeCassetteAccess.REFRESH else AiRuntimeCassetteAccess.RECORD)
-        return response
+        return response.toRecordedCassetteReplayShape(key, request)
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> {
@@ -232,7 +232,9 @@ private class CassetteAiRuntime(
             val responses = delegate.stream(request).toList()
             store.write(key, responses)
             AiRuntimeCassetteUsageRegistry.markUsed(key, if (mode == AiRuntimeCassetteMode.REFRESH) AiRuntimeCassetteAccess.REFRESH else AiRuntimeCassetteAccess.RECORD)
-            responses.forEach { emit(it) }
+            responses
+                .map { it.toRecordedCassetteReplayShape(key, request) }
+                .forEach { emit(it) }
         }
     }
 }
@@ -738,6 +740,14 @@ internal data class AiRuntimeCassetteFile(
     fun responses(context: AiRuntimeCassetteReplayContext): List<AiRuntimeResponse> =
         responses.map { it.toRuntimeResponse(context) }
 }
+
+private fun AiRuntimeResponse.toRecordedCassetteReplayShape(
+    key: AiRuntimeCassetteKey,
+    request: AiRuntimeRequest,
+): AiRuntimeResponse =
+    toStableCassetteResponse(key.runtimeBindings)
+        .toCassetteResponseSnapshot()
+        .toRuntimeResponse(AiRuntimeCassetteReplayContext.from(key, request))
 
 @Serializable
 internal data class AiRuntimeRequestSnapshot(
