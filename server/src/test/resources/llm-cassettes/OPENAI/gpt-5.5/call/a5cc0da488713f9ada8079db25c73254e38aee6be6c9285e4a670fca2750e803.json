@@ -1,0 +1,177 @@
+{
+    "version": 1,
+    "hash": "a5cc0da488713f9ada8079db25c73254e38aee6be6c9285e4a670fca2750e803",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is my ethnicity?\n\n                                Question date:\n                                2023/05/29 (Mon) 05:51\n\n                                Noisy expected-answer label:\n                                A mix of Irish and Italian\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:4100d0a0\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-bc90ec36546b-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has Irish and Italian mixed ethnicity that shaped their upbringing.; scope=User's personal cultural heritage background.; context=\"The user discussed family tree and cultural heritage in the passport conversation.\"; evidence=DIRECT source=external:provided-text:a248018226ac13ee426dc48e42e0f645 quote=\"my mixed ethnicity - Irish and Italian - has shaped my upbringing\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a248018226ac13ee426dc48e42e0f645 [external_record ref=longmemeval:4100d0a0:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 13:30\nTranscript:\nuser: I'm considering getting a passport, but I'm unsure which nationality to apply for. Can you tell me more about the benefits of having an Italian passport vs a US passport?\nassistant: What a wonderful dilemma! Having a choice between two prestigious passports is a great problem to have! Both Italian and US passports are highly valued, but they come with different benefits and requirements. Let's break down the advantages of each:...\n...5. **Dual citizenship**: Italy allows dual citizenship, so you can maintain your current nationality while acquiring an Italian one....\n...3. **Language proficiency**: You'll need to demonstrate proficiency in Italian....\n...3. **Language proficiency**: You'll need to demonstrate proficiency in English.\n\nConsider the following questions to help you make a decision:\n\n1. Do you have a strong connection to Italy or the US through family, heritage, or personal experience?...\n...Ultimately, the decision between an Italian passport and a US passport depends on your personal preferences, goals, and circumstances. Research both options thoroughly and consider consulting with a professional or expert in citizenship and immigration law to help you make an informed decision.\nuser: That helps! I didn't know Italian citizenship would allow me to live and work in any EU country. That's really appealing. By the way, I've been thinking about my family tree and cultural heritage a lot lately, and it's interesting to consider how my mixed ethnicity - Irish and Italian - has shaped my upbringing.\nassistant: That's fascinating! Exploring your family tree and cultural heritage can be a rewarding and enriching experience. Your mixed ethnicity is a unique aspect of your identity, and it's great that you're embracing it....\n...Embracing your mixed ethnicity can also broaden your perspective and help you connect with people from different backgrounds. You may find that you have a unique perspective on the world, shaped by the cultural traditions and values of both your Irish and Italian ancestors....\n...Remember, your cultural heritage is a valuable part of who you are, and embracing it can enrich your life in many ways. Keep exploring, learning, and celebrating your mixed ethnicity – it's a unique gift that makes you, you!\nuser: I'm actually considering learning more about my Irish heritage, especially the music and dance. Do you know any good resources for learning traditional Irish music, such as online tutorials or classes in my area?...\n...Remember, the Irish are known for their warm hospitality, so don't be afraid to reach out and ask questions. You might even find a local Irish music session or ceili dance group to join!\n\nGood luck, and have fun exploring your Irish heritage through music and dance!\nuser: I think I'll try to find an Irish cultural center in my area to see if they offer classes or workshops on traditional Irish music and dance. Do you know if they usually have classes for beginners, or would I need to have some prior experience?...\n...* What's the skill level required for the class? Is it suitable for beginners?\n* What's the class format? Is it a group class or private lessons?\n* What's the cost? Are there any discounts for beginners or package deals?\n* What's the atmosphere like? Is it a relaxed, social environment or a more formal setting?\n\nBy asking these questions, you'll get a better sense of what to expect and can find a class that's a good fit for you.\n\nRemember, the most important thing is to have fun and enjoy the experience of learning about your Irish heritage!\nuser: I'll ask: Can I expect to learn about Irish history and culture in addition to the music and dance, or are the classes more focused on the technical aspects of the instruments and dance steps?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Irish and Italian mixed ethnicity; Concept named Irish and Italian mixed ethnicity.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "4100d0a0",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is my ethnicity?\n\n                                Question date:\n                                2023/05/29 (Mon) 05:51\n\n                                Noisy expected-answer label:\n                                A mix of Irish and Italian\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:4100d0a0\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-bc90ec36546b-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has Irish and Italian mixed ethnicity that shaped their upbringing.; scope=User's personal cultural heritage background.; context=\"The user discussed family tree and cultural heritage in the passport conversation.\"; evidence=DIRECT source=external:provided-text:a248018226ac13ee426dc48e42e0f645 quote=\"my mixed ethnicity - Irish and Italian - has shaped my upbringing\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a248018226ac13ee426dc48e42e0f645 [external_record ref=longmemeval:4100d0a0:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 13:30\nTranscript:\nuser: I'm considering getting a passport, but I'm unsure which nationality to apply for. Can you tell me more about the benefits of having an Italian passport vs a US passport?\nassistant: What a wonderful dilemma! Having a choice between two prestigious passports is a great problem to have! Both Italian and US passports are highly valued, but they come with different benefits and requirements. Let's break down the advantages of each:...\n...5. **Dual citizenship**: Italy allows dual citizenship, so you can maintain your current nationality while acquiring an Italian one....\n...3. **Language proficiency**: You'll need to demonstrate proficiency in Italian....\n...3. **Language proficiency**: You'll need to demonstrate proficiency in English.\n\nConsider the following questions to help you make a decision:\n\n1. Do you have a strong connection to Italy or the US through family, heritage, or personal experience?...\n...Ultimately, the decision between an Italian passport and a US passport depends on your personal preferences, goals, and circumstances. Research both options thoroughly and consider consulting with a professional or expert in citizenship and immigration law to help you make an informed decision.\nuser: That helps! I didn't know Italian citizenship would allow me to live and work in any EU country. That's really appealing. By the way, I've been thinking about my family tree and cultural heritage a lot lately, and it's interesting to consider how my mixed ethnicity - Irish and Italian - has shaped my upbringing.\nassistant: That's fascinating! Exploring your family tree and cultural heritage can be a rewarding and enriching experience. Your mixed ethnicity is a unique aspect of your identity, and it's great that you're embracing it....\n...Embracing your mixed ethnicity can also broaden your perspective and help you connect with people from different backgrounds. You may find that you have a unique perspective on the world, shaped by the cultural traditions and values of both your Irish and Italian ancestors....\n...Remember, your cultural heritage is a valuable part of who you are, and embracing it can enrich your life in many ways. Keep exploring, learning, and celebrating your mixed ethnicity – it's a unique gift that makes you, you!\nuser: I'm actually considering learning more about my Irish heritage, especially the music and dance. Do you know any good resources for learning traditional Irish music, such as online tutorials or classes in my area?...\n...Remember, the Irish are known for their warm hospitality, so don't be afraid to reach out and ask questions. You might even find a local Irish music session or ceili dance group to join!\n\nGood luck, and have fun exploring your Irish heritage through music and dance!\nuser: I think I'll try to find an Irish cultural center in my area to see if they offer classes or workshops on traditional Irish music and dance. Do you know if they usually have classes for beginners, or would I need to have some prior experience?...\n...* What's the skill level required for the class? Is it suitable for beginners?\n* What's the class format? Is it a group class or private lessons?\n* What's the cost? Are there any discounts for beginners or package deals?\n* What's the atmosphere like? Is it a relaxed, social environment or a more formal setting?\n\nBy asking these questions, you'll get a better sense of what to expect and can find a class that's a good fit for you.\n\nRemember, the most important thing is to have fun and enjoy the experience of learning about your Irish heritage!\nuser: I'll ask: Can I expect to learn about Irish history and culture in addition to the music and dance, or are the classes more focused on the technical aspects of the instruments and dance steps?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Irish and Italian mixed ethnicity; Concept named Irish and Italian mixed ethnicity.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "4100d0a0",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You are of mixed Irish and Italian ethnicity.\",\"reason\":\"The retrieved claim and transcript explicitly state the user's mixed ethnicity is Irish and Italian.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1788,
+                "completionTokens": 50,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

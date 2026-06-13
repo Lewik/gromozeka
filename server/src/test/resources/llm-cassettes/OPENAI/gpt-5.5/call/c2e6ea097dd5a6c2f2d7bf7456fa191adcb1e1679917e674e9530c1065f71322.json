@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "c2e6ea097dd5a6c2f2d7bf7456fa191adcb1e1679917e674e9530c1065f71322",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What time do I usually get home from work on weeknights?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:15\n\n                                Noisy expected-answer label:\n                                6:30 pm\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:c19f7a0b\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ee10d26f9660-claim-14 [ACTIVE] has_constraint family=has_constraint: The user usually gets home from work around 6:30 PM on weekdays.; scope=User's weekday evening schedule from the 2023-05-23 past chat.; context=\"The user described their weekday evening routine before dinner, yoga, and language learning.\"; evidence=IMPORTED source=external:provided-text:3ac570f88cce635080ae8a56843a2d86 quote=\"I usually get home from work around 6:30 pm on weekdays\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:3ac570f88cce635080ae8a56843a2d86 [external_record ref=longmemeval:c19f7a0b:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session....\n...assistant: Here are some simple and quick meal ideas that are perfect for a busy weeknight dinner:...\n...* Tacos: Use pre-cooked ground beef, shredded cheese, lettuce, and tomatoes to make tacos in a flash. Serve with store-bought or homemade tortillas. Ready in 20 minutes....\n...user: I like those ideas, especially the one-pot pasta and chicken fajitas. I usually have about an hour to spare between getting home from work and starting dinner, so these recipes should fit my schedule pretty well....\n...* Start by boiling water for your pasta while you're getting changed or unwinding after work....\n...* Use a pre-made pasta sauce or a simple homemade sauce made with canned tomatoes, garlic, and olive oil....\n...Group similar tasks together to optimize your time. For example, check and respond to all emails at once, or do all your meal prep on the weekends....\n...* Time blocking: Schedule large blocks of uninterrupted time for focused work.\n* The Eisenhower Matrix: Categorize tasks based on their urgency and importance.\n\nRemember, the key to effective time management is to find a system that works for you and stick to it consistently....\n...assistant: That's great to hear! Consistency is key when it comes to language learning, and dedicating a specific time slot to it is an excellent habit to build. Categorizing tasks into must-do, should-do, and nice-to-do can help you prioritize your language learning sessions and ensure they don't get pushed aside by other tasks.\n\nBy making language learning a regular part of your routine, you're more likely to stick with it and see progress over time. It's fantastic that you're making slow but steady progress – every little bit counts, and it's awesome that you're committed to your goal!...\n...4. **Make it enjoyable**: Language learning doesn't have to be tedious! Find ways to make it enjoyable, such as listening to music or podcasts in the target language, watching TV shows or movies with subtitles, or cooking recipes from the culture you're interested in.\n\nRemember, consistency is key, and even small steps can lead to significant progress over time. Keep up the good work, and don't hesitate to reach out if you need any language learning tips or resources!\nuser: I've been trying to make language learning a habit by doing it at the same time every week, and it seems to be working. I usually get home from work around 6:30 pm on weekdays, and then I start making dinner and doing some yoga before dedicating an hour to language learning on Tuesdays and Thursdays.\nassistant: You're creating a routine that works for you, and that's fantastic! By doing language learning at the same time every week, you're making it a habit, and that's a great way to ensure consistency....\n...1. **Create a conducive environment**: Designate a specific area for language learning, free from distractions, where you can focus on your goal. This could be a quiet corner in your home, a library, or even a cozy coffee shop....\n...3. **Warm up with a routine**: Start your language learning session with a consistent routine, like reviewing vocabulary, practicing a specific skill, or doing a quick exercise. This helps get you in the right mindset and makes the most of your time....\n...Remember, consistency is key, and you're doing great by dedicating time to language learning regularly. Keep up the good work, and don't hesitate to reach out if you need any tips or resources!...\n...2. **News in Slow**: Listen to news in your target language, read at a slower pace to help you understand....\n...Remember, podcasts are a great way to supplement your language learning routine, but don't forget to practice speaking, writing, and listening in other ways as well....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "c19f7a0b",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What time do I usually get home from work on weeknights?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:15\n\n                                Noisy expected-answer label:\n                                6:30 pm\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:c19f7a0b\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ee10d26f9660-claim-14 [ACTIVE] has_constraint family=has_constraint: The user usually gets home from work around 6:30 PM on weekdays.; scope=User's weekday evening schedule from the 2023-05-23 past chat.; context=\"The user described their weekday evening routine before dinner, yoga, and language learning.\"; evidence=IMPORTED source=external:provided-text:3ac570f88cce635080ae8a56843a2d86 quote=\"I usually get home from work around 6:30 pm on weekdays\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:3ac570f88cce635080ae8a56843a2d86 [external_record ref=longmemeval:c19f7a0b:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session....\n...assistant: Here are some simple and quick meal ideas that are perfect for a busy weeknight dinner:...\n...* Tacos: Use pre-cooked ground beef, shredded cheese, lettuce, and tomatoes to make tacos in a flash. Serve with store-bought or homemade tortillas. Ready in 20 minutes....\n...user: I like those ideas, especially the one-pot pasta and chicken fajitas. I usually have about an hour to spare between getting home from work and starting dinner, so these recipes should fit my schedule pretty well....\n...* Start by boiling water for your pasta while you're getting changed or unwinding after work....\n...* Use a pre-made pasta sauce or a simple homemade sauce made with canned tomatoes, garlic, and olive oil....\n...Group similar tasks together to optimize your time. For example, check and respond to all emails at once, or do all your meal prep on the weekends....\n...* Time blocking: Schedule large blocks of uninterrupted time for focused work.\n* The Eisenhower Matrix: Categorize tasks based on their urgency and importance.\n\nRemember, the key to effective time management is to find a system that works for you and stick to it consistently....\n...assistant: That's great to hear! Consistency is key when it comes to language learning, and dedicating a specific time slot to it is an excellent habit to build. Categorizing tasks into must-do, should-do, and nice-to-do can help you prioritize your language learning sessions and ensure they don't get pushed aside by other tasks.\n\nBy making language learning a regular part of your routine, you're more likely to stick with it and see progress over time. It's fantastic that you're making slow but steady progress – every little bit counts, and it's awesome that you're committed to your goal!...\n...4. **Make it enjoyable**: Language learning doesn't have to be tedious! Find ways to make it enjoyable, such as listening to music or podcasts in the target language, watching TV shows or movies with subtitles, or cooking recipes from the culture you're interested in.\n\nRemember, consistency is key, and even small steps can lead to significant progress over time. Keep up the good work, and don't hesitate to reach out if you need any language learning tips or resources!\nuser: I've been trying to make language learning a habit by doing it at the same time every week, and it seems to be working. I usually get home from work around 6:30 pm on weekdays, and then I start making dinner and doing some yoga before dedicating an hour to language learning on Tuesdays and Thursdays.\nassistant: You're creating a routine that works for you, and that's fantastic! By doing language learning at the same time every week, you're making it a habit, and that's a great way to ensure consistency....\n...1. **Create a conducive environment**: Designate a specific area for language learning, free from distractions, where you can focus on your goal. This could be a quiet corner in your home, a library, or even a cozy coffee shop....\n...3. **Warm up with a routine**: Start your language learning session with a consistent routine, like reviewing vocabulary, practicing a specific skill, or doing a quick exercise. This helps get you in the right mindset and makes the most of your time....\n...Remember, consistency is key, and you're doing great by dedicating time to language learning regularly. Keep up the good work, and don't hesitate to reach out if you need any tips or resources!...\n...2. **News in Slow**: Listen to news in your target language, read at a slower pace to help you understand....\n...Remember, podcasts are a great way to supplement your language learning routine, but don't forget to practice speaking, writing, and listening in other ways as well....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "c19f7a0b",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You usually get home from work around 6:30 PM on weeknights/weekdays.\",\"reason\":\"The retrieved claim and evidence explicitly state the user usually gets home from work around 6:30 PM on weekdays.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1798,
+                "completionTokens": 82,
+                "thinkingTokens": 13,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
