@@ -180,6 +180,60 @@ class LlmMemoryReadPlannerTest {
         assertTrue(plan.retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE })
     }
 
+    @Test
+    fun addsNoteAndSourceFallbackForUsualTimeFactRecall() = runBlocking {
+        val runtime = CapturingJsonRuntime(
+            """
+            {
+              "need_memory": true,
+              "answer_mode": "factual",
+              "coverage_mode": "minimal",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 3,
+                "notes": 0,
+                "action_items": 0,
+                "sources": 0,
+                "episodes": 0
+              },
+              "retrieval_requests": [
+                {
+                  "memory_type": "claim",
+                  "why": "Find direct remembered gym time.",
+                  "query": "usual gym time",
+                  "top_k": 3,
+                  "filters": {},
+                  "preferred_claim_predicates": [],
+                  "deprioritized_claim_predicates": []
+                }
+              ],
+              "require_evidence_fallback": false
+            }
+            """.trimIndent()
+        )
+
+        val plan = LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(
+            readRequest("What time do I usually go to the gym?")
+        )
+
+        val prompt = runtime.requests.single().messages.asText()
+        assertTrue(prompt.contains("current/usual preferences"))
+        assertEquals(MemoryReadPlan.CoverageMode.MINIMAL, plan.coverageMode)
+        assertEquals(true, plan.requireEvidenceFallback)
+        assertTrue(plan.retrievalBudget.claims >= 4)
+        assertTrue(plan.retrievalBudget.notes >= 2)
+        assertTrue(plan.retrievalBudget.sources >= 2)
+        assertEquals(
+            listOf(MemorySemanticType.CLAIM, MemorySemanticType.NOTE, MemorySemanticType.SOURCE),
+            plan.retrievalRequests.map { it.memoryType },
+        )
+    }
+
     private class CapturingJsonRuntime(
         vararg responses: String,
     ) : AiRuntime {

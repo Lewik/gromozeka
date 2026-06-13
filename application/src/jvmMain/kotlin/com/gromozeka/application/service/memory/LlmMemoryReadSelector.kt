@@ -292,9 +292,9 @@ class LlmMemoryReadSelector(
         - Reject candidates that only have vague lexical overlap.
         - Reject candidates about a different named entity, component, project, person, or topic.
         - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.
-        - Prefer active claims for factual answers.
+        - Prefer active claims for factual answers when they directly answer and are not incomplete, stale, or contradicted by newer active typed context.
         - Prefer episodes for reusable lessons and "what did we learn" questions.
-        - Prefer notes for rationale, decisions, plans, and contextual meaning.
+        - Prefer notes for rationale, decisions, plans, contextual meaning, and summarized factual details that do not have a complete current claim.
         - Prefer action items only for open commitments or workflow state.
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
         - For advice, improvement, troubleshooting, or "how should I do better" questions, select concrete user-specific successes, failures, constraints, goals, preferences, and prior attempts. Do not drop a specific successful/failed example merely because a broader experience claim was selected.
@@ -307,6 +307,7 @@ class LlmMemoryReadSelector(
         - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.
         - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.
         - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.
+        - When candidates disagree about a current/usual value, schedule, time, preference, or constraint, select enough candidates to expose the conflict and prefer the newer relevant active typed memory or its supporting source evidence.
         - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.
         - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.
         - For current-state answers, never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.

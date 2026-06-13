@@ -1,0 +1,177 @@
+{
+    "version": 1,
+    "hash": "ade2badec2973d94ca44a13aee3dabc0de73802c223e082848b0a7e42a97b266",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What type of action figure did I buy from a thrift store?\n\n                                Question date:\n                                2023/05/30 (Tue) 13:38\n\n                                Noisy expected-answer label:\n                                a blue Snaggletooth\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:b320f3f8\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-20caae32c67e-claim-6 [ACTIVE] owns family=owns: The user owns a rare blue Snaggletooth action figure acquired from a thrift store a few weeks before 2023-05-29.; scope=User's collectible acquisitions from the imported 2023-05-29 chat session.; context=\"The user mentioned the acquisition while discussing recent collectible finds.\"; evidence=IMPORTED source=external:provided-text:55232b75662b21c0850c4b8d03fb1c17 quote=\"just got a rare blue Snaggletooth action figure from a thrift store a few weeks ago\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:55232b75662b21c0850c4b8d03fb1c17 [external_record ref=longmemeval:b320f3f8:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 09:34\nTranscript:\nuser: I'm trying to find a good way to display my vintage watch collection. Do you have any recommendations for display cases that would showcase my favorite 1960s Omega Seamaster nicely? By the way, I've been on a roll with my collectibles lately, just got a rare blue Snaggletooth action figure from a thrift store a few weeks ago.\nassistant: Congratulations on your recent collectible finds, including the rare blue Snaggletooth action figure! As for displaying your vintage watch collection, I'd be happy to help you find a suitable display case for your prized 1960s Omega Seamaster.\n\nHere are some recommendations for display cases that would showcase your watch nicely:\n\n1. **Glass-fronted wooden cases**: A classic choice, wooden cases with a glass front provide an elegant and sophisticated way to display your watches. You can find cases made from various types of wood, such as mahogany, walnut, or cherry. Look for ones with a soft, velvety interior to prevent scratching your watches....\n...3. **Watch winder cases**: If you have automatic watches, a watch winder case can be a great option. These cases not only display your watches but also keep them wound and accurate. Look for a case that can accommodate multiple watches and has a quiet, high-quality motor....\n...* Size: Ensure the case is large enough to accommodate your watch, with some extra space for any additional items you want to display....\n...You can find these brands and more online marketplaces like Amazon, Etsy, or specialized watch collector forums. Be sure to read reviews and check the product's dimensions, material, and features before making a purchase....\n...5. **Estate Sales and Thrift Stores**:\n\t* Keep an eye out for estate sales, garage sales, or thrift stores in your area, where you might stumble upon a rare camera at a reasonable price....\n...* Consider getting the camera appraised or inspected by a professional before making a purchase...\n...* Consider getting the book appraised or inspected by a professional before making a purchase...\n...user: I've been thinking about organizing my collectible coins collection, which has been scattered all over my apartment. I spent an entire weekend categorizing and storing them in specialized albums and folders. I have coins from over 20 countries, including some rare ones from ancient civilizations like Greece and Rome. Do you have any tips on how to properly store and display my coins to keep them in good condition and make them easy to view?...\n...2. **Coin Cases**: Consider using individual coin cases or capsules to store each coin. These cases are designed to protect the coin from scratches, dust, and moisture....\n...2. **Store Coins Away from Direct Sunlight**: Direct sunlight can cause coins to fade, so store them in a room with indirect sunlight or use UV-filtering glass or acrylic in your display cases....\n...user: I'm thinking about organizing my collectible sneakers, specifically my new limited edition Nike Air Jordan \"Black Toe\" design. I've been checking online marketplaces and sneaker forums daily, and I finally found a pair in my size from a reputable seller. They arrived last week and I've been wearing them non-stop. Do you have any tips on how to properly store and display my sneakers to keep them in good condition and make them easy to view?...\n...1. **Sneaker Boxes**: Keep the original boxes and use them to store your sneakers when not in use. This will help protect them from dust, dirt, and damage....\n...2. **Avoid Direct Sunlight**: Direct sunlight can cause colors to fade, so store your sneakers away from direct sunlight or use UV-filtering glass or acrylic in your display cases....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Rare blue Snaggletooth action figure; Product named Rare blue Snaggletooth action figure.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "b320f3f8",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What type of action figure did I buy from a thrift store?\n\n                                Question date:\n                                2023/05/30 (Tue) 13:38\n\n                                Noisy expected-answer label:\n                                a blue Snaggletooth\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:b320f3f8\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-20caae32c67e-claim-6 [ACTIVE] owns family=owns: The user owns a rare blue Snaggletooth action figure acquired from a thrift store a few weeks before 2023-05-29.; scope=User's collectible acquisitions from the imported 2023-05-29 chat session.; context=\"The user mentioned the acquisition while discussing recent collectible finds.\"; evidence=IMPORTED source=external:provided-text:55232b75662b21c0850c4b8d03fb1c17 quote=\"just got a rare blue Snaggletooth action figure from a thrift store a few weeks ago\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:55232b75662b21c0850c4b8d03fb1c17 [external_record ref=longmemeval:b320f3f8:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 09:34\nTranscript:\nuser: I'm trying to find a good way to display my vintage watch collection. Do you have any recommendations for display cases that would showcase my favorite 1960s Omega Seamaster nicely? By the way, I've been on a roll with my collectibles lately, just got a rare blue Snaggletooth action figure from a thrift store a few weeks ago.\nassistant: Congratulations on your recent collectible finds, including the rare blue Snaggletooth action figure! As for displaying your vintage watch collection, I'd be happy to help you find a suitable display case for your prized 1960s Omega Seamaster.\n\nHere are some recommendations for display cases that would showcase your watch nicely:\n\n1. **Glass-fronted wooden cases**: A classic choice, wooden cases with a glass front provide an elegant and sophisticated way to display your watches. You can find cases made from various types of wood, such as mahogany, walnut, or cherry. Look for ones with a soft, velvety interior to prevent scratching your watches....\n...3. **Watch winder cases**: If you have automatic watches, a watch winder case can be a great option. These cases not only display your watches but also keep them wound and accurate. Look for a case that can accommodate multiple watches and has a quiet, high-quality motor....\n...* Size: Ensure the case is large enough to accommodate your watch, with some extra space for any additional items you want to display....\n...You can find these brands and more online marketplaces like Amazon, Etsy, or specialized watch collector forums. Be sure to read reviews and check the product's dimensions, material, and features before making a purchase....\n...5. **Estate Sales and Thrift Stores**:\n\t* Keep an eye out for estate sales, garage sales, or thrift stores in your area, where you might stumble upon a rare camera at a reasonable price....\n...* Consider getting the camera appraised or inspected by a professional before making a purchase...\n...* Consider getting the book appraised or inspected by a professional before making a purchase...\n...user: I've been thinking about organizing my collectible coins collection, which has been scattered all over my apartment. I spent an entire weekend categorizing and storing them in specialized albums and folders. I have coins from over 20 countries, including some rare ones from ancient civilizations like Greece and Rome. Do you have any tips on how to properly store and display my coins to keep them in good condition and make them easy to view?...\n...2. **Coin Cases**: Consider using individual coin cases or capsules to store each coin. These cases are designed to protect the coin from scratches, dust, and moisture....\n...2. **Store Coins Away from Direct Sunlight**: Direct sunlight can cause coins to fade, so store them in a room with indirect sunlight or use UV-filtering glass or acrylic in your display cases....\n...user: I'm thinking about organizing my collectible sneakers, specifically my new limited edition Nike Air Jordan \"Black Toe\" design. I've been checking online marketplaces and sneaker forums daily, and I finally found a pair in my size from a reputable seller. They arrived last week and I've been wearing them non-stop. Do you have any tips on how to properly store and display my sneakers to keep them in good condition and make them easy to view?...\n...1. **Sneaker Boxes**: Keep the original boxes and use them to store your sneakers when not in use. This will help protect them from dust, dirt, and damage....\n...2. **Avoid Direct Sunlight**: Direct sunlight can cause colors to fade, so store your sneakers away from direct sunlight or use UV-filtering glass or acrylic in your display cases....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Rare blue Snaggletooth action figure; Product named Rare blue Snaggletooth action figure.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "b320f3f8",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You bought a rare blue Snaggletooth action figure from a thrift store.\",\"reason\":\"The retrieved claim and transcript explicitly state the user got a rare blue Snaggletooth action figure from a thrift store.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1866,
+                "completionTokens": 67,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

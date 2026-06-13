@@ -61,6 +61,7 @@ class LlmMemoryReadPlanner(
                 json.decodeFromString<ReadPlannerResponse>(it)
                     .toPlan()
                     .withCoverageGuards(request)
+                    .withFactualRecallEvidenceRequests(request)
                     .withRationaleNoteRequest(request)
             },
         )
@@ -152,6 +153,7 @@ class LlmMemoryReadPlanner(
         }
         return verifier.toFallbackPlan(request)
             .withCoverageGuards(request)
+            .withFactualRecallEvidenceRequests(request)
     }
 
     private fun buildNeedVerifierPrompt(request: MemoryReadRequest): String = """
@@ -418,6 +420,8 @@ class LlmMemoryReadPlanner(
             - If the target asks what a named report, trace, pipeline, component, policy, rule, or workflow should show/include/do/use/be, retrieve memory unless the target itself provides that rule.
             - For timeline, sequence, ordering, ordinal, "first/second/third/latest/previous/next", or "what happened before/after" questions, use coverage_mode="complete_set" and retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.
             - For temporal recall questions such as "how many days ago", "when did I", "what date", or "what day", retrieve direct claims first and include source retrieval as evidence fallback because dated personal events may be preserved as source-only evidence.
+            - For factual questions about current/usual preferences, constraints, schedules, routines, times, or remembered values, retrieve claims and notes. Add source evidence when a conflict, update, stale typed fact, or exact value is possible.
+            - Notes may contain exact factual context when extraction chose not to materialize a separate claim. Do not make factual recall claim-only when the target asks for a current/usual value, schedule, time, preference, or constraint.
             - For count, set, inventory, list-all, or "how many" questions, use coverage_mode="complete_set", retrieve enough typed facts to enumerate the set, and include source retrieval as evidence fallback. Counts are wrong if one item is omitted.
             - For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.
             - For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.
@@ -499,6 +503,54 @@ private fun MemoryReadPlan.withCoverageGuards(request: MemoryReadRequest): Memor
     )
 }
 
+private fun MemoryReadPlan.withFactualRecallEvidenceRequests(request: MemoryReadRequest): MemoryReadPlan {
+    if (!needMemory) return this
+
+    val target = request.targetMessageText()
+    if (!target.requiresFactualRecallContextFallback()) return this
+
+    val needsSourceEvidence = target.requiresFactualRecallSourceFallback()
+    val guardedBudget = retrievalBudget.copy(
+        claims = retrievalBudget.claims.coerceAtLeast(4),
+        notes = retrievalBudget.notes.coerceAtLeast(2),
+        sources = if (needsSourceEvidence) retrievalBudget.sources.coerceAtLeast(2) else retrievalBudget.sources,
+    )
+    val query = target.ifBlank { "current factual memory" }
+    val guardedRequests = buildList {
+        addAll(retrievalRequests)
+        if (retrievalRequests.none { it.memoryType == MemorySemanticType.NOTE }) {
+            add(
+                MemoryReadPlan.RetrievalRequest(
+                    memoryType = MemorySemanticType.NOTE,
+                    why = "Factual recall guard added note retrieval because exact current context may be summarized outside claims.",
+                    query = query,
+                    topK = 2,
+                    preferredClaimPredicates = emptyList(),
+                    deprioritizedClaimPredicates = emptyList(),
+                )
+            )
+        }
+        if (needsSourceEvidence && retrievalRequests.none { it.memoryType == MemorySemanticType.SOURCE }) {
+            add(
+                MemoryReadPlan.RetrievalRequest(
+                    memoryType = MemorySemanticType.SOURCE,
+                    why = "Factual recall guard added source evidence for current/usual values where claims may be stale or incomplete.",
+                    query = query,
+                    topK = 2,
+                    preferredClaimPredicates = emptyList(),
+                    deprioritizedClaimPredicates = emptyList(),
+                )
+            )
+        }
+    }
+
+    return copy(
+        retrievalBudget = guardedBudget,
+        retrievalRequests = guardedRequests,
+        requireEvidenceFallback = requireEvidenceFallback || needsSourceEvidence,
+    )
+}
+
 private fun MemoryReadRequest.memoryThreadContextSummaryForLog(): String {
     val targetIndex = threadContext.messages.indexOfFirst { it.id == threadContext.targetMessageId }
     return "conversation=${threadContext.conversationId.value} thread=${threadContext.threadId.value} " +
@@ -557,6 +609,58 @@ private fun String.requiresTemporalEvidenceFallback(): Boolean {
         normalized.contains("what date") ||
         normalized.contains("what day") ||
         normalized.contains("which date")
+}
+
+private fun String.requiresFactualRecallContextFallback(): Boolean {
+    val normalized = lowercase().replace(Regex("\\s+"), " ")
+    return normalized.contains("what time") ||
+        normalized.contains("which time") ||
+        normalized.contains("at what time") ||
+        normalized.contains("when do i") ||
+        normalized.contains("when did i") ||
+        normalized.contains("when is my") ||
+        normalized.contains("when are my") ||
+        normalized.contains("what is my") ||
+        normalized.contains("what are my") ||
+        normalized.contains("what do i") ||
+        normalized.contains("what did i") ||
+        normalized.contains("which do i") ||
+        normalized.contains("which did i") ||
+        normalized.contains("current") ||
+        normalized.contains("currently") ||
+        normalized.contains("usual") ||
+        normalized.contains("usually") ||
+        normalized.contains("typical") ||
+        normalized.contains("typically") ||
+        normalized.contains("prefer") ||
+        normalized.contains("preference") ||
+        normalized.contains("constraint") ||
+        normalized.contains("routine") ||
+        normalized.contains("schedule") ||
+        normalized.contains("default")
+}
+
+private fun String.requiresFactualRecallSourceFallback(): Boolean {
+    val normalized = lowercase().replace(Regex("\\s+"), " ")
+    return normalized.contains("what time") ||
+        normalized.contains("which time") ||
+        normalized.contains("at what time") ||
+        normalized.contains("when do i") ||
+        normalized.contains("when did i") ||
+        normalized.contains("when is my") ||
+        normalized.contains("when are my") ||
+        normalized.contains("current") ||
+        normalized.contains("currently") ||
+        normalized.contains("usual") ||
+        normalized.contains("usually") ||
+        normalized.contains("typical") ||
+        normalized.contains("typically") ||
+        normalized.contains("prefer") ||
+        normalized.contains("preference") ||
+        normalized.contains("constraint") ||
+        normalized.contains("routine") ||
+        normalized.contains("schedule") ||
+        normalized.contains("default")
 }
 
 private fun String.toAnswerMode(): MemoryReadPlan.AnswerMode =

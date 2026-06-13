@@ -199,7 +199,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             evidence = evidenceRefs.toEvidenceViews(),
             selectionHint = when {
                 status == MemoryNote.Status.ACTIVE ->
-                    "Current typed context. Prefer for rationale, decisions, plans, and contextual meaning."
+                    "Current typed context. Prefer for rationale, decisions, plans, contextual meaning, and exact factual details when claims are missing, incomplete, or conflicting."
                 overriddenBy.isNotEmpty() ->
                     "Non-current note. Do not use as current context; prefer the ACTIVE overridden_by item."
                 else ->

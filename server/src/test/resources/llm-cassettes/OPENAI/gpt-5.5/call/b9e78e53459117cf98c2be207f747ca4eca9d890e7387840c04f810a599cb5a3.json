@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "b9e78e53459117cf98c2be207f747ca4eca9d890e7387840c04f810a599cb5a3",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:edced276\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 06:31\nTranscript:\nuser: I'm trying to plan my next trip and I'm having a hard time deciding whether to go solo or with family. Can you help me weigh the pros and cons of each? By the way, I just got back from an amazing island-hopping trip to Hawaii with my family and it got me thinking about this.\nassistant: Hawaii sounds like an amazing destination! I'm happy to help you weigh the pros and cons of traveling solo versus with family.\n\n**Traveling Solo:**\n\nPros:\n\n1. **Flexibility**: You can create your own itinerary and make changes on a whim without consulting anyone else.\n2. **Independence**: You can do what you want, when you want, without having to consider others' opinions or schedules.\n3. **Meeting new people**: Solo travel can be a great way to meet fellow travelers and locals, as you're more likely to strike up conversations and join group tours.\n4. **Personal growth**: Traveling solo can be a transformative experience that helps you develop confidence, self-reliance, and self-awareness.\n5. **Cost-effective**: You can often find better deals on accommodations and activities when traveling solo.\n\nCons:\n\n1. **Loneliness**: You might feel lonely or isolated at times, especially during meals or in the evenings.\n2. **Safety concerns**: Traveling alone can be riskier, especially for women or in unfamiliar destinations.\n3. **No shared experiences**: You won't have anyone to share your experiences with in real-time, which can be a drawback for some.\n\n**Traveling with Family:**\n\nPros:\n\n1. **Shared experiences**: You'll have loved ones to share your experiences with, creating lasting memories and bonding opportunities.\n2. **Safety in numbers**: Traveling with family can be safer, especially in unfamiliar destinations.\n3. **Diverse perspectives**: You'll have different opinions and ideas to consider when planning your trip, which can lead to a more well-rounded experience.\n4. **Emotional support**: You'll have a built-in support system to help navigate any challenges or difficult situations.\n5. **Cost-sharing**: You can split costs on accommodations, transportation, and activities, making the trip more affordable.\n\nCons:\n\n1. **Compromise**: You'll need to consider others' opinions and preferences when planning your trip, which can be frustrating at times.\n2. **Less flexibility**: You'll need to stick to a more structured itinerary to accommodate everyone's needs and schedules.\n3. **Different interests**: Family members may have different interests or energy levels, which can lead to conflicts or boredom.\n4. **More planning required**: You'll need to coordinate and plan more extensively to ensure everyone's needs are met.\n\nNow that you've had an amazing experience traveling with your family to Hawaii, you might want to consider what aspects of that trip you enjoyed the most. Was it the quality time with your family, the shared experiences, or the relaxation and flexibility that came with having others to share responsibilities with?\n\nOn the other hand, you might be craving a solo adventure to recharge, challenge yourself, or explore a destination at your own pace.\n\nUltimately, the decision to travel solo or with family depends on your personal preferences, goals, and priorities. You could also consider a compromise: plan a solo trip for a shorter duration, followed by a family trip later in the year.\n\nWhich aspects of traveling solo or with family are most important to you?\nuser: I think flexibility is a big one for me. With my family, we had to plan everything out for the 10-day so far in advance, and it was hard to make changes on the fly. I'm curious, are there any destinations that are particularly well-suited for solo travel?\nassistant: Flexibility is a great aspect to prioritize! Solo travel can be incredibly liberating, and some destinations are indeed more solo-traveler-friendly than others.\n\nHere are some popular destinations that are well-suited for solo travel:\n\n1. **New Zealand**: With its stunning natural beauty, adventure activities, and friendly locals, New Zealand is an ideal destination for solo travelers. You can explore the scenic routes, hike the famous trails, or take part in adrenaline-pumping activities like bungee jumping or white-water rafting.\n2. **Iceland**: Known for its breathtaking landscapes, hot springs, and the Northern Lights, Iceland is a nature lover's paradise. It's easy to meet fellow travelers at hostels or on guided tours, and many attractions are easily accessible by public transportation.\n3. **Thailand**: Thailand is a popular destination for solo travelers, with its affordable cost of living, delicious street food, and vibrant culture. You can explore the bustling cities, relax on beautiful beaches, or trek through the hills with hill tribes.\n4. **Costa Rica**: With its lush rainforests, exotic wildlife, and beautiful beaches, Costa Rica is a nature enthusiast's dream. You can hike, surf, zip line, or relax in a beach town, and many eco-lodges and hostels cater specifically to solo travelers.\n5. **Japan**: While it might seem intimidating at first, Japan is an excellent destination for solo travelers. The country has a well-organized public transportation system, and many restaurants and attractions have English signage. You can explore Tokyo's neon-lit streets, relax in an onsen (hot spring), or visit ancient temples and shrines.\n6. **Portugal**: Portugal is a hidden gem for solo travelers, with its rich history, stunning coastline, and affordable prices. You can explore Lisbon's charming neighborhoods, visit the scenic Douro Valley, or relax on the Algarve beaches.\n7. **Croatia**: While it's becoming more popular, Croatia still offers a unique blend of history, culture, and natural beauty. You can explore Dubrovnik's old town, visit the stunning Plitvice Lakes National Park, or relax on the Dalmatian Coast.\n\nThese destinations often have:\n\n* Well-developed tourism infrastructure\n* Easy transportation options\n* Affordable accommodations (hostels, guesthouses, or Airbnb)\n* A strong solo traveler community\n* Plenty of activities and attractions to enjoy on your own or with fellow travelers\n\nKeep in mind that any destination can be suitable for solo travel, and it's essential to research and prepare accordingly. Consider factors like safety, language, and cultural differences when planning your trip.\n\nWhich of these destinations resonates with you, or do you have another place in mind?\nuser: I've always been fascinated by Japan. I've heard the food is amazing and the culture is so unique. What's the best time to visit Japan, and are there any specific festivals or events I should try to catch?\nassistant: Japan is an amazing choice! The food, culture, and scenery are indeed incredible. The best time to visit Japan depends on your preferences, but generally, spring (March to May) and autumn (September to November) are the most popular seasons.\n\n**Spring (March to May)**:\n\n* Cherry blossoms (sakura): Late March to early April is the peak blooming period, making it a popular time to visit. Enjoy hanami (cherry blossom viewing) festivals, food stalls, and scenic walks.\n* Mild weather: Comfortable temperatures (10-20°C/50-68°F) make it ideal for sightseeing.\n* Festivals: Cherry Blossom Festival (Hanami), Golden Week (a week-long holiday), and Spring Festivals (Matsuri) take place during this period.\n\n**Autumn (September to November)**:\n\n* Koyo (fall foliage): Late September to mid-November is the best time to see the vibrant autumn colors. Popular spots include Kyoto, Nikko, and Hakone.\n* Comfortable weather: Similar to spring, the temperatures are mild (10-20°C/50-68°F), making it perfect for outdoor activities.\n* Festivals: Autumn Leaves Festival (Koyo), Moon Viewing Festival (Tsukimi), and Autumn Festivals (Aki Matsuri) occur during this period.\n\n**Summer (June to August)**:\n\n* Warm weather: Hot and humid temperatures (20-30°C/68-86°F) make it ideal for beach destinations like Okinawa, Ishigaki, and beach towns.\n* Festivals: Obon Festival (a Buddhist holiday), Fireworks Festivals (Hanabi Taikai), and Summer Festivals (Natsu Matsuri) take place during this period.\n\n**Winter (December to February)**:\n\n* Skiing and snowboarding: Japan has many excellent ski resorts, such as Niseko, Hakuba, and Shiga Kogen.\n* Hot springs (onsen): Relax in natural hot springs, a perfect way to warm up during the cold winter.\n* Festivals: New Year's (Oshogatsu), Coming of Age Day (Seijin no Hi), and Snow Festivals (Yuki Matsuri) occur during this period.\n\nSome specific festivals and events to consider:\n\n* Cherry Blossom Festival (Hanami): Late March to early April\n* Golden Week: Late April to early May\n* Star Festival (Tanabata): July 7th\n* Moon Viewing Festival (Tsukimi): Mid-autumn, usually around September or October\n* Autumn Leaves Festival (Koyo): Late September to mid-November\n\nWhen planning your trip, keep in mind that popular festivals and events can attract large crowds, so it's essential to book accommodations and transportation in advance.\n\nWhat aspect of Japan are you most interested in? Food, culture, nature, or something else?\nuser: I'm really interested in the food. I've heard Japanese cuisine is amazing and I'd love to try all the different types of food. Are there any specific dishes or restaurants I should try?\nassistant: Japanese cuisine is a culinary paradise! You'll find a vast array of delicious dishes, and I'm excited to guide you through some must-try foods and restaurants.\n\n**Must-try dishes:**\n\n1. **Sushi**: Fresh, raw fish and seafood combined with vinegared rice. Try classic styles like Nigiri, Sashimi, or Maki (rolls).\n2. **Ramen**: A popular noodle soup dish with rich pork or chicken broth, topped with vegetables, meat, and boiled eggs.\n3. **Tonkatsu**: Breaded and deep-fried pork cutlet, often served with shredded cabbage, rice, and miso soup.\n4. **Udon**: Thick, wheat-flour noodles served hot or cold, often with vegetables, tofu, and tempura bits.\n5. **Tempura**: Battered and deep-fried seafood or vegetables, often served with a side of rice and dipping sauce.\n6. **Yakitori**: Grilled chicken skewers, typically flavored with salt or teriyaki sauce.\n7. **Bento**: A boxed meal consisting of rice, fish or meat, and vegetables, often served at train stations or convenience stores.\n8. **Okonomiyaki**: A savory pancake from Hiroshima, filled with ingredients like cabbage, pork, and seafood.\n9. **Miso soup**: A traditional soup made with miso paste, dashi (broth), and ingredients like tofu or seaweed.\n10. **Matcha sweets**: Try matcha-flavored desserts like mochi, ice cream, or cakes.\n\n**Recommended restaurants:**\n\n1. **Sushi Saito** (Tokyo): A three-Michelin-starred sushi restaurant with a focus on traditional Edomae-style sushi.\n2. **Ichiran Ramen** (Fukuoka and Tokyo): A popular chain serving unique, rich tonkotsu ramen.\n3. **Tofuya Ukai** (Tokyo): A tofu restaurant with a wide variety of tofu dishes, including hot pots and skewers.\n4. **Ginza Kyubey** (Tokyo): A renowned restaurant serving high-quality, traditional Japanese cuisine.\n5. **Kani Doraku** (Osaka): A popular chain serving delicious, fresh crab dishes.\n6. **Tsukiji Fish Market** (Tokyo): While not a specific restaurant, this market offers a sushi-making experience and fresh seafood.\n7. **Yoshinoya** (Various locations): A popular chain serving gyudon (beef bowls) and other Japanese comfort food.\n\n**Food markets and streets:**\n\n1. **Tsukiji Outer Market** (Tokyo): Explore the stalls and restaurants surrounding the famous fish market.\n2. **Dotonbori** (Osaka): A popular food and entertainment district with neon lights, street food, and unique restaurants.\n3. **Gion** (Kyoto): A historic district with traditional Japanese restaurants and tea houses.\n4. **Ameya Yokocho** (Tokyo): A bustling market with food stalls, fresh produce, and souvenirs.\n\nRemember to also try some Japanese drinks like **green tea**, **matcha latte**, or **sake** to complement your meals.\n\nWith this culinary guide, you're ready to embark on a gastronomic adventure in Japan!\n\n        Candidate notes:\n        [0] type=CONTEXT title=User’s flexibility-driven solo travel evaluation after Hawaii summary=After a 10-day family island-hopping trip to Hawaii that required extensive advance planning, the user is weighing solo travel partly because flexibility and the ability to change plans on the fly are important to them. scope=User's travel-planning preferences when choosing solo versus family travel entities=entity:<0>,entity:<1> keywords=solo travel,family travel,flexibility,Hawaii,10-day trip,advance planning tags=travel_preferences,solo_vs_family,flexibility evidence=flexibility is a big one for me. With my family, we had to plan everything out for the 10-day so far in advance, and it was hard to make changes on the fly\n[1] type=CONTEXT title=Japan solo trip interest centered on food and culture summary=Japan emerged as a strong solo-travel candidate for the user because they are fascinated by its unique culture and especially motivated by Japanese cuisine, including trying many different types of food. scope=User's potential Japan trip motivations and interest areas entities=entity:<0>,entity:<2>,entity:<3> keywords=Japan,Japanese cuisine,food travel,culture,solo travel tags=travel_interest,food_priority,japan evidence=I've always been fascinated by Japan. I've heard the food is amazing and the culture is so unique.\n[2] type=CONTEXT title=Japan timing and festival planning guidance summary=For a Japan trip, spring (March–May) and autumn (September–November) were presented as the best general seasons, with notable events including Hanami, Golden Week, Tanabata, Tsukimi, and Koyo; popular events require booking accommodation and transport in advance. scope=Japan trip timing and festival planning guidance from the travel-planning session entities=entity:<4>,entity:<5> keywords=Japan,best time to visit,spring,autumn,Hanami,Golden Week,Tanabata,Tsukimi,Koyo tags=travel_planning,japan,festivals evidence=spring (March to May) and autumn (September to November) are the most popular seasons\n[3] type=CONTEXT title=Japanese food itinerary seed list summary=A Japan food-focused itinerary should consider must-try dishes such as sushi, ramen, tonkatsu, udon, tempura, yakitori, bento, okonomiyaki, miso soup, and matcha sweets, plus food areas like Tsukiji Outer Market, Dotonbori, Gion, and Ameya Yokocho. scope=Food recommendations for the user's potential Japan trip entities=entity:<6>,entity:<2>,entity:<5> keywords=Japanese cuisine,sushi,ramen,tonkatsu,udon,tempura,yakitori,okonomiyaki,Tsukiji Outer Market,Dotonbori tags=food_travel,japan,itinerary_seed evidence=Japanese cuisine is a culinary paradise! You'll find a vast array of delicious dishes\n\n        Existing active notes:\n        id=hot-path-dc0505eabf37-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Budget-oriented travel style from NYC trip summary=The user has recent experience saving money on a five-day solo New York City trip by staying in a hostel and eating at local cafes, and is likely to reuse similar budget tactics when planning future trips such as Europe. scope=User's travel budgeting style and prior solo travel experience keywords=budget travel,solo trip,New York City,five days,hostel,local cafes,save money tags=travel_context,budgeting,solo_travel,hostels useCount=0\nid=hot-path-dc0505eabf37-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Draft 7-day Paris and Rome itinerary summary=The user is considering a Europe trip focused on 4 days in Paris and 3 days in Rome. Paris priorities are the Eiffel Tower, the Louvre, and Montmartre; Rome priorities are the Colosseum, Vatican City, Pantheon, and Trevi Fountain areas, with flexibility to add a third destination later. scope=User's tentative Europe trip planning context from the 2023-05-20 session keywords=Europe trip,Paris,Rome,4 days Paris,3 days Rome,Eiffel Tower,Louvre,Montmartre,Colosseum,Vatican City,Pantheon,Trevi Fountain tags=travel_plan,itinerary,europe,paris,rome useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:edced276",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:5947d341e5815394b5ccb7f983a99179"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:edced276\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 06:31\nTranscript:\nuser: I'm trying to plan my next trip and I'm having a hard time deciding whether to go solo or with family. Can you help me weigh the pros and cons of each? By the way, I just got back from an amazing island-hopping trip to Hawaii with my family and it got me thinking about this.\nassistant: Hawaii sounds like an amazing destination! I'm happy to help you weigh the pros and cons of traveling solo versus with family.\n\n**Traveling Solo:**\n\nPros:\n\n1. **Flexibility**: You can create your own itinerary and make changes on a whim without consulting anyone else.\n2. **Independence**: You can do what you want, when you want, without having to consider others' opinions or schedules.\n3. **Meeting new people**: Solo travel can be a great way to meet fellow travelers and locals, as you're more likely to strike up conversations and join group tours.\n4. **Personal growth**: Traveling solo can be a transformative experience that helps you develop confidence, self-reliance, and self-awareness.\n5. **Cost-effective**: You can often find better deals on accommodations and activities when traveling solo.\n\nCons:\n\n1. **Loneliness**: You might feel lonely or isolated at times, especially during meals or in the evenings.\n2. **Safety concerns**: Traveling alone can be riskier, especially for women or in unfamiliar destinations.\n3. **No shared experiences**: You won't have anyone to share your experiences with in real-time, which can be a drawback for some.\n\n**Traveling with Family:**\n\nPros:\n\n1. **Shared experiences**: You'll have loved ones to share your experiences with, creating lasting memories and bonding opportunities.\n2. **Safety in numbers**: Traveling with family can be safer, especially in unfamiliar destinations.\n3. **Diverse perspectives**: You'll have different opinions and ideas to consider when planning your trip, which can lead to a more well-rounded experience.\n4. **Emotional support**: You'll have a built-in support system to help navigate any challenges or difficult situations.\n5. **Cost-sharing**: You can split costs on accommodations, transportation, and activities, making the trip more affordable.\n\nCons:\n\n1. **Compromise**: You'll need to consider others' opinions and preferences when planning your trip, which can be frustrating at times.\n2. **Less flexibility**: You'll need to stick to a more structured itinerary to accommodate everyone's needs and schedules.\n3. **Different interests**: Family members may have different interests or energy levels, which can lead to conflicts or boredom.\n4. **More planning required**: You'll need to coordinate and plan more extensively to ensure everyone's needs are met.\n\nNow that you've had an amazing experience traveling with your family to Hawaii, you might want to consider what aspects of that trip you enjoyed the most. Was it the quality time with your family, the shared experiences, or the relaxation and flexibility that came with having others to share responsibilities with?\n\nOn the other hand, you might be craving a solo adventure to recharge, challenge yourself, or explore a destination at your own pace.\n\nUltimately, the decision to travel solo or with family depends on your personal preferences, goals, and priorities. You could also consider a compromise: plan a solo trip for a shorter duration, followed by a family trip later in the year.\n\nWhich aspects of traveling solo or with family are most important to you?\nuser: I think flexibility is a big one for me. With my family, we had to plan everything out for the 10-day so far in advance, and it was hard to make changes on the fly. I'm curious, are there any destinations that are particularly well-suited for solo travel?\nassistant: Flexibility is a great aspect to prioritize! Solo travel can be incredibly liberating, and some destinations are indeed more solo-traveler-friendly than others.\n\nHere are some popular destinations that are well-suited for solo travel:\n\n1. **New Zealand**: With its stunning natural beauty, adventure activities, and friendly locals, New Zealand is an ideal destination for solo travelers. You can explore the scenic routes, hike the famous trails, or take part in adrenaline-pumping activities like bungee jumping or white-water rafting.\n2. **Iceland**: Known for its breathtaking landscapes, hot springs, and the Northern Lights, Iceland is a nature lover's paradise. It's easy to meet fellow travelers at hostels or on guided tours, and many attractions are easily accessible by public transportation.\n3. **Thailand**: Thailand is a popular destination for solo travelers, with its affordable cost of living, delicious street food, and vibrant culture. You can explore the bustling cities, relax on beautiful beaches, or trek through the hills with hill tribes.\n4. **Costa Rica**: With its lush rainforests, exotic wildlife, and beautiful beaches, Costa Rica is a nature enthusiast's dream. You can hike, surf, zip line, or relax in a beach town, and many eco-lodges and hostels cater specifically to solo travelers.\n5. **Japan**: While it might seem intimidating at first, Japan is an excellent destination for solo travelers. The country has a well-organized public transportation system, and many restaurants and attractions have English signage. You can explore Tokyo's neon-lit streets, relax in an onsen (hot spring), or visit ancient temples and shrines.\n6. **Portugal**: Portugal is a hidden gem for solo travelers, with its rich history, stunning coastline, and affordable prices. You can explore Lisbon's charming neighborhoods, visit the scenic Douro Valley, or relax on the Algarve beaches.\n7. **Croatia**: While it's becoming more popular, Croatia still offers a unique blend of history, culture, and natural beauty. You can explore Dubrovnik's old town, visit the stunning Plitvice Lakes National Park, or relax on the Dalmatian Coast.\n\nThese destinations often have:\n\n* Well-developed tourism infrastructure\n* Easy transportation options\n* Affordable accommodations (hostels, guesthouses, or Airbnb)\n* A strong solo traveler community\n* Plenty of activities and attractions to enjoy on your own or with fellow travelers\n\nKeep in mind that any destination can be suitable for solo travel, and it's essential to research and prepare accordingly. Consider factors like safety, language, and cultural differences when planning your trip.\n\nWhich of these destinations resonates with you, or do you have another place in mind?\nuser: I've always been fascinated by Japan. I've heard the food is amazing and the culture is so unique. What's the best time to visit Japan, and are there any specific festivals or events I should try to catch?\nassistant: Japan is an amazing choice! The food, culture, and scenery are indeed incredible. The best time to visit Japan depends on your preferences, but generally, spring (March to May) and autumn (September to November) are the most popular seasons.\n\n**Spring (March to May)**:\n\n* Cherry blossoms (sakura): Late March to early April is the peak blooming period, making it a popular time to visit. Enjoy hanami (cherry blossom viewing) festivals, food stalls, and scenic walks.\n* Mild weather: Comfortable temperatures (10-20°C/50-68°F) make it ideal for sightseeing.\n* Festivals: Cherry Blossom Festival (Hanami), Golden Week (a week-long holiday), and Spring Festivals (Matsuri) take place during this period.\n\n**Autumn (September to November)**:\n\n* Koyo (fall foliage): Late September to mid-November is the best time to see the vibrant autumn colors. Popular spots include Kyoto, Nikko, and Hakone.\n* Comfortable weather: Similar to spring, the temperatures are mild (10-20°C/50-68°F), making it perfect for outdoor activities.\n* Festivals: Autumn Leaves Festival (Koyo), Moon Viewing Festival (Tsukimi), and Autumn Festivals (Aki Matsuri) occur during this period.\n\n**Summer (June to August)**:\n\n* Warm weather: Hot and humid temperatures (20-30°C/68-86°F) make it ideal for beach destinations like Okinawa, Ishigaki, and beach towns.\n* Festivals: Obon Festival (a Buddhist holiday), Fireworks Festivals (Hanabi Taikai), and Summer Festivals (Natsu Matsuri) take place during this period.\n\n**Winter (December to February)**:\n\n* Skiing and snowboarding: Japan has many excellent ski resorts, such as Niseko, Hakuba, and Shiga Kogen.\n* Hot springs (onsen): Relax in natural hot springs, a perfect way to warm up during the cold winter.\n* Festivals: New Year's (Oshogatsu), Coming of Age Day (Seijin no Hi), and Snow Festivals (Yuki Matsuri) occur during this period.\n\nSome specific festivals and events to consider:\n\n* Cherry Blossom Festival (Hanami): Late March to early April\n* Golden Week: Late April to early May\n* Star Festival (Tanabata): July 7th\n* Moon Viewing Festival (Tsukimi): Mid-autumn, usually around September or October\n* Autumn Leaves Festival (Koyo): Late September to mid-November\n\nWhen planning your trip, keep in mind that popular festivals and events can attract large crowds, so it's essential to book accommodations and transportation in advance.\n\nWhat aspect of Japan are you most interested in? Food, culture, nature, or something else?\nuser: I'm really interested in the food. I've heard Japanese cuisine is amazing and I'd love to try all the different types of food. Are there any specific dishes or restaurants I should try?\nassistant: Japanese cuisine is a culinary paradise! You'll find a vast array of delicious dishes, and I'm excited to guide you through some must-try foods and restaurants.\n\n**Must-try dishes:**\n\n1. **Sushi**: Fresh, raw fish and seafood combined with vinegared rice. Try classic styles like Nigiri, Sashimi, or Maki (rolls).\n2. **Ramen**: A popular noodle soup dish with rich pork or chicken broth, topped with vegetables, meat, and boiled eggs.\n3. **Tonkatsu**: Breaded and deep-fried pork cutlet, often served with shredded cabbage, rice, and miso soup.\n4. **Udon**: Thick, wheat-flour noodles served hot or cold, often with vegetables, tofu, and tempura bits.\n5. **Tempura**: Battered and deep-fried seafood or vegetables, often served with a side of rice and dipping sauce.\n6. **Yakitori**: Grilled chicken skewers, typically flavored with salt or teriyaki sauce.\n7. **Bento**: A boxed meal consisting of rice, fish or meat, and vegetables, often served at train stations or convenience stores.\n8. **Okonomiyaki**: A savory pancake from Hiroshima, filled with ingredients like cabbage, pork, and seafood.\n9. **Miso soup**: A traditional soup made with miso paste, dashi (broth), and ingredients like tofu or seaweed.\n10. **Matcha sweets**: Try matcha-flavored desserts like mochi, ice cream, or cakes.\n\n**Recommended restaurants:**\n\n1. **Sushi Saito** (Tokyo): A three-Michelin-starred sushi restaurant with a focus on traditional Edomae-style sushi.\n2. **Ichiran Ramen** (Fukuoka and Tokyo): A popular chain serving unique, rich tonkotsu ramen.\n3. **Tofuya Ukai** (Tokyo): A tofu restaurant with a wide variety of tofu dishes, including hot pots and skewers.\n4. **Ginza Kyubey** (Tokyo): A renowned restaurant serving high-quality, traditional Japanese cuisine.\n5. **Kani Doraku** (Osaka): A popular chain serving delicious, fresh crab dishes.\n6. **Tsukiji Fish Market** (Tokyo): While not a specific restaurant, this market offers a sushi-making experience and fresh seafood.\n7. **Yoshinoya** (Various locations): A popular chain serving gyudon (beef bowls) and other Japanese comfort food.\n\n**Food markets and streets:**\n\n1. **Tsukiji Outer Market** (Tokyo): Explore the stalls and restaurants surrounding the famous fish market.\n2. **Dotonbori** (Osaka): A popular food and entertainment district with neon lights, street food, and unique restaurants.\n3. **Gion** (Kyoto): A historic district with traditional Japanese restaurants and tea houses.\n4. **Ameya Yokocho** (Tokyo): A bustling market with food stalls, fresh produce, and souvenirs.\n\nRemember to also try some Japanese drinks like **green tea**, **matcha latte**, or **sake** to complement your meals.\n\nWith this culinary guide, you're ready to embark on a gastronomic adventure in Japan!\n\n        Candidate notes:\n        [0] type=CONTEXT title=User’s flexibility-driven solo travel evaluation after Hawaii summary=After a 10-day family island-hopping trip to Hawaii that required extensive advance planning, the user is weighing solo travel partly because flexibility and the ability to change plans on the fly are important to them. scope=User's travel-planning preferences when choosing solo versus family travel entities=entity:<0>,entity:<1> keywords=solo travel,family travel,flexibility,Hawaii,10-day trip,advance planning tags=travel_preferences,solo_vs_family,flexibility evidence=flexibility is a big one for me. With my family, we had to plan everything out for the 10-day so far in advance, and it was hard to make changes on the fly\n[1] type=CONTEXT title=Japan solo trip interest centered on food and culture summary=Japan emerged as a strong solo-travel candidate for the user because they are fascinated by its unique culture and especially motivated by Japanese cuisine, including trying many different types of food. scope=User's potential Japan trip motivations and interest areas entities=entity:<0>,entity:<2>,entity:<3> keywords=Japan,Japanese cuisine,food travel,culture,solo travel tags=travel_interest,food_priority,japan evidence=I've always been fascinated by Japan. I've heard the food is amazing and the culture is so unique.\n[2] type=CONTEXT title=Japan timing and festival planning guidance summary=For a Japan trip, spring (March–May) and autumn (September–November) were presented as the best general seasons, with notable events including Hanami, Golden Week, Tanabata, Tsukimi, and Koyo; popular events require booking accommodation and transport in advance. scope=Japan trip timing and festival planning guidance from the travel-planning session entities=entity:<4>,entity:<5> keywords=Japan,best time to visit,spring,autumn,Hanami,Golden Week,Tanabata,Tsukimi,Koyo tags=travel_planning,japan,festivals evidence=spring (March to May) and autumn (September to November) are the most popular seasons\n[3] type=CONTEXT title=Japanese food itinerary seed list summary=A Japan food-focused itinerary should consider must-try dishes such as sushi, ramen, tonkatsu, udon, tempura, yakitori, bento, okonomiyaki, miso soup, and matcha sweets, plus food areas like Tsukiji Outer Market, Dotonbori, Gion, and Ameya Yokocho. scope=Food recommendations for the user's potential Japan trip entities=entity:<6>,entity:<2>,entity:<5> keywords=Japanese cuisine,sushi,ramen,tonkatsu,udon,tempura,yakitori,okonomiyaki,Tsukiji Outer Market,Dotonbori tags=food_travel,japan,itinerary_seed evidence=Japanese cuisine is a culinary paradise! You'll find a vast array of delicious dishes\n\n        Existing active notes:\n        id=hot-path-dc0505eabf37-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Budget-oriented travel style from NYC trip summary=The user has recent experience saving money on a five-day solo New York City trip by staying in a hostel and eating at local cafes, and is likely to reuse similar budget tactics when planning future trips such as Europe. scope=User's travel budgeting style and prior solo travel experience keywords=budget travel,solo trip,New York City,five days,hostel,local cafes,save money tags=travel_context,budgeting,solo_travel,hostels useCount=0\nid=hot-path-dc0505eabf37-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Draft 7-day Paris and Rome itinerary summary=The user is considering a Europe trip focused on 4 days in Paris and 3 days in Rome. Paris priorities are the Eiffel Tower, the Louvre, and Montmartre; Rome priorities are the Colosseum, Vatican City, Pantheon, and Trevi Fountain areas, with flexibility to add a third destination later. scope=User's tentative Europe trip planning context from the 2023-05-20 session keywords=Europe trip,Paris,Rome,4 days Paris,3 days Rome,Eiffel Tower,Louvre,Montmartre,Colosseum,Vatican City,Pantheon,Trevi Fountain tags=travel_plan,itinerary,europe,paris,rome useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:edced276",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:5947d341e5815394b5ccb7f983a99179"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-dc0505eabf37-note-3\"}],\"patch\":null,\"reason\":\"Captures a distinct travel preference about flexibility and family-versus-solo tradeoffs after Hawaii, not covered by existing budget/Europe notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"New reusable context about the user's interest in Japan, especially food and culture, as a solo-travel candidate.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct reusable planning guidance for timing and festivals for a potential Japan trip.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct reusable seed list for a food-focused Japan itinerary.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4427,
+                "completionTokens": 230,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

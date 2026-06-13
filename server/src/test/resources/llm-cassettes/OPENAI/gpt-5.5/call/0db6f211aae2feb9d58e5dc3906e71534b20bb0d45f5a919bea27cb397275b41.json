@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "0db6f211aae2feb9d58e5dc3906e71534b20bb0d45f5a919bea27cb397275b41",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did I wait for the decision on my asylum application?\n\n                                Question date:\n                                2023/05/28 (Sun) 19:47\n\n                                Noisy expected-answer label:\n                                over a year\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:001be529\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0c2bb821ffce-claim-19 [ACTIVE] has_constraint family=has_constraint: The user's asylum application has been approved.; scope=User's immigration status milestone as of 2023-05-21.; context=\"The user mentioned the asylum approval as a milestone while discussing building a new life.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"my asylum application to get approved\"\n- claim hot-path-0c2bb821ffce-claim-20 [ACTIVE] has_goal family=has_goal: The user is focusing on building a new life after their asylum application approval.; scope=User's post-asylum life-planning context as of 2023-05-21.; context=\"The user said the asylum process was behind them and they could focus on building a new life.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I can focus on building my new life here.\"\n- claim hot-path-0c2bb821ffce-claim-16 [ACTIVE] works_with family=works_with: The user has been using HotPads for housing searches.; scope=User's housing search tool usage as of 2023-05-21.; context=\"The user said they had already used HotPads when discussing rental search websites and apps.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I've been using Zillow and HotPads\"\n- claim hot-path-0c2bb821ffce-claim-15 [ACTIVE] works_with family=works_with: The user has been using Zillow for housing searches.; scope=User's housing search tool usage as of 2023-05-21.; context=\"The user said they had already used Zillow when discussing rental search websites and apps.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I've been using Zillow and HotPads\"\n- claim hot-path-0c2bb821ffce-claim-14 [ACTIVE] has_constraint family=has_constraint: The user is open to any type of accommodation as long as it is safe and clean.; scope=User's housing accommodation constraints as of 2023-05-21.; context=\"The user stated this while describing housing requirements.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I'm open to any type of accommodation as long as it's safe and clean.\"\n- claim hot-path-0c2bb821ffce-claim-9 [ACTIVE] has_constraint family=has_constraint: The user's maximum monthly rent budget is $800.; scope=User's housing search budget as of 2023-05-21.; context=\"The user provided this limit while searching for permanent housing.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"My maximum monthly rent budget is $800.\"\n\n            Retrieved notes:\n            - note hot-path-0c2bb821ffce-note-4 [CONTEXT/ACTIVE]: Volunteer work supports refugee community and US resume building; The user volunteers at a non-profit organization that helps refugees; this is personally meaningful as giving back, meeting like-minded people, and building a resume and US work experience.; scope=User's volunteer-work context relevant to housing commute constraints, community ties, and work/resume discussions.; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I'm volunteering at a non-profit organization that helps refugees, which has been a great way for me to give back and meet like-minded people. It's also been helpful in building my resume and getting some work experience in the US.\"\n- note hot-path-0c2bb821ffce-note-3 [CONTEXT/ACTIVE]: Asylum approval changed user's current life focus; The user's asylum application was approved after more than a year of uncertainty, and the user is now focused on building a new life in the United States, including stable housing and work experience.; scope=User life context relevant when discussing housing, work, volunteering, and settlement in the United States.; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"it's crazy how long it took for my asylum application to get approved. Over a year of uncertainty was really tough. But at least it's behind me now, and I can focus on building my new life here.\"\n\n            Retrieved evidence:\n            - source external:provided-text:03ce99bd005f67ee2668e3df76718e71 [external_record ref=longmemeval:001be529:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 19:50...\n...user: That's really helpful, thanks. My maximum monthly rent budget is $800. I have some savings for a security deposit and first month's rent. I'm not eligible for any government assistance programs. For location, I need to be close to public transportation and my volunteer job. I'm open to any type of accommodation as long as it's safe and clean. I've been looking at apartments online, but it's overwhelming with so many options. Can you recommend any websites or apps that can help me filter my search?...\n...3. **HotPads**: HotPads is a map-based search engine that allows you to filter by price, location, and amenities. They also provide a \"Commute Time\" feature that shows you how long it takes to get to your volunteer job or other important locations....\n...6. **Apartments.com**: Apartments.com is a comprehensive rental search site that allows you to filter by price, location, and amenities. They also provide a \"Ratings & Reviews\" feature, where you can see what current and former residents have to say about a property....\n...* Read reviews and ratings from current and former residents to get a sense of the property's safety and cleanliness.\n* Contact landlords or property managers directly to ask questions and schedule viewings....\n...user: I've been using Zillow and HotPads, but I haven't tried the others. I'll definitely check them out. By the way, speaking of waiting, it's crazy how long it took for my asylum application to get approved. Over a year of uncertainty was really tough. But at least it's behind me now, and I can focus on building my new life here.\nassistant: I'm so glad to hear that your asylum application has been approved! That must be a huge weight off your shoulders. The waiting process can be incredibly stressful and uncertain, and it's amazing that you've made it through that challenging time....\n...Also, consider factors like commute time, safety, and access to amenities like grocery stores, schools, and healthcare facilities. It's also a good idea to visit each neighborhood in person to get a feel for the area before making a decision....\n...* Be mindful of your belongings, especially in crowded areas like the farmers' market....\n...Keep in mind that safety can vary block by block, even within the same neighborhood. It's always a good idea to talk to locals, visit the area in person, and get a feel for the neighborhood before making a decision....\n...These are just a few examples, and there are many more options available. I recommend researching each complex or landlord online, reading reviews, and reaching out to them directly to ask questions and schedule viewings....\n...Remember to prioritize your needs and wants, and don't hesitate to ask questions when viewing apartments....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Volunteer job; Concept named Volunteer job.\n- entity entity:<1> [LOCATION]: United States; Location named United States.\n- entity entity:<2> [ORGANIZATION]: Refugee-helping non-profit organization; Organization named Refugee-helping non-profit organization.\n- entity entity:<3> [SERVICE]: HotPads; Service named HotPads.\n- entity entity:<4> [SERVICE]: Zillow; Service named Zillow.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "001be529",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did I wait for the decision on my asylum application?\n\n                                Question date:\n                                2023/05/28 (Sun) 19:47\n\n                                Noisy expected-answer label:\n                                over a year\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:001be529\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0c2bb821ffce-claim-19 [ACTIVE] has_constraint family=has_constraint: The user's asylum application has been approved.; scope=User's immigration status milestone as of 2023-05-21.; context=\"The user mentioned the asylum approval as a milestone while discussing building a new life.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"my asylum application to get approved\"\n- claim hot-path-0c2bb821ffce-claim-20 [ACTIVE] has_goal family=has_goal: The user is focusing on building a new life after their asylum application approval.; scope=User's post-asylum life-planning context as of 2023-05-21.; context=\"The user said the asylum process was behind them and they could focus on building a new life.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I can focus on building my new life here.\"\n- claim hot-path-0c2bb821ffce-claim-16 [ACTIVE] works_with family=works_with: The user has been using HotPads for housing searches.; scope=User's housing search tool usage as of 2023-05-21.; context=\"The user said they had already used HotPads when discussing rental search websites and apps.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I've been using Zillow and HotPads\"\n- claim hot-path-0c2bb821ffce-claim-15 [ACTIVE] works_with family=works_with: The user has been using Zillow for housing searches.; scope=User's housing search tool usage as of 2023-05-21.; context=\"The user said they had already used Zillow when discussing rental search websites and apps.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I've been using Zillow and HotPads\"\n- claim hot-path-0c2bb821ffce-claim-14 [ACTIVE] has_constraint family=has_constraint: The user is open to any type of accommodation as long as it is safe and clean.; scope=User's housing accommodation constraints as of 2023-05-21.; context=\"The user stated this while describing housing requirements.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I'm open to any type of accommodation as long as it's safe and clean.\"\n- claim hot-path-0c2bb821ffce-claim-9 [ACTIVE] has_constraint family=has_constraint: The user's maximum monthly rent budget is $800.; scope=User's housing search budget as of 2023-05-21.; context=\"The user provided this limit while searching for permanent housing.\"; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"My maximum monthly rent budget is $800.\"\n\n            Retrieved notes:\n            - note hot-path-0c2bb821ffce-note-4 [CONTEXT/ACTIVE]: Volunteer work supports refugee community and US resume building; The user volunteers at a non-profit organization that helps refugees; this is personally meaningful as giving back, meeting like-minded people, and building a resume and US work experience.; scope=User's volunteer-work context relevant to housing commute constraints, community ties, and work/resume discussions.; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"I'm volunteering at a non-profit organization that helps refugees, which has been a great way for me to give back and meet like-minded people. It's also been helpful in building my resume and getting some work experience in the US.\"\n- note hot-path-0c2bb821ffce-note-3 [CONTEXT/ACTIVE]: Asylum approval changed user's current life focus; The user's asylum application was approved after more than a year of uncertainty, and the user is now focused on building a new life in the United States, including stable housing and work experience.; scope=User life context relevant when discussing housing, work, volunteering, and settlement in the United States.; evidence=DIRECT source=external:provided-text:03ce99bd005f67ee2668e3df76718e71 quote=\"it's crazy how long it took for my asylum application to get approved. Over a year of uncertainty was really tough. But at least it's behind me now, and I can focus on building my new life here.\"\n\n            Retrieved evidence:\n            - source external:provided-text:03ce99bd005f67ee2668e3df76718e71 [external_record ref=longmemeval:001be529:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 19:50...\n...user: That's really helpful, thanks. My maximum monthly rent budget is $800. I have some savings for a security deposit and first month's rent. I'm not eligible for any government assistance programs. For location, I need to be close to public transportation and my volunteer job. I'm open to any type of accommodation as long as it's safe and clean. I've been looking at apartments online, but it's overwhelming with so many options. Can you recommend any websites or apps that can help me filter my search?...\n...3. **HotPads**: HotPads is a map-based search engine that allows you to filter by price, location, and amenities. They also provide a \"Commute Time\" feature that shows you how long it takes to get to your volunteer job or other important locations....\n...6. **Apartments.com**: Apartments.com is a comprehensive rental search site that allows you to filter by price, location, and amenities. They also provide a \"Ratings & Reviews\" feature, where you can see what current and former residents have to say about a property....\n...* Read reviews and ratings from current and former residents to get a sense of the property's safety and cleanliness.\n* Contact landlords or property managers directly to ask questions and schedule viewings....\n...user: I've been using Zillow and HotPads, but I haven't tried the others. I'll definitely check them out. By the way, speaking of waiting, it's crazy how long it took for my asylum application to get approved. Over a year of uncertainty was really tough. But at least it's behind me now, and I can focus on building my new life here.\nassistant: I'm so glad to hear that your asylum application has been approved! That must be a huge weight off your shoulders. The waiting process can be incredibly stressful and uncertain, and it's amazing that you've made it through that challenging time....\n...Also, consider factors like commute time, safety, and access to amenities like grocery stores, schools, and healthcare facilities. It's also a good idea to visit each neighborhood in person to get a feel for the area before making a decision....\n...* Be mindful of your belongings, especially in crowded areas like the farmers' market....\n...Keep in mind that safety can vary block by block, even within the same neighborhood. It's always a good idea to talk to locals, visit the area in person, and get a feel for the neighborhood before making a decision....\n...These are just a few examples, and there are many more options available. I recommend researching each complex or landlord online, reading reviews, and reaching out to them directly to ask questions and schedule viewings....\n...Remember to prioritize your needs and wants, and don't hesitate to ask questions when viewing apartments....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Volunteer job; Concept named Volunteer job.\n- entity entity:<1> [LOCATION]: United States; Location named United States.\n- entity entity:<2> [ORGANIZATION]: Refugee-helping non-profit organization; Organization named Refugee-helping non-profit organization.\n- entity entity:<3> [SERVICE]: HotPads; Service named HotPads.\n- entity entity:<4> [SERVICE]: Zillow; Service named Zillow.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "001be529",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Over a year.\",\"reason\":\"The retrieved note and source quote state that the asylum approval came after “Over a year of uncertainty.”\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2590,
+                "completionTokens": 77,
+                "thinkingTokens": 26,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
