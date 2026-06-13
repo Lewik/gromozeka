@@ -1,0 +1,177 @@
+{
+    "version": 1,
+    "hash": "2717b0b33fa1114f5c3d3517472dad9b8306b06785089b8cf4d77430e364552e",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How much time do I dedicate to practicing guitar every day?\n\n                                Question date:\n                                2023/05/30 (Tue) 08:58\n\n                                Noisy expected-answer label:\n                                30 minutes\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:29f2956b\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-2138647a9fd9-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's guitar practice habit was 30 minutes daily as of 2023-05-26.; scope=User's guitar practice routine stated in the 2023-05-26 imported chat session.; context=\"The user said they had been practicing guitar for 30 minutes daily and that it was helping them progress.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I've been practicing guitar for 30 minutes daily\"\n- claim hot-path-2138647a9fd9-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to improve their guitar playing.; scope=User's music-learning goals from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for music theory and fingerpicking as part of improving guitar playing.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I'm looking to improve my guitar playing\"\n- claim hot-path-2138647a9fd9-claim-16 [ACTIVE] has_goal family=has_goal: The user wants to upgrade their guitar setup to get a better sound for jam sessions with Alex.; scope=User's guitar gear upgrade goal from the 2023-05-26 imported chat session.; context=\"The user asked whether they should consider a tube amp or a solid-state amp for this setup upgrade.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"upgrading my setup to get a better sound for my jam sessions with Alex\"\n- claim hot-path-2138647a9fd9-claim-13 [ACTIVE] has_goal family=has_goal: The user was thinking of upgrading their guitar setup.; scope=User's guitar gear goals from the 2023-05-26 imported chat session.; context=\"The user asked for resources about guitar amplifiers and effects pedals while considering an upgrade.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I'm thinking of upgrading my guitar setup\"\n- claim hot-path-2138647a9fd9-claim-14 [ACTIVE] has_goal family=has_goal: The user wants to learn about guitar amplifiers and effects pedals.; scope=User's guitar gear learning interests from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for learning about guitar amplifiers and effects pedals while upgrading their guitar setup.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"learning about guitar amplifiers and effects pedals\"\n- claim hot-path-2138647a9fd9-claim-6 [ACTIVE] has_goal family=has_goal: The user wants to learn fingerpicking techniques.; scope=User's music-learning goals from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for learning fingerpicking techniques while improving guitar playing.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"fingerpicking techniques\"\n- claim hot-path-2138647a9fd9-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to learn more about music theory.; scope=User's music-learning goals from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for learning music theory while improving guitar playing.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"learning more about music theory\"\n- claim hot-path-2138647a9fd9-claim-15 [ACTIVE] has_goal family=has_goal: The user is fascinated by the history of the electric guitar and the evolution of guitar gear.; scope=User's guitar history and gear interests from the 2023-05-26 imported chat session.; context=\"The user said they had been reading about the history of the electric guitar and were fascinated by the evolution of guitar gear.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I've been reading about the history of the electric guitar and I'm fascinated by the evolution of guitar gear.\"\n\n            Retrieved notes:\n            - note hot-path-2138647a9fd9-note-3 [CONTEXT/ACTIVE]: User's music-learning trajectory spans guitar, jazz, recording, harmonica, and gear; The user has a broad music-learning trajectory centered on improving guitar, learning music theory and fingerpicking, exploring jazz/saxophone theory and improvisation, recording jam sessions with Alex using a DAW, considering diatonic harmonica, and studying guitar amps, effects pedals, and electric guitar gear history.; scope=Applies to future recommendations or explanations related to the user's music-learning interests and gear choices.; evidence=SUMMARIZED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I've been reading about the history of the electric guitar and I'm fascinated by the evolution of guitar gear.\"\n- note hot-path-2138647a9fd9-note-2 [CONTEXT/ACTIVE]: Guitar gear upgrade decision frame: tube amp vs solid-state amp; When considering a guitar setup upgrade for better sound in jam sessions with Alex, the useful decision frame compares tube amps for warm, rich, dynamic, expressive tone against solid-state amps for reliability, portability, quieter operation, lower maintenance, and affordability. The choice should be guided by playing style, tone preference, portability/maintenance needs, budget, and ideally trying both amp types before buying.; scope=Applies to the user's guitar gear upgrade exploration, especially amplifier choice for jam sessions with Alex.; evidence=SUMMARIZED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"upgrading my setup to get a better sound for my jam sessions with Alex\"\n\n            Retrieved evidence:\n            - source external:provided-text:123fd66760f61452bf93f0c6c40d6e9f [external_record ref=longmemeval:29f2956b:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 23:04\nTranscript:\nuser: I'm looking to improve my guitar playing and was wondering if you could recommend some online resources for learning more about music theory and fingerpicking techniques. By the way, I've been practicing guitar for 30 minutes daily, and it's been helping me progress nicely.\nassistant: That's great to hear that you've been consistent with your practice! 30 minutes a day can definitely help you see progress. Now, let's dive into some excellent online resources to help you improve your music theory knowledge and fingerpicking techniques:\n\n**Music Theory Resources:**\n\n1. **Justin Guitar**: Justin Guitar has an extensive music theory section that's easy to follow and covers topics like chord progressions, scales, and rhythm.\n2. **Guitar Tricks**: Guitar Tricks offers a comprehensive music theory course with video lessons, quizzes, and exercises to help you understand music theory concepts....\n...1. **Fingerstyle Guitar**: This website is dedicated to fingerstyle guitar and offers lessons, tutorials, and arrangements for fingerpicking enthusiasts.\n2. **Guitar Fingerstyle**: Guitar Fingerstyle offers a range of fingerpicking lessons, including beginner to advanced techniques and styles.\n3. **Andy Guitar**: Andy Guitar's YouTube channel has an excellent fingerpicking section with lessons on various techniques, including Travis picking and classical guitar....\n...1. **YouTube Channels**: Channels like Marty Music, GuitarLessons365, and GuitarJamz offer a wide range of lessons on music theory, fingerpicking, and other guitar-related topics.\n2. **Online Forums**: Websites like Reddit's r/guitar and r/musictheory, as well as online forums like Guitar Forum and Music Theory Forum, can connect you with other guitarists and music theorists who can offer valuable advice and feedback.\n3. **Apps**: Apps like Fender Play, Guitar Tricks, and Yousician can provide interactive lessons and exercises to help you improve your guitar playing and music theory knowledge.\n\nRemember, consistent practice and dedication are key to improving your guitar playing. Keep up the good work, and don't hesitate to explore these resources to take your playing to the next level!...\n...Remember, learning jazz theory and improvisation takes time, patience, and dedication. Practice regularly, listen to a lot of jazz, and explore these resources to develop your skills and appreciation for this incredible genre....\n...* **Ableton Live Tutorials**: Ableton's official tutorial section, covering everything from basics to advanced techniques....\n...3. Practice, practice, practice! Record your jam sessions, experiment with different features, and have fun....\n...* **Harmonica Lessons 365**: Daily harmonica lessons and tutorials for beginners and intermediate players....\n...2. Practice regularly, even if it's just for a few minutes a day....\n...Remember, the key to improving is consistent practice and patience. Have fun exploring the world of harmonica, and enjoy playing your diatonic harmonica!\nuser: I'm thinking of upgrading my guitar setup and was wondering if you could recommend some online resources for learning about guitar amplifiers and effects pedals? I've been reading about the history of the electric guitar and I'm fascinated by the evolution of guitar gear.\nassistant: The world of guitar amplifiers and effects pedals is a fascinating one! I'd be happy to help you explore online resources to learn more about guitar gear and its evolution....\n...user: I'm excited to dive deeper into the world of guitar gear and effects pedals. I've been thinking about upgrading my setup to get a better sound for my jam sessions with Alex. Do you think I should consider getting a tube amp or a solid-state amp?...\n...1. **Maintenance**: Tube amps require regular maintenance, such as tube replacements, which can be time-consuming and costly....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Fingerpicking; Concept named Fingerpicking.\n- entity entity:<1> [CONCEPT]: Guitar; Concept named Guitar.\n- entity entity:<2> [CONCEPT]: Jazz; Concept named Jazz.\n- entity entity:<3> [CONCEPT]: Music theory; Concept named Music theory.\n- entity entity:<4> [CONCEPT]: Saxophone; Concept named Saxophone.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "29f2956b",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How much time do I dedicate to practicing guitar every day?\n\n                                Question date:\n                                2023/05/30 (Tue) 08:58\n\n                                Noisy expected-answer label:\n                                30 minutes\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:29f2956b\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-2138647a9fd9-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's guitar practice habit was 30 minutes daily as of 2023-05-26.; scope=User's guitar practice routine stated in the 2023-05-26 imported chat session.; context=\"The user said they had been practicing guitar for 30 minutes daily and that it was helping them progress.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I've been practicing guitar for 30 minutes daily\"\n- claim hot-path-2138647a9fd9-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to improve their guitar playing.; scope=User's music-learning goals from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for music theory and fingerpicking as part of improving guitar playing.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I'm looking to improve my guitar playing\"\n- claim hot-path-2138647a9fd9-claim-16 [ACTIVE] has_goal family=has_goal: The user wants to upgrade their guitar setup to get a better sound for jam sessions with Alex.; scope=User's guitar gear upgrade goal from the 2023-05-26 imported chat session.; context=\"The user asked whether they should consider a tube amp or a solid-state amp for this setup upgrade.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"upgrading my setup to get a better sound for my jam sessions with Alex\"\n- claim hot-path-2138647a9fd9-claim-13 [ACTIVE] has_goal family=has_goal: The user was thinking of upgrading their guitar setup.; scope=User's guitar gear goals from the 2023-05-26 imported chat session.; context=\"The user asked for resources about guitar amplifiers and effects pedals while considering an upgrade.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I'm thinking of upgrading my guitar setup\"\n- claim hot-path-2138647a9fd9-claim-14 [ACTIVE] has_goal family=has_goal: The user wants to learn about guitar amplifiers and effects pedals.; scope=User's guitar gear learning interests from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for learning about guitar amplifiers and effects pedals while upgrading their guitar setup.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"learning about guitar amplifiers and effects pedals\"\n- claim hot-path-2138647a9fd9-claim-6 [ACTIVE] has_goal family=has_goal: The user wants to learn fingerpicking techniques.; scope=User's music-learning goals from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for learning fingerpicking techniques while improving guitar playing.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"fingerpicking techniques\"\n- claim hot-path-2138647a9fd9-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to learn more about music theory.; scope=User's music-learning goals from the 2023-05-26 imported chat session.; context=\"The user asked for online resources for learning music theory while improving guitar playing.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"learning more about music theory\"\n- claim hot-path-2138647a9fd9-claim-15 [ACTIVE] has_goal family=has_goal: The user is fascinated by the history of the electric guitar and the evolution of guitar gear.; scope=User's guitar history and gear interests from the 2023-05-26 imported chat session.; context=\"The user said they had been reading about the history of the electric guitar and were fascinated by the evolution of guitar gear.\"; evidence=IMPORTED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I've been reading about the history of the electric guitar and I'm fascinated by the evolution of guitar gear.\"\n\n            Retrieved notes:\n            - note hot-path-2138647a9fd9-note-3 [CONTEXT/ACTIVE]: User's music-learning trajectory spans guitar, jazz, recording, harmonica, and gear; The user has a broad music-learning trajectory centered on improving guitar, learning music theory and fingerpicking, exploring jazz/saxophone theory and improvisation, recording jam sessions with Alex using a DAW, considering diatonic harmonica, and studying guitar amps, effects pedals, and electric guitar gear history.; scope=Applies to future recommendations or explanations related to the user's music-learning interests and gear choices.; evidence=SUMMARIZED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"I've been reading about the history of the electric guitar and I'm fascinated by the evolution of guitar gear.\"\n- note hot-path-2138647a9fd9-note-2 [CONTEXT/ACTIVE]: Guitar gear upgrade decision frame: tube amp vs solid-state amp; When considering a guitar setup upgrade for better sound in jam sessions with Alex, the useful decision frame compares tube amps for warm, rich, dynamic, expressive tone against solid-state amps for reliability, portability, quieter operation, lower maintenance, and affordability. The choice should be guided by playing style, tone preference, portability/maintenance needs, budget, and ideally trying both amp types before buying.; scope=Applies to the user's guitar gear upgrade exploration, especially amplifier choice for jam sessions with Alex.; evidence=SUMMARIZED source=external:provided-text:123fd66760f61452bf93f0c6c40d6e9f quote=\"upgrading my setup to get a better sound for my jam sessions with Alex\"\n\n            Retrieved evidence:\n            - source external:provided-text:123fd66760f61452bf93f0c6c40d6e9f [external_record ref=longmemeval:29f2956b:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 23:04\nTranscript:\nuser: I'm looking to improve my guitar playing and was wondering if you could recommend some online resources for learning more about music theory and fingerpicking techniques. By the way, I've been practicing guitar for 30 minutes daily, and it's been helping me progress nicely.\nassistant: That's great to hear that you've been consistent with your practice! 30 minutes a day can definitely help you see progress. Now, let's dive into some excellent online resources to help you improve your music theory knowledge and fingerpicking techniques:\n\n**Music Theory Resources:**\n\n1. **Justin Guitar**: Justin Guitar has an extensive music theory section that's easy to follow and covers topics like chord progressions, scales, and rhythm.\n2. **Guitar Tricks**: Guitar Tricks offers a comprehensive music theory course with video lessons, quizzes, and exercises to help you understand music theory concepts....\n...1. **Fingerstyle Guitar**: This website is dedicated to fingerstyle guitar and offers lessons, tutorials, and arrangements for fingerpicking enthusiasts.\n2. **Guitar Fingerstyle**: Guitar Fingerstyle offers a range of fingerpicking lessons, including beginner to advanced techniques and styles.\n3. **Andy Guitar**: Andy Guitar's YouTube channel has an excellent fingerpicking section with lessons on various techniques, including Travis picking and classical guitar....\n...1. **YouTube Channels**: Channels like Marty Music, GuitarLessons365, and GuitarJamz offer a wide range of lessons on music theory, fingerpicking, and other guitar-related topics.\n2. **Online Forums**: Websites like Reddit's r/guitar and r/musictheory, as well as online forums like Guitar Forum and Music Theory Forum, can connect you with other guitarists and music theorists who can offer valuable advice and feedback.\n3. **Apps**: Apps like Fender Play, Guitar Tricks, and Yousician can provide interactive lessons and exercises to help you improve your guitar playing and music theory knowledge.\n\nRemember, consistent practice and dedication are key to improving your guitar playing. Keep up the good work, and don't hesitate to explore these resources to take your playing to the next level!...\n...Remember, learning jazz theory and improvisation takes time, patience, and dedication. Practice regularly, listen to a lot of jazz, and explore these resources to develop your skills and appreciation for this incredible genre....\n...* **Ableton Live Tutorials**: Ableton's official tutorial section, covering everything from basics to advanced techniques....\n...3. Practice, practice, practice! Record your jam sessions, experiment with different features, and have fun....\n...* **Harmonica Lessons 365**: Daily harmonica lessons and tutorials for beginners and intermediate players....\n...2. Practice regularly, even if it's just for a few minutes a day....\n...Remember, the key to improving is consistent practice and patience. Have fun exploring the world of harmonica, and enjoy playing your diatonic harmonica!\nuser: I'm thinking of upgrading my guitar setup and was wondering if you could recommend some online resources for learning about guitar amplifiers and effects pedals? I've been reading about the history of the electric guitar and I'm fascinated by the evolution of guitar gear.\nassistant: The world of guitar amplifiers and effects pedals is a fascinating one! I'd be happy to help you explore online resources to learn more about guitar gear and its evolution....\n...user: I'm excited to dive deeper into the world of guitar gear and effects pedals. I've been thinking about upgrading my setup to get a better sound for my jam sessions with Alex. Do you think I should consider getting a tube amp or a solid-state amp?...\n...1. **Maintenance**: Tube amps require regular maintenance, such as tube replacements, which can be time-consuming and costly....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Fingerpicking; Concept named Fingerpicking.\n- entity entity:<1> [CONCEPT]: Guitar; Concept named Guitar.\n- entity entity:<2> [CONCEPT]: Jazz; Concept named Jazz.\n- entity entity:<3> [CONCEPT]: Music theory; Concept named Music theory.\n- entity entity:<4> [CONCEPT]: Saxophone; Concept named Saxophone.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "29f2956b",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You dedicate 30 minutes each day to practicing guitar.\",\"reason\":\"The retrieved claim and transcript explicitly state the user had been practicing guitar for 30 minutes daily.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3176,
+                "completionTokens": 55,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

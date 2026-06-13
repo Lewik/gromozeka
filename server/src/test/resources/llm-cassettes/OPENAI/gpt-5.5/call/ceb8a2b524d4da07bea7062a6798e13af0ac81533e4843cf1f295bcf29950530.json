@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "ceb8a2b524d4da07bea7062a6798e13af0ac81533e4843cf1f295bcf29950530",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did Alex marinate the BBQ ribs in special sauce?\n\n                                Question date:\n                                2023/05/29 (Mon) 22:42\n\n                                Noisy expected-answer label:\n                                24 hours\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:faba32e5\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e69800d28ef4-claim-7 [ACTIVE] used_recipe_technique family=used_recipe_technique: Alex marinated his BBQ ribs in a special sauce for 24 hours before grilling them.; scope=Applies to Alex's BBQ ribs technique recalled by the user.; context=\"The user remembered Alex explaining how he prepared the BBQ ribs served at Alex's party a few weeks before the 2023-05-20 chat.\"; evidence=DIRECT source=external:provided-text:e6d3d5ea87f0fe971477a606d6bb316f quote=\"Alex telling me he marinated them in a special sauce for 24 hours before grilling them\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e6d3d5ea87f0fe971477a606d6bb316f [external_record ref=longmemeval:faba32e5:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 10:21\nTranscript:\nuser: I'm thinking of hosting a BBQ party soon and I want to make sure I have all the necessary supplies. Can you give me a list of must-haves for a successful backyard BBQ? By the way, I just remembered my friend Alex's amazing BBQ ribs from his party a few weeks ago - they were so tender and flavorful!...\n...1. **Proteins**: Burgers, hot dogs, sausages, chicken, ribs (like Alex's famous ones!), and veggies for a variety of options....\n...Now, about Alex's amazing BBQ ribs... did he share his secret recipe with you?\nuser: That's a great list, thanks! I think I have most of the essentials covered. By the way, I was thinking of trying out some BBQ ribs for my party, and I remember Alex telling me he marinated them in a special sauce for 24 hours before grilling them to perfection. Do you have any tips on how to choose the right type of wood for smoking meats?\nassistant: BBQ ribs are a crowd-pleaser, and marinating them in a special sauce for 24 hours will definitely make them tender and flavorful....\n...1. **Hickory**: A classic choice for BBQ, hickory wood adds a strong, sweet, and smoky flavor to meats. It's a great option for ribs, brisket, and pork shoulder.\n2. **Oak**: Oak wood provides a mellow, smoky flavor and is often used for smoking beef, lamb, and game meats.\n3. **Mesquite**: Mesquite wood has a strong, earthy flavor and is commonly used for smoking beef, lamb, and vegetables....\n...* **Monitor the temperature**: Keep an eye on the temperature of your grill and adjust the wood as needed to maintain a consistent temperature....\n...I hope this helps, and I'm sure your BBQ ribs will turn out amazing!...\n...3. **Low and slow cooking**: Cook the brisket at a low temperature (225-250°F) for a long period of time (8-12 hours). This breaks down the collagen in the meat, making it tender and juicy....\n...* **Monitor the temperature**: Use a thermometer to monitor the internal temperature of the brisket, and adjust the heat as needed to maintain a consistent temperature....\n...user: I'll definitely keep those tips in mind when preparing my brisket. By the way, do you have any recommendations for sides that would pair well with BBQ ribs and brisket? I'm thinking of making some coleslaw, but I want to offer some other options too.\nassistant: Coleslaw is a classic BBQ side dish, and it pairs perfectly with ribs and brisket. Here are some other delicious side dish ideas that would complement your BBQ ribs and brisket nicely:\n\n1. **Baked Beans**: A BBQ staple, baked beans are sweet, smoky, and pair well with the rich flavors of ribs and brisket....\n...6. **Collard Greens**: Braised collard greens with a tangy BBQ sauce are a delicious and nutritious side dish that pairs well with ribs and brisket.\n7. **Cornbread**: A warm, crumbly cornbread is a classic Southern side dish that pairs perfectly with BBQ. You can add jalapenos or hot sauce for an extra kick....\n...These are just a few ideas to get you started. You can also consider other options like deviled eggs, potato chips, or even a fruit salad. Whatever you choose, I'm sure your guests will appreciate the variety of delicious sides to accompany your BBQ ribs and brisket!...\n...assistant: Baked beans and potato salad are both classic BBQ sides that will complement your ribs and brisket perfectly....\n...* **Duration of the party**: How long do you expect the party to last? If it's a short gathering, you might not need as much ice. If it's an all-day affair, you'll want to have more ice on hand....\n...6. **Lawn Darts**: Set up a lawn darts game with large, soft-tip darts and a target board. This game is easy to play and can be enjoyed by all ages....\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: Alex; Person named Alex.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "faba32e5",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did Alex marinate the BBQ ribs in special sauce?\n\n                                Question date:\n                                2023/05/29 (Mon) 22:42\n\n                                Noisy expected-answer label:\n                                24 hours\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:faba32e5\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e69800d28ef4-claim-7 [ACTIVE] used_recipe_technique family=used_recipe_technique: Alex marinated his BBQ ribs in a special sauce for 24 hours before grilling them.; scope=Applies to Alex's BBQ ribs technique recalled by the user.; context=\"The user remembered Alex explaining how he prepared the BBQ ribs served at Alex's party a few weeks before the 2023-05-20 chat.\"; evidence=DIRECT source=external:provided-text:e6d3d5ea87f0fe971477a606d6bb316f quote=\"Alex telling me he marinated them in a special sauce for 24 hours before grilling them\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e6d3d5ea87f0fe971477a606d6bb316f [external_record ref=longmemeval:faba32e5:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 10:21\nTranscript:\nuser: I'm thinking of hosting a BBQ party soon and I want to make sure I have all the necessary supplies. Can you give me a list of must-haves for a successful backyard BBQ? By the way, I just remembered my friend Alex's amazing BBQ ribs from his party a few weeks ago - they were so tender and flavorful!...\n...1. **Proteins**: Burgers, hot dogs, sausages, chicken, ribs (like Alex's famous ones!), and veggies for a variety of options....\n...Now, about Alex's amazing BBQ ribs... did he share his secret recipe with you?\nuser: That's a great list, thanks! I think I have most of the essentials covered. By the way, I was thinking of trying out some BBQ ribs for my party, and I remember Alex telling me he marinated them in a special sauce for 24 hours before grilling them to perfection. Do you have any tips on how to choose the right type of wood for smoking meats?\nassistant: BBQ ribs are a crowd-pleaser, and marinating them in a special sauce for 24 hours will definitely make them tender and flavorful....\n...1. **Hickory**: A classic choice for BBQ, hickory wood adds a strong, sweet, and smoky flavor to meats. It's a great option for ribs, brisket, and pork shoulder.\n2. **Oak**: Oak wood provides a mellow, smoky flavor and is often used for smoking beef, lamb, and game meats.\n3. **Mesquite**: Mesquite wood has a strong, earthy flavor and is commonly used for smoking beef, lamb, and vegetables....\n...* **Monitor the temperature**: Keep an eye on the temperature of your grill and adjust the wood as needed to maintain a consistent temperature....\n...I hope this helps, and I'm sure your BBQ ribs will turn out amazing!...\n...3. **Low and slow cooking**: Cook the brisket at a low temperature (225-250°F) for a long period of time (8-12 hours). This breaks down the collagen in the meat, making it tender and juicy....\n...* **Monitor the temperature**: Use a thermometer to monitor the internal temperature of the brisket, and adjust the heat as needed to maintain a consistent temperature....\n...user: I'll definitely keep those tips in mind when preparing my brisket. By the way, do you have any recommendations for sides that would pair well with BBQ ribs and brisket? I'm thinking of making some coleslaw, but I want to offer some other options too.\nassistant: Coleslaw is a classic BBQ side dish, and it pairs perfectly with ribs and brisket. Here are some other delicious side dish ideas that would complement your BBQ ribs and brisket nicely:\n\n1. **Baked Beans**: A BBQ staple, baked beans are sweet, smoky, and pair well with the rich flavors of ribs and brisket....\n...6. **Collard Greens**: Braised collard greens with a tangy BBQ sauce are a delicious and nutritious side dish that pairs well with ribs and brisket.\n7. **Cornbread**: A warm, crumbly cornbread is a classic Southern side dish that pairs perfectly with BBQ. You can add jalapenos or hot sauce for an extra kick....\n...These are just a few ideas to get you started. You can also consider other options like deviled eggs, potato chips, or even a fruit salad. Whatever you choose, I'm sure your guests will appreciate the variety of delicious sides to accompany your BBQ ribs and brisket!...\n...assistant: Baked beans and potato salad are both classic BBQ sides that will complement your ribs and brisket perfectly....\n...* **Duration of the party**: How long do you expect the party to last? If it's a short gathering, you might not need as much ice. If it's an all-day affair, you'll want to have more ice on hand....\n...6. **Lawn Darts**: Set up a lawn darts game with large, soft-tip darts and a target board. This game is easy to play and can be enjoyed by all ages....\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: Alex; Person named Alex.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "faba32e5",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Alex marinated the BBQ ribs in special sauce for 24 hours.\",\"reason\":\"The retrieved claim and source excerpt explicitly state that Alex marinated the ribs in special sauce for 24 hours before grilling.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1915,
+                "completionTokens": 82,
+                "thinkingTokens": 17,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
