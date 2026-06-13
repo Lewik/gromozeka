@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "13e61d63870dfbc0d007a9b656d7ff165bad4c307c4edc1757d9eed9c65ad0ee",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How much time do I dedicate to practicing violin every day?\n\n                                Question date:\n                                2023/05/29 (Mon) 04:31\n\n                                Noisy expected-answer label:\n                                You did not mention this information. You mentioned practing guitar everyday, but not violin.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:29f2956b_abs\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0deffd06805e-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's guitar practice routine is 30 minutes daily.; scope=User's guitar practice routine as of the 2023-05-22 imported chat session.; context=\"The user said the daily guitar practice routine has been helping them progress nicely.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I've been practicing guitar for 30 minutes daily\"\n- claim hot-path-0deffd06805e-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to improve their guitar playing.; scope=User's music-learning goals from the 2023-05-22 imported chat session.; context=\"The user asked for online resources for music theory and fingerpicking as part of improving guitar playing.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm looking to improve my guitar playing\"\n- claim hot-path-0deffd06805e-claim-10 [ACTIVE] has_goal family=has_goal: The user is considering getting a digital audio workstation to record jam sessions with their friend Alex.; scope=User's music-recording and gear considerations from the 2023-05-22 imported chat session.; context=\"The user asked for beginner DAW recommendations and resources to learn how to use them.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I've been thinking of getting a digital audio workstation to record my jam sessions with my friend Alex.\"\n- claim hot-path-0deffd06805e-claim-12 [ACTIVE] has_goal family=has_goal: The user is considering upgrading their guitar setup.; scope=User's guitar-gear upgrade considerations from the 2023-05-22 imported chat session.; context=\"The user requested resources about guitar amplifiers and effects pedals and later asked whether to consider a tube amp or solid-state amp.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm thinking of upgrading my guitar setup\"\n- claim hot-path-0deffd06805e-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to learn about guitar amplifiers and effects pedals.; scope=User's guitar-gear learning goals from the 2023-05-22 imported chat session.; context=\"The user asked for online resources about guitar amplifiers and effects pedals while considering a guitar setup upgrade.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"learning about guitar amplifiers and effects pedals\"\n- claim hot-path-0deffd06805e-claim-6 [ACTIVE] has_goal family=has_goal: The user wants to learn fingerpicking techniques.; scope=User's music-learning goals from the 2023-05-22 imported chat session.; context=\"The user requested online resources for fingerpicking techniques while discussing guitar improvement.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"fingerpicking techniques\"\n- claim hot-path-0deffd06805e-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to learn jazz theory and improvisation.; scope=User's jazz-learning goals from the 2023-05-22 imported chat session.; context=\"The user asked for online resources for learning jazz theory and improvisation, with a saxophone emphasis.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"learning jazz theory and improvisation\"\n- claim hot-path-0deffd06805e-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to learn more about jazz music, especially saxophone.; scope=User's music-learning interests from the 2023-05-22 imported chat session.; context=\"The user asked for online resources for jazz theory and improvisation after mentioning interest in jazz and saxophone.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm also interested in learning more about jazz music, especially saxophone.\"\n\n            Retrieved notes:\n            - note hot-path-0deffd06805e-note-2 [CONTEXT/ACTIVE]: Guitar learning and gear-upgrade context; The user is actively improving guitar skills through daily practice and is expanding from theory/fingerpicking into recording jam sessions and upgrading guitar tone. Current guitar-related exploration includes beginner DAWs for recording with Alex, diatonic harmonica as an additional instrument, and choosing between tube and solid-state amplifiers based on tone, portability, maintenance, and budget trade-offs.; scope=User's ongoing music-learning and guitar setup context from LongMemEval 29f2956b_abs session 1; evidence=SUMMARIZED source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I've been practicing guitar for 30 minutes daily, and it's been helping me progress nicely.\"\n- note hot-path-0deffd06805e-note-3 [DIRECTION/ACTIVE]: Jazz and saxophone learning direction; The user is interested in jazz music with a saxophone focus and wants resources for jazz theory and improvisation. This suggests future music recommendations can emphasize jazz education, improvisation practice, saxophone technique, transcription, and listening-based learning.; scope=User's jazz and saxophone learning interests from LongMemEval 29f2956b_abs session 1; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm also interested in learning more about jazz music, especially saxophone.\"\n\n            Retrieved evidence:\n            - source external:provided-text:98ab756f84eeece8be267cc78547f0ee [external_record ref=longmemeval:29f2956b_abs:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 16:01\nTranscript:\nuser: I'm looking to improve my guitar playing and was wondering if you could recommend some online resources for learning more about music theory and fingerpicking techniques. By the way, I've been practicing guitar for 30 minutes daily, and it's been helping me progress nicely.\nassistant: That's great to hear that you've been consistent with your practice! 30 minutes a day can definitely help you see progress. Now, let's dive into some excellent online resources to help you improve your music theory knowledge and fingerpicking techniques:...\n...4. **The Music Theory Academy**: This YouTube channel offers in-depth music theory lessons, including topics like chord progressions, harmony, and composition....\n...Remember, consistent practice and dedication are key to improving your guitar playing. Keep up the good work, and don't hesitate to explore these resources to take your playing to the next level!...\n...2. **Jazz Theory 101**: This website provides in-depth lessons and exercises on jazz harmony, chord progressions, scales, and modes....\n...3. **ii-V-I Progression**: This website is dedicated to the ii-V-I progression, a fundamental harmonic structure in jazz. It offers lessons, exercises, and examples to help you master this essential progression....\n...Remember, learning jazz theory and improvisation takes time, patience, and dedication. Practice regularly, listen to a lot of jazz, and explore these resources to develop your skills and appreciation for this incredible genre....\n...* **Ableton Live Tutorials**: Ableton's official tutorial section, covering everything from basics to advanced techniques....\n...3. Practice, practice, practice! Record your jam sessions, experiment with different features, and have fun....\n...user: I'm thinking of buying a diatonic harmonica. Can you recommend some online resources for learning harmonica, and maybe some beginner-friendly harmonica tabs or songs to start with?\nassistant: The diatonic harmonica is an amazing instrument! I'd be happy to help you get started with some online resources and beginner-friendly harmonica tabs and songs.\n\n**Online Resources for Learning Harmonica:**\n\n1. **Harmonica.com**: A comprehensive website dedicated to harmonica learning, with lessons, tutorials, and articles for beginners and advanced players.\n2. **HarmonicaLessons.com**: Offers video lessons, tutorials, and courses for diatonic and chromatic harmonica, covering various styles and genres.\n3. **YouTube Channels**:\n\t* **Harmonica Lessons 365**: Daily harmonica lessons and tutorials for beginners and intermediate players.\n\t* **Adam Gussow's Harmonica**: Adam Gussow, a renowned harmonica player, shares lessons, tutorials, and performances.\n\t* **Harmonica Tutorials 360**: A channel dedicated to harmonica tutorials, covering various styles and genres.\n4. **Online Forums**:\n\t* **Harmonica Forum**: A community-driven forum where you can ask questions, share knowledge, and learn from other harmonica enthusiasts.\n\t* **Reddit's r/harmonica**: A subreddit dedicated to harmonica players, with discussions, lessons, and resources.\n\n**Beginner-Friendly Harmonica Tabs and Songs:**...\n...4. **Harmonica-Specific Songs**:\n\t* \"Harmonica Boogie\" by Sonny Boy Williamson II...\n...2. Practice regularly, even if it's just for a few minutes a day....\n...Remember, the key to improving is consistent practice and patience. Have fun exploring the world of harmonica, and enjoy playing your diatonic harmonica!...\n...* **Pedalboard of the Month**: Features pedalboards from famous guitarists and explains how they use their effects....\n...1. **Maintenance**: Tube amps require regular maintenance, such as tube replacements, which can be time-consuming and costly....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Guitar; Concept named Guitar.\n- entity entity:<1> [PERSON]: Alex; Person named Alex.\n- entity entity:<2> [TECHNOLOGY]: Digital audio workstation; Technology named Digital audio workstation.\n- entity entity:<3> [TECHNOLOGY]: Effects pedal; Technology named Effects pedal.\n- entity entity:<4> [TECHNOLOGY]: Guitar amplifier; Technology named Guitar amplifier.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "29f2956b_abs",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How much time do I dedicate to practicing violin every day?\n\n                                Question date:\n                                2023/05/29 (Mon) 04:31\n\n                                Noisy expected-answer label:\n                                You did not mention this information. You mentioned practing guitar everyday, but not violin.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:29f2956b_abs\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0deffd06805e-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's guitar practice routine is 30 minutes daily.; scope=User's guitar practice routine as of the 2023-05-22 imported chat session.; context=\"The user said the daily guitar practice routine has been helping them progress nicely.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I've been practicing guitar for 30 minutes daily\"\n- claim hot-path-0deffd06805e-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to improve their guitar playing.; scope=User's music-learning goals from the 2023-05-22 imported chat session.; context=\"The user asked for online resources for music theory and fingerpicking as part of improving guitar playing.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm looking to improve my guitar playing\"\n- claim hot-path-0deffd06805e-claim-10 [ACTIVE] has_goal family=has_goal: The user is considering getting a digital audio workstation to record jam sessions with their friend Alex.; scope=User's music-recording and gear considerations from the 2023-05-22 imported chat session.; context=\"The user asked for beginner DAW recommendations and resources to learn how to use them.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I've been thinking of getting a digital audio workstation to record my jam sessions with my friend Alex.\"\n- claim hot-path-0deffd06805e-claim-12 [ACTIVE] has_goal family=has_goal: The user is considering upgrading their guitar setup.; scope=User's guitar-gear upgrade considerations from the 2023-05-22 imported chat session.; context=\"The user requested resources about guitar amplifiers and effects pedals and later asked whether to consider a tube amp or solid-state amp.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm thinking of upgrading my guitar setup\"\n- claim hot-path-0deffd06805e-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to learn about guitar amplifiers and effects pedals.; scope=User's guitar-gear learning goals from the 2023-05-22 imported chat session.; context=\"The user asked for online resources about guitar amplifiers and effects pedals while considering a guitar setup upgrade.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"learning about guitar amplifiers and effects pedals\"\n- claim hot-path-0deffd06805e-claim-6 [ACTIVE] has_goal family=has_goal: The user wants to learn fingerpicking techniques.; scope=User's music-learning goals from the 2023-05-22 imported chat session.; context=\"The user requested online resources for fingerpicking techniques while discussing guitar improvement.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"fingerpicking techniques\"\n- claim hot-path-0deffd06805e-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to learn jazz theory and improvisation.; scope=User's jazz-learning goals from the 2023-05-22 imported chat session.; context=\"The user asked for online resources for learning jazz theory and improvisation, with a saxophone emphasis.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"learning jazz theory and improvisation\"\n- claim hot-path-0deffd06805e-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to learn more about jazz music, especially saxophone.; scope=User's music-learning interests from the 2023-05-22 imported chat session.; context=\"The user asked for online resources for jazz theory and improvisation after mentioning interest in jazz and saxophone.\"; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm also interested in learning more about jazz music, especially saxophone.\"\n\n            Retrieved notes:\n            - note hot-path-0deffd06805e-note-2 [CONTEXT/ACTIVE]: Guitar learning and gear-upgrade context; The user is actively improving guitar skills through daily practice and is expanding from theory/fingerpicking into recording jam sessions and upgrading guitar tone. Current guitar-related exploration includes beginner DAWs for recording with Alex, diatonic harmonica as an additional instrument, and choosing between tube and solid-state amplifiers based on tone, portability, maintenance, and budget trade-offs.; scope=User's ongoing music-learning and guitar setup context from LongMemEval 29f2956b_abs session 1; evidence=SUMMARIZED source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I've been practicing guitar for 30 minutes daily, and it's been helping me progress nicely.\"\n- note hot-path-0deffd06805e-note-3 [DIRECTION/ACTIVE]: Jazz and saxophone learning direction; The user is interested in jazz music with a saxophone focus and wants resources for jazz theory and improvisation. This suggests future music recommendations can emphasize jazz education, improvisation practice, saxophone technique, transcription, and listening-based learning.; scope=User's jazz and saxophone learning interests from LongMemEval 29f2956b_abs session 1; evidence=DIRECT source=external:provided-text:98ab756f84eeece8be267cc78547f0ee quote=\"I'm also interested in learning more about jazz music, especially saxophone.\"\n\n            Retrieved evidence:\n            - source external:provided-text:98ab756f84eeece8be267cc78547f0ee [external_record ref=longmemeval:29f2956b_abs:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 16:01\nTranscript:\nuser: I'm looking to improve my guitar playing and was wondering if you could recommend some online resources for learning more about music theory and fingerpicking techniques. By the way, I've been practicing guitar for 30 minutes daily, and it's been helping me progress nicely.\nassistant: That's great to hear that you've been consistent with your practice! 30 minutes a day can definitely help you see progress. Now, let's dive into some excellent online resources to help you improve your music theory knowledge and fingerpicking techniques:...\n...4. **The Music Theory Academy**: This YouTube channel offers in-depth music theory lessons, including topics like chord progressions, harmony, and composition....\n...Remember, consistent practice and dedication are key to improving your guitar playing. Keep up the good work, and don't hesitate to explore these resources to take your playing to the next level!...\n...2. **Jazz Theory 101**: This website provides in-depth lessons and exercises on jazz harmony, chord progressions, scales, and modes....\n...3. **ii-V-I Progression**: This website is dedicated to the ii-V-I progression, a fundamental harmonic structure in jazz. It offers lessons, exercises, and examples to help you master this essential progression....\n...Remember, learning jazz theory and improvisation takes time, patience, and dedication. Practice regularly, listen to a lot of jazz, and explore these resources to develop your skills and appreciation for this incredible genre....\n...* **Ableton Live Tutorials**: Ableton's official tutorial section, covering everything from basics to advanced techniques....\n...3. Practice, practice, practice! Record your jam sessions, experiment with different features, and have fun....\n...user: I'm thinking of buying a diatonic harmonica. Can you recommend some online resources for learning harmonica, and maybe some beginner-friendly harmonica tabs or songs to start with?\nassistant: The diatonic harmonica is an amazing instrument! I'd be happy to help you get started with some online resources and beginner-friendly harmonica tabs and songs.\n\n**Online Resources for Learning Harmonica:**\n\n1. **Harmonica.com**: A comprehensive website dedicated to harmonica learning, with lessons, tutorials, and articles for beginners and advanced players.\n2. **HarmonicaLessons.com**: Offers video lessons, tutorials, and courses for diatonic and chromatic harmonica, covering various styles and genres.\n3. **YouTube Channels**:\n\t* **Harmonica Lessons 365**: Daily harmonica lessons and tutorials for beginners and intermediate players.\n\t* **Adam Gussow's Harmonica**: Adam Gussow, a renowned harmonica player, shares lessons, tutorials, and performances.\n\t* **Harmonica Tutorials 360**: A channel dedicated to harmonica tutorials, covering various styles and genres.\n4. **Online Forums**:\n\t* **Harmonica Forum**: A community-driven forum where you can ask questions, share knowledge, and learn from other harmonica enthusiasts.\n\t* **Reddit's r/harmonica**: A subreddit dedicated to harmonica players, with discussions, lessons, and resources.\n\n**Beginner-Friendly Harmonica Tabs and Songs:**...\n...4. **Harmonica-Specific Songs**:\n\t* \"Harmonica Boogie\" by Sonny Boy Williamson II...\n...2. Practice regularly, even if it's just for a few minutes a day....\n...Remember, the key to improving is consistent practice and patience. Have fun exploring the world of harmonica, and enjoy playing your diatonic harmonica!...\n...* **Pedalboard of the Month**: Features pedalboards from famous guitarists and explains how they use their effects....\n...1. **Maintenance**: Tube amps require regular maintenance, such as tube replacements, which can be time-consuming and costly....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Guitar; Concept named Guitar.\n- entity entity:<1> [PERSON]: Alex; Person named Alex.\n- entity entity:<2> [TECHNOLOGY]: Digital audio workstation; Technology named Digital audio workstation.\n- entity entity:<3> [TECHNOLOGY]: Effects pedal; Technology named Effects pedal.\n- entity entity:<4> [TECHNOLOGY]: Guitar amplifier; Technology named Guitar amplifier.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "29f2956b_abs",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You did not mention a daily violin practice duration; the remembered practice routine is guitar for 30 minutes daily.\",\"reason\":\"The retrieved memory only states a 30-minute daily guitar practice routine and contains no violin practice information.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3102,
+                "completionTokens": 226,
+                "thinkingTokens": 157,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

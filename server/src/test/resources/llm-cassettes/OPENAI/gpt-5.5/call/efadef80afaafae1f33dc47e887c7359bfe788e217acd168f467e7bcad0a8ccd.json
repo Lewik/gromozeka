@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "efadef80afaafae1f33dc47e887c7359bfe788e217acd168f467e7bcad0a8ccd",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many weeks ago did I start using the cashback app 'Ibotta'?\n\n                                Question date:\n                                2023/05/06 (Sat) 05:25\n\n                                Noisy expected-answer label:\n                                3 weeks ago\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_e072b769\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ff7d121fa3ca-claim-7 [ACTIVE] prefers family=prefers: The user prefers shopping at places that offer cashback through Ibotta.; scope=User grocery shopping and cashback strategy.; context=\"The user said they do not have a preferred store but try to shop at places that offer cashback through Ibotta.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I do try to shop at places that offer cashback through Ibotta\"\n- claim hot-path-ff7d121fa3ca-claim-14 [ACTIVE] has_goal family=has_goal: The user is considering trying Thrive Market for organic and natural grocery products.; scope=User's grocery delivery/service exploration in the imported 2023-04-16 chat.; context=\"The user asked whether Thrive Market purchases could earn cashback through Ibotta.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm thinking of trying out Thrive Market\"\n- claim hot-path-ff7d121fa3ca-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to prioritize the egg rebate on Ibotta during the next grocery trip.; scope=The user's next grocery trip planned in the imported 2023-04-16 chat.; context=\"The user was planning a grocery trip and mentioned an Ibotta rebate on eggs.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been eyeing that rebate on eggs, so I'll probably prioritize that\"\n- claim hot-path-ff7d121fa3ca-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to reduce plastic usage in grocery shopping.; scope=User sustainability goals for shopping.; context=\"The user asked about reusable bags or containers suitable for grocery shopping.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm also thinking of trying to reduce my plastic usage\"\n- claim hot-path-ff7d121fa3ca-claim-10 [ACTIVE] prefers family=prefers: The user habitually carries reusable bags when shopping.; scope=User shopping sustainability habits.; context=\"The user said carrying reusable bags when shopping has become a habit and feels good because it avoids contributing to plastic waste.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been carrying reusable bags with me whenever I go shopping, and it's become a habit now\"\n- claim hot-path-ff7d121fa3ca-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user's household size is 1 person.; scope=User household size for grocery planning.; context=\"Grocery planning context from the imported 2023-04-16 chat.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm the only one in my household\"\n- claim hot-path-ff7d121fa3ca-claim-5 [ACTIVE] has_constraint family=has_constraint: The user has no dietary restrictions or dietary preferences for grocery planning.; scope=User grocery planning preferences and constraints.; context=\"Grocery planning context from the imported 2023-04-16 chat.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I don't have any dietary restrictions or preferences\"\n- claim hot-path-ff7d121fa3ca-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to incorporate more organic and natural products into their diet.; scope=User diet and grocery product goals.; context=\"The user mentioned this as the reason for considering Thrive Market.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been trying to incorporate more organic and natural products into my diet\"\n\n            Retrieved notes:\n            - note hot-path-ff7d121fa3ca-note-2 [PLAN/ACTIVE]: Grocery planning strategy around Ibotta cashback; The user's grocery planning approach combines a broad essentials list for a single-person household with checking Ibotta before shopping, prioritizing targeted rebates such as eggs, and stacking cashback with sales or digital coupons when possible.; scope=Reusable context for the user's grocery planning and cashback-shopping strategy.; evidence=SUMMARIZED source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been eyeing that rebate on eggs, so I'll probably prioritize that.\"\n- note hot-path-ff7d121fa3ca-note-4 [PLAN/ACTIVE]: Evaluation approach for grocery delivery services and Thrive Market; When considering services like FreshToDoor, Instacart, Shipt, Peapod, Google Express, or Thrive Market, the reusable decision pattern is to compare first-time-user promotions, area availability, pricing, delivery fees, reviews, and possible Ibotta cashback before committing.; scope=Reusable decision framework for the user's grocery delivery service trials and promotion/cashback evaluation.; evidence=SUMMARIZED source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm thinking of trying out Thrive Market, as I've been trying to incorporate more organic and natural products into my diet.\"\n\n            Retrieved evidence:\n            - source external:provided-text:69b261cada8748830648c9cb6830de58 [external_record ref=longmemeval:gpt4_e072b769:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/16 (Sun) 04:50\nTranscript:\nuser: I'm trying to plan my next grocery trip and I was wondering if you could help me make a list of essentials I should pick up. I've just downloaded Ibotta, a cashback app that gives you rebates on certain grocery items, and I want to make sure I get the most out of it.\nassistant: I'd be happy to help you plan your grocery trip and maximize your Ibotta earnings.\n\nTo get started, I'll need to know a bit more about your dietary preferences and the types of products you typically buy. Please answer the following questions:...\n...* Check the Ibotta app regularly for new offers and expiring deals....\n...Let me know your answers to the above questions, and I'll help you create a personalized grocery list to get the most out of Ibotta!\nuser: I don't have any dietary restrictions or preferences, and I'm the only one in my household. I usually buy a mix of everything, like fresh produce, meat, dairy, canned goods, and snacks. I don't have a preferred store, but I do try to shop at places that offer cashback through Ibotta. I've been eyeing that rebate on eggs, so I'll probably prioritize that.\nassistant: Based on your preferences, I've compiled a list of essential grocery items that are commonly found on Ibotta and should give you a good starting point for your next shopping trip. I've also included some tips to help you maximize your cashback earnings:...\n...5. Keep an eye on the Ibotta app for bonus offers or special deals.\n\nBy focusing on these essentials, you'll be able to stock your pantry and fridge while earning cashback through Ibotta. Don't forget to prioritize that egg rebate!...\n...assistant: That's a great idea! Reducing plastic usage is a wonderful step towards a more sustainable lifestyle. Reusable bags and containers can make a significant impact, and they're often eligible for cashback through Ibotta as well!...\n...By using your reusable bags for bulk shopping, you'll not only reduce waste but also save money on single-use bags and potentially earn cashback through Ibotta!...\n...When signing up for a new service, be sure to check their website or app for any available promotions or discounts. You can also try using promo codes or referral links from friends or family members to get a discount on your first order.\n\nAdditionally, keep an eye on your Ibotta app, as they sometimes offer cashback on grocery delivery services or online grocery purchases....\n...user: I'm thinking of trying out Thrive Market, as I've been trying to incorporate more organic and natural products into my diet. Do you think I could get cashback on my Thrive Market purchases through Ibotta?\nassistant: Thrive Market is a fantastic platform for accessing organic and natural products.\n\nAs for cashback on Thrive Market purchases through Ibotta, the answer is... YES! Ibotta has partnered with Thrive Market to offer cashback on certain purchases.\n\nHere's how it works:\n\n1. **Link your Thrive Market account:** Make sure you have an account with Thrive Market and link it to your Ibotta account. You can do this by going to the Ibotta app, searching for Thrive Market, and following the prompts to link your accounts.\n2. **Browse Thrive Market offers:** Check the Ibotta app for available cashback offers on Thrive Market purchases. These offers might be on specific products, categories, or even entire purchases....\n...4. **Get cashback:** After your purchase, Ibotta will credit your account with the cashback amount. You can then redeem your cashback rewards for real money or use them to make future purchases.\n\nSome tips to maximize your cashback on Thrive Market purchases:\n\n* **Check Ibotta regularly:** Offers on Thrive Market products can change frequently, so make sure to check the Ibotta app regularly for new deals.\n* **Stack your savings:** Look for sales or discounts on Thrive Market and combine them with Ibotta cashback offers to maximize your saving\n[truncated 5 chars]\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Ibotta; Product named Ibotta.\n- entity entity:<1> [SERVICE]: FreshToDoor; Service named FreshToDoor.\n- entity entity:<2> [SERVICE]: Instacart; Service named Instacart.\n- entity entity:<3> [SERVICE]: Shipt; Service named Shipt.\n- entity entity:<4> [SERVICE]: Thrive Market; Service named Thrive Market.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_e072b769",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many weeks ago did I start using the cashback app 'Ibotta'?\n\n                                Question date:\n                                2023/05/06 (Sat) 05:25\n\n                                Noisy expected-answer label:\n                                3 weeks ago\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_e072b769\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ff7d121fa3ca-claim-7 [ACTIVE] prefers family=prefers: The user prefers shopping at places that offer cashback through Ibotta.; scope=User grocery shopping and cashback strategy.; context=\"The user said they do not have a preferred store but try to shop at places that offer cashback through Ibotta.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I do try to shop at places that offer cashback through Ibotta\"\n- claim hot-path-ff7d121fa3ca-claim-14 [ACTIVE] has_goal family=has_goal: The user is considering trying Thrive Market for organic and natural grocery products.; scope=User's grocery delivery/service exploration in the imported 2023-04-16 chat.; context=\"The user asked whether Thrive Market purchases could earn cashback through Ibotta.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm thinking of trying out Thrive Market\"\n- claim hot-path-ff7d121fa3ca-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to prioritize the egg rebate on Ibotta during the next grocery trip.; scope=The user's next grocery trip planned in the imported 2023-04-16 chat.; context=\"The user was planning a grocery trip and mentioned an Ibotta rebate on eggs.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been eyeing that rebate on eggs, so I'll probably prioritize that\"\n- claim hot-path-ff7d121fa3ca-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to reduce plastic usage in grocery shopping.; scope=User sustainability goals for shopping.; context=\"The user asked about reusable bags or containers suitable for grocery shopping.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm also thinking of trying to reduce my plastic usage\"\n- claim hot-path-ff7d121fa3ca-claim-10 [ACTIVE] prefers family=prefers: The user habitually carries reusable bags when shopping.; scope=User shopping sustainability habits.; context=\"The user said carrying reusable bags when shopping has become a habit and feels good because it avoids contributing to plastic waste.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been carrying reusable bags with me whenever I go shopping, and it's become a habit now\"\n- claim hot-path-ff7d121fa3ca-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user's household size is 1 person.; scope=User household size for grocery planning.; context=\"Grocery planning context from the imported 2023-04-16 chat.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm the only one in my household\"\n- claim hot-path-ff7d121fa3ca-claim-5 [ACTIVE] has_constraint family=has_constraint: The user has no dietary restrictions or dietary preferences for grocery planning.; scope=User grocery planning preferences and constraints.; context=\"Grocery planning context from the imported 2023-04-16 chat.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I don't have any dietary restrictions or preferences\"\n- claim hot-path-ff7d121fa3ca-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to incorporate more organic and natural products into their diet.; scope=User diet and grocery product goals.; context=\"The user mentioned this as the reason for considering Thrive Market.\"; evidence=DIRECT source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been trying to incorporate more organic and natural products into my diet\"\n\n            Retrieved notes:\n            - note hot-path-ff7d121fa3ca-note-2 [PLAN/ACTIVE]: Grocery planning strategy around Ibotta cashback; The user's grocery planning approach combines a broad essentials list for a single-person household with checking Ibotta before shopping, prioritizing targeted rebates such as eggs, and stacking cashback with sales or digital coupons when possible.; scope=Reusable context for the user's grocery planning and cashback-shopping strategy.; evidence=SUMMARIZED source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I've been eyeing that rebate on eggs, so I'll probably prioritize that.\"\n- note hot-path-ff7d121fa3ca-note-4 [PLAN/ACTIVE]: Evaluation approach for grocery delivery services and Thrive Market; When considering services like FreshToDoor, Instacart, Shipt, Peapod, Google Express, or Thrive Market, the reusable decision pattern is to compare first-time-user promotions, area availability, pricing, delivery fees, reviews, and possible Ibotta cashback before committing.; scope=Reusable decision framework for the user's grocery delivery service trials and promotion/cashback evaluation.; evidence=SUMMARIZED source=external:provided-text:69b261cada8748830648c9cb6830de58 quote=\"I'm thinking of trying out Thrive Market, as I've been trying to incorporate more organic and natural products into my diet.\"\n\n            Retrieved evidence:\n            - source external:provided-text:69b261cada8748830648c9cb6830de58 [external_record ref=longmemeval:gpt4_e072b769:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/16 (Sun) 04:50\nTranscript:\nuser: I'm trying to plan my next grocery trip and I was wondering if you could help me make a list of essentials I should pick up. I've just downloaded Ibotta, a cashback app that gives you rebates on certain grocery items, and I want to make sure I get the most out of it.\nassistant: I'd be happy to help you plan your grocery trip and maximize your Ibotta earnings.\n\nTo get started, I'll need to know a bit more about your dietary preferences and the types of products you typically buy. Please answer the following questions:...\n...* Check the Ibotta app regularly for new offers and expiring deals....\n...Let me know your answers to the above questions, and I'll help you create a personalized grocery list to get the most out of Ibotta!\nuser: I don't have any dietary restrictions or preferences, and I'm the only one in my household. I usually buy a mix of everything, like fresh produce, meat, dairy, canned goods, and snacks. I don't have a preferred store, but I do try to shop at places that offer cashback through Ibotta. I've been eyeing that rebate on eggs, so I'll probably prioritize that.\nassistant: Based on your preferences, I've compiled a list of essential grocery items that are commonly found on Ibotta and should give you a good starting point for your next shopping trip. I've also included some tips to help you maximize your cashback earnings:...\n...5. Keep an eye on the Ibotta app for bonus offers or special deals.\n\nBy focusing on these essentials, you'll be able to stock your pantry and fridge while earning cashback through Ibotta. Don't forget to prioritize that egg rebate!...\n...assistant: That's a great idea! Reducing plastic usage is a wonderful step towards a more sustainable lifestyle. Reusable bags and containers can make a significant impact, and they're often eligible for cashback through Ibotta as well!...\n...By using your reusable bags for bulk shopping, you'll not only reduce waste but also save money on single-use bags and potentially earn cashback through Ibotta!...\n...When signing up for a new service, be sure to check their website or app for any available promotions or discounts. You can also try using promo codes or referral links from friends or family members to get a discount on your first order.\n\nAdditionally, keep an eye on your Ibotta app, as they sometimes offer cashback on grocery delivery services or online grocery purchases....\n...user: I'm thinking of trying out Thrive Market, as I've been trying to incorporate more organic and natural products into my diet. Do you think I could get cashback on my Thrive Market purchases through Ibotta?\nassistant: Thrive Market is a fantastic platform for accessing organic and natural products.\n\nAs for cashback on Thrive Market purchases through Ibotta, the answer is... YES! Ibotta has partnered with Thrive Market to offer cashback on certain purchases.\n\nHere's how it works:\n\n1. **Link your Thrive Market account:** Make sure you have an account with Thrive Market and link it to your Ibotta account. You can do this by going to the Ibotta app, searching for Thrive Market, and following the prompts to link your accounts.\n2. **Browse Thrive Market offers:** Check the Ibotta app for available cashback offers on Thrive Market purchases. These offers might be on specific products, categories, or even entire purchases....\n...4. **Get cashback:** After your purchase, Ibotta will credit your account with the cashback amount. You can then redeem your cashback rewards for real money or use them to make future purchases.\n\nSome tips to maximize your cashback on Thrive Market purchases:\n\n* **Check Ibotta regularly:** Offers on Thrive Market products can change frequently, so make sure to check the Ibotta app regularly for new deals.\n* **Stack your savings:** Look for sales or discounts on Thrive Market and combine them with Ibotta cashback offers to maximize your saving\n[truncated 5 chars]\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Ibotta; Product named Ibotta.\n- entity entity:<1> [SERVICE]: FreshToDoor; Service named FreshToDoor.\n- entity entity:<2> [SERVICE]: Instacart; Service named Instacart.\n- entity entity:<3> [SERVICE]: Shipt; Service named Shipt.\n- entity entity:<4> [SERVICE]: Thrive Market; Service named Thrive Market.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_e072b769",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"About 3 weeks ago.\",\"reason\":\"The retrieved chat dated 2023/04/16 says the user had just downloaded Ibotta, which is about 20 days before 2023/05/06.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3017,
+                "completionTokens": 135,
+                "thinkingTokens": 66,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
