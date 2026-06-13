@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "6dbd43f691dab1e287f1c0fd6b7f4a132708fdf374e9dbfc8bcdafe2431d8eca",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:eeda8a6d\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 06:57\nTranscript:\nuser: I'm thinking of adding some live aquatic plants to my freshwater tank. Can you give me some tips on how to get started with that? By the way, I also upgraded my old 10-gallon tank, which has my betta fish, Bubbles.\nassistant: Congratulations on the tank upgrade, and I'm thrilled to hear you're considering adding live aquatic plants to your 20-gallon tank! Live plants can bring numerous benefits to your aquarium, including improved water quality, increased oxygen levels, and a more natural environment for your fish. Here are some tips to get you started:\n\n1. **Choose the right plants**: Select plants that are compatible with your tank size, lighting, and water parameters. Some popular beginner-friendly plants for a 20-gallon tank include:\n\t* Java Moss\n\t* Anacharis\n\t* Water Wisteria\n\t* Amazon Swords\n\t* Cryptocorynes\n2. **Research plant care**: Learn about the specific needs of the plants you choose, including lighting, temperature, pH, and nutrient requirements.\n3. **Prepare your tank**: Before adding plants, make sure your tank is cycled and stable. Perform regular water changes, and ensure your water parameters are suitable for both your fish and plants.\n4. **Select a suitable substrate**: Live plants require a nutrient-rich substrate to thrive. Consider using a high-quality aquarium soil or a mix specifically designed for planted tanks.\n5. **Provide adequate lighting**: Most aquatic plants require moderate to high lighting. Consider upgrading your lighting to a higher intensity or adding a dedicated plant light.\n6. **Plant with care**: Plant your chosen species in a way that allows for good water circulation and prevents overcrowding. You can use plant weights or a planting tool to secure the plants in the substrate.\n7. **Monitor and maintain**: Regularly check the health of your plants, and perform tasks like pruning, fertilizing, and monitoring for pests.\n8. **Introduce plants gradually**: Start with a few plants and gradually add more over time to prevent overwhelming your tank's ecosystem.\n9. **Be patient**: Live plants can take time to establish and thrive. Be prepared to make adjustments and learn from your experiences.\n10. **Consider a plant-friendly fish community**: While Bubbles the betta is a great addition to your 10-gallon tank, some fish can be detrimental to live plants. Research fish species that are compatible with planted tanks, such as neon tetras, harlequin rasboras, or dwarf shrimp.\n\nRemember to quarantine your plants before introducing them to your main tank to prevent the introduction of pests or diseases.\n\nI hope these tips help you get started on your planted tank journey! If you have any specific questions or concerns, feel free to ask.\nuser: What's the best way to anchor the plants in the substrate to prevent them from floating away?\nassistant: Anchoring plants in the substrate is crucial to prevent them from floating away and to ensure they establish a strong root system. Here are some methods to anchor your aquatic plants:\n\n1. **Plant weights**: You can use plant weights or plant anchors that are specifically designed for aquatic plants. These weights are usually made of lead or stone and have a small hook or clip to attach to the plant stem. Simply tie the weight to the stem, and bury it in the substrate.\n2. **Planting tools**: Use a planting tool, such as a long-handled tweezers or a planting stick, to gently push the plant into the substrate. This helps to secure the plant in place and prevents it from floating away.\n3. **Bury the roots**: When planting, make sure to bury the roots of the plant deeply into the substrate. This will help the plant establish a strong root system and anchor itself in place.\n4. **Rock or gravel anchors**: Place a small rock or a handful of gravel around the base of the plant, making sure to cover the roots. This will hold the plant in place and prevent it from floating away.\n5. **Plant tie-downs**: Use a plant tie-down, which is a small, soft material (like a plant tie or a twist-tie) to gently tie the plant stem to a nearby decoration or a plant weight. This will keep the plant in place while it establishes its roots.\n6. **Substrate with high density**: Use a substrate with a higher density, such as a planted tank-specific substrate, which will help keep the plants anchored in place.\n7. **Create a \"plant pocket\"**: Create a small \"pocket\" in the substrate by digging a small hole and placing the plant in it. Then, cover the roots and stem with substrate, making sure to firm it gently. This will create a snug fit and prevent the plant from floating away.\n\nRemember to handle your plants gently and avoid damaging their roots or stems during the planting process. With a little patience and practice, you'll be a pro at anchoring your aquatic plants in no time!\nuser: I'm planning to add some schooling fish to my 20-gallon tank, like lemon tetras or zebra danios. Can you tell me more about their behavior and tank requirements?\nassistant: Lemon tetras and zebra danios are both excellent choices for a 20-gallon community tank. Here's some information about their behavior and tank requirements to help you create a thriving environment for them:\n\n**Lemon Tetras (Hyphessobrycon citrinus)**\n\n* **Schooling behavior:** Lemon tetras are a schooling fish and should be kept in a group of at least 10-15 individuals. They're very active and love to swim together, creating a mesmerizing display of shimmering yellow scales.\n* **Tank requirements:**\n\t+ Water temperature: 72-82°F (22-28°C)\n\t+ pH: 6.0-7.0\n\t+ Water hardness: Soft to moderately hard\n\t+ Water flow: Moderate to strong\n\t+ Tank size: Minimum 10 gallons, but 20 gallons or larger recommended for a school\n* **Diet:** Omnivorous, feed on small invertebrates, algae, and plant matter in the wild. In captivity, provide a varied diet of high-quality commercial flakes, pellets, and frozen or live foods like brine shrimp or bloodworms.\n* **Behavior:** Peaceful, active, and curious. They can be skittish and may take time to settle in a new tank.\n\n**Zebra Danios (Danio rerio)**\n\n* **Schooling behavior:** Zebra danios are also schooling fish and should be kept in a group of at least 6-10 individuals. They're very active and love to swim together, creating a striking display of horizontal stripes.\n* **Tank requirements:**\n\t+ Water temperature: 65-75°F (18-24°C)\n\t+ pH: 6.5-8.0\n\t+ Water hardness: Soft to hard\n\t+ Water flow: Moderate to strong\n\t+ Tank size: Minimum 10 gallons, but 20 gallons or larger recommended for a school\n* **Diet:** Omnivorous, feed on small invertebrates, algae, and plant matter in the wild. In captivity, provide a varied diet of high-quality commercial flakes, pellets, and frozen or live foods like brine shrimp or bloodworms.\n* **Behavior:** Active, hardy, and tolerant of changes in water conditions. They're also very curious and love to explore their surroundings.\n\n**General tips for keeping schooling fish:**\n\n* Provide plenty of open swimming space for your school to roam and exercise.\n* Avoid keeping fin-nippers or aggressive fish that may harass your schooling fish.\n* Include plenty of hiding places and visual barriers, such as plants or decorations, to help your school feel secure.\n* Regularly monitor water parameters and perform regular water changes to maintain a healthy environment.\n* Feed your school multiple times a day, as they have high metabolisms and need frequent meals.\n\nBoth lemon tetras and zebra danios are excellent choices for a 20-gallon community tank, and they can be kept together in a harmonious environment. Just make sure to research and understand their specific needs and requirements before introducing them to your tank.\nuser: I also have some gouramis in my 20-gallon tank, and I've been noticing some aggression towards each other during feeding times. Do you think adding more schooling fish like lemon tetras or zebra danios would help distract them and reduce the aggression?\nassistant: Gouramis can be a bit territorial and aggressive, especially during feeding times. Adding schooling fish like lemon tetras or zebra danios can indeed help distract them and reduce aggression, but it's essential to consider a few things before making any additions:\n\n1. **Gourami compatibility:** Gouramis, especially males, can be quite aggressive towards other fish, especially those with long fins or similar shapes. Lemon tetras and zebra danios are generally peaceful, but they might still be targeted by aggressive gouramis. Make sure your gouramis are not overly aggressive and are compatible with the schooling fish you plan to add.\n2. **Tank size and space:** A 20-gallon tank can be a bit small for multiple species, especially if you already have gouramis. Ensure you have enough space for the schooling fish to swim and establish their own territory without feeling crowded or harassed.\n3. **Feeding dynamics:** Gouramis are opportunistic feeders and might see the schooling fish as competition for food. Make sure to provide plenty of hiding places and visual barriers to reduce competition during feeding times. You can also try feeding your gouramis separately or using a feeding ring to contain their food.\n4. **Schooling fish size:** Lemon tetras and zebra danios are small fish, and gouramis might see them as prey. Ensure the schooling fish are large enough to not be seen as a snack by your gouramis.\n\nIf you've considered these factors and still want to add schooling fish, here are some tips to help reduce aggression:\n\n* **Introduce the schooling fish in a group:** Adding a school of 10-15 lemon tetras or zebra danios can help distract your gouramis and reduce aggression.\n* **Provide plenty of hiding places:** Add plants, rocks, or other decorations to create hiding places and visual barriers, which can help reduce aggression and stress.\n* **Increase water changes:** Regular water changes can help reduce aggression and stress in your tank.\n* **Monitor and adjust:** Observe your tank closely and be prepared to make adjustments if you notice any signs of aggression or stress.\n\nRemember, every tank is unique, and what works for one tank might not work for another. Keep a close eye on your tank's dynamics, and be prepared to make changes if necessary.\nuser: That's good to know. I've been trying to distract my gouramis with some extra food or tank decorations during feeding times, but it's not always effective. I'll consider adding some schooling fish, but I'll make sure to introduce them in a group and provide plenty of hiding places. By the way, do you think my betta fish Bubbles would be interested in eating frozen bloodworms?\nassistant: I'm glad you're considering adding schooling fish to distract your gouramis!\n\nRegarding Bubbles, the betta fish, frozen bloodworms are an excellent treat for them! Bettas are carnivorous and love protein-rich foods, and bloodworms are a great source of nutrition. In fact, many betta owners use frozen bloodworms as a treat or a supplement to their regular diet.\n\nTo offer frozen bloodworms to Bubbles, simply thaw them in a small bowl or cup, and then feed them to your betta using a pipette or a small feeding tool. You can also try soaking the bloodworms in a little water to make them more palatable for your betta.\n\nSome tips when feeding bloodworms to your betta:\n\n* Only feed bloodworms as a treat, 1-2 times a week, as they are high in protein and can be rich.\n* Start with a small amount (2-3 bloodworms) and observe your betta's reaction. If they devour them quickly, you can increase the amount gradually.\n* Make sure to remove any uneaten bloodworms from the tank to prevent water quality issues.\n* You can also try mixing bloodworms with other frozen or live foods, like brine shrimp or daphnia, to create a varied and nutritious diet for your betta.\n\nRemember to always provide a varied and balanced diet for your betta, and consult with a pet store expert or a veterinarian if you have any concerns about your betta's diet or health.\n\nI hope this helps, and I'm sure Bubbles will love the tasty treat!\nuser: I'm thinking of upgrading my tank decorations and adding some new artificial coral and rocks to create more hiding places for my fish. Do you have any recommendations on how to arrange them to create a visually appealing aquascape?\nassistant: Upgrading your tank decorations is a great way to create a more stimulating environment for your fish and enhance the overall aesthetic of your tank. Arranging artificial coral and rocks to create a visually appealing aquascape requires some planning and consideration of your tank's dimensions, water flow, and the needs of your fish. Here are some tips to help you get started:\n\n1. **Start with a theme:** Decide on a theme or style for your aquascape, such as a natural reef, a sunken ship, or a fantasy landscape. This will help guide your decoration choices and arrangement.\n2. **Choose a focal point:** Select a central decoration, like a large rock or coral, to serve as the focal point of your aquascape. This will draw the viewer's attention and create visual interest.\n3. **Create a balance:** Balance your decorations to create a sense of harmony in the tank. Distribute the decorations asymmetrically, using a mix of tall and short, narrow and wide, and light and dark elements.\n4. **Consider the water flow:** Arrange your decorations to create areas of high and low water flow. This will help to create currents and eddies that will benefit your fish and prevent stagnant areas.\n5. **Provide hiding places:** Incorporate a variety of hiding places, such as caves, overhangs, and crevices, to provide your fish with a sense of security and comfort.\n6. **Leave space:** Don't overcrowd your tank. Leave some open swimming space for your fish to move around and explore.\n7. **Experiment and adjust:** Don't be afraid to try out different arrangements and adjust them as needed. You can always move decorations around until you achieve the desired look.\n\nSome popular aquascape styles to consider:\n\n1. **Nature-style:** Mimic a natural environment with rocks, driftwood, and plants.\n2. **Reef-style:** Create a coral reef-inspired aquascape with artificial coral, rocks, and seaweed.\n3. **Fantasy-style:** Design a whimsical aquascape with unusual decorations, such as sunken treasure chests or mythical creatures.\n\nRemember to choose decorations that are safe for your fish and compatible with your tank's water parameters. Have fun and get creative with your aquascape design!\n\n        Candidate notes:\n        [0] type=PLAN title=Gradual planted-tank setup approach for the 20-gallon aquarium summary=When adding live aquatic plants to the user's 20-gallon freshwater tank, the reusable approach is to choose beginner-compatible plants, verify plant-specific care requirements, keep the tank cycled and stable, use nutrient-rich planted substrate and adequate lighting, introduce plants gradually, quarantine them first, and monitor/prune/fertilize over time. scope=User's 20-gallon aquarium live plant setup and maintenance planning entities=entity:<0>,entity:<1> keywords=20-gallon tank,live aquatic plants,planted tank,Java Moss,Anacharis,quarantine,substrate,lighting tags=aquarium,planted_tank,maintenance evidence=Introduce plants gradually\n[1] type=LESSON title=Anchoring methods for new aquatic plants summary=For the user's aquarium plants, reusable anchoring options include plant weights or anchors, planting tools, burying roots deeply, placing rocks or gravel around the base, soft tie-downs to decorations or weights, dense planted-tank substrate, and creating a snug substrate “plant pocket,” while handling roots and stems gently. scope=Aquatic plant anchoring in the user's aquarium substrate entities=entity:<2>,entity:<3> keywords=anchor plants,plant weights,plant pocket,aquarium substrate,planting tools,tie-downs tags=aquarium,planted_tank,procedure evidence=Create a \"plant pocket\"\n[2] type=CONTEXT title=Schooling fish requirements considered for the 20-gallon community tank summary=Lemon tetras and zebra danios were considered suitable schooling-fish options for a 20-gallon community tank if kept in proper groups, given open swimming space, moderate-to-strong water flow, stable parameters, a varied omnivorous diet, and hiding places or visual barriers. Lemon tetras were described as best in groups of 10–15 with 72–82°F and pH 6.0–7.0, while zebra danios were described as bes...[truncated 48 chars] scope=User's 20-gallon aquarium schooling-fish planning entities=entity:<0>,entity:<4>,entity:<5> keywords=lemon tetras,zebra danios,schooling fish,20-gallon community tank,water temperature,pH,open swimming space tags=aquarium,fish_stocking,community_tank evidence=Both lemon tetras and zebra danios are excellent choices for a 20-gallon community tank\n[3] type=PLAN title=Feeding-time gourami aggression mitigation strategy summary=For the user's 20-gallon tank, adding schooling fish might distract gouramis during feeding but should be done cautiously because of gourami territoriality, tank space limits, competition for food, and risk of small fish being targeted. The recommended mitigation pattern was to introduce schooling fish as a group, add plants/rocks/decorations for hiding places and visual barriers, consider separat...[truncated 104 chars] scope=User's 20-gallon aquarium gourami aggression and feeding-time management entities=entity:<0>,entity:<6>,entity:<7>,entity:<8> keywords=gourami aggression,feeding times,schooling fish,feeding ring,hiding places,visual barriers,lemon tetras,zebra danios tags=aquarium,behavior,aggression_mitigation evidence=I've been noticing some aggression towards each other during feeding times\n[4] type=LESSON title=Frozen bloodworms feeding guidance for Bubbles summary=Frozen bloodworms were discussed as an occasional high-protein treat for Bubbles the betta: thaw first, offer with a pipette or small feeding tool, start with 2–3 bloodworms, limit to about 1–2 times per week, remove uneaten food, and keep the overall diet varied and balanced. scope=Feeding guidance for Bubbles the betta fish entities=entity:<9>,entity:<10> keywords=Bubbles,betta,frozen bloodworms,treat,feeding,protein tags=aquarium,betta_care,feeding evidence=Only feed bloodworms as a treat, 1-2 times a week\n[5] type=DIRECTION title=Artificial coral and rock aquascape design principles summary=For upgrading the user's tank decorations with artificial coral and rocks, the reusable aquascape direction is to choose a theme, set a focal point, arrange pieces asymmetrically with balanced heights/shapes/colors, account for water flow, create caves/overhangs/crevices for hiding, and preserve open swimming space. Safe, water-compatible decorations should be used, with arrangements adjusted expe...[truncated 11 chars] scope=User's 20-gallon aquarium artificial coral and rock decoration layout entities=entity:<0>,entity:<11>,entity:<12>,entity:<13> keywords=artificial coral,rocks,aquascape,focal point,hiding places,water flow,open swimming space tags=aquarium,aquascaping,decorations evidence=Leave some open swimming space for your fish\n\n        Existing active notes:\n        id=hot-path-68f9762f176f-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Aquarium “city” area design with treasure chest, coral, and rocks summary=The user plans to add a treasure chest near existing artificial coral and rocks in their 20-gallon aquarium to create a small \"city\" area that gives neon tetras and other fish more hiding places and exploration structure. The design direction emphasizes clustered decorations with depth, varied heights, greenery, and enough open swimming space. scope=User's 20-gallon aquarium decoration layout and hiding-place design keywords=20-gallon aquarium,treasure chest,artificial coral,rocks,city area,hiding places,neon tetras tags=aquarium,decoration_plan,tank_layout,fish_hiding_places useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:eeda8a6d",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:40c3fda8fd126e6675d491c29ee74bac"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:eeda8a6d\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 06:57\nTranscript:\nuser: I'm thinking of adding some live aquatic plants to my freshwater tank. Can you give me some tips on how to get started with that? By the way, I also upgraded my old 10-gallon tank, which has my betta fish, Bubbles.\nassistant: Congratulations on the tank upgrade, and I'm thrilled to hear you're considering adding live aquatic plants to your 20-gallon tank! Live plants can bring numerous benefits to your aquarium, including improved water quality, increased oxygen levels, and a more natural environment for your fish. Here are some tips to get you started:\n\n1. **Choose the right plants**: Select plants that are compatible with your tank size, lighting, and water parameters. Some popular beginner-friendly plants for a 20-gallon tank include:\n\t* Java Moss\n\t* Anacharis\n\t* Water Wisteria\n\t* Amazon Swords\n\t* Cryptocorynes\n2. **Research plant care**: Learn about the specific needs of the plants you choose, including lighting, temperature, pH, and nutrient requirements.\n3. **Prepare your tank**: Before adding plants, make sure your tank is cycled and stable. Perform regular water changes, and ensure your water parameters are suitable for both your fish and plants.\n4. **Select a suitable substrate**: Live plants require a nutrient-rich substrate to thrive. Consider using a high-quality aquarium soil or a mix specifically designed for planted tanks.\n5. **Provide adequate lighting**: Most aquatic plants require moderate to high lighting. Consider upgrading your lighting to a higher intensity or adding a dedicated plant light.\n6. **Plant with care**: Plant your chosen species in a way that allows for good water circulation and prevents overcrowding. You can use plant weights or a planting tool to secure the plants in the substrate.\n7. **Monitor and maintain**: Regularly check the health of your plants, and perform tasks like pruning, fertilizing, and monitoring for pests.\n8. **Introduce plants gradually**: Start with a few plants and gradually add more over time to prevent overwhelming your tank's ecosystem.\n9. **Be patient**: Live plants can take time to establish and thrive. Be prepared to make adjustments and learn from your experiences.\n10. **Consider a plant-friendly fish community**: While Bubbles the betta is a great addition to your 10-gallon tank, some fish can be detrimental to live plants. Research fish species that are compatible with planted tanks, such as neon tetras, harlequin rasboras, or dwarf shrimp.\n\nRemember to quarantine your plants before introducing them to your main tank to prevent the introduction of pests or diseases.\n\nI hope these tips help you get started on your planted tank journey! If you have any specific questions or concerns, feel free to ask.\nuser: What's the best way to anchor the plants in the substrate to prevent them from floating away?\nassistant: Anchoring plants in the substrate is crucial to prevent them from floating away and to ensure they establish a strong root system. Here are some methods to anchor your aquatic plants:\n\n1. **Plant weights**: You can use plant weights or plant anchors that are specifically designed for aquatic plants. These weights are usually made of lead or stone and have a small hook or clip to attach to the plant stem. Simply tie the weight to the stem, and bury it in the substrate.\n2. **Planting tools**: Use a planting tool, such as a long-handled tweezers or a planting stick, to gently push the plant into the substrate. This helps to secure the plant in place and prevents it from floating away.\n3. **Bury the roots**: When planting, make sure to bury the roots of the plant deeply into the substrate. This will help the plant establish a strong root system and anchor itself in place.\n4. **Rock or gravel anchors**: Place a small rock or a handful of gravel around the base of the plant, making sure to cover the roots. This will hold the plant in place and prevent it from floating away.\n5. **Plant tie-downs**: Use a plant tie-down, which is a small, soft material (like a plant tie or a twist-tie) to gently tie the plant stem to a nearby decoration or a plant weight. This will keep the plant in place while it establishes its roots.\n6. **Substrate with high density**: Use a substrate with a higher density, such as a planted tank-specific substrate, which will help keep the plants anchored in place.\n7. **Create a \"plant pocket\"**: Create a small \"pocket\" in the substrate by digging a small hole and placing the plant in it. Then, cover the roots and stem with substrate, making sure to firm it gently. This will create a snug fit and prevent the plant from floating away.\n\nRemember to handle your plants gently and avoid damaging their roots or stems during the planting process. With a little patience and practice, you'll be a pro at anchoring your aquatic plants in no time!\nuser: I'm planning to add some schooling fish to my 20-gallon tank, like lemon tetras or zebra danios. Can you tell me more about their behavior and tank requirements?\nassistant: Lemon tetras and zebra danios are both excellent choices for a 20-gallon community tank. Here's some information about their behavior and tank requirements to help you create a thriving environment for them:\n\n**Lemon Tetras (Hyphessobrycon citrinus)**\n\n* **Schooling behavior:** Lemon tetras are a schooling fish and should be kept in a group of at least 10-15 individuals. They're very active and love to swim together, creating a mesmerizing display of shimmering yellow scales.\n* **Tank requirements:**\n\t+ Water temperature: 72-82°F (22-28°C)\n\t+ pH: 6.0-7.0\n\t+ Water hardness: Soft to moderately hard\n\t+ Water flow: Moderate to strong\n\t+ Tank size: Minimum 10 gallons, but 20 gallons or larger recommended for a school\n* **Diet:** Omnivorous, feed on small invertebrates, algae, and plant matter in the wild. In captivity, provide a varied diet of high-quality commercial flakes, pellets, and frozen or live foods like brine shrimp or bloodworms.\n* **Behavior:** Peaceful, active, and curious. They can be skittish and may take time to settle in a new tank.\n\n**Zebra Danios (Danio rerio)**\n\n* **Schooling behavior:** Zebra danios are also schooling fish and should be kept in a group of at least 6-10 individuals. They're very active and love to swim together, creating a striking display of horizontal stripes.\n* **Tank requirements:**\n\t+ Water temperature: 65-75°F (18-24°C)\n\t+ pH: 6.5-8.0\n\t+ Water hardness: Soft to hard\n\t+ Water flow: Moderate to strong\n\t+ Tank size: Minimum 10 gallons, but 20 gallons or larger recommended for a school\n* **Diet:** Omnivorous, feed on small invertebrates, algae, and plant matter in the wild. In captivity, provide a varied diet of high-quality commercial flakes, pellets, and frozen or live foods like brine shrimp or bloodworms.\n* **Behavior:** Active, hardy, and tolerant of changes in water conditions. They're also very curious and love to explore their surroundings.\n\n**General tips for keeping schooling fish:**\n\n* Provide plenty of open swimming space for your school to roam and exercise.\n* Avoid keeping fin-nippers or aggressive fish that may harass your schooling fish.\n* Include plenty of hiding places and visual barriers, such as plants or decorations, to help your school feel secure.\n* Regularly monitor water parameters and perform regular water changes to maintain a healthy environment.\n* Feed your school multiple times a day, as they have high metabolisms and need frequent meals.\n\nBoth lemon tetras and zebra danios are excellent choices for a 20-gallon community tank, and they can be kept together in a harmonious environment. Just make sure to research and understand their specific needs and requirements before introducing them to your tank.\nuser: I also have some gouramis in my 20-gallon tank, and I've been noticing some aggression towards each other during feeding times. Do you think adding more schooling fish like lemon tetras or zebra danios would help distract them and reduce the aggression?\nassistant: Gouramis can be a bit territorial and aggressive, especially during feeding times. Adding schooling fish like lemon tetras or zebra danios can indeed help distract them and reduce aggression, but it's essential to consider a few things before making any additions:\n\n1. **Gourami compatibility:** Gouramis, especially males, can be quite aggressive towards other fish, especially those with long fins or similar shapes. Lemon tetras and zebra danios are generally peaceful, but they might still be targeted by aggressive gouramis. Make sure your gouramis are not overly aggressive and are compatible with the schooling fish you plan to add.\n2. **Tank size and space:** A 20-gallon tank can be a bit small for multiple species, especially if you already have gouramis. Ensure you have enough space for the schooling fish to swim and establish their own territory without feeling crowded or harassed.\n3. **Feeding dynamics:** Gouramis are opportunistic feeders and might see the schooling fish as competition for food. Make sure to provide plenty of hiding places and visual barriers to reduce competition during feeding times. You can also try feeding your gouramis separately or using a feeding ring to contain their food.\n4. **Schooling fish size:** Lemon tetras and zebra danios are small fish, and gouramis might see them as prey. Ensure the schooling fish are large enough to not be seen as a snack by your gouramis.\n\nIf you've considered these factors and still want to add schooling fish, here are some tips to help reduce aggression:\n\n* **Introduce the schooling fish in a group:** Adding a school of 10-15 lemon tetras or zebra danios can help distract your gouramis and reduce aggression.\n* **Provide plenty of hiding places:** Add plants, rocks, or other decorations to create hiding places and visual barriers, which can help reduce aggression and stress.\n* **Increase water changes:** Regular water changes can help reduce aggression and stress in your tank.\n* **Monitor and adjust:** Observe your tank closely and be prepared to make adjustments if you notice any signs of aggression or stress.\n\nRemember, every tank is unique, and what works for one tank might not work for another. Keep a close eye on your tank's dynamics, and be prepared to make changes if necessary.\nuser: That's good to know. I've been trying to distract my gouramis with some extra food or tank decorations during feeding times, but it's not always effective. I'll consider adding some schooling fish, but I'll make sure to introduce them in a group and provide plenty of hiding places. By the way, do you think my betta fish Bubbles would be interested in eating frozen bloodworms?\nassistant: I'm glad you're considering adding schooling fish to distract your gouramis!\n\nRegarding Bubbles, the betta fish, frozen bloodworms are an excellent treat for them! Bettas are carnivorous and love protein-rich foods, and bloodworms are a great source of nutrition. In fact, many betta owners use frozen bloodworms as a treat or a supplement to their regular diet.\n\nTo offer frozen bloodworms to Bubbles, simply thaw them in a small bowl or cup, and then feed them to your betta using a pipette or a small feeding tool. You can also try soaking the bloodworms in a little water to make them more palatable for your betta.\n\nSome tips when feeding bloodworms to your betta:\n\n* Only feed bloodworms as a treat, 1-2 times a week, as they are high in protein and can be rich.\n* Start with a small amount (2-3 bloodworms) and observe your betta's reaction. If they devour them quickly, you can increase the amount gradually.\n* Make sure to remove any uneaten bloodworms from the tank to prevent water quality issues.\n* You can also try mixing bloodworms with other frozen or live foods, like brine shrimp or daphnia, to create a varied and nutritious diet for your betta.\n\nRemember to always provide a varied and balanced diet for your betta, and consult with a pet store expert or a veterinarian if you have any concerns about your betta's diet or health.\n\nI hope this helps, and I'm sure Bubbles will love the tasty treat!\nuser: I'm thinking of upgrading my tank decorations and adding some new artificial coral and rocks to create more hiding places for my fish. Do you have any recommendations on how to arrange them to create a visually appealing aquascape?\nassistant: Upgrading your tank decorations is a great way to create a more stimulating environment for your fish and enhance the overall aesthetic of your tank. Arranging artificial coral and rocks to create a visually appealing aquascape requires some planning and consideration of your tank's dimensions, water flow, and the needs of your fish. Here are some tips to help you get started:\n\n1. **Start with a theme:** Decide on a theme or style for your aquascape, such as a natural reef, a sunken ship, or a fantasy landscape. This will help guide your decoration choices and arrangement.\n2. **Choose a focal point:** Select a central decoration, like a large rock or coral, to serve as the focal point of your aquascape. This will draw the viewer's attention and create visual interest.\n3. **Create a balance:** Balance your decorations to create a sense of harmony in the tank. Distribute the decorations asymmetrically, using a mix of tall and short, narrow and wide, and light and dark elements.\n4. **Consider the water flow:** Arrange your decorations to create areas of high and low water flow. This will help to create currents and eddies that will benefit your fish and prevent stagnant areas.\n5. **Provide hiding places:** Incorporate a variety of hiding places, such as caves, overhangs, and crevices, to provide your fish with a sense of security and comfort.\n6. **Leave space:** Don't overcrowd your tank. Leave some open swimming space for your fish to move around and explore.\n7. **Experiment and adjust:** Don't be afraid to try out different arrangements and adjust them as needed. You can always move decorations around until you achieve the desired look.\n\nSome popular aquascape styles to consider:\n\n1. **Nature-style:** Mimic a natural environment with rocks, driftwood, and plants.\n2. **Reef-style:** Create a coral reef-inspired aquascape with artificial coral, rocks, and seaweed.\n3. **Fantasy-style:** Design a whimsical aquascape with unusual decorations, such as sunken treasure chests or mythical creatures.\n\nRemember to choose decorations that are safe for your fish and compatible with your tank's water parameters. Have fun and get creative with your aquascape design!\n\n        Candidate notes:\n        [0] type=PLAN title=Gradual planted-tank setup approach for the 20-gallon aquarium summary=When adding live aquatic plants to the user's 20-gallon freshwater tank, the reusable approach is to choose beginner-compatible plants, verify plant-specific care requirements, keep the tank cycled and stable, use nutrient-rich planted substrate and adequate lighting, introduce plants gradually, quarantine them first, and monitor/prune/fertilize over time. scope=User's 20-gallon aquarium live plant setup and maintenance planning entities=entity:<0>,entity:<1> keywords=20-gallon tank,live aquatic plants,planted tank,Java Moss,Anacharis,quarantine,substrate,lighting tags=aquarium,planted_tank,maintenance evidence=Introduce plants gradually\n[1] type=LESSON title=Anchoring methods for new aquatic plants summary=For the user's aquarium plants, reusable anchoring options include plant weights or anchors, planting tools, burying roots deeply, placing rocks or gravel around the base, soft tie-downs to decorations or weights, dense planted-tank substrate, and creating a snug substrate “plant pocket,” while handling roots and stems gently. scope=Aquatic plant anchoring in the user's aquarium substrate entities=entity:<2>,entity:<3> keywords=anchor plants,plant weights,plant pocket,aquarium substrate,planting tools,tie-downs tags=aquarium,planted_tank,procedure evidence=Create a \"plant pocket\"\n[2] type=CONTEXT title=Schooling fish requirements considered for the 20-gallon community tank summary=Lemon tetras and zebra danios were considered suitable schooling-fish options for a 20-gallon community tank if kept in proper groups, given open swimming space, moderate-to-strong water flow, stable parameters, a varied omnivorous diet, and hiding places or visual barriers. Lemon tetras were described as best in groups of 10–15 with 72–82°F and pH 6.0–7.0, while zebra danios were described as bes...[truncated 48 chars] scope=User's 20-gallon aquarium schooling-fish planning entities=entity:<0>,entity:<4>,entity:<5> keywords=lemon tetras,zebra danios,schooling fish,20-gallon community tank,water temperature,pH,open swimming space tags=aquarium,fish_stocking,community_tank evidence=Both lemon tetras and zebra danios are excellent choices for a 20-gallon community tank\n[3] type=PLAN title=Feeding-time gourami aggression mitigation strategy summary=For the user's 20-gallon tank, adding schooling fish might distract gouramis during feeding but should be done cautiously because of gourami territoriality, tank space limits, competition for food, and risk of small fish being targeted. The recommended mitigation pattern was to introduce schooling fish as a group, add plants/rocks/decorations for hiding places and visual barriers, consider separat...[truncated 104 chars] scope=User's 20-gallon aquarium gourami aggression and feeding-time management entities=entity:<0>,entity:<6>,entity:<7>,entity:<8> keywords=gourami aggression,feeding times,schooling fish,feeding ring,hiding places,visual barriers,lemon tetras,zebra danios tags=aquarium,behavior,aggression_mitigation evidence=I've been noticing some aggression towards each other during feeding times\n[4] type=LESSON title=Frozen bloodworms feeding guidance for Bubbles summary=Frozen bloodworms were discussed as an occasional high-protein treat for Bubbles the betta: thaw first, offer with a pipette or small feeding tool, start with 2–3 bloodworms, limit to about 1–2 times per week, remove uneaten food, and keep the overall diet varied and balanced. scope=Feeding guidance for Bubbles the betta fish entities=entity:<9>,entity:<10> keywords=Bubbles,betta,frozen bloodworms,treat,feeding,protein tags=aquarium,betta_care,feeding evidence=Only feed bloodworms as a treat, 1-2 times a week\n[5] type=DIRECTION title=Artificial coral and rock aquascape design principles summary=For upgrading the user's tank decorations with artificial coral and rocks, the reusable aquascape direction is to choose a theme, set a focal point, arrange pieces asymmetrically with balanced heights/shapes/colors, account for water flow, create caves/overhangs/crevices for hiding, and preserve open swimming space. Safe, water-compatible decorations should be used, with arrangements adjusted expe...[truncated 11 chars] scope=User's 20-gallon aquarium artificial coral and rock decoration layout entities=entity:<0>,entity:<11>,entity:<12>,entity:<13> keywords=artificial coral,rocks,aquascape,focal point,hiding places,water flow,open swimming space tags=aquarium,aquascaping,decorations evidence=Leave some open swimming space for your fish\n\n        Existing active notes:\n        id=hot-path-68f9762f176f-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Aquarium “city” area design with treasure chest, coral, and rocks summary=The user plans to add a treasure chest near existing artificial coral and rocks in their 20-gallon aquarium to create a small \"city\" area that gives neon tetras and other fish more hiding places and exploration structure. The design direction emphasizes clustered decorations with depth, varied heights, greenery, and enough open swimming space. scope=User's 20-gallon aquarium decoration layout and hiding-place design keywords=20-gallon aquarium,treasure chest,artificial coral,rocks,city area,hiding places,neon tetras tags=aquarium,decoration_plan,tank_layout,fish_hiding_places useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:eeda8a6d",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:40c3fda8fd126e6675d491c29ee74bac"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"New reusable planted-tank setup and maintenance plan not covered by the existing decoration-layout note.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct procedural guidance for anchoring aquatic plants; not present in existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct context about schooling fish requirements and stocking considerations for the 20-gallon tank.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-68f9762f176f-note-2\"}],\"patch\":null,\"reason\":\"New reusable strategy for managing gourami feeding-time aggression; related to hiding-place decoration design but semantically distinct.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":4,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct feeding guidance for Bubbles the betta, not covered by existing aquarium decoration note.\",\"target_note_id\":null},{\"action\":\"update\",\"candidate_index\":5,\"links_to_create\":[],\"patch\":{\"maturity\":\"stabilizing\",\"maturity_score\":0.65,\"scope_json\":null,\"status\":\"active\",\"summary\":\"For the user's 20-gallon aquarium decoration layout, reusable aquascape direction includes clustering existing/artificial coral and rocks and planned pieces like a treasure chest to create hiding and exploration areas, choosing a coherent theme or focal point, arranging pieces asymmetrically with balanced heights/shapes/colors and depth, accounting for water flow, creating caves/overhangs/crevices, adding greenery where useful, preserving open swimming space, and using fish-safe water-compatible decorations.\",\"title\":\"20-gallon aquarium decoration and aquascape design principles\"},\"reason\":\"Candidate 5 refines and generalizes the existing decoration-layout note rather than requiring a duplicate note.\",\"target_note_id\":\"hot-path-68f9762f176f-note-2\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7575,
+                "completionTokens": 462,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "a66d40f87a7cbb4702158254316c1d2d5784f3c949ae3020ee34be4d32faf1f0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long have my parents been staying with me in the US?\n\n                                Question date:\n                                2023/10/22 (Sun) 20:20\n\n                                Noisy expected-answer label:\n                                nine months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:db467c8c\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-42799177c804-claim-3 [ACTIVE] current_location family=current_location: The user's parents are staying with the user in the United States and had been there for nine months as of 2023-10-20.; scope=Applies to the user's parents' residence/stay status as of the 2023-10-20 imported session.; context=\"The user's parents' stay was discussed as a possible visa overstay issue during the user's green card planning conversation.\"; evidence=IMPORTED source=external:provided-text:e00ed10fbc76cb0734f677581d0e6c71 quote=\"my parents have been a huge help in preparing all the paperwork, they've been staying with me for nine months now.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e00ed10fbc76cb0734f677581d0e6c71 [external_record ref=longmemeval:db467c8c:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to apply for a green card soon and I'm not sure what documents I need to prepare. Can you guide me through the process? By the way, my parents have been a huge help in preparing all the paperwork, they've been staying with me for nine months now.\nassistant: I'd be happy to help you with the green card application process. However, I have to clarify that having your parents stay with you for nine months may raise some red flags with the U.S. Citizenship and Immigration Services (USCIS). As a general rule, visitors on a tourist visa (B-2) are not allowed to stay in the United States for more than six months, and overstaying can be considered a violation of their visa terms....\n...Regarding your parents' stay, it's essential to address their immigration status to avoid any potential issues with your green card application. Consider consulting with an immigration attorney to discuss their options and ensure they're not overstaying their visa....\n...user: I'll ask the attorney about their experience with green card applications and how they can help me address the issue with my parents' overstaying their visa.\nassistant: That's a great approach! It's essential to find an attorney who has experience with green card applications and can provide guidance on addressing the potential issues with your parents' overstaying their visa....\n...3. **Potential consequences**: Ask the attorney to explain the potential consequences of your parents' overstaying, such as:...\n...* What experience do you have with green card applications and addressing issues related to overstaying?...\n...By asking these questions and discussing your situation with the attorney, you'll get a better understanding of their experience, approach, and how they can help you achieve your goal of obtaining a green card while addressing the issues with your parents' overstaying.\nuser: I'll ask the attorney about their experience with similar cases and how they can help me address the issue with my parents' overstaying their visa, considering they've been staying with me for nine months now.\nassistant: That's a great approach! It's essential to find an attorney who has experience with similar cases and can provide guidance on addressing the potential issues with your parents' overstaying their visa....\n...3. **Your goals**: Explain your goal of obtaining a green card and how you'd like to address the issue with your parents' overstaying in a way that minimizes potential harm to your own application.\n4. **Attorney's experience**: Ask the attorney about their experience with similar cases, such as:\n\t* How many cases have they handled involving overstaying parents or family members?...\n...* How will you address the issue of my parents' overstaying, given their nine-month stay?...\n...By asking these questions and discussing your situation with the attorney, you'll get a better understanding of their experience, approach, and how they can help you address the issue with your parents' overstaying while pursuing your own green card application....\n...1. **Unlawful presence**: They have been in the United States without authorization for more than 180 days but less than one year....\n...2. **Rehabilitation**: They have been rehabilitated and are no longer a risk to the United States....\n...Based on what you've shared, your parents have overstayed their visa by nine months, which could make them inadmissible due to unlawful presence. To overcome this inadmissibility, they may need to apply for a waiver of inadmissibility. The waiver would require them to demonstrate extreme hardship to a qualifying relative (you, as their U.S. citizen or lawful permanent resident child) and rehabilitation....\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: User's parents; Person named User's parents.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "db467c8c",
+                "questionType": "knowledge-update"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long have my parents been staying with me in the US?\n\n                                Question date:\n                                2023/10/22 (Sun) 20:20\n\n                                Noisy expected-answer label:\n                                nine months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:db467c8c\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-42799177c804-claim-3 [ACTIVE] current_location family=current_location: The user's parents are staying with the user in the United States and had been there for nine months as of 2023-10-20.; scope=Applies to the user's parents' residence/stay status as of the 2023-10-20 imported session.; context=\"The user's parents' stay was discussed as a possible visa overstay issue during the user's green card planning conversation.\"; evidence=IMPORTED source=external:provided-text:e00ed10fbc76cb0734f677581d0e6c71 quote=\"my parents have been a huge help in preparing all the paperwork, they've been staying with me for nine months now.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e00ed10fbc76cb0734f677581d0e6c71 [external_record ref=longmemeval:db467c8c:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to apply for a green card soon and I'm not sure what documents I need to prepare. Can you guide me through the process? By the way, my parents have been a huge help in preparing all the paperwork, they've been staying with me for nine months now.\nassistant: I'd be happy to help you with the green card application process. However, I have to clarify that having your parents stay with you for nine months may raise some red flags with the U.S. Citizenship and Immigration Services (USCIS). As a general rule, visitors on a tourist visa (B-2) are not allowed to stay in the United States for more than six months, and overstaying can be considered a violation of their visa terms....\n...Regarding your parents' stay, it's essential to address their immigration status to avoid any potential issues with your green card application. Consider consulting with an immigration attorney to discuss their options and ensure they're not overstaying their visa....\n...user: I'll ask the attorney about their experience with green card applications and how they can help me address the issue with my parents' overstaying their visa.\nassistant: That's a great approach! It's essential to find an attorney who has experience with green card applications and can provide guidance on addressing the potential issues with your parents' overstaying their visa....\n...3. **Potential consequences**: Ask the attorney to explain the potential consequences of your parents' overstaying, such as:...\n...* What experience do you have with green card applications and addressing issues related to overstaying?...\n...By asking these questions and discussing your situation with the attorney, you'll get a better understanding of their experience, approach, and how they can help you achieve your goal of obtaining a green card while addressing the issues with your parents' overstaying.\nuser: I'll ask the attorney about their experience with similar cases and how they can help me address the issue with my parents' overstaying their visa, considering they've been staying with me for nine months now.\nassistant: That's a great approach! It's essential to find an attorney who has experience with similar cases and can provide guidance on addressing the potential issues with your parents' overstaying their visa....\n...3. **Your goals**: Explain your goal of obtaining a green card and how you'd like to address the issue with your parents' overstaying in a way that minimizes potential harm to your own application.\n4. **Attorney's experience**: Ask the attorney about their experience with similar cases, such as:\n\t* How many cases have they handled involving overstaying parents or family members?...\n...* How will you address the issue of my parents' overstaying, given their nine-month stay?...\n...By asking these questions and discussing your situation with the attorney, you'll get a better understanding of their experience, approach, and how they can help you address the issue with your parents' overstaying while pursuing your own green card application....\n...1. **Unlawful presence**: They have been in the United States without authorization for more than 180 days but less than one year....\n...2. **Rehabilitation**: They have been rehabilitated and are no longer a risk to the United States....\n...Based on what you've shared, your parents have overstayed their visa by nine months, which could make them inadmissible due to unlawful presence. To overcome this inadmissibility, they may need to apply for a waiver of inadmissibility. The waiver would require them to demonstrate extreme hardship to a qualifying relative (you, as their U.S. citizen or lawful permanent resident child) and rehabilitation....\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: User's parents; Person named User's parents.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "db467c8c",
+                "questionType": "knowledge-update"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Your parents have been staying with you in the US for nine months.\",\"reason\":\"The retrieved claim and transcript explicitly state that the user's parents had been staying with the user in the United States for nine months.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1784,
+                "completionTokens": 123,
+                "thinkingTokens": 57,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
