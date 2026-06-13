@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "2d4a0d181dada827a5abbcd791cee543a8d5c02ed0918b3c4eeff0d99aaa823d",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:af082822\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past transcript contains multiple durable personal/context facts and product-consideration history plus richer reusable decision context about TV mount/soundbar needs.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript refer to the stable user entity; no existing candidates are available.\n- mention=4K TV; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=4K TV; reason=Concrete reusable product/category discussed as the user's new TV; no existing candidates.\n- mention=TV mount; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=TV mount; reason=Concrete reusable product category central to the advice; no existing candidates.\n- mention=Sanus; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=Sanus; reason=Brand/organization mentioned as a recommended TV mount maker; no existing candidates.\n- mention=Sanus VMF408; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=Sanus VMF408; reason=Specific product model discussed as an option for the user's living room; no existing candidates.\n- mention=OmniMount; action=CREATE_NEW; id=entity:<5>; type=ORGANIZATION; name=OmniMount; reason=Brand/organization mentioned in recommendations; no existing candidates.\n- mention=OmniMount OC120; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=OmniMount OC120; reason=Specific product model mentioned in recommendations; no existing candidates.\n- mention=VideoSecu; action=CREATE_NEW; id=entity:<7>; type=ORGANIZATION; name=VideoSecu; reason=Brand/organization mentioned in recommendations; no existing candidates.\n- mention=VideoSecu MW380B; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=VideoSecu MW380B; reason=Specific product model mentioned in recommendations; no existing candidates.\n- mention=AVF; action=CREATE_NEW; id=entity:<9>; type=ORGANIZATION; name=AVF; reason=Brand/organization mentioned in recommendations; no existing candidates.\n- mention=AVF SL-420; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=AVF SL-420; reason=Specific product model mentioned in recommendations; no existing candidates.\n- mention=Nordstrom; action=CREATE_NEW; id=entity:<11>; type=ORGANIZATION; name=Nordstrom; reason=Named retailer where the user attended a sale; no existing candidates.\n- mention=friends and family sale at Nordstrom; action=CREATE_NEW; id=entity:<12>; type=OTHER; name=Nordstrom friends and family sale; reason=Specific reusable event-like referent attended by the user; no existing candidates.\n- mention=annual holiday market in our city; action=CREATE_NEW; id=entity:<13>; type=OTHER; name=Annual holiday market; reason=Event-like referent attended by the user; city is unspecified, so canonical name stays generic.\n- mention=siblings; action=CREATE_NEW; id=entity:<14>; type=PERSON; name=User's siblings; reason=Reusable family-member group discussed as gift recipients; no existing candidates.\n- mention=Sonos Beam; action=CREATE_NEW; id=entity:<15>; type=PRODUCT; name=Sonos Beam; reason=Specific soundbar product being considered by the user; no existing candidates.\n- mention=Sonos; action=CREATE_NEW; id=entity:<16>; type=ORGANIZATION; name=Sonos; reason=Named audio brand/company mentioned in connection with the Beam; no existing candidates.\n- mention=Yamaha YAS-209; action=CREATE_NEW; id=entity:<17>; type=PRODUCT; name=Yamaha YAS-209; reason=Specific soundbar product being considered by the user; no existing candidates.\n- mention=Yamaha; action=CREATE_NEW; id=entity:<18>; type=ORGANIZATION; name=Yamaha; reason=Named audio brand/company mentioned in connection with the YAS-209; no existing candidates.\n- mention=Roku; action=CREATE_NEW; id=entity:<19>; type=PRODUCT; name=Roku; reason=Concrete product/platform mentioned as a possible TV accessory; no existing candidates.\n- mention=Chromecast; action=CREATE_NEW; id=entity:<20>; type=PRODUCT; name=Chromecast; reason=Concrete product/platform mentioned as a possible TV accessory; no existing candidates.\n- mention=current project; action=CREATE_NEW; id=entity:<21>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|4K TV|TV mount|Sanus VMF408|Sonos Beam|Yamaha YAS-209|Nordstrom|holiday market\n        text_queries=TV mount living room full-motion Sanus VMF408 4K TV family gaming movie nights casual viewing|soundbar decision Sonos Beam Yamaha YAS-209 budget-friendly alternative|Nordstrom friends and family sale 20% off $20 gift card purchase over $100|annual holiday market gifts siblings handmade candle customized phone case stocking stuffers cozy socks gourmet chocolates\n        predicate_hints=prefers|has_goal|has_constraint|attended_event\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:07100815dc632a8509ebb31851616df8] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:af082822:session:1; title=LongMemEval af082822 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2022/11/18 (Fri) 05:47\nTranscript:\nuser: I'm looking for some advice on TV mounts. I recently got a new 4K TV during Black Friday, and I want to make sure I get a good mount for it. Do you have any recommendations?\nassistant: Congratulations on your new 4K TV! Choosing the right TV mount can be a bit overwhelming, but don't worry, I'm here to help. Here are some tips and recommendations to consider:\n\n**Types of TV Mounts:**\n\n1. **Fixed Mount**: A fixed mount holds the TV in a stationary position, which is great for smaller rooms or if you don't plan to adjust the viewing angle often.\n2. **Tilt Mount**: A tilt mount allows you to adjust the TV's angle up or down, which is useful for reducing glare or improving viewing angles.\n3. **Full-Motion Mount**: A full-motion mount offers the most flexibility, allowing you to swivel, tilt, and pivot the TV in multiple directions.\n4. **Ceiling Mount**: A ceiling mount is ideal for larger rooms or if you want to create a more minimalist look.\n\n**Factors to Consider:**\n\n1. **TV Size and Weight**: Make sure the mount is compatible with your TV's size and weight. Check the mount's weight capacity and VESA pattern (the mounting pattern on the back of your TV).\n2. **Wall Type**: Consider the type of wall you'll be mounting the TV on. Some mounts are designed for drywall, while others are suitable for concrete, brick, or wood.\n3. **Adjustability**: Think about how often you'll need to adjust the TV's position. If you have a large family or multiple viewers, a full-motion mount might be a good choice.\n4. **Cable Management**: Look for mounts with built-in cable management features, such as cable ties or cable clips, to keep your cords organized.\n\n**Recommended Brands and Models:**\n\n1. **Sanus**: Known for their high-quality and sturdy mounts, Sanus offers a wide range of options, including fixed, tilt, and full-motion mounts.\n\t* Sanus VMF408: A popular full-motion mount with a weight capacity of 40-80 lbs.\n2. **OmniMount**: OmniMount offers a variety of mounts, including ceiling and full-motion options.\n\t* OmniMount OC120: A sturdy ceiling mount with a weight capacity of 120 lbs.\n3. **VideoSecu**: VideoSecu offers affordable mounts with a focus on durability and ease of installation.\n\t* VideoSecu MW380B: A budget-friendly full-motion mount with a weight capacity of 35-80 lbs.\n4. **AVF**: AVF is a UK-based brand with a reputation for producing high-quality mounts.\n\t* AVF SL-420: A sleek and sturdy full-motion mount with a weight capacity of 42-80 lbs.\n\n**Additional Tips:**\n\n1. **Read Reviews**: Check online reviews from multiple sources to get a sense of the mount's performance and any potential issues.\n2. **Check the Warranty**: Look for mounts with a good warranty that covers parts and labor for a reasonable amount of time.\n3. **Hire a Professional**: If you're not comfortable with DIY installations, consider hiring a professional to ensure a safe and secure installation.\n\nBy considering these factors and recommendations, you'll be able to find the perfect TV mount for your new 4K TV. Happy shopping!\nuser: I'm actually going to be using the TV in my living room, and I think a full-motion mount would be perfect. I've been doing some shopping lately and scored some great deals, by the way. Yesterday, I attended a friends and family sale at Nordstrom and picked up a few dresses and tops for 20% off. I also got a $20 gift card for making a purchase over $100, which was a nice bonus. Anyway, back to the TV mount - what do you think about the Sanus VMF408? Is it a good option for my living room?\nassistant: It sounds like you're a savvy shopper, congrats on scoring those deals at Nordstrom!\n\nNow, about the Sanus VMF408: it's a great choice for a full-motion TV mount, and I think it would be an excellent option for your living room. Here's why:\n\n1. **Weight Capacity**: The VMF408 has a weight capacity of 40-80 lbs, which should be suitable for most 4K TVs up to 65 inches in size.\n2. **Full-Motion**: As you mentioned, a full-motion mount is perfect for a living room, as it allows you to swivel, tilt, and pivot the TV to achieve the perfect viewing angle from any seat.\n3. **Adjustability**: The VMF408 offers a wide range of motion, with 90° of swivel, 15° of tilt, and 10° of pivot. This means you can adjust the TV to face different areas of the room or to reduce glare from windows.\n4. **Sturdy Construction**: Sanus is known for their high-quality mounts, and the VMF408 is no exception. It's built with sturdy steel and has a durable powder-coated finish.\n5. **Easy Installation**: The VMF408 comes with a comprehensive installation kit and a user-friendly instruction manual, making it relatively easy to install.\n6. **Cable Management**: The mount features a cable management system, which helps keep your cords organized and hidden from view.\n\nSome minor considerations to keep in mind:\n\n* The VMF408 is a bit pricier than some other full-motion mounts on the market, but it's still a great value considering its quality and features.\n* You may need to purchase additional hardware or adapters depending on your TV's specific mounting pattern.\n\nOverall, I think the Sanus VMF408 is an excellent choice for your living room. If you can get a good deal on it, I'd say go for it!\n\nHow do you plan on using your new TV in your living room? Will you be using it for gaming, movie nights, or just casual viewing?\nuser: I'm actually planning to use it for a bit of everything - gaming, movie nights, and casual viewing. I've got a pretty big family, so we'll definitely be using it for family gatherings and holidays. Speaking of which, I've been doing some holiday shopping lately and scored some great deals. I went to the annual holiday market in our city and picked up some unique gifts for my siblings, including a handmade candle and a customized phone case. I also got a few stocking stuffers, like cozy socks and gourmet chocolates.\nassistant: It sounds like you're getting into the holiday spirit! It's great that you're thinking ahead and getting a head start on your holiday shopping. Those unique gifts you found at the holiday market sound lovely, and I'm sure your siblings will appreciate the thought and effort you put into selecting something special for them. And who can resist cozy socks and gourmet chocolates as stocking stuffers?\n\nNow, back to your new TV and the Sanus VMF408 mount. Since you'll be using your TV for a variety of activities and it'll be a central part of your family gatherings, I think the VMF408 will be a great choice. Its full-motion capabilities will allow you to adjust the TV to the perfect viewing angle for everyone in the room, whether you're playing games, watching a movie, or just catching up on your favorite shows.\n\nHave you thought about any additional accessories you might need for your new TV? For example, a soundbar or a streaming device like a Roku or Chromecast? These can really enhance your viewing experience and make it easier to access your favorite content.\n\nAlso, since you have a big family, you might want to consider investing in a few extra HDMI cables or a HDMI switch to make it easier to connect multiple devices to your TV. Just a thought!\nuser: Yeah, I've actually been thinking about getting a soundbar to improve the audio quality. I've heard great things about the Sonos Beam, but I'm not sure if it's the right fit for my setup. Do you know anything about it?\nassistant: The Sonos Beam is a fantastic soundbar, and it's definitely worth considering. Sonos is a well-known brand in the audio industry, and their products are generally highly regarded for their quality and ease of use.\n\nThe Sonos Beam is a compact soundbar that's designed to provide improved audio quality for TVs, but it's also a smart speaker that can stream music and other content from various services like Amazon Music, Apple Music, and Spotify. It's a great option if you're looking for a single device that can handle both TV audio and music streaming.\n\nHere are some pros and cons to consider:\n\nPros:\n\n* Compact design: The Sonos Beam is relatively small compared to other soundbars, making it easy to fit into smaller spaces.\n* Easy setup: Sonos products are known for their ease of setup, and the Beam is no exception. You can get it up and running in just a few minutes.\n* Great sound quality: The Beam produces clear, detailed sound with good bass response, making it suitable for TV viewing, music streaming, and even gaming.\n* Smart features: As a smart speaker, the Beam supports voice control through Amazon Alexa or Google Assistant, and you can use it to control other smart devices in your home.\n* Expandability: If you want to add more speakers to your setup, Sonos has a range of products that can be easily connected to the Beam.\n\nCons:\n\n* Limited HDMI inputs: The Beam only has one HDMI input, which might be a limitation if you have multiple devices connected to your TV.\n* No Dolby Atmos support: If you're looking for a soundbar that supports Dolby Atmos, the Beam isn't the best option. However, it does support other surround sound formats like Dolby Digital and DTS.\n* Price: The Sonos Beam is a premium product, and it comes with a premium price tag. It's not the cheapest soundbar on the market, but it's definitely a high-quality option.\n\nOverall, the Sonos Beam is a great choice if you're looking for a compact, easy-to-use soundbar with good sound quality and smart features. However, if you're on a tight budget or need more HDMI inputs, you might want to consider other options.\n\nWhat do you think? Is the Sonos Beam still on your radar, or are you considering other soundbars?\nuser: I'm still considering the Sonos Beam, but I'm also open to other options. I've been doing some research and I came across the Yamaha YAS-209 soundbar. It seems like a good alternative to the Sonos Beam, and it's a bit more budget-friendly. Do you know anything about the Yamaha YAS-209?\nassistant: The Yamaha YAS-209 is a great alternative to the Sonos Beam, and it's definitely worth considering, especially if you're on a budget. Yamaha is a well-known brand in the audio industry, and they've been producing high-quality soundbars for years.\n\nHere are some key features and pros and cons of the Yamaha YAS-209:\n\n**Key Features:**\n\n* 2.1 channel soundbar with a wireless subwoofer\n* Supports 4K HDR passthrough with HDMI 2.1\n* Built-in Amazon Alexa and Google Assistant support\n* Wi-Fi and Bluetooth connectivity for music streaming\n* Compact design with a slim profile\n\n**Pros:**\n\n* Affordable price: The YAS-209 is significantly cheaper than the Sonos Beam, making it a great value for the price.\n* Good sound quality: Yamaha is known for their audio expertise, and the YAS-209 delivers clear and detailed sound with good bass response.\n* Easy setup: The YAS-209 is easy to set up and use, with a simple and intuitive interface.\n* Compact design: The soundbar is slim and compact, making it easy to fit into smaller spaces.\n* Alexa and Google Assistant support: You can control the soundbar with voice commands using Amazon Alexa or Google Assistant.\n\n**Cons:**\n\n* Limited HDMI inputs: The YAS-209 only has one HDMI input, which might be a limitation if you have multiple devices connected to your TV.\n* No Dolby Atmos support: Like the Sonos Beam, the YAS-209 doesn't support Dolby Atmos, but it does support other surround sound formats like Dolby Digital and DTS.\n* No multi-room audio: Unlike the Sonos Beam, the YAS-209 doesn't support multi-room audio, so you can't connect it to other Yamaha soundbars or speakers.\n\nOverall, the Yamaha YAS-209 is a great option if you're looking for a budget-friendly soundbar with good sound quality and smart features. It's a great alternative to the Sonos Beam, and it's definitely worth considering.\n\nHow do you think the Yamaha YAS-209 compares to the Sonos Beam? Are there any specific features that are must-haves for you?\nuser: I think I'll need to do some more research to decide between the two. But I'm glad I have some options to consider. Thanks for the help!\nassistant: You're welcome! I'm glad I could help. Researching and comparing options is always a good idea, especially when it comes to making a purchase that's right for you. Both the Sonos Beam and Yamaha YAS-209 are great options, and I'm sure you'll make an informed decision.\n\nIf you have any more questions or need further clarification on anything, feel free to ask. Otherwise, good luck with your research, and I hope you find the perfect soundbar for your new TV!\n\nBy the way, it was great chatting with you about your holiday shopping and TV setup. If you need any more recommendations or advice on anything else, I'm here to help. Happy holidays!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:af082822",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:07100815dc632a8509ebb31851616df8"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:af082822\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past transcript contains multiple durable personal/context facts and product-consideration history plus richer reusable decision context about TV mount/soundbar needs.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript refer to the stable user entity; no existing candidates are available.\n- mention=4K TV; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=4K TV; reason=Concrete reusable product/category discussed as the user's new TV; no existing candidates.\n- mention=TV mount; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=TV mount; reason=Concrete reusable product category central to the advice; no existing candidates.\n- mention=Sanus; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=Sanus; reason=Brand/organization mentioned as a recommended TV mount maker; no existing candidates.\n- mention=Sanus VMF408; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=Sanus VMF408; reason=Specific product model discussed as an option for the user's living room; no existing candidates.\n- mention=OmniMount; action=CREATE_NEW; id=entity:<5>; type=ORGANIZATION; name=OmniMount; reason=Brand/organization mentioned in recommendations; no existing candidates.\n- mention=OmniMount OC120; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=OmniMount OC120; reason=Specific product model mentioned in recommendations; no existing candidates.\n- mention=VideoSecu; action=CREATE_NEW; id=entity:<7>; type=ORGANIZATION; name=VideoSecu; reason=Brand/organization mentioned in recommendations; no existing candidates.\n- mention=VideoSecu MW380B; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=VideoSecu MW380B; reason=Specific product model mentioned in recommendations; no existing candidates.\n- mention=AVF; action=CREATE_NEW; id=entity:<9>; type=ORGANIZATION; name=AVF; reason=Brand/organization mentioned in recommendations; no existing candidates.\n- mention=AVF SL-420; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=AVF SL-420; reason=Specific product model mentioned in recommendations; no existing candidates.\n- mention=Nordstrom; action=CREATE_NEW; id=entity:<11>; type=ORGANIZATION; name=Nordstrom; reason=Named retailer where the user attended a sale; no existing candidates.\n- mention=friends and family sale at Nordstrom; action=CREATE_NEW; id=entity:<12>; type=OTHER; name=Nordstrom friends and family sale; reason=Specific reusable event-like referent attended by the user; no existing candidates.\n- mention=annual holiday market in our city; action=CREATE_NEW; id=entity:<13>; type=OTHER; name=Annual holiday market; reason=Event-like referent attended by the user; city is unspecified, so canonical name stays generic.\n- mention=siblings; action=CREATE_NEW; id=entity:<14>; type=PERSON; name=User's siblings; reason=Reusable family-member group discussed as gift recipients; no existing candidates.\n- mention=Sonos Beam; action=CREATE_NEW; id=entity:<15>; type=PRODUCT; name=Sonos Beam; reason=Specific soundbar product being considered by the user; no existing candidates.\n- mention=Sonos; action=CREATE_NEW; id=entity:<16>; type=ORGANIZATION; name=Sonos; reason=Named audio brand/company mentioned in connection with the Beam; no existing candidates.\n- mention=Yamaha YAS-209; action=CREATE_NEW; id=entity:<17>; type=PRODUCT; name=Yamaha YAS-209; reason=Specific soundbar product being considered by the user; no existing candidates.\n- mention=Yamaha; action=CREATE_NEW; id=entity:<18>; type=ORGANIZATION; name=Yamaha; reason=Named audio brand/company mentioned in connection with the YAS-209; no existing candidates.\n- mention=Roku; action=CREATE_NEW; id=entity:<19>; type=PRODUCT; name=Roku; reason=Concrete product/platform mentioned as a possible TV accessory; no existing candidates.\n- mention=Chromecast; action=CREATE_NEW; id=entity:<20>; type=PRODUCT; name=Chromecast; reason=Concrete product/platform mentioned as a possible TV accessory; no existing candidates.\n- mention=current project; action=CREATE_NEW; id=entity:<21>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|4K TV|TV mount|Sanus VMF408|Sonos Beam|Yamaha YAS-209|Nordstrom|holiday market\n        text_queries=TV mount living room full-motion Sanus VMF408 4K TV family gaming movie nights casual viewing|soundbar decision Sonos Beam Yamaha YAS-209 budget-friendly alternative|Nordstrom friends and family sale 20% off $20 gift card purchase over $100|annual holiday market gifts siblings handmade candle customized phone case stocking stuffers cozy socks gourmet chocolates\n        predicate_hints=prefers|has_goal|has_constraint|attended_event\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:07100815dc632a8509ebb31851616df8] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:af082822:session:1; title=LongMemEval af082822 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2022/11/18 (Fri) 05:47\nTranscript:\nuser: I'm looking for some advice on TV mounts. I recently got a new 4K TV during Black Friday, and I want to make sure I get a good mount for it. Do you have any recommendations?\nassistant: Congratulations on your new 4K TV! Choosing the right TV mount can be a bit overwhelming, but don't worry, I'm here to help. Here are some tips and recommendations to consider:\n\n**Types of TV Mounts:**\n\n1. **Fixed Mount**: A fixed mount holds the TV in a stationary position, which is great for smaller rooms or if you don't plan to adjust the viewing angle often.\n2. **Tilt Mount**: A tilt mount allows you to adjust the TV's angle up or down, which is useful for reducing glare or improving viewing angles.\n3. **Full-Motion Mount**: A full-motion mount offers the most flexibility, allowing you to swivel, tilt, and pivot the TV in multiple directions.\n4. **Ceiling Mount**: A ceiling mount is ideal for larger rooms or if you want to create a more minimalist look.\n\n**Factors to Consider:**\n\n1. **TV Size and Weight**: Make sure the mount is compatible with your TV's size and weight. Check the mount's weight capacity and VESA pattern (the mounting pattern on the back of your TV).\n2. **Wall Type**: Consider the type of wall you'll be mounting the TV on. Some mounts are designed for drywall, while others are suitable for concrete, brick, or wood.\n3. **Adjustability**: Think about how often you'll need to adjust the TV's position. If you have a large family or multiple viewers, a full-motion mount might be a good choice.\n4. **Cable Management**: Look for mounts with built-in cable management features, such as cable ties or cable clips, to keep your cords organized.\n\n**Recommended Brands and Models:**\n\n1. **Sanus**: Known for their high-quality and sturdy mounts, Sanus offers a wide range of options, including fixed, tilt, and full-motion mounts.\n\t* Sanus VMF408: A popular full-motion mount with a weight capacity of 40-80 lbs.\n2. **OmniMount**: OmniMount offers a variety of mounts, including ceiling and full-motion options.\n\t* OmniMount OC120: A sturdy ceiling mount with a weight capacity of 120 lbs.\n3. **VideoSecu**: VideoSecu offers affordable mounts with a focus on durability and ease of installation.\n\t* VideoSecu MW380B: A budget-friendly full-motion mount with a weight capacity of 35-80 lbs.\n4. **AVF**: AVF is a UK-based brand with a reputation for producing high-quality mounts.\n\t* AVF SL-420: A sleek and sturdy full-motion mount with a weight capacity of 42-80 lbs.\n\n**Additional Tips:**\n\n1. **Read Reviews**: Check online reviews from multiple sources to get a sense of the mount's performance and any potential issues.\n2. **Check the Warranty**: Look for mounts with a good warranty that covers parts and labor for a reasonable amount of time.\n3. **Hire a Professional**: If you're not comfortable with DIY installations, consider hiring a professional to ensure a safe and secure installation.\n\nBy considering these factors and recommendations, you'll be able to find the perfect TV mount for your new 4K TV. Happy shopping!\nuser: I'm actually going to be using the TV in my living room, and I think a full-motion mount would be perfect. I've been doing some shopping lately and scored some great deals, by the way. Yesterday, I attended a friends and family sale at Nordstrom and picked up a few dresses and tops for 20% off. I also got a $20 gift card for making a purchase over $100, which was a nice bonus. Anyway, back to the TV mount - what do you think about the Sanus VMF408? Is it a good option for my living room?\nassistant: It sounds like you're a savvy shopper, congrats on scoring those deals at Nordstrom!\n\nNow, about the Sanus VMF408: it's a great choice for a full-motion TV mount, and I think it would be an excellent option for your living room. Here's why:\n\n1. **Weight Capacity**: The VMF408 has a weight capacity of 40-80 lbs, which should be suitable for most 4K TVs up to 65 inches in size.\n2. **Full-Motion**: As you mentioned, a full-motion mount is perfect for a living room, as it allows you to swivel, tilt, and pivot the TV to achieve the perfect viewing angle from any seat.\n3. **Adjustability**: The VMF408 offers a wide range of motion, with 90° of swivel, 15° of tilt, and 10° of pivot. This means you can adjust the TV to face different areas of the room or to reduce glare from windows.\n4. **Sturdy Construction**: Sanus is known for their high-quality mounts, and the VMF408 is no exception. It's built with sturdy steel and has a durable powder-coated finish.\n5. **Easy Installation**: The VMF408 comes with a comprehensive installation kit and a user-friendly instruction manual, making it relatively easy to install.\n6. **Cable Management**: The mount features a cable management system, which helps keep your cords organized and hidden from view.\n\nSome minor considerations to keep in mind:\n\n* The VMF408 is a bit pricier than some other full-motion mounts on the market, but it's still a great value considering its quality and features.\n* You may need to purchase additional hardware or adapters depending on your TV's specific mounting pattern.\n\nOverall, I think the Sanus VMF408 is an excellent choice for your living room. If you can get a good deal on it, I'd say go for it!\n\nHow do you plan on using your new TV in your living room? Will you be using it for gaming, movie nights, or just casual viewing?\nuser: I'm actually planning to use it for a bit of everything - gaming, movie nights, and casual viewing. I've got a pretty big family, so we'll definitely be using it for family gatherings and holidays. Speaking of which, I've been doing some holiday shopping lately and scored some great deals. I went to the annual holiday market in our city and picked up some unique gifts for my siblings, including a handmade candle and a customized phone case. I also got a few stocking stuffers, like cozy socks and gourmet chocolates.\nassistant: It sounds like you're getting into the holiday spirit! It's great that you're thinking ahead and getting a head start on your holiday shopping. Those unique gifts you found at the holiday market sound lovely, and I'm sure your siblings will appreciate the thought and effort you put into selecting something special for them. And who can resist cozy socks and gourmet chocolates as stocking stuffers?\n\nNow, back to your new TV and the Sanus VMF408 mount. Since you'll be using your TV for a variety of activities and it'll be a central part of your family gatherings, I think the VMF408 will be a great choice. Its full-motion capabilities will allow you to adjust the TV to the perfect viewing angle for everyone in the room, whether you're playing games, watching a movie, or just catching up on your favorite shows.\n\nHave you thought about any additional accessories you might need for your new TV? For example, a soundbar or a streaming device like a Roku or Chromecast? These can really enhance your viewing experience and make it easier to access your favorite content.\n\nAlso, since you have a big family, you might want to consider investing in a few extra HDMI cables or a HDMI switch to make it easier to connect multiple devices to your TV. Just a thought!\nuser: Yeah, I've actually been thinking about getting a soundbar to improve the audio quality. I've heard great things about the Sonos Beam, but I'm not sure if it's the right fit for my setup. Do you know anything about it?\nassistant: The Sonos Beam is a fantastic soundbar, and it's definitely worth considering. Sonos is a well-known brand in the audio industry, and their products are generally highly regarded for their quality and ease of use.\n\nThe Sonos Beam is a compact soundbar that's designed to provide improved audio quality for TVs, but it's also a smart speaker that can stream music and other content from various services like Amazon Music, Apple Music, and Spotify. It's a great option if you're looking for a single device that can handle both TV audio and music streaming.\n\nHere are some pros and cons to consider:\n\nPros:\n\n* Compact design: The Sonos Beam is relatively small compared to other soundbars, making it easy to fit into smaller spaces.\n* Easy setup: Sonos products are known for their ease of setup, and the Beam is no exception. You can get it up and running in just a few minutes.\n* Great sound quality: The Beam produces clear, detailed sound with good bass response, making it suitable for TV viewing, music streaming, and even gaming.\n* Smart features: As a smart speaker, the Beam supports voice control through Amazon Alexa or Google Assistant, and you can use it to control other smart devices in your home.\n* Expandability: If you want to add more speakers to your setup, Sonos has a range of products that can be easily connected to the Beam.\n\nCons:\n\n* Limited HDMI inputs: The Beam only has one HDMI input, which might be a limitation if you have multiple devices connected to your TV.\n* No Dolby Atmos support: If you're looking for a soundbar that supports Dolby Atmos, the Beam isn't the best option. However, it does support other surround sound formats like Dolby Digital and DTS.\n* Price: The Sonos Beam is a premium product, and it comes with a premium price tag. It's not the cheapest soundbar on the market, but it's definitely a high-quality option.\n\nOverall, the Sonos Beam is a great choice if you're looking for a compact, easy-to-use soundbar with good sound quality and smart features. However, if you're on a tight budget or need more HDMI inputs, you might want to consider other options.\n\nWhat do you think? Is the Sonos Beam still on your radar, or are you considering other soundbars?\nuser: I'm still considering the Sonos Beam, but I'm also open to other options. I've been doing some research and I came across the Yamaha YAS-209 soundbar. It seems like a good alternative to the Sonos Beam, and it's a bit more budget-friendly. Do you know anything about the Yamaha YAS-209?\nassistant: The Yamaha YAS-209 is a great alternative to the Sonos Beam, and it's definitely worth considering, especially if you're on a budget. Yamaha is a well-known brand in the audio industry, and they've been producing high-quality soundbars for years.\n\nHere are some key features and pros and cons of the Yamaha YAS-209:\n\n**Key Features:**\n\n* 2.1 channel soundbar with a wireless subwoofer\n* Supports 4K HDR passthrough with HDMI 2.1\n* Built-in Amazon Alexa and Google Assistant support\n* Wi-Fi and Bluetooth connectivity for music streaming\n* Compact design with a slim profile\n\n**Pros:**\n\n* Affordable price: The YAS-209 is significantly cheaper than the Sonos Beam, making it a great value for the price.\n* Good sound quality: Yamaha is known for their audio expertise, and the YAS-209 delivers clear and detailed sound with good bass response.\n* Easy setup: The YAS-209 is easy to set up and use, with a simple and intuitive interface.\n* Compact design: The soundbar is slim and compact, making it easy to fit into smaller spaces.\n* Alexa and Google Assistant support: You can control the soundbar with voice commands using Amazon Alexa or Google Assistant.\n\n**Cons:**\n\n* Limited HDMI inputs: The YAS-209 only has one HDMI input, which might be a limitation if you have multiple devices connected to your TV.\n* No Dolby Atmos support: Like the Sonos Beam, the YAS-209 doesn't support Dolby Atmos, but it does support other surround sound formats like Dolby Digital and DTS.\n* No multi-room audio: Unlike the Sonos Beam, the YAS-209 doesn't support multi-room audio, so you can't connect it to other Yamaha soundbars or speakers.\n\nOverall, the Yamaha YAS-209 is a great option if you're looking for a budget-friendly soundbar with good sound quality and smart features. It's a great alternative to the Sonos Beam, and it's definitely worth considering.\n\nHow do you think the Yamaha YAS-209 compares to the Sonos Beam? Are there any specific features that are must-haves for you?\nuser: I think I'll need to do some more research to decide between the two. But I'm glad I have some options to consider. Thanks for the help!\nassistant: You're welcome! I'm glad I could help. Researching and comparing options is always a good idea, especially when it comes to making a purchase that's right for you. Both the Sonos Beam and Yamaha YAS-209 are great options, and I'm sure you'll make an informed decision.\n\nIf you have any more questions or need further clarification on anything, feel free to ask. Otherwise, good luck with your research, and I hope you find the perfect soundbar for your new TV!\n\nBy the way, it was great chatting with you about your holiday shopping and TV setup. If you need any more recommendations or advice on anything else, I'm here to help. Happy holidays!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:af082822",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:07100815dc632a8509ebb31851616df8"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User recently got a new 4K TV during Black Friday.\",\"User wants a full-motion TV mount for the living room.\",\"User plans to use the TV for gaming, movie nights, casual viewing, family gatherings, and holidays.\",\"Sanus VMF408 is under consideration for the living room TV mount.\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm actually planning to use it for a bit of everything - gaming, movie nights, and casual viewing. I've got a pretty big family, so we'll definitely be using it for family gatherings and holidays.\",\"evidence_reason\":\"The quoted user statement explains the usage pattern and family context that make a full-motion living room mount reusable decision context.\",\"importance\":4,\"keywords\":[\"4K TV\",\"TV mount\",\"full-motion mount\",\"Sanus VMF408\",\"living room\",\"gaming\",\"movie nights\",\"family gatherings\"],\"note_type\":\"direction\",\"rationale\":\"This captures purchase rationale and setup direction involving use cases and trade-offs, not just a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's living room 4K TV mount selection context\"},\"summary\":\"For the user's new 4K TV in the living room, a full-motion mount is the preferred direction because the TV will be used for gaming, movie nights, casual viewing, family gatherings, and holidays by a large family. The Sanus VMF408 was considered a strong fit because its swivel/tilt/pivot adjustability can support multiple seating positions and reduce glare.\",\"tags\":[\"tv_setup\",\"purchase_context\",\"mount_selection\"],\"title\":\"Living room TV setup favors full-motion mount\",\"valid_from\":\"2022-11-18T05:47:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User is considering getting a soundbar to improve TV audio quality.\",\"User is still considering Sonos Beam.\",\"User is also considering Yamaha YAS-209 as a more budget-friendly alternative.\",\"User needs to do more research before deciding between the two soundbars.\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<15>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<17>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I think I'll need to do some more research to decide between the two. But I'm glad I have some options to consider.\",\"evidence_reason\":\"The quote directly states the unresolved comparison status after discussing Sonos Beam and Yamaha YAS-209 options.\",\"importance\":4,\"keywords\":[\"soundbar\",\"Sonos Beam\",\"Yamaha YAS-209\",\"budget-friendly\",\"TV audio\",\"smart features\"],\"note_type\":\"context\",\"rationale\":\"This is reusable decision context about an unresolved product comparison and criteria, rather than a single clean claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's soundbar selection context for the new 4K TV setup\"},\"summary\":\"The user is considering a soundbar for the new TV and is comparing Sonos Beam against Yamaha YAS-209. Sonos Beam remains on the shortlist for compact smart features and quality, while Yamaha YAS-209 is a budget-friendlier alternative; the user planned to do more research before deciding.\",\"tags\":[\"audio_setup\",\"purchase_context\",\"product_comparison\"],\"title\":\"Soundbar comparison direction: Sonos Beam vs Yamaha YAS-209\",\"valid_from\":\"2022-11-18T05:47:00Z\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5534,
+                "completionTokens": 885,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

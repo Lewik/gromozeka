@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "04973cbac4cab93fdb2f6e0363045f13e3e328f4e312c0319f4f354ec2542aeb",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is the name of my hamster?\n\n                                Question date:\n                                2023/05/22 (Mon) 13:42\n\n                                Noisy expected-answer label:\n                                You did not mention this information. You mentioned your cat Luna but not your hamster.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0862e8bf_abs\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-01750d97cd2e-claim-18 [ACTIVE] preferred_name family=preferred_name: The user's cat's name is Luna.; scope=Applies to the user's cat in this namespace.; context=\"The user explicitly provided the cat's name during the imported May 20, 2023 chat session.\"; evidence=IMPORTED source=external:provided-text:8e6160d8dd99af00763df6ff107dbce6 quote=\"my cat's name is Luna\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8e6160d8dd99af00763df6ff107dbce6 [external_record ref=longmemeval:0862e8bf_abs:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 03:02\nTranscript:\nuser: I'm having some issues with my cat's digestive health and I was wondering if you could recommend some good probiotic supplements for cats....\n...**What to Look for in a Probiotic Supplement for Cats:**...\n...4. **Stability and shelf life**: Ensure the product is stable and has a long shelf life to guarantee potency throughout the expiration date....\n...2. **Jarrow Formulas Pet Dophilus**: This supplement contains multiple strains of probiotics, including Lactobacillus and Bifidobacterium, and has a high CFU count. It's available in a powder or capsule form....\n...Remember to always follow the product instructions and consult with your veterinarian if you have any questions or concerns about probiotic supplements for your cat.\nuser: I've actually already started giving my cat a probiotic supplement, and it seems to be helping. The vet recommended it to me during a follow-up appointment we had on January 15th. By the way, do you have any recommendations for good cat litter that's easy to clean and odor-free? I just got a new litter box with low sides for my cat, and I'm looking to switch to a better litter....\n...Remember to always transition your cat to a new litter gradually to prevent any digestive upset or litter box avoidance. Start by mixing a small amount of the new litter with their current litter and gradually increase the ratio over time.\n\nI hope this helps you find the purrfect litter for your feline friend!\nuser: I've been having some issues with my cat's litter box lately, it's been getting really stinky. I actually just washed all of her blankets and beds on January 25th because they were getting stinky too. Do you think the new litter you recommended would help with odor control?...\n...5. **Provide enough litter boxes**: Ensure you have one litter box per cat, plus one extra. This can help reduce competition and stress, which can lead to accidents outside of the litter box....\n...user: I'm thinking of getting my cat microchipped, do you know anything about the process or have any recommendations for veterinarians in my area?...\n...Microchipping is a quick and relatively painless procedure that can be done during a routine veterinary visit. Here's what you can expect:...\n...3. **Registration**: Make sure to register the microchip with the manufacturer and keep your contact information up-to-date....\n...2. **American Veterinary Medical Association (AVMA)**: The AVMA website allows you to search for veterinarians by location, name, or specialty....\n...4. **Ask for Referrals**: Ask friends, family, or fellow pet owners for recommendations....\n...user: I've been meaning to get my cat microchipped for a while now, especially since we've been having some issues with our front door not closing properly and I've been worried about her getting out....\n...4. **Identification**: Ensure your cat is wearing a collar with up-to-date identification tags or consider using a breakaway collar with a safety release mechanism....\n...user: By the way, my cat's name is Luna, and she's been such a sweetie throughout all the changes we've been making to her environment. I'm just glad I can provide her with a happy and healthy home....\n...Keep up the great work, and I'm sure Luna will thrive in her happy and healthy home. If you have any more questions or concerns, feel free to ask. I'm always here to help!\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: Luna; Person named Luna.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0862e8bf_abs",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is the name of my hamster?\n\n                                Question date:\n                                2023/05/22 (Mon) 13:42\n\n                                Noisy expected-answer label:\n                                You did not mention this information. You mentioned your cat Luna but not your hamster.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0862e8bf_abs\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-01750d97cd2e-claim-18 [ACTIVE] preferred_name family=preferred_name: The user's cat's name is Luna.; scope=Applies to the user's cat in this namespace.; context=\"The user explicitly provided the cat's name during the imported May 20, 2023 chat session.\"; evidence=IMPORTED source=external:provided-text:8e6160d8dd99af00763df6ff107dbce6 quote=\"my cat's name is Luna\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8e6160d8dd99af00763df6ff107dbce6 [external_record ref=longmemeval:0862e8bf_abs:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 03:02\nTranscript:\nuser: I'm having some issues with my cat's digestive health and I was wondering if you could recommend some good probiotic supplements for cats....\n...**What to Look for in a Probiotic Supplement for Cats:**...\n...4. **Stability and shelf life**: Ensure the product is stable and has a long shelf life to guarantee potency throughout the expiration date....\n...2. **Jarrow Formulas Pet Dophilus**: This supplement contains multiple strains of probiotics, including Lactobacillus and Bifidobacterium, and has a high CFU count. It's available in a powder or capsule form....\n...Remember to always follow the product instructions and consult with your veterinarian if you have any questions or concerns about probiotic supplements for your cat.\nuser: I've actually already started giving my cat a probiotic supplement, and it seems to be helping. The vet recommended it to me during a follow-up appointment we had on January 15th. By the way, do you have any recommendations for good cat litter that's easy to clean and odor-free? I just got a new litter box with low sides for my cat, and I'm looking to switch to a better litter....\n...Remember to always transition your cat to a new litter gradually to prevent any digestive upset or litter box avoidance. Start by mixing a small amount of the new litter with their current litter and gradually increase the ratio over time.\n\nI hope this helps you find the purrfect litter for your feline friend!\nuser: I've been having some issues with my cat's litter box lately, it's been getting really stinky. I actually just washed all of her blankets and beds on January 25th because they were getting stinky too. Do you think the new litter you recommended would help with odor control?...\n...5. **Provide enough litter boxes**: Ensure you have one litter box per cat, plus one extra. This can help reduce competition and stress, which can lead to accidents outside of the litter box....\n...user: I'm thinking of getting my cat microchipped, do you know anything about the process or have any recommendations for veterinarians in my area?...\n...Microchipping is a quick and relatively painless procedure that can be done during a routine veterinary visit. Here's what you can expect:...\n...3. **Registration**: Make sure to register the microchip with the manufacturer and keep your contact information up-to-date....\n...2. **American Veterinary Medical Association (AVMA)**: The AVMA website allows you to search for veterinarians by location, name, or specialty....\n...4. **Ask for Referrals**: Ask friends, family, or fellow pet owners for recommendations....\n...user: I've been meaning to get my cat microchipped for a while now, especially since we've been having some issues with our front door not closing properly and I've been worried about her getting out....\n...4. **Identification**: Ensure your cat is wearing a collar with up-to-date identification tags or consider using a breakaway collar with a safety release mechanism....\n...user: By the way, my cat's name is Luna, and she's been such a sweetie throughout all the changes we've been making to her environment. I'm just glad I can provide her with a happy and healthy home....\n...Keep up the great work, and I'm sure Luna will thrive in her happy and healthy home. If you have any more questions or concerns, feel free to ask. I'm always here to help!\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: Luna; Person named Luna.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0862e8bf_abs",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You have not mentioned a hamster's name; the retrieved memory only says your cat's name is Luna.\",\"reason\":\"The memory contains a cat named Luna and no information about any hamster, supporting that the hamster name was not mentioned.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1788,
+                "completionTokens": 125,
+                "thinkingTokens": 54,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
