@@ -393,7 +393,10 @@ class RuntimeMemoryReadPipeline(
             plan = plan,
             protectedRefs = selectorSelectedRefs,
         )
-        val sourceFilteredHits = selectedHitsBeforeSafety.filterNonRequiredSourcesWhenTypedMemoryAnswers(plan)
+        val sourceFilteredHits = selectedHitsBeforeSafety.filterNonRequiredSourcesWhenTypedMemoryAnswers(
+            plan = plan,
+            protectedRefs = selectorSelectedRefs,
+        )
         if (sourceFilteredHits.changed) {
             log.info {
                 "Memory read source selection pruned: namespace=${request.namespace.value} " +
@@ -403,10 +406,11 @@ class RuntimeMemoryReadPipeline(
             }
         }
         val selectedSourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(
-            plan,
-            includeHistoricalTypedMemory,
-            selectorSnapshot,
-            selectorCandidateHits,
+            plan = plan,
+            includeHistoricalTypedMemory = includeHistoricalTypedMemory,
+            snapshot = selectorSnapshot,
+            candidateHits = selectorCandidateHits,
+            protectedRefs = selectorSelectedRefs,
         )
         val sourceSafety = selectedSourceSafety
         if (sourceSafety.changed) {
@@ -1623,6 +1627,7 @@ private data class RuntimeMemorySourcePruningResult(
 
 private fun List<MemoryStore.SearchHit>.filterNonRequiredSourcesWhenTypedMemoryAnswers(
     plan: MemoryReadPlan,
+    protectedRefs: Set<MemoryItemRef> = emptySet(),
 ): RuntimeMemorySourcePruningResult {
     if (plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
         return RuntimeMemorySourcePruningResult(hits = this)
@@ -1646,12 +1651,13 @@ private fun List<MemoryStore.SearchHit>.filterNonRequiredSourcesWhenTypedMemoryA
     }
 
     val dropped = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+        .filterNot { it.toItemRef() in protectedRefs }
     if (dropped.isEmpty()) {
         return RuntimeMemorySourcePruningResult(hits = this)
     }
 
     return RuntimeMemorySourcePruningResult(
-        hits = filterNot { it is MemoryStore.SearchHit.SourceHit },
+        hits = filterNot { it is MemoryStore.SearchHit.SourceHit && it.toItemRef() !in protectedRefs },
         droppedSources = dropped,
     )
 }
@@ -1810,17 +1816,35 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
     includeHistoricalTypedMemory: Boolean,
     snapshot: MemoryNamespaceSnapshot,
     candidateHits: List<MemoryStore.SearchHit>,
+    protectedRefs: Set<MemoryItemRef> = emptySet(),
 ): RuntimeMemorySourceSafetyResult {
     val selectedSourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
         .mapTo(mutableSetOf()) { it.source.id }
     if (selectedSourceIds.isEmpty()) return RuntimeMemorySourceSafetyResult(hits = this)
 
-    val suppressedSourceIds = selectedSourceIds.intersect(snapshot.sourceIdsWithActiveTypedReplacement())
-    if (suppressedSourceIds.isEmpty()) return RuntimeMemorySourceSafetyResult(hits = this)
+    val protectsExplicitSourceEvidence = plan.shouldRenderEvidenceInPrompt() && when (plan.answerMode) {
+        MemoryReadPlan.AnswerMode.FACTUAL,
+        MemoryReadPlan.AnswerMode.ACTION_ITEM,
+        -> true
+
+        MemoryReadPlan.AnswerMode.MIXED,
+        MemoryReadPlan.AnswerMode.RATIONALE,
+        -> false
+    }
+    val protectedSourceIds = if (protectsExplicitSourceEvidence) {
+        protectedRefs
+            .filter { it.type == MemoryItemRef.Type.SOURCE }
+            .mapTo(mutableSetOf()) { MemorySource.Id(it.id) }
+    } else {
+        emptySet()
+    }
+    val replacementSourceIds = selectedSourceIds.intersect(snapshot.sourceIdsWithActiveTypedReplacement())
+    if (replacementSourceIds.isEmpty()) return RuntimeMemorySourceSafetyResult(hits = this)
+    val suppressedSourceIds = replacementSourceIds.filterNotTo(mutableSetOf()) { it in protectedSourceIds }
 
     val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
     val restoredHits = snapshot.activeTypedReplacementHitsForSources(
-        sourceIds = suppressedSourceIds,
+        sourceIds = replacementSourceIds,
         candidateHits = candidateHits,
     ).filterNot { it.toItemRef() in existingRefs }
     val suppressRawSources =

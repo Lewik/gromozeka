@@ -2356,6 +2356,64 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun runtimeReadKeepsExplicitSelectorSourcesWhenTypedMemoryWouldPruneRawEvidence() = runBlocking {
+        val originalPriceSource = source(
+            id = "favorite-author-list-price-source",
+            text = "The new book from the user's favorite author had a list price of $30 before the discount.",
+        )
+        val discountedPriceSource = source(
+            id = "favorite-author-discount-price-source",
+            text = "The user bought the favorite author's book for $24 after the discount.",
+        )
+        val discountClaim = claim(
+            id = "favorite-author-discount-claim",
+            sourceId = discountedPriceSource.id.value,
+            predicate = "current_metric_value",
+            objectValue = JsonPrimitive("$24"),
+            normalizedText = "The user bought the favorite author's book for $24 after a discount.",
+            importance = 9,
+        )
+        val originalSourceRef = MemoryItemRef(MemoryItemRef.Type.SOURCE, originalPriceSource.id.value)
+        val discountedSourceRef = MemoryItemRef(MemoryItemRef.Type.SOURCE, discountedPriceSource.id.value)
+        val discountClaimRef = MemoryItemRef(MemoryItemRef.Type.CLAIM, discountClaim.id.value)
+
+        val result = RuntimeMemoryReadPipeline(
+            store = InMemoryMemoryStore(
+                MemoryNamespaceSnapshot(
+                    sources = listOf(originalPriceSource, discountedPriceSource),
+                    entities = listOf(entity()),
+                    claims = listOf(discountClaim),
+                )
+            ),
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 2, claims = 1),
+                    retrievalRequests = emptyList(),
+                )
+            ),
+            selector = FixedReadSelector(
+                selectedRefs = listOf(originalSourceRef, discountedSourceRef, discountClaimRef),
+            ),
+        ).read(
+            memoryReadRequest(
+                targetMessageId = "target-message",
+                targetText = "What percentage discount did I get on the book from my favorite author?",
+            )
+        )
+
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(refs.contains(originalSourceRef))
+        assertTrue(refs.contains(discountedSourceRef))
+        assertTrue(refs.contains(discountClaimRef))
+        assertTrue(prompt.contains("$30 before the discount"))
+        assertTrue(prompt.contains("$24 after a discount"))
+    }
+
+    @Test
     fun runtimeReadKeepsPreferredClaimPredicatesAfterCandidateMerging() = runBlocking {
         val metricPolicy = MemoryPredicateDefinition(
             predicate = "current_metric_value",
@@ -3414,6 +3472,89 @@ class MemoryMaintenancePipelineTest {
         assertTrue(prompt.contains("The primary export format for ShelfLog is currently JSON Lines."))
         assertTrue(!prompt.contains("The primary export format for ShelfLog is currently CSV."))
         assertTrue(!prompt.contains("ShelfLog primary export is currently CSV."))
+    }
+
+    @Test
+    fun runtimeReadKeepsMixedSourceWhenOnlyPartOfItsTypedMemoryWasSuperseded() = runBlocking {
+        val mixedSource = source(
+            "mixed-active-and-stale-source",
+            "ShelfLog primary export is currently CSV. The user's workshop notes are kept in the blue binder.",
+        )
+        val newSource = source(
+            "mixed-current-source",
+            "ShelfLog primary export is currently JSON Lines instead of CSV.",
+        )
+        val oldClaim = claim(
+            id = "mixed-old-export-claim",
+            sourceId = mixedSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The primary export format for ShelfLog is currently CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeExportClaim = claim(
+            id = "mixed-active-export-claim",
+            sourceId = newSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("JSON Lines"),
+            normalizedText = "The primary export format for ShelfLog is currently JSON Lines.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val activeBinderClaim = claim(
+            id = "mixed-active-binder-claim",
+            sourceId = mixedSource.id.value,
+            predicate = "storage_location",
+            objectValue = JsonPrimitive("blue binder"),
+            normalizedText = "The user's workshop notes are kept in the blue binder.",
+            status = MemoryClaim.Status.ACTIVE,
+        )
+        val mixedSourceRef = MemoryItemRef(MemoryItemRef.Type.SOURCE, mixedSource.id.value)
+        val activeExportClaimRef = MemoryItemRef(MemoryItemRef.Type.CLAIM, activeExportClaim.id.value)
+        val activeBinderClaimRef = MemoryItemRef(MemoryItemRef.Type.CLAIM, activeBinderClaim.id.value)
+
+        val result = RuntimeMemoryReadPipeline(
+            store = InMemoryMemoryStore(
+                MemoryNamespaceSnapshot(
+                    sources = listOf(mixedSource, newSource),
+                    entities = listOf(entity()),
+                    claims = listOf(oldClaim, activeExportClaim, activeBinderClaim),
+                )
+            ),
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "The source contains source-only wording and one superseded fact.",
+                            query = "ShelfLog export format workshop notes blue binder",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+            selector = FixedReadSelector(
+                selectedRefs = listOf(mixedSourceRef, activeExportClaimRef, activeBinderClaimRef),
+            ),
+        ).read(
+            memoryReadRequest(
+                targetMessageId = "mixed-active-and-stale-target",
+                targetText = "What is ShelfLog's current export format, and where are my workshop notes kept?",
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(mixedSourceRef))
+        assertTrue(refs.contains(activeExportClaimRef))
+        assertTrue(refs.contains(activeBinderClaimRef))
+        assertTrue(result.trace.sourceSafety.suppressedSources.isEmpty())
+        assertTrue(prompt.contains("The primary export format for ShelfLog is currently JSON Lines."))
+        assertTrue(prompt.contains("workshop notes are kept in the blue binder"))
     }
 
     @Test
