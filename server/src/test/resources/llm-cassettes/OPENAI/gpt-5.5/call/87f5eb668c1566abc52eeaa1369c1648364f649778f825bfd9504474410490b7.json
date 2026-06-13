@@ -1,0 +1,177 @@
+{
+    "version": 1,
+    "hash": "87f5eb668c1566abc52eeaa1369c1648364f649778f825bfd9504474410490b7",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many copies of my favorite artist's debut album were released worldwide?\n\n                                Question date:\n                                2023/05/29 (Mon) 20:11\n\n                                Noisy expected-answer label:\n                                500\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:ec81a493\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile benchmark:longmemeval:ec81a493:profile:<0> Profile for User (USER).\nStable facts:\n- The user wants to display their vintage camera next to the antique clock and signed debut-album poster to add nostalgia to the shelf.\n- The user wants to organize their vinyl collection using storage that protects albums from scratches and damage.\n- The user wants to display their antique clock on a shelf with decorative items and make the clock stand out.\n- The user wants to display the signed debut-album poster alongside the antique clock.\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ae1f2b9ea3ea-claim-8 [ACTIVE] edition_size family=edition_size: The user's signed debut-album poster is a limited edition of only 500 copies worldwide.; scope=Applies to the rarity of the user's signed debut-album poster.; context=\"The user said the signed poster from their favorite artist's debut album is limited to 500 copies worldwide.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"which is a limited edition of only 500 copies worldwide\"\n- claim hot-path-ae1f2b9ea3ea-claim-7 [ACTIVE] associated_with family=associated_with: The user's signed debut-album poster came with the user's favorite artist's debut album.; scope=Applies to the identity and provenance of the user's signed poster.; context=\"The user described the poster as the signed poster that came with their favorite artist's debut album.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"the signed poster that came with my favorite artist's debut album\"\n- claim hot-path-ae1f2b9ea3ea-claim-6 [ACTIVE] owns family=owns: The user owns a signed poster from their favorite artist's debut album.; scope=Applies to the user's rare collectibles.; context=\"The user discussed displaying the signed poster that came with their favorite artist's debut album.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"my rare items, like the signed poster that came with my favorite artist's debut album\"\n- claim hot-path-ae1f2b9ea3ea-claim-14 [ACTIVE] has_goal family=has_goal: The user wants to display their vintage camera next to the antique clock and signed debut-album poster to add nostalgia to the shelf.; scope=Applies to the user's planned display shelf arrangement.; context=\"The user said the rare 1950s vintage camera would add a nice touch of nostalgia to the shelf if displayed next to the clock and poster.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"displaying my vintage camera next to the clock and poster\"\n- claim hot-path-ae1f2b9ea3ea-claim-11 [ACTIVE] has_goal family=has_goal: The user wants to display the signed debut-album poster alongside the antique clock.; scope=Applies to the user's planned display shelf arrangement.; context=\"The user asked whether displaying the limited-edition signed poster alongside the antique clock would work.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"displaying my signed poster from my favorite artist's debut album, which is a limited edition of only 500 copies worldwide, alongside the clock\"\n- claim hot-path-ae1f2b9ea3ea-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to organize their vinyl collection using storage that protects albums from scratches and damage.; scope=Applies to the user's vinyl collection organization and storage needs.; context=\"The user asked for record storage solutions for their vinyl collection that would protect albums from scratches and damage.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"I've been meaning to organize my vinyl collection and was wondering if you could recommend any good record storage solutions that would protect my albums from scratches and damage?\"\n- claim hot-path-ae1f2b9ea3ea-claim-13 [ACTIVE] manufacture_period family=manufacture_period: The user's vintage camera is a rare model from the 1950s.; scope=Applies to the identity and vintage period of the user's camera.; context=\"The user described the vintage camera they want to display as a rare model from the 1950s.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"It's a rare model from the 1950s\"\n- claim hot-path-ae1f2b9ea3ea-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to display their antique clock on a shelf with decorative items and make the clock stand out.; scope=Applies to the user's planned display shelf arrangement.; context=\"The user asked for shelf-styling tips for displaying their antique clock with decorative items.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"displaying my antique clock on a shelf with some decorative items\"\n\n            Retrieved notes:\n            - note hot-path-ae1f2b9ea3ea-note-2 [PLAN/ACTIVE]: Planned nostalgic display shelf with clock, poster, and vintage camera; The user is developing a display shelf concept combining an antique clock, a signed limited-edition debut-album poster, and a rare 1950s vintage camera. The intended effect is a cohesive, nostalgic display that highlights rare collectibles while telling a story around music, time, and photography.; scope=Applies to the user's display shelf arrangement for rare collectibles discussed in LongMemEval ec81a493 session 1.; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"The combination of the clock, poster, and camera will create a unique and fascinating display that celebrates the beauty of nostalgia and the art of photography.\"\n\n            Retrieved evidence:\n            - source external:provided-text:15b6aee49c052b397e8274edcc259f19 [external_record ref=longmemeval:ec81a493:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 03:32\nTranscript:\nuser: I've been meaning to organize my vinyl collection and was wondering if you could recommend any good record storage solutions that would protect my albums from scratches and damage?\nassistant: A vinyl enthusiast! Organizing your collection is a great idea, and protecting your albums from scratches and damage is a top priority. I'd be happy to recommend some excellent record storage solutions for you. Here are a few options:...\n...user: I've been thinking about displaying some of my rare items, like the signed poster that came with my favorite artist's debut album - it's such a unique piece. Do you know of any good ways to showcase posters and prints without damaging them?\nassistant: What a great idea! Displaying your rare and unique items can add a personal touch to your space and showcase your passion for music. To showcase your signed poster and other prints without damaging them, consider the following methods:...\n...user: I'm also thinking of displaying my antique clock on a shelf with some decorative items. Do you have any tips on how to style a shelf to make the clock stand out?...\n...user: I was thinking of displaying my signed poster from my favorite artist's debut album, which is a limited edition of only 500 copies worldwide, alongside the clock. Do you think that would work?\nassistant: What a great idea! Displaying your signed poster alongside your antique clock could be a fantastic way to create a unique and personalized display. Since the poster is a limited edition of only 500 copies worldwide, it's definitely a special item that deserves to be showcased....\n...4. **Add some cohesion**: To create a sense of cohesion between the two items, consider adding some decorative elements that tie them together. For example, you could add some music-themed items, such as a vintage record player or a music sheet, to connect the poster to the clock....\n...By displaying your signed poster alongside your antique clock, you'll create a unique and personalized display that showcases your love for music and your appreciation for rare and special items. Just make sure to choose a layout that works for you and complements both items!\nuser: I was also thinking of displaying my vintage camera next to the clock and poster. It's a rare model from the 1950s, and I think it would add a nice touch of nostalgia to the shelf. What do you think?...\n...user: That sounds like a great plan! I think displaying your vintage camera next to the clock and poster will add a nice touch of nostalgia to the shelf. The combination of the clock, poster, and camera will create a unique and fascinating display that celebrates the beauty of nostalgia and the art of photography....\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: User's antique clock; Entity named User's antique clock.\n- entity entity:<1> [OTHER]: User's display shelf; Entity named User's display shelf.\n- entity entity:<2> [OTHER]: User's signed debut-album poster; Entity named User's signed debut-album poster.\n- entity entity:<3> [OTHER]: User's vintage camera; Entity named User's vintage camera.\n- entity entity:<4> [PRODUCT]: User's favorite artist's debut album; Product named User's favorite artist's debut album.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "ec81a493",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many copies of my favorite artist's debut album were released worldwide?\n\n                                Question date:\n                                2023/05/29 (Mon) 20:11\n\n                                Noisy expected-answer label:\n                                500\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:ec81a493\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile benchmark:longmemeval:ec81a493:profile:<0> Profile for User (USER).\nStable facts:\n- The user wants to display their vintage camera next to the antique clock and signed debut-album poster to add nostalgia to the shelf.\n- The user wants to organize their vinyl collection using storage that protects albums from scratches and damage.\n- The user wants to display their antique clock on a shelf with decorative items and make the clock stand out.\n- The user wants to display the signed debut-album poster alongside the antique clock.\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ae1f2b9ea3ea-claim-8 [ACTIVE] edition_size family=edition_size: The user's signed debut-album poster is a limited edition of only 500 copies worldwide.; scope=Applies to the rarity of the user's signed debut-album poster.; context=\"The user said the signed poster from their favorite artist's debut album is limited to 500 copies worldwide.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"which is a limited edition of only 500 copies worldwide\"\n- claim hot-path-ae1f2b9ea3ea-claim-7 [ACTIVE] associated_with family=associated_with: The user's signed debut-album poster came with the user's favorite artist's debut album.; scope=Applies to the identity and provenance of the user's signed poster.; context=\"The user described the poster as the signed poster that came with their favorite artist's debut album.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"the signed poster that came with my favorite artist's debut album\"\n- claim hot-path-ae1f2b9ea3ea-claim-6 [ACTIVE] owns family=owns: The user owns a signed poster from their favorite artist's debut album.; scope=Applies to the user's rare collectibles.; context=\"The user discussed displaying the signed poster that came with their favorite artist's debut album.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"my rare items, like the signed poster that came with my favorite artist's debut album\"\n- claim hot-path-ae1f2b9ea3ea-claim-14 [ACTIVE] has_goal family=has_goal: The user wants to display their vintage camera next to the antique clock and signed debut-album poster to add nostalgia to the shelf.; scope=Applies to the user's planned display shelf arrangement.; context=\"The user said the rare 1950s vintage camera would add a nice touch of nostalgia to the shelf if displayed next to the clock and poster.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"displaying my vintage camera next to the clock and poster\"\n- claim hot-path-ae1f2b9ea3ea-claim-11 [ACTIVE] has_goal family=has_goal: The user wants to display the signed debut-album poster alongside the antique clock.; scope=Applies to the user's planned display shelf arrangement.; context=\"The user asked whether displaying the limited-edition signed poster alongside the antique clock would work.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"displaying my signed poster from my favorite artist's debut album, which is a limited edition of only 500 copies worldwide, alongside the clock\"\n- claim hot-path-ae1f2b9ea3ea-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to organize their vinyl collection using storage that protects albums from scratches and damage.; scope=Applies to the user's vinyl collection organization and storage needs.; context=\"The user asked for record storage solutions for their vinyl collection that would protect albums from scratches and damage.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"I've been meaning to organize my vinyl collection and was wondering if you could recommend any good record storage solutions that would protect my albums from scratches and damage?\"\n- claim hot-path-ae1f2b9ea3ea-claim-13 [ACTIVE] manufacture_period family=manufacture_period: The user's vintage camera is a rare model from the 1950s.; scope=Applies to the identity and vintage period of the user's camera.; context=\"The user described the vintage camera they want to display as a rare model from the 1950s.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"It's a rare model from the 1950s\"\n- claim hot-path-ae1f2b9ea3ea-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to display their antique clock on a shelf with decorative items and make the clock stand out.; scope=Applies to the user's planned display shelf arrangement.; context=\"The user asked for shelf-styling tips for displaying their antique clock with decorative items.\"; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"displaying my antique clock on a shelf with some decorative items\"\n\n            Retrieved notes:\n            - note hot-path-ae1f2b9ea3ea-note-2 [PLAN/ACTIVE]: Planned nostalgic display shelf with clock, poster, and vintage camera; The user is developing a display shelf concept combining an antique clock, a signed limited-edition debut-album poster, and a rare 1950s vintage camera. The intended effect is a cohesive, nostalgic display that highlights rare collectibles while telling a story around music, time, and photography.; scope=Applies to the user's display shelf arrangement for rare collectibles discussed in LongMemEval ec81a493 session 1.; evidence=DIRECT source=external:provided-text:15b6aee49c052b397e8274edcc259f19 quote=\"The combination of the clock, poster, and camera will create a unique and fascinating display that celebrates the beauty of nostalgia and the art of photography.\"\n\n            Retrieved evidence:\n            - source external:provided-text:15b6aee49c052b397e8274edcc259f19 [external_record ref=longmemeval:ec81a493:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 03:32\nTranscript:\nuser: I've been meaning to organize my vinyl collection and was wondering if you could recommend any good record storage solutions that would protect my albums from scratches and damage?\nassistant: A vinyl enthusiast! Organizing your collection is a great idea, and protecting your albums from scratches and damage is a top priority. I'd be happy to recommend some excellent record storage solutions for you. Here are a few options:...\n...user: I've been thinking about displaying some of my rare items, like the signed poster that came with my favorite artist's debut album - it's such a unique piece. Do you know of any good ways to showcase posters and prints without damaging them?\nassistant: What a great idea! Displaying your rare and unique items can add a personal touch to your space and showcase your passion for music. To showcase your signed poster and other prints without damaging them, consider the following methods:...\n...user: I'm also thinking of displaying my antique clock on a shelf with some decorative items. Do you have any tips on how to style a shelf to make the clock stand out?...\n...user: I was thinking of displaying my signed poster from my favorite artist's debut album, which is a limited edition of only 500 copies worldwide, alongside the clock. Do you think that would work?\nassistant: What a great idea! Displaying your signed poster alongside your antique clock could be a fantastic way to create a unique and personalized display. Since the poster is a limited edition of only 500 copies worldwide, it's definitely a special item that deserves to be showcased....\n...4. **Add some cohesion**: To create a sense of cohesion between the two items, consider adding some decorative elements that tie them together. For example, you could add some music-themed items, such as a vintage record player or a music sheet, to connect the poster to the clock....\n...By displaying your signed poster alongside your antique clock, you'll create a unique and personalized display that showcases your love for music and your appreciation for rare and special items. Just make sure to choose a layout that works for you and complements both items!\nuser: I was also thinking of displaying my vintage camera next to the clock and poster. It's a rare model from the 1950s, and I think it would add a nice touch of nostalgia to the shelf. What do you think?...\n...user: That sounds like a great plan! I think displaying your vintage camera next to the clock and poster will add a nice touch of nostalgia to the shelf. The combination of the clock, poster, and camera will create a unique and fascinating display that celebrates the beauty of nostalgia and the art of photography....\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: User's antique clock; Entity named User's antique clock.\n- entity entity:<1> [OTHER]: User's display shelf; Entity named User's display shelf.\n- entity entity:<2> [OTHER]: User's signed debut-album poster; Entity named User's signed debut-album poster.\n- entity entity:<3> [OTHER]: User's vintage camera; Entity named User's vintage camera.\n- entity entity:<4> [PRODUCT]: User's favorite artist's debut album; Product named User's favorite artist's debut album.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "ec81a493",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"500 copies worldwide.\",\"reason\":\"The memory explicitly states the signed poster from the user's favorite artist's debut album was a limited edition of only 500 copies worldwide.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2939,
+                "completionTokens": 55,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

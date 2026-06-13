@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "3299e18c9753bfa61e033d4007bb52a078e2c20477df268b5e866f3f32302922",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:22d2cb42\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true; transcript has durable user facts/preferences/plans and reusable resale/pricing context, so store both structured claims and a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path-39a3fb7f7055-claim-14: current_location; Rhythm Central is a music shop on Main St.; scope=Rhythm Central location as mentioned in the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-4: PLAN; Rhythm Central lead for guitar servicing on Main St; For guitar servicing, the user has a friend-sourced lead for a Main St music shop named \"Rhythm Central\" with a good reputation. The immediate next step was to call Rhythm Central to ask about available services, prices, turnaround time, and availability before the festival.; scope=Local guitar-service search centered on Rhythm Central on Main St\n- profile benchmark:longmemeval:22d2cb42:profile:<0> Profile for Rhythm Central (ORGANIZATION).\nStable facts:\n- Rhythm Central is a music shop on Main St.\n- profile benchmark:longmemeval:22d2cb42:profile:<1> Profile for User (USER).\nStable facts:\n- The user plans to call Rhythm Central and ask about guitar servicing services and prices.\n- The user plans to get their acoustic guitar serviced before the music festival.\n- The user plans to try the FL Studio Fruity Edition demo first.\n- The user is thinking of getting a violin and taking lessons.\n- The user is thinking of starting to produce their own music.\n- The user plans to check out a few music shops in their area for violins.\n- The user has heard of Ableton Live Intro but has never tried it.\n- claim hot-path-39a3fb7f7055-claim-12: has_goal; The user plans to check out a few music shops in their area for violins.; scope=User's local violin-shop search plan from the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-16: has_goal; The user plans to call Rhythm Central and ask about guitar servicing services and prices.; scope=User's guitar-servicing follow-up plan from the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-3: PLAN; Plan to service acoustic guitar before music festival; The user accepted the recommendation to service their acoustic guitar before the upcoming music festival so the instrument is reliable, playable, and ready for the event. Future guitar-service advice should treat pre-festival servicing as the chosen plan unless superseded.; scope=User's acoustic guitar maintenance plan around the upcoming music festival\n- claim hot-path-39a3fb7f7055-claim-8: has_goal; The user plans to get their acoustic guitar serviced before the music festival.; scope=Planning status for the user's upcoming music festival in the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-11: has_goal; The user is thinking of getting a violin and taking lessons.; scope=User's instrument-learning interest from the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-15: believes; The user's friend mentioned that Rhythm Central has a good reputation for guitar servicing.; scope=Friend's stated view about Rhythm Central in the imported 2023-05-23 chat session.\n- profile benchmark:longmemeval:22d2cb42:profile:<2> Profile for User's friend (PERSON).\nStable facts:\n- The user's friend produces hip-hop music and has talked about FL Studio Fruity Edition.\n- claim hot-path-39a3fb7f7055-claim-7: requires_service; The user's acoustic guitar needs to be serviced.; scope=User's acoustic guitar service status from the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-5: DIRECTION; Violin shop search approach for beginner purchase or rental; The user is considering getting a violin and taking lessons, with guidance to compare local music shops, try instruments in person, ask about staff violin expertise and lessons, and consider renting before buying as a beginner.; scope=User's early-stage violin acquisition and lesson exploration\n- claim hot-path-39a3fb7f7055-claim-6: has_goal; The user is thinking of starting to produce their own music.; scope=User's music-production interests in the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-10: has_goal; The user plans to try the FL Studio Fruity Edition demo first.; scope=User's DAW trial plan from the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-13: has_experience_with; The user's friend produces hip-hop music and has talked about FL Studio Fruity Edition.; scope=User's friend's music-production context from the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-2: DIRECTION; DAW choice direction: try FL Studio Fruity Edition demo first; The user decided to try the FL Studio Fruity Edition demo before Ableton Live Intro because they had heard about it from a friend who produces hip-hop music. The broader comparison context was that FL Studio was presented as more geared toward hip-hop, trap, drum programming, and beat-making, while Ableton was framed as more flexible for live performance and experimental/electronic workflows.; scope=User's beginner music production software exploration and DAW selection context\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=12345 zip code; action=CREATE_NEW; id=entity:<1>; type=LOCATION; name=12345 zip code; reason=Concrete location-like identifier mentioned by the user; no existing candidate matches.\n- mention=city center; action=CREATE_NEW; id=entity:<2>; type=LOCATION; name=City center; reason=Concrete location description for the user's area; no existing candidate matches.\n- mention=that music shop on Main St; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=Rhythm Central; reason=Retrieval context identifies the Main St music shop as Rhythm Central, but its entity id is not in the candidate list.\n- mention=Main St; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Main St; reason=Existing location entity matches the street name.\n- mention=guitar; action=LINK_EXISTING; id=entity:<5>; type=existing; name=guitar; reason=User refers to their guitar being serviced; existing entity is User's acoustic guitar.\n- mention=violin teachers or music schools; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Violin teachers or music schools; reason=Reusable concept for user's search target; no existing candidate matches exactly.\n- mention=saxophone case; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=User's saxophone case; reason=Concrete user-owned item being discussed for sale; no existing candidate matches.\n- mention=Craigslist; action=CREATE_NEW; id=entity:<8>; type=SERVICE; name=Craigslist; reason=Concrete service used for listings; no existing candidate matches.\n- mention=old electronic keyboard; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=User's old electronic keyboard; reason=Concrete user-owned item being discussed for sale; no existing candidate matches.\n- mention=previous one; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=User's previous electronic keyboard; reason=Distinct concrete keyboard sold previously; not the same as the current old electronic keyboard.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|guitar|music shop on Main St|saxophone case|electronic keyboard|Craigslist|violin teachers|music schools\n        text_queries=music shop on Main St guitar serviced guitar maintenance|saxophone case Craigslist $120 good condition clear photos negotiation|old electronic keyboard Craigslist previous one sold for $200 listing for $250|learning violin city center music schools teachers\n        predicate_hints=current_location|has_goal|pending_pickup|pending_return|requires_service|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:16f7e223bf607ba1346264670e51e518] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:22d2cb42:session:2; title=LongMemEval 22d2cb42 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 13:13\nTranscript:\nuser: I'm thinking of learning to play the violin, can you recommend some good music schools or teachers in my area?\nassistant: I'd be happy to help! However, I'm a large language model, I don't have access to your location. Could you please provide me with your city or zip code? That way, I can give you more tailored recommendations.\n\nIn the meantime, here are some general tips to find a good music school or teacher in your area:\n\n1. **Online Search**: Google search for \"violin lessons near me\" or \"music schools in [your city]\" to find schools and teachers in your area.\n2. **Ask Around**: Ask friends, family, or colleagues who play the violin for recommendations. They might know a good teacher or school.\n3. **Music Stores**: Visit local music stores that sell violins or offer music lessons. They often have a list of recommended teachers or offer lessons themselves.\n4. **Professional Associations**: Look for professional associations like the American String Teachers Association (ASTA) or the Music Teachers National Association (MTNA) in your area. They often have directories of certified teachers.\n5. **Online Directories**: Websites like Lessons.com, Thumbtack, or Superprof allow you to search for violin teachers in your area and read reviews from other students.\n6. **Community Centers**: Many community centers or recreation centers offer music lessons, including violin.\n\nOnce you have a list of potential teachers or schools, make sure to:\n\n* Check their qualifications and experience teaching violin\n* Read reviews from other students\n* Ask about their teaching style and approach\n* Inquire about their availability and schedule\n* Consider taking a trial lesson to see if you're a good fit\n\nRemember to always prioritize finding a teacher who is a good fit for you and your learning style. Good luck, and I hope you find a great teacher to help you start your violin journey!\nuser: I'm in the 12345 zip code. Also, I was thinking of having got my guitar services from that music shop on Main St, and I think they do servicing there too.\nassistant: I'm happy to help you with finding a violin teacher or music school in your area! However, I have to clarify that I'm a large language model, I don't have access to real-time location-specific information. The 12345 zip code is not a valid zip code, and I couldn't find any information about a music shop on Main St. in that area.\n\nIf you could provide me with a real zip code or city, I'd be happy to help you find violin teachers or music schools in your area. Additionally, I can give you some general tips on how to find a good guitar servicing shop.\n\nHere are some general tips to find a good guitar servicing shop:\n\n1. **Ask Around**: Ask friends, fellow musicians, or online forums for recommendations.\n2. **Online Reviews**: Check online review sites like Yelp, Google Reviews, or Facebook Reviews to see what other customers have to say about the shop.\n3. **Check their Credentials**: Look for shops that are authorized dealers for your guitar brand or have certified technicians.\n4. **Get a Quote**: Get a quote for the services you need and compare prices with other shops.\n5. **Check their Turnaround Time**: Ask how long the servicing will take and if they have a rush service option.\n\nRemember to always do your research and find a reputable shop that can properly service your guitar.\n\nIf you're willing to provide a real zip code or city, I'd be happy to help you find violin teachers or music schools in your area.\nuser: I think I made a mistake with the zip code. I'm actually in the city center, so I guess I can just search online for violin teachers or music schools in the city. And yeah, I remember the music shop on Main St where I got my guitar serviced, they're really good with guitar maintenance. Do you have any tips on how to prepare my guitar for servicing?\nassistant: No worries about the zip code mistake! Yes, searching online for violin teachers or music schools in your city is a great idea. You can also ask around, check online reviews, and read testimonials to find a good fit for you.\n\nRegarding your guitar servicing, that's great that you have a trusted shop on Main St! To prepare your guitar for servicing, here are some tips:\n\n1. **Cleanliness is key**: Make sure your guitar is clean and free of dirt, dust, and oils from your hands. This will help the technician work more efficiently and effectively.\n2. **Remove accessories**: Take off any accessories like straps, tuners, or pickups to prevent damage or loss during the servicing process.\n3. **Change your strings**: If your strings are old or rusty, consider changing them before bringing your guitar in. This will give the technician a better idea of the guitar's overall condition.\n4. **Identify the issues**: Make a list of any issues you've noticed with your guitar, such as buzzing, tuning problems, or electrical issues. This will help the technician focus on the specific problems.\n5. **Be prepared to ask questions**: When you drop off your guitar, ask the technician about their process, what they'll be doing, and how long it'll take. This will help you understand what's happening to your instrument.\n6. **Leave a contact method**: Make sure to leave your contact information, such as your phone number or email, so the technician can reach out to you with any questions or updates.\n\nBy following these tips, you'll be helping the technician to do their job more efficiently, and you'll get your guitar back in great shape.\n\nGood luck with your guitar servicing, and I hope you find a great violin teacher or music school in your city!\nuser: I'm thinking of selling my old saxophone case, do you have any tips on how to price it?\nassistant: Saxophone cases can be a valuable item for musicians, and pricing it correctly is crucial to attract potential buyers. Here are some tips to help you price your old saxophone case:\n\n1. **Research, research, research**: Look for similar saxophone cases online, both new and used, to get an idea of their market value. Check websites like eBay, Craigslist, Facebook Marketplace, and specialized music gear marketplaces like Reverb or GearSwap.\n2. **Determine the condition**: Assess the condition of your case honestly. Is it in excellent, good, fair, or poor condition? Consider any scratches, dents, worn-out handles, or broken latches. The better the condition, the higher the price.\n3. **Check the brand and model**: If your case is from a well-known brand like Selmer, Yamaha, or Protec, it may hold more value than a generic or unknown brand. Research the specific model and its original price to determine a fair used price.\n4. **Consider the size and type**: Saxophone cases come in different sizes (alto, tenor, baritone, etc.) and types (hardshell, soft, gig bag, etc.). Larger or more specialized cases may be more valuable than smaller or more common ones.\n5. **Set a competitive price**: Based on your research, set a competitive price for your case. Keep in mind that you want to attract buyers, so don't overprice it. Consider starting with a slightly lower price to leave room for negotiation.\n6. **Add some context**: When listing your case for sale, include details like the case's age, any repairs or maintenance, and its original price (if you have the receipt). This can help build trust with potential buyers and justify your asking price.\n7. **Take clear photos**: Take high-quality, well-lit photos of the case from multiple angles. Show any flaws or damage to demonstrate transparency and build trust with potential buyers.\n8. **Be prepared to negotiate**: Be open to reasonable offers and negotiations. Consider bundling your case with other music-related items or offering a discount for a quick sale.\n\nSome general price ranges for used saxophone cases are:\n\n* Soft cases: $20-$100\n* Hardshell cases: $50-$300\n* Gig bags: $30-$150\n* High-end or specialty cases: $100-$500+\n\nRemember to stay realistic and flexible when pricing your saxophone case. Good luck with the sale!\nuser: I think I'll list my saxophone case on Craigslist for $120, which is a bit lower than what I think it's worth, so I have some room for negotiation. I'll also mention that it's in good condition and include some clear photos. Do you think that's a good strategy?\nassistant: That's a great strategy! Listing your saxophone case on Craigslist for $120 is a good starting point, especially since you're leaving some room for negotiation. By pricing it slightly lower than what you think it's worth, you're more likely to attract potential buyers and start a conversation.\n\nMentioning that the case is in good condition and including clear photos will also help build trust with potential buyers. It's essential to be transparent about the condition of the case, so kudos to you for being honest.\n\nHere are a few additional tips to consider when listing your saxophone case on Craigslist:\n\n1. **Use relevant keywords**: Use keywords like \"saxophone case,\" \"alto sax case,\" \"hardshell case,\" or \"music gear\" to make it easier for people to find your listing.\n2. **Write a clear and concise description**: In addition to mentioning the condition and price, include any other relevant details, such as the case's brand, model, and size.\n3. **Set boundaries**: Consider adding a statement like \"no lowball offers, please\" or \"serious buyers only\" to discourage people from making unrealistic offers.\n4. **Be prepared for inquiries**: Be ready to respond to questions and messages from potential buyers in a timely manner.\n5. **Stay safe**: Remember to exercise caution when meeting potential buyers, especially if you're meeting in person. Choose a public place and tell a friend or family member about the meeting.\n\nBy following these tips, you should be able to find a buyer for your saxophone case quickly and efficiently. Good luck!\nuser: I'm thinking of listing my old electronic keyboard on Craigslist as well. I sold my previous one for $200, so I'm thinking of listing this one for $250. Do you think that's a good price?\nassistant: When it comes to pricing an electronic keyboard, there are several factors to consider. Since you sold your previous one for $200, that's a good starting point. However, you should also consider the following:\n\n1. **Condition**: Is your current keyboard in better or worse condition than the previous one? If it's in better condition, you might be able to justify a higher price.\n2. **Model and brand**: Is the current keyboard a more popular or higher-end model than the previous one? If so, it might be worth more.\n3. **Features**: Does the current keyboard have more features or improvements compared to the previous one? If it has more keys, better sound quality, or additional features like touch sensitivity or built-in lessons, it might be worth more.\n4. **Market demand**: Check current listings on Craigslist and other online marketplaces to see what similar keyboards are selling for. If there's high demand or a shortage of similar keyboards, you might be able to get a higher price.\n5. **Competition**: Consider the competition in your area. If there are many similar keyboards listed at lower prices, you might need to price yours competitively to attract buyers.\n\nBased on these factors, $250 might be a bit high, especially if the keyboard is similar to the previous one you sold for $200. You might want to consider starting with a lower price, like $220 or $230, to leave room for negotiation and to attract more buyers.\n\nRemember to also include clear photos and a detailed description of the keyboard, including its condition, features, and any flaws. This will help build trust with potential buyers and give them a better understanding of what they're getting.\n\nWhat do you think? Do you have any specific features or improvements that make this keyboard worth more than the previous one?",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:22d2cb42",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:16f7e223bf607ba1346264670e51e518"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:22d2cb42\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true; transcript has durable user facts/preferences/plans and reusable resale/pricing context, so store both structured claims and a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path-39a3fb7f7055-claim-14: current_location; Rhythm Central is a music shop on Main St.; scope=Rhythm Central location as mentioned in the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-4: PLAN; Rhythm Central lead for guitar servicing on Main St; For guitar servicing, the user has a friend-sourced lead for a Main St music shop named \"Rhythm Central\" with a good reputation. The immediate next step was to call Rhythm Central to ask about available services, prices, turnaround time, and availability before the festival.; scope=Local guitar-service search centered on Rhythm Central on Main St\n- profile benchmark:longmemeval:22d2cb42:profile:<0> Profile for Rhythm Central (ORGANIZATION).\nStable facts:\n- Rhythm Central is a music shop on Main St.\n- profile benchmark:longmemeval:22d2cb42:profile:<1> Profile for User (USER).\nStable facts:\n- The user plans to call Rhythm Central and ask about guitar servicing services and prices.\n- The user plans to get their acoustic guitar serviced before the music festival.\n- The user plans to try the FL Studio Fruity Edition demo first.\n- The user is thinking of getting a violin and taking lessons.\n- The user is thinking of starting to produce their own music.\n- The user plans to check out a few music shops in their area for violins.\n- The user has heard of Ableton Live Intro but has never tried it.\n- claim hot-path-39a3fb7f7055-claim-12: has_goal; The user plans to check out a few music shops in their area for violins.; scope=User's local violin-shop search plan from the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-16: has_goal; The user plans to call Rhythm Central and ask about guitar servicing services and prices.; scope=User's guitar-servicing follow-up plan from the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-3: PLAN; Plan to service acoustic guitar before music festival; The user accepted the recommendation to service their acoustic guitar before the upcoming music festival so the instrument is reliable, playable, and ready for the event. Future guitar-service advice should treat pre-festival servicing as the chosen plan unless superseded.; scope=User's acoustic guitar maintenance plan around the upcoming music festival\n- claim hot-path-39a3fb7f7055-claim-8: has_goal; The user plans to get their acoustic guitar serviced before the music festival.; scope=Planning status for the user's upcoming music festival in the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-11: has_goal; The user is thinking of getting a violin and taking lessons.; scope=User's instrument-learning interest from the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-15: believes; The user's friend mentioned that Rhythm Central has a good reputation for guitar servicing.; scope=Friend's stated view about Rhythm Central in the imported 2023-05-23 chat session.\n- profile benchmark:longmemeval:22d2cb42:profile:<2> Profile for User's friend (PERSON).\nStable facts:\n- The user's friend produces hip-hop music and has talked about FL Studio Fruity Edition.\n- claim hot-path-39a3fb7f7055-claim-7: requires_service; The user's acoustic guitar needs to be serviced.; scope=User's acoustic guitar service status from the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-5: DIRECTION; Violin shop search approach for beginner purchase or rental; The user is considering getting a violin and taking lessons, with guidance to compare local music shops, try instruments in person, ask about staff violin expertise and lessons, and consider renting before buying as a beginner.; scope=User's early-stage violin acquisition and lesson exploration\n- claim hot-path-39a3fb7f7055-claim-6: has_goal; The user is thinking of starting to produce their own music.; scope=User's music-production interests in the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-10: has_goal; The user plans to try the FL Studio Fruity Edition demo first.; scope=User's DAW trial plan from the imported 2023-05-23 chat session.\n- claim hot-path-39a3fb7f7055-claim-13: has_experience_with; The user's friend produces hip-hop music and has talked about FL Studio Fruity Edition.; scope=User's friend's music-production context from the imported 2023-05-23 chat session.\n- note hot-path-39a3fb7f7055-note-2: DIRECTION; DAW choice direction: try FL Studio Fruity Edition demo first; The user decided to try the FL Studio Fruity Edition demo before Ableton Live Intro because they had heard about it from a friend who produces hip-hop music. The broader comparison context was that FL Studio was presented as more geared toward hip-hop, trap, drum programming, and beat-making, while Ableton was framed as more flexible for live performance and experimental/electronic workflows.; scope=User's beginner music production software exploration and DAW selection context\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=12345 zip code; action=CREATE_NEW; id=entity:<1>; type=LOCATION; name=12345 zip code; reason=Concrete location-like identifier mentioned by the user; no existing candidate matches.\n- mention=city center; action=CREATE_NEW; id=entity:<2>; type=LOCATION; name=City center; reason=Concrete location description for the user's area; no existing candidate matches.\n- mention=that music shop on Main St; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=Rhythm Central; reason=Retrieval context identifies the Main St music shop as Rhythm Central, but its entity id is not in the candidate list.\n- mention=Main St; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Main St; reason=Existing location entity matches the street name.\n- mention=guitar; action=LINK_EXISTING; id=entity:<5>; type=existing; name=guitar; reason=User refers to their guitar being serviced; existing entity is User's acoustic guitar.\n- mention=violin teachers or music schools; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Violin teachers or music schools; reason=Reusable concept for user's search target; no existing candidate matches exactly.\n- mention=saxophone case; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=User's saxophone case; reason=Concrete user-owned item being discussed for sale; no existing candidate matches.\n- mention=Craigslist; action=CREATE_NEW; id=entity:<8>; type=SERVICE; name=Craigslist; reason=Concrete service used for listings; no existing candidate matches.\n- mention=old electronic keyboard; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=User's old electronic keyboard; reason=Concrete user-owned item being discussed for sale; no existing candidate matches.\n- mention=previous one; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=User's previous electronic keyboard; reason=Distinct concrete keyboard sold previously; not the same as the current old electronic keyboard.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|guitar|music shop on Main St|saxophone case|electronic keyboard|Craigslist|violin teachers|music schools\n        text_queries=music shop on Main St guitar serviced guitar maintenance|saxophone case Craigslist $120 good condition clear photos negotiation|old electronic keyboard Craigslist previous one sold for $200 listing for $250|learning violin city center music schools teachers\n        predicate_hints=current_location|has_goal|pending_pickup|pending_return|requires_service|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:16f7e223bf607ba1346264670e51e518] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:22d2cb42:session:2; title=LongMemEval 22d2cb42 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 13:13\nTranscript:\nuser: I'm thinking of learning to play the violin, can you recommend some good music schools or teachers in my area?\nassistant: I'd be happy to help! However, I'm a large language model, I don't have access to your location. Could you please provide me with your city or zip code? That way, I can give you more tailored recommendations.\n\nIn the meantime, here are some general tips to find a good music school or teacher in your area:\n\n1. **Online Search**: Google search for \"violin lessons near me\" or \"music schools in [your city]\" to find schools and teachers in your area.\n2. **Ask Around**: Ask friends, family, or colleagues who play the violin for recommendations. They might know a good teacher or school.\n3. **Music Stores**: Visit local music stores that sell violins or offer music lessons. They often have a list of recommended teachers or offer lessons themselves.\n4. **Professional Associations**: Look for professional associations like the American String Teachers Association (ASTA) or the Music Teachers National Association (MTNA) in your area. They often have directories of certified teachers.\n5. **Online Directories**: Websites like Lessons.com, Thumbtack, or Superprof allow you to search for violin teachers in your area and read reviews from other students.\n6. **Community Centers**: Many community centers or recreation centers offer music lessons, including violin.\n\nOnce you have a list of potential teachers or schools, make sure to:\n\n* Check their qualifications and experience teaching violin\n* Read reviews from other students\n* Ask about their teaching style and approach\n* Inquire about their availability and schedule\n* Consider taking a trial lesson to see if you're a good fit\n\nRemember to always prioritize finding a teacher who is a good fit for you and your learning style. Good luck, and I hope you find a great teacher to help you start your violin journey!\nuser: I'm in the 12345 zip code. Also, I was thinking of having got my guitar services from that music shop on Main St, and I think they do servicing there too.\nassistant: I'm happy to help you with finding a violin teacher or music school in your area! However, I have to clarify that I'm a large language model, I don't have access to real-time location-specific information. The 12345 zip code is not a valid zip code, and I couldn't find any information about a music shop on Main St. in that area.\n\nIf you could provide me with a real zip code or city, I'd be happy to help you find violin teachers or music schools in your area. Additionally, I can give you some general tips on how to find a good guitar servicing shop.\n\nHere are some general tips to find a good guitar servicing shop:\n\n1. **Ask Around**: Ask friends, fellow musicians, or online forums for recommendations.\n2. **Online Reviews**: Check online review sites like Yelp, Google Reviews, or Facebook Reviews to see what other customers have to say about the shop.\n3. **Check their Credentials**: Look for shops that are authorized dealers for your guitar brand or have certified technicians.\n4. **Get a Quote**: Get a quote for the services you need and compare prices with other shops.\n5. **Check their Turnaround Time**: Ask how long the servicing will take and if they have a rush service option.\n\nRemember to always do your research and find a reputable shop that can properly service your guitar.\n\nIf you're willing to provide a real zip code or city, I'd be happy to help you find violin teachers or music schools in your area.\nuser: I think I made a mistake with the zip code. I'm actually in the city center, so I guess I can just search online for violin teachers or music schools in the city. And yeah, I remember the music shop on Main St where I got my guitar serviced, they're really good with guitar maintenance. Do you have any tips on how to prepare my guitar for servicing?\nassistant: No worries about the zip code mistake! Yes, searching online for violin teachers or music schools in your city is a great idea. You can also ask around, check online reviews, and read testimonials to find a good fit for you.\n\nRegarding your guitar servicing, that's great that you have a trusted shop on Main St! To prepare your guitar for servicing, here are some tips:\n\n1. **Cleanliness is key**: Make sure your guitar is clean and free of dirt, dust, and oils from your hands. This will help the technician work more efficiently and effectively.\n2. **Remove accessories**: Take off any accessories like straps, tuners, or pickups to prevent damage or loss during the servicing process.\n3. **Change your strings**: If your strings are old or rusty, consider changing them before bringing your guitar in. This will give the technician a better idea of the guitar's overall condition.\n4. **Identify the issues**: Make a list of any issues you've noticed with your guitar, such as buzzing, tuning problems, or electrical issues. This will help the technician focus on the specific problems.\n5. **Be prepared to ask questions**: When you drop off your guitar, ask the technician about their process, what they'll be doing, and how long it'll take. This will help you understand what's happening to your instrument.\n6. **Leave a contact method**: Make sure to leave your contact information, such as your phone number or email, so the technician can reach out to you with any questions or updates.\n\nBy following these tips, you'll be helping the technician to do their job more efficiently, and you'll get your guitar back in great shape.\n\nGood luck with your guitar servicing, and I hope you find a great violin teacher or music school in your city!\nuser: I'm thinking of selling my old saxophone case, do you have any tips on how to price it?\nassistant: Saxophone cases can be a valuable item for musicians, and pricing it correctly is crucial to attract potential buyers. Here are some tips to help you price your old saxophone case:\n\n1. **Research, research, research**: Look for similar saxophone cases online, both new and used, to get an idea of their market value. Check websites like eBay, Craigslist, Facebook Marketplace, and specialized music gear marketplaces like Reverb or GearSwap.\n2. **Determine the condition**: Assess the condition of your case honestly. Is it in excellent, good, fair, or poor condition? Consider any scratches, dents, worn-out handles, or broken latches. The better the condition, the higher the price.\n3. **Check the brand and model**: If your case is from a well-known brand like Selmer, Yamaha, or Protec, it may hold more value than a generic or unknown brand. Research the specific model and its original price to determine a fair used price.\n4. **Consider the size and type**: Saxophone cases come in different sizes (alto, tenor, baritone, etc.) and types (hardshell, soft, gig bag, etc.). Larger or more specialized cases may be more valuable than smaller or more common ones.\n5. **Set a competitive price**: Based on your research, set a competitive price for your case. Keep in mind that you want to attract buyers, so don't overprice it. Consider starting with a slightly lower price to leave room for negotiation.\n6. **Add some context**: When listing your case for sale, include details like the case's age, any repairs or maintenance, and its original price (if you have the receipt). This can help build trust with potential buyers and justify your asking price.\n7. **Take clear photos**: Take high-quality, well-lit photos of the case from multiple angles. Show any flaws or damage to demonstrate transparency and build trust with potential buyers.\n8. **Be prepared to negotiate**: Be open to reasonable offers and negotiations. Consider bundling your case with other music-related items or offering a discount for a quick sale.\n\nSome general price ranges for used saxophone cases are:\n\n* Soft cases: $20-$100\n* Hardshell cases: $50-$300\n* Gig bags: $30-$150\n* High-end or specialty cases: $100-$500+\n\nRemember to stay realistic and flexible when pricing your saxophone case. Good luck with the sale!\nuser: I think I'll list my saxophone case on Craigslist for $120, which is a bit lower than what I think it's worth, so I have some room for negotiation. I'll also mention that it's in good condition and include some clear photos. Do you think that's a good strategy?\nassistant: That's a great strategy! Listing your saxophone case on Craigslist for $120 is a good starting point, especially since you're leaving some room for negotiation. By pricing it slightly lower than what you think it's worth, you're more likely to attract potential buyers and start a conversation.\n\nMentioning that the case is in good condition and including clear photos will also help build trust with potential buyers. It's essential to be transparent about the condition of the case, so kudos to you for being honest.\n\nHere are a few additional tips to consider when listing your saxophone case on Craigslist:\n\n1. **Use relevant keywords**: Use keywords like \"saxophone case,\" \"alto sax case,\" \"hardshell case,\" or \"music gear\" to make it easier for people to find your listing.\n2. **Write a clear and concise description**: In addition to mentioning the condition and price, include any other relevant details, such as the case's brand, model, and size.\n3. **Set boundaries**: Consider adding a statement like \"no lowball offers, please\" or \"serious buyers only\" to discourage people from making unrealistic offers.\n4. **Be prepared for inquiries**: Be ready to respond to questions and messages from potential buyers in a timely manner.\n5. **Stay safe**: Remember to exercise caution when meeting potential buyers, especially if you're meeting in person. Choose a public place and tell a friend or family member about the meeting.\n\nBy following these tips, you should be able to find a buyer for your saxophone case quickly and efficiently. Good luck!\nuser: I'm thinking of listing my old electronic keyboard on Craigslist as well. I sold my previous one for $200, so I'm thinking of listing this one for $250. Do you think that's a good price?\nassistant: When it comes to pricing an electronic keyboard, there are several factors to consider. Since you sold your previous one for $200, that's a good starting point. However, you should also consider the following:\n\n1. **Condition**: Is your current keyboard in better or worse condition than the previous one? If it's in better condition, you might be able to justify a higher price.\n2. **Model and brand**: Is the current keyboard a more popular or higher-end model than the previous one? If so, it might be worth more.\n3. **Features**: Does the current keyboard have more features or improvements compared to the previous one? If it has more keys, better sound quality, or additional features like touch sensitivity or built-in lessons, it might be worth more.\n4. **Market demand**: Check current listings on Craigslist and other online marketplaces to see what similar keyboards are selling for. If there's high demand or a shortage of similar keyboards, you might be able to get a higher price.\n5. **Competition**: Consider the competition in your area. If there are many similar keyboards listed at lower prices, you might need to price yours competitively to attract buyers.\n\nBased on these factors, $250 might be a bit high, especially if the keyboard is similar to the previous one you sold for $200. You might want to consider starting with a lower price, like $220 or $230, to leave room for negotiation and to attract more buyers.\n\nRemember to also include clear photos and a detailed description of the keyboard, including its condition, features, and any flaws. This will help build trust with potential buyers and give them a better understanding of what they're getting.\n\nWhat do you think? Do you have any specific features or improvements that make this keyboard worth more than the previous one?",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:22d2cb42",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:16f7e223bf607ba1346264670e51e518"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User is in the city center for the purpose of finding violin teachers or music schools.\",\"User plans to search online for violin teachers or music schools in the city.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<2>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I'm actually in the city center, so I guess I can just search online for violin teachers or music schools in the city.\",\"evidence_reason\":\"The user explicitly corrects their location context and describes the search approach for violin teachers or music schools.\",\"importance\":3,\"keywords\":[\"violin teachers\",\"music schools\",\"city center\",\"online search\",\"lessons\"],\"note_type\":\"plan\",\"rationale\":\"This captures a contextual plan and location-correction workflow rather than a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's local search for violin teachers or music schools after correcting location from 12345 zip code to city center.\"},\"summary\":\"After correcting the invalid 12345 zip code, the user shifted their violin-learning search to the city center and planned to search online for violin teachers or music schools in the city, with general vetting via reviews and fit checks.\",\"tags\":[\"violin\",\"local_search\",\"music_lessons\"],\"title\":\"Violin teacher search shifted to city center online search\",\"valid_from\":\"2023-05-26T13:13:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user remembers the Main St music shop where they got their guitar serviced as really good with guitar maintenance.\"],\"confidence\":0.86,\"entity_refs\":[{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Do you have any tips on how to prepare my guitar for servicing?\",\"evidence_reason\":\"The user asked for a preparation procedure and the assistant supplied a concrete checklist in the target transcript.\",\"importance\":3,\"keywords\":[\"guitar servicing\",\"Main St\",\"Rhythm Central\",\"maintenance\",\"preparation checklist\"],\"note_type\":\"lesson\",\"rationale\":\"The reusable value is a troubleshooting/preparation procedure and context for a chosen servicing shop, not just an atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Preparing the user's guitar for servicing at the Main St music shop identified in memory as Rhythm Central.\"},\"summary\":\"For servicing the user's guitar at the trusted Main St music shop, the reusable preparation checklist is: clean the guitar, remove accessories, consider replacing old/rusty strings, list observed issues such as buzzing/tuning/electrical problems, ask about process and turnaround, and leave contact information.\",\"tags\":[\"guitar\",\"servicing\",\"maintenance\",\"procedure\"],\"title\":\"Preparation procedure for servicing guitar at Main St shop\",\"valid_from\":\"2023-05-26T13:13:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user plans to list their saxophone case on Craigslist for $120.\",\"The user's saxophone case is described for listing purposes as in good condition.\",\"The user wants room for negotiation on the saxophone case listing.\"],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<7>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I'll list my saxophone case on Craigslist for $120, which is a bit lower than what I think it's worth, so I have some room for negotiation.\",\"evidence_reason\":\"The user explicitly states the chosen platform, price, rationale, and negotiation strategy.\",\"importance\":4,\"keywords\":[\"saxophone case\",\"Craigslist\",\"$120\",\"good condition\",\"clear photos\",\"negotiation\"],\"note_type\":\"plan\",\"rationale\":\"This is a reusable resale strategy with rationale and listing approach, broader than a single price claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's resale plan for their saxophone case on Craigslist.\"},\"summary\":\"The user decided to list their saxophone case on Craigslist for $120, deliberately below their perceived value to leave room for negotiation, while advertising it as in good condition and using clear photos. Additional listing guidance included using relevant saxophone-case keywords, a concise description with brand/model/size if known, boundaries for lowball offers, prompt replies, and safe public meetups.\",\"tags\":[\"resale\",\"craigslist\",\"pricing\",\"saxophone\"],\"title\":\"Craigslist strategy for selling saxophone case at $120\",\"valid_from\":\"2023-05-26T13:13:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user sold their previous electronic keyboard for $200.\",\"The user is considering listing their old electronic keyboard on Craigslist for $250.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<9>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I sold my previous one for $200, so I'm thinking of listing this one for $250.\",\"evidence_reason\":\"The user provides the prior sale benchmark and proposed price; the assistant adds pricing caveats and a lower suggested range.\",\"importance\":4,\"keywords\":[\"electronic keyboard\",\"Craigslist\",\"$250\",\"$200\",\"pricing\",\"negotiation\"],\"note_type\":\"direction\",\"rationale\":\"This captures reusable pricing rationale, comparison factors, and suggested strategy rather than only the raw prices.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Pricing direction for the user's old electronic keyboard Craigslist listing using the previous keyboard sale as a benchmark.\"},\"summary\":\"For the user's old electronic keyboard, the prior sale of a previous keyboard for $200 is a benchmark, but listing the current one at $250 was treated as potentially high unless the current keyboard has better condition, brand/model, features, or market demand. A suggested strategy was to compare current listings and consider $220–$230 to attract buyers while leaving negotiation room.\",\"tags\":[\"resale\",\"craigslist\",\"pricing\",\"keyboard\"],\"title\":\"Electronic keyboard Craigslist pricing benchmark around prior $200 sale\",\"valid_from\":\"2023-05-26T13:13:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5879,
+                "completionTokens": 1508,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
