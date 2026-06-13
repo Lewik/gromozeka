@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "16f407c9486857d3e8ed5d502d1e08cacfa546b58d53f1fcbd0dc4cea7a4f730",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some activities I can do during my commute to work?\n\n                                Question date:\n                                2023/05/28 (Sun) 21:56\n\n                                Noisy expected-answer label:\n                                The user would prefer suggestions related to listening to new podcasts or audiobooks, especially the genre beyond true crime or self-improvement, such as history. They may not be interested in activities that require visual attention, such as reading or watching videos, as they are commuting. The user would not prefer general podcast topics such as true crime or self-improvement, as the user wants to explore other topics.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:1c0ddc50\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a7038a2b36ee-claim-10 [ACTIVE] has_constraint family=has_constraint: The user listens to podcasts during a commute of about 40 minutes each way.; scope=User's podcast listening context during commute.; context=\"This constrains podcast episode recommendations and listening schedules.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"considering my commute is about 40 minutes each way\"\n- claim hot-path-a7038a2b36ee-claim-12 [ACTIVE] prefers family=prefers: The user is interested in science and technology podcasts.; scope=User's podcast genre interests from the imported session.; context=\"The user responded positively to the history and science podcast recommendations.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm interested in the history and science ones.\"\n- claim hot-path-a7038a2b36ee-claim-7 [ACTIVE] has_goal family=has_goal: The user wants new podcast recommendations and wants to branch out beyond true crime and self-improvement genres.; scope=User's reusable media recommendation interests from the imported 2023-05-22 session.; context=\"In a past podcast recommendation session, the user asked for new podcast recommendations after listening to many true crime and self-improvement podcasts.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm looking for some new podcast recommendations. I've been listening to a lot of true crime and self-improvement stuff. I enjoy listening to then during my commute, but I want to branch out into other genres.\"\n- claim hot-path-a7038a2b36ee-claim-11 [ACTIVE] prefers family=prefers: The user is interested in history podcasts.; scope=User's podcast genre interests from the imported session.; context=\"After receiving podcast recommendations, the user selected the history and science recommendations, then emphasized particular interest in history podcasts.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm particularly interested in the history podcasts.\"\n\n            Retrieved notes:\n            - note hot-path-a7038a2b36ee-note-2 [PLAN/ACTIVE]: History podcast listening plan for 40-minute commute; For history podcast listening during a roughly 40-minute each-way commute, a reusable schedule pattern was suggested: keep a playlist, alternate Hardcore History, Lore, and The Dollop across weekdays, prefer 30–60 minute episodes when possible, binge longer series when engaged, and choose tone by mood (The Dollop for lighter mornings, Hardcore History or Lore for deeper/serious listening).; scope=Applies to the user's podcast listening organization for the user's commute, especially history podcasts.; evidence=SUMMARIZED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"considering my commute is about 40 minutes each way\"\n- note hot-path-a7038a2b36ee-note-3 [CONTEXT/ACTIVE]: History and science podcast starter set; A past recommendation flow narrowed podcast exploration from true crime and self-improvement into history and science: history options emphasized Hardcore History, Lore, and The Dollop; science and technology options emphasized StarTalk Radio, Radiolab, and Stuff You Should Know. The user then focused especially on the history set for follow-up scheduling and related books/documentaries.; scope=Reusable context for future media recommendations to the user around podcasts, especially branching from existing genres into history and science.; evidence=SUMMARIZED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm interested in the history and science ones.\"\n\n            Retrieved evidence:\n            - source external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 [external_record ref=longmemeval:1c0ddc50:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some new podcast recommendations. I've been listening to a lot of true crime and self-improvement stuff. I enjoy listening to then during my commute, but I want to branch out into other genres....\n...**Comedy and Entertainment**...\n...user: I'm interested in the history and science ones. Can you recommend some episodes to start with?...\n...3. **\"Ghosts of the Ostfront\"** (Episode 10) - A haunting and in-depth examination of the Eastern Front during World War II....\n...1. **\"How the Internet Works\"** (Episode 1) - A great starting point, covering the basics of the internet and how it functions....\n...user: I'm particularly interested in the history podcasts. Can you give me some recommendations on how to organize my listening schedule, considering my commute is about 40 minutes each way?\nassistant: With a 40-minute commute each way, you've got a great opportunity to dive into some fascinating history podcasts. Here are some recommendations to help you organize your listening schedule:...\n...**3. Episode length:** Since your commute is 40 minutes each way, you can aim to listen to episodes that are around 30-60 minutes long. This will give you some buffer time to get settled in or wrap up your commute....\n...**7. Make use of your daily commute:** Since you have a consistent commute, try to make the most of it by listening to podcasts regularly. This will help you stay engaged and motivated to learn more about history.\n\nBy following these tips, you can create a listening schedule that works for you and helps you make the most of your daily commute. Happy listening!\nuser: Can I also get some recommendations on history books or documentaries related to the topics I'm interested in?...\n...3. **\"The Ghost Map: The Story of London's Most Terrifying Epidemic—and How It Changed Science, Cities, and the Modern World\" by Steven Johnson** - A gripping narrative about the 1854 cholera outbreak in London....\n...user: I'm interested in the book \"Guns, Germs, and Steel\" by Jared Diamond. Can you tell me more about it?...\n...user: I'm interested in learning more about the \"lucky latitudes\" concept in \"Guns, Germs, and Steel\". Can you explain it in more detail?...\n...1. **Climate:** The lucky latitudes have a relatively mild climate, with adequate rainfall, moderate temperatures, and a long growing season. This allows for the growth of a wide variety of crops, making it easier to support large populations....\n...1. **The Fertile Crescent:** This region, which includes modern-day Iraq, Syria, Lebanon, Jordan, Israel, and parts of Turkey and Egypt, is often referred to as the \"cradle of civilization.\"\n2. **The Indus Valley:** This region, which includes modern-day Pakistan and northwestern India, was home to the ancient Indus Valley Civilization....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: History; Concept named History.\n- entity entity:<1> [CONCEPT]: Podcast recommendations; Concept named Podcast recommendations.\n- entity entity:<2> [CONCEPT]: User's commute; Concept named User's commute.\n- entity entity:<3> [PRODUCT]: Hardcore History; Product named Hardcore History.\n- entity entity:<4> [PRODUCT]: Lore; Product named Lore.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "1c0ddc50",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some activities I can do during my commute to work?\n\n                                Question date:\n                                2023/05/28 (Sun) 21:56\n\n                                Noisy expected-answer label:\n                                The user would prefer suggestions related to listening to new podcasts or audiobooks, especially the genre beyond true crime or self-improvement, such as history. They may not be interested in activities that require visual attention, such as reading or watching videos, as they are commuting. The user would not prefer general podcast topics such as true crime or self-improvement, as the user wants to explore other topics.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:1c0ddc50\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a7038a2b36ee-claim-10 [ACTIVE] has_constraint family=has_constraint: The user listens to podcasts during a commute of about 40 minutes each way.; scope=User's podcast listening context during commute.; context=\"This constrains podcast episode recommendations and listening schedules.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"considering my commute is about 40 minutes each way\"\n- claim hot-path-a7038a2b36ee-claim-12 [ACTIVE] prefers family=prefers: The user is interested in science and technology podcasts.; scope=User's podcast genre interests from the imported session.; context=\"The user responded positively to the history and science podcast recommendations.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm interested in the history and science ones.\"\n- claim hot-path-a7038a2b36ee-claim-7 [ACTIVE] has_goal family=has_goal: The user wants new podcast recommendations and wants to branch out beyond true crime and self-improvement genres.; scope=User's reusable media recommendation interests from the imported 2023-05-22 session.; context=\"In a past podcast recommendation session, the user asked for new podcast recommendations after listening to many true crime and self-improvement podcasts.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm looking for some new podcast recommendations. I've been listening to a lot of true crime and self-improvement stuff. I enjoy listening to then during my commute, but I want to branch out into other genres.\"\n- claim hot-path-a7038a2b36ee-claim-11 [ACTIVE] prefers family=prefers: The user is interested in history podcasts.; scope=User's podcast genre interests from the imported session.; context=\"After receiving podcast recommendations, the user selected the history and science recommendations, then emphasized particular interest in history podcasts.\"; evidence=IMPORTED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm particularly interested in the history podcasts.\"\n\n            Retrieved notes:\n            - note hot-path-a7038a2b36ee-note-2 [PLAN/ACTIVE]: History podcast listening plan for 40-minute commute; For history podcast listening during a roughly 40-minute each-way commute, a reusable schedule pattern was suggested: keep a playlist, alternate Hardcore History, Lore, and The Dollop across weekdays, prefer 30–60 minute episodes when possible, binge longer series when engaged, and choose tone by mood (The Dollop for lighter mornings, Hardcore History or Lore for deeper/serious listening).; scope=Applies to the user's podcast listening organization for the user's commute, especially history podcasts.; evidence=SUMMARIZED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"considering my commute is about 40 minutes each way\"\n- note hot-path-a7038a2b36ee-note-3 [CONTEXT/ACTIVE]: History and science podcast starter set; A past recommendation flow narrowed podcast exploration from true crime and self-improvement into history and science: history options emphasized Hardcore History, Lore, and The Dollop; science and technology options emphasized StarTalk Radio, Radiolab, and Stuff You Should Know. The user then focused especially on the history set for follow-up scheduling and related books/documentaries.; scope=Reusable context for future media recommendations to the user around podcasts, especially branching from existing genres into history and science.; evidence=SUMMARIZED source=external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 quote=\"I'm interested in the history and science ones.\"\n\n            Retrieved evidence:\n            - source external:provided-text:944c6e9b7e8a13bbe9a24f8573b1bdd0 [external_record ref=longmemeval:1c0ddc50:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some new podcast recommendations. I've been listening to a lot of true crime and self-improvement stuff. I enjoy listening to then during my commute, but I want to branch out into other genres....\n...**Comedy and Entertainment**...\n...user: I'm interested in the history and science ones. Can you recommend some episodes to start with?...\n...3. **\"Ghosts of the Ostfront\"** (Episode 10) - A haunting and in-depth examination of the Eastern Front during World War II....\n...1. **\"How the Internet Works\"** (Episode 1) - A great starting point, covering the basics of the internet and how it functions....\n...user: I'm particularly interested in the history podcasts. Can you give me some recommendations on how to organize my listening schedule, considering my commute is about 40 minutes each way?\nassistant: With a 40-minute commute each way, you've got a great opportunity to dive into some fascinating history podcasts. Here are some recommendations to help you organize your listening schedule:...\n...**3. Episode length:** Since your commute is 40 minutes each way, you can aim to listen to episodes that are around 30-60 minutes long. This will give you some buffer time to get settled in or wrap up your commute....\n...**7. Make use of your daily commute:** Since you have a consistent commute, try to make the most of it by listening to podcasts regularly. This will help you stay engaged and motivated to learn more about history.\n\nBy following these tips, you can create a listening schedule that works for you and helps you make the most of your daily commute. Happy listening!\nuser: Can I also get some recommendations on history books or documentaries related to the topics I'm interested in?...\n...3. **\"The Ghost Map: The Story of London's Most Terrifying Epidemic—and How It Changed Science, Cities, and the Modern World\" by Steven Johnson** - A gripping narrative about the 1854 cholera outbreak in London....\n...user: I'm interested in the book \"Guns, Germs, and Steel\" by Jared Diamond. Can you tell me more about it?...\n...user: I'm interested in learning more about the \"lucky latitudes\" concept in \"Guns, Germs, and Steel\". Can you explain it in more detail?...\n...1. **Climate:** The lucky latitudes have a relatively mild climate, with adequate rainfall, moderate temperatures, and a long growing season. This allows for the growth of a wide variety of crops, making it easier to support large populations....\n...1. **The Fertile Crescent:** This region, which includes modern-day Iraq, Syria, Lebanon, Jordan, Israel, and parts of Turkey and Egypt, is often referred to as the \"cradle of civilization.\"\n2. **The Indus Valley:** This region, which includes modern-day Pakistan and northwestern India, was home to the ancient Indus Valley Civilization....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: History; Concept named History.\n- entity entity:<1> [CONCEPT]: Podcast recommendations; Concept named Podcast recommendations.\n- entity entity:<2> [CONCEPT]: User's commute; Concept named User's commute.\n- entity entity:<3> [PRODUCT]: Hardcore History; Product named Hardcore History.\n- entity entity:<4> [PRODUCT]: Lore; Product named Lore.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "1c0ddc50",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest audio-based commute activities, especially new history or science/technology podcasts suited to a 40-minute commute, since the user wants to branch out beyond true crime and self-improvement.\",\"reason\":\"The memory explicitly states the user listens to podcasts on a 40-minute commute and wants new genres, particularly history and science, beyond true crime and self-improvement.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2593,
+                "completionTokens": 213,
+                "thinkingTokens": 116,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

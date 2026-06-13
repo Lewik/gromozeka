@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "355db5184cef7a3cc85fbe8400af0b875611e59ba1982780ed056c6d6d4fd042",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous conversation about making a classic French omelette, and I wanted to confirm - how many eggs did you say we need for the recipe?\n\n                                Question date:\n                                2023/05/30 (Tue) 13:07\n\n                                Noisy expected-answer label:\n                                2-3 eggs\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e8a79c70\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-85ff4f445f4e-note-2 [LESSON/ACTIVE]: Classic French omelette preparation and texture guidance; A classic French omelette can be made with 2–3 eggs, salt, unsalted butter, and optional finely chopped herbs; cook in a nonstick skillet over medium-high heat, fold gently, and serve immediately. For a fluffy, light texture, whisk eggs until frothy, avoid overfilling, avoid pressing during folding, and prevent overcooking that makes eggs dry or rubbery.; scope=Reusable cooking guidance for making a Classic French omelette.; evidence=SUMMARIZED source=external:provided-text:4d4583b7c9efc21583d9df98845b8e38 quote=\"here are a few tips to make your French omelette light and fluffy\"\n\n            Retrieved evidence:\n            - source external:provided-text:4d4583b7c9efc21583d9df98845b8e38 [external_record ref=longmemeval:e8a79c70:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 06:07\nTranscript:\nuser: What are the essential ingredients and steps to make a classic French omelette?\nassistant: Ingredients:\n-2-3 eggs\n-A pinch of salt\n-1 tablespoon of unsalted butter\n-1 tablespoon of finely chopped herbs (optional)\n\nSteps:\n1. In a small mixing bowl, whisk the eggs with a pinch of salt until the mixture is well combined and the egg whites and yolks are fully incorporated.\n2. Heat a nonstick skillet over medium-high heat until it is hot enough to melt the butter without it sizzling or browning.\n3. Add one tablespoon of unsalted butter to the skillet, and swirl it around until it covers the entire surface of the skillet.\n4. When the butter has melted and is evenly distributed across the surface of the skillet, pour the egg mixture into the skillet, and use a fork or spatula to spread it evenly across the surface of the skillet.\n5. Let the mixture cook for about 30 seconds, or until the eggs begin to set.\n6. Gently lift one edge of the omelette with a spatula and fold it over the center of the omelette.\n7. Use the spatula to fold the opposite side over the center of the omelette.\n8. Tilt the skillet slightly to one side, and use the spatula to slide the omelette onto a plate.\n9. Garnish with chopped herbs, if desired.\nuser: That sounds easy enough! Do you have any tips for making the omelette fluffy and light?\nassistant: Yes, here are a few tips to make your French omelette light and fluffy:\n\n1. Whisk the eggs well: Make sure to whisk the eggs well until the mixture becomes frothy and the yolks and whites are fully combined.\n\n2. Use a nonstick skillet: A nonstick skillet will help prevent the omelette from sticking and tearing when you fold it. It also helps to cook the eggs evenly.\n\n3. Keep the heat medium-high: Don't cook your omelette over too high or too low heat. Overcooking can cause the omelette to become dry and rubbery. Cook the omelette over medium-high heat to make it fluffy and light.\n\n4. Don't overfill the omelette: Keep the omelette filling light to prevent it from becoming too heavy.\n\n5. Fold the omelette gently: To get the light and fluffy texture, you want to fold the omelette gently, using a spatula. Don't press down too hard, or you could flatten the egg mixture and make it dense.\n\n6. Serve immediately: Serve the omelette immediately after folding to prevent it from getting cold and potentially limp. Enjoy your fluffy and light French omelette!\nuser: I can't wait to try making a classic French omelette now. Do you have any recommendations for fillings?\nassistant: Yes, here are a few tasty fillings you can try for your classic French omelette:\n\n1. Cheese: Add grated cheese such as Swiss, cheddar, or Gruyere to the omelette before folding. 2. Ham: Cooked ham, diced and sautéed in butter, is a classic filling for French omelettes. 3. Mushrooms: Sautéed mushrooms add a delicious earthy flavor to omelettes. 4. Spinach: Cooked spinach, along with sautéed onions and garlic, make a tasty filling for omelettes. 5. Tomatoes: Diced, cooked tomatoes can add a nice juicy burst of flavor to your omelette. 6. Herbs: Add fresh or dried herbs such as parsley, thyme, or chives to the egg mixture for extra flavor and aroma. Remember not to overfill your omelette – just a few tablespoons of filling will be enough. Enjoy your delicious omelette!\nuser: Yum, all of those fillings sound amazing! Do you have a personal favorite?\nassistant: As an AI language model, I don't have personal preferences. However, here are some great combinations that people usually prefer:\n\n- Ham and cheese: This classic filling is always a winner, and you can use any type of cheese you like.\n\n- Mushroom and cheese: Sautéed mushrooms and grated cheese make a delicious and savory filling.\n\n- Spinach and feta: Cooked spinach and crumbled feta cheese make a healthy and flavorful filling.\n\n- Tomato and basil: Diced tomatoes and chopped fresh basil add a burst of summer flavor to omelettes.\n\n- Smoked salmon and dill: For a more elegant omelette, you can use smoked salmon and dill as a filling.\n\nRemember, you can always experiment with different fillings and see what works best for you. Have fun cooking!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Classic French omelette; Concept named Classic French omelette.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e8a79c70",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous conversation about making a classic French omelette, and I wanted to confirm - how many eggs did you say we need for the recipe?\n\n                                Question date:\n                                2023/05/30 (Tue) 13:07\n\n                                Noisy expected-answer label:\n                                2-3 eggs\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e8a79c70\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-85ff4f445f4e-note-2 [LESSON/ACTIVE]: Classic French omelette preparation and texture guidance; A classic French omelette can be made with 2–3 eggs, salt, unsalted butter, and optional finely chopped herbs; cook in a nonstick skillet over medium-high heat, fold gently, and serve immediately. For a fluffy, light texture, whisk eggs until frothy, avoid overfilling, avoid pressing during folding, and prevent overcooking that makes eggs dry or rubbery.; scope=Reusable cooking guidance for making a Classic French omelette.; evidence=SUMMARIZED source=external:provided-text:4d4583b7c9efc21583d9df98845b8e38 quote=\"here are a few tips to make your French omelette light and fluffy\"\n\n            Retrieved evidence:\n            - source external:provided-text:4d4583b7c9efc21583d9df98845b8e38 [external_record ref=longmemeval:e8a79c70:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 06:07\nTranscript:\nuser: What are the essential ingredients and steps to make a classic French omelette?\nassistant: Ingredients:\n-2-3 eggs\n-A pinch of salt\n-1 tablespoon of unsalted butter\n-1 tablespoon of finely chopped herbs (optional)\n\nSteps:\n1. In a small mixing bowl, whisk the eggs with a pinch of salt until the mixture is well combined and the egg whites and yolks are fully incorporated.\n2. Heat a nonstick skillet over medium-high heat until it is hot enough to melt the butter without it sizzling or browning.\n3. Add one tablespoon of unsalted butter to the skillet, and swirl it around until it covers the entire surface of the skillet.\n4. When the butter has melted and is evenly distributed across the surface of the skillet, pour the egg mixture into the skillet, and use a fork or spatula to spread it evenly across the surface of the skillet.\n5. Let the mixture cook for about 30 seconds, or until the eggs begin to set.\n6. Gently lift one edge of the omelette with a spatula and fold it over the center of the omelette.\n7. Use the spatula to fold the opposite side over the center of the omelette.\n8. Tilt the skillet slightly to one side, and use the spatula to slide the omelette onto a plate.\n9. Garnish with chopped herbs, if desired.\nuser: That sounds easy enough! Do you have any tips for making the omelette fluffy and light?\nassistant: Yes, here are a few tips to make your French omelette light and fluffy:\n\n1. Whisk the eggs well: Make sure to whisk the eggs well until the mixture becomes frothy and the yolks and whites are fully combined.\n\n2. Use a nonstick skillet: A nonstick skillet will help prevent the omelette from sticking and tearing when you fold it. It also helps to cook the eggs evenly.\n\n3. Keep the heat medium-high: Don't cook your omelette over too high or too low heat. Overcooking can cause the omelette to become dry and rubbery. Cook the omelette over medium-high heat to make it fluffy and light.\n\n4. Don't overfill the omelette: Keep the omelette filling light to prevent it from becoming too heavy.\n\n5. Fold the omelette gently: To get the light and fluffy texture, you want to fold the omelette gently, using a spatula. Don't press down too hard, or you could flatten the egg mixture and make it dense.\n\n6. Serve immediately: Serve the omelette immediately after folding to prevent it from getting cold and potentially limp. Enjoy your fluffy and light French omelette!\nuser: I can't wait to try making a classic French omelette now. Do you have any recommendations for fillings?\nassistant: Yes, here are a few tasty fillings you can try for your classic French omelette:\n\n1. Cheese: Add grated cheese such as Swiss, cheddar, or Gruyere to the omelette before folding. 2. Ham: Cooked ham, diced and sautéed in butter, is a classic filling for French omelettes. 3. Mushrooms: Sautéed mushrooms add a delicious earthy flavor to omelettes. 4. Spinach: Cooked spinach, along with sautéed onions and garlic, make a tasty filling for omelettes. 5. Tomatoes: Diced, cooked tomatoes can add a nice juicy burst of flavor to your omelette. 6. Herbs: Add fresh or dried herbs such as parsley, thyme, or chives to the egg mixture for extra flavor and aroma. Remember not to overfill your omelette – just a few tablespoons of filling will be enough. Enjoy your delicious omelette!\nuser: Yum, all of those fillings sound amazing! Do you have a personal favorite?\nassistant: As an AI language model, I don't have personal preferences. However, here are some great combinations that people usually prefer:\n\n- Ham and cheese: This classic filling is always a winner, and you can use any type of cheese you like.\n\n- Mushroom and cheese: Sautéed mushrooms and grated cheese make a delicious and savory filling.\n\n- Spinach and feta: Cooked spinach and crumbled feta cheese make a healthy and flavorful filling.\n\n- Tomato and basil: Diced tomatoes and chopped fresh basil add a burst of summer flavor to omelettes.\n\n- Smoked salmon and dill: For a more elegant omelette, you can use smoked salmon and dill as a filling.\n\nRemember, you can always experiment with different fillings and see what works best for you. Have fun cooking!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Classic French omelette; Concept named Classic French omelette.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e8a79c70",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"2–3 eggs.\",\"reason\":\"The retrieved prior omelette recipe lists the ingredients for a classic French omelette as including “2-3 eggs.”\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2112,
+                "completionTokens": 76,
+                "thinkingTokens": 21,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

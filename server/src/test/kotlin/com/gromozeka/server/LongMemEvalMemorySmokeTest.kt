@@ -188,6 +188,17 @@ class LongMemEvalMemorySmokeTest {
             }
             println("LongMemEval memory smoke artifacts saved to: $artifactDirectory")
 
+            val failedRememberCases = caseResults.filter { result ->
+                result.rememberStatuses.any { status -> status != "completed" }
+            }
+            assertTrue(
+                failedRememberCases.isEmpty(),
+                "Expected all LongMemEval memory ingests to complete, but ${failedRememberCases.size}/${caseResults.size} cases had failed sessions. " +
+                    failedRememberCases.joinToString(separator = "; ") { result ->
+                        "${result.questionId} statuses=${result.rememberStatuses.joinToString()} reasons=${result.rememberReasons.filter { it.isNotBlank() }}"
+                    } +
+                    ". Artifact: $summaryPath"
+            )
             val failedCases = caseResults.filterNot { it.answerSupportedByMemory }
             assertTrue(
                 failedCases.isEmpty(),
@@ -244,7 +255,7 @@ class LongMemEvalMemorySmokeTest {
             )
             appendProgress(
                 progressPath,
-                "remember_session id=${entry.questionId} index=$sessionNumber/${entry.haystackSessions.size} durationMs=${System.currentTimeMillis() - startedAt} status=${result.status} decision=${result.decision.orEmpty()} counts=${result.countsSummary}"
+                "remember_session id=${entry.questionId} index=$sessionNumber/${entry.haystackSessions.size} durationMs=${System.currentTimeMillis() - startedAt} status=${result.status} decision=${result.decision.orEmpty()} reason=${result.reason.orEmpty().oneLineForArtifact(240)} counts=${result.countsSummary}"
             )
             result
         }
@@ -261,7 +272,11 @@ class LongMemEvalMemorySmokeTest {
             )
         )
         val enrichDurationMs = System.currentTimeMillis() - enrichStartedAt
-        assertEquals("completed", enrichResult.status, "memory_enrich_context failed for ${entry.questionId}")
+        assertEquals(
+            "completed",
+            enrichResult.status,
+            "memory_enrich_context failed for ${entry.questionId}: ${enrichResult.reason.orEmpty()}"
+        )
         val readTrace = readTraceCollector.takeLatest(namespace)
 
         val memoryContext = enrichResult.memoryContext.orEmpty()
@@ -335,6 +350,7 @@ class LongMemEvalMemorySmokeTest {
             supportReason = supportJudgement.reason,
             rememberStatuses = rememberResults.map { it.status },
             rememberDecisions = rememberResults.map { it.decision.orEmpty() },
+            rememberReasons = rememberResults.map { it.reason.orEmpty() },
             selectedRefs = enrichResult.selectedRefs,
             memoryContextPreview = memoryContext.take(MEMORY_CONTEXT_REPORT_CHARS),
             caseDossierPath = caseDossierPath.toAbsolutePath().normalize().toString(),
@@ -475,6 +491,7 @@ class LongMemEvalMemorySmokeTest {
         return MemoryToolJsonResult(
             status = root.stringValue("status") ?: "missing",
             decision = root.stringValue("decision"),
+            reason = root.stringValue("reason") ?: root.stringValue("message"),
             retrievedCount = root["retrieved_count"]?.jsonPrimitive?.intOrNull,
             memoryContext = root.stringValue("memory_context"),
             countsSummary = counts?.entries
@@ -627,15 +644,20 @@ class LongMemEvalMemorySmokeTest {
         postgresSchema: String,
         results: List<LongMemEvalSmokeCaseResult>,
     ): String = buildString {
+        val allRememberSessions = results.sumOf { it.rememberStatuses.size }
+        val completedRememberSessions = results.sumOf { result ->
+            result.rememberStatuses.count { status -> status == "completed" }
+        }
         appendLine("# LongMemEval Memory Smoke")
         appendLine()
-        appendLine("status | ${if (results.all { it.answerSupportedByMemory }) "PASS" else "FAIL"}")
+        appendLine("status | ${if (results.all { it.answerSupportedByMemory } && completedRememberSessions == allRememberSessions) "PASS" else "FAIL"}")
         appendLine()
         appendLine("- data: `$dataFile`")
         appendLine("- model: `$modelName`")
         appendLine("- postgres schema: `$postgresSchema`")
         appendLine("- namespace prefix: `$LONGMEMEVAL_NAMESPACE`")
         appendLine("- cases: ${results.size}")
+        appendLine("- memory writes completed: $completedRememberSessions/$allRememberSessions")
         appendLine("- answer supported by memory: ${results.count { it.answerSupportedByMemory }}/${results.size}")
         appendLine("- exact answer text visible: ${results.count { it.exactAnswerTextVisible }}/${results.size}")
         val evidenceMeasuredResults = results.filter { it.evidenceSourceHit != null }
@@ -662,6 +684,7 @@ class LongMemEvalMemorySmokeTest {
             appendLine("- support reason: ${result.supportReason}")
             appendLine("- remember statuses: ${result.rememberStatuses.joinToString()}")
             appendLine("- remember decisions: ${result.rememberDecisions.joinToString()}")
+            appendLine("- remember reasons: ${result.rememberReasons.filter { it.isNotBlank() }.joinToString().ifBlank { "none" }}")
             appendLine("- durations: total=${result.durationMs.durationSummary()}, remember=${result.rememberDurationMs.durationSummary()}, enrich=${result.enrichDurationMs.durationSummary()}, judge=${result.supportJudgeDurationMs.durationSummary()}")
             appendLine("- case dossier: `${result.caseDossierPath}`")
             appendLine()
@@ -717,6 +740,7 @@ class LongMemEvalMemorySmokeTest {
             appendLine("hasAnswer | ${remembered.hasAnswer}")
             appendLine("toolStatus | ${remembered.result.status}")
             appendLine("toolDecision | ${remembered.result.decision.orEmpty().ifBlank { "none" }}")
+            appendLine("toolReason | ${remembered.result.reason ?: "none"}")
             appendLine("toolCounts | ${remembered.result.countsSummary.ifBlank { "none" }}")
             appendLine()
             appendLine(renderWriteTraceForDossier(remembered.writeTrace))
@@ -1037,6 +1061,7 @@ private data class LongMemEvalRememberedSession(
 private data class MemoryToolJsonResult(
     val status: String,
     val decision: String?,
+    val reason: String?,
     val retrievedCount: Int?,
     val memoryContext: String?,
     val countsSummary: String,
@@ -1099,6 +1124,7 @@ private data class LongMemEvalSmokeCaseResult(
     val supportReason: String,
     val rememberStatuses: List<String>,
     val rememberDecisions: List<String>,
+    val rememberReasons: List<String>,
     val selectedRefs: String,
     val memoryContextPreview: String,
     val caseDossierPath: String,
