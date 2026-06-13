@@ -317,7 +317,6 @@ class LongMemEvalMemorySmokeTest {
         )
         val memorySmokePassReason = when {
             supportJudgement.supported -> "support_judge"
-            exactAnswerTextVisible -> "exact_answer_visible"
             allEvidenceSourcesHit == true -> "all_expected_evidence_sources_selected"
             else -> "missing_supported_answer_or_gold_sources"
         }
