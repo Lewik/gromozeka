@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "df803a62a8c9c8a6626866fb06e2aa40525ed72c03a9ec8f1e841db8ed6c6ed4",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking about rearranging the furniture in my bedroom this weekend. Any tips?\n\n                                Question date:\n                                2023/05/27 (Sat) 13:23\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that take into account their existing plans to replace the bedroom dresser and their interest in mid-century modern style, suggesting furniture layouts that accommodate the new dresser and incorporate elements of this design aesthetic. They might not prefer general furniture arrangement tips or suggestions that do not consider their specific design preferences.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:57f827a0\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-66fa71c33f1d-claim-11 [ACTIVE] has_constraint family=has_constraint: The mid-century modern walnut dresser design should stay understated and keep visual focus on the walnut wood.; scope=User's mid-century modern walnut dresser project; evidence=DIRECT source=external:provided-text:380eac23e84658b0b456bfed759f9737 quote=\"the simple knobs will keep the design understated and focused on the beautiful walnut wood\"\n\n            Retrieved notes:\n            - note hot-path-66fa71c33f1d-note-2 [DIRECTION/ACTIVE]: Mid-century modern walnut dresser design direction; For the mid-century modern walnut dresser project, the chosen direction is a walnut dresser with an oil-based stain, satin finish, brass accents, and simple knobs; the rationale is to highlight the walnut grain while keeping the design elegant, understated, and functional.; scope=Applies to the user's mid-century modern walnut dresser design/replacement project discussed in LongMemEval 57f827a0 session 1.; evidence=DIRECT source=external:provided-text:380eac23e84658b0b456bfed759f9737 quote=\"I think I'll go with brass accents and simple knobs. The brass will add a touch of elegance and sophistication, while the simple knobs will keep the design understated and focused on the beautiful walnut wood.\"\n\n            Retrieved evidence:\n            - source external:provided-text:380eac23e84658b0b456bfed759f9737 [external_record ref=longmemeval:57f827a0:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some mid-century modern design inspiration for a new bedroom dresser to replace my new one, do you have any recommendations for websites or designers I should check out?...\n...1. **Design Within Reach** (dwr.com): A go-to online retailer for mid-century modern furniture, including dressers.\n2. **West Elm** (westelm.com): Their \"Mid-Century\" collection features a range of stylish dressers.\n3. **Crate & Barrel** (crateandbarrel.com): Offers a variety of mid-century modern-inspired dressers.\n4. **AllModern** (allmodern.com): A great resource for affordable, modern dressers with a mid-century flair.\n5. **Pinterest** (pinterest.com): Create a board and start pinning your favorite mid-century modern dresser designs....\n...2. **Eero Saarinen**: Famous for his futuristic, organic designs that influenced mid-century modern furniture.\n3. **George Nelson**: Designed iconic pieces like the Ball Clock and Marshmallow Sofa, which can inspire your dresser design.\n4. **Milo Baughman**: A pioneer of mid-century modern design, known for his sleek, low-profile furniture....\n...4. **Furniture design books**: Check out books like \"Mid-Century Modern: Furniture of the 1950s\" by Cara Greenberg or \"Eames Design: The Work of Charles and Ray Eames\" by John Neuhart.\n\n**Inspirational Dresser Designs:**\n\n1. **Eames Storage Unit**: A classic, modular design that can inspire your dresser's layout and aesthetic.\n2. **Nelson Bench**: A sleek, low-profile design that can influence your dresser's silhouette....\n...user: What are some key elements that define a mid-century modern dresser? I want to make sure I incorporate them into my design.\nassistant: Mid-century modern dressers are characterized by several key elements that define their unique style. Here are some essential features to incorporate into your design:...\n...3. **Tapered Legs**: Tapered legs are a hallmark of mid-century modern furniture. They create a sense of lightness and airiness, making the piece feel less bulky.\n4. **Low Profile**: Mid-century modern dressers typically have a lower profile than traditional dressers. This creates a sense of calm and makes the room feel more spacious.\n5. **Wood Accents**: Wood was a popular material during the mid-century modern era. Consider using woods like walnut, oak, or teak for the dresser's frame, drawers, or accents....\n...* Don't be afraid to experiment with unique shapes and forms, like a curved or asymmetrical dresser front....\n...user: Can you recommend some popular wood types for a mid-century modern dresser, and what kind of finish would work well with them?...\n...user: I'm considering a walnut dresser with an oil-based stain. Do you think a matte or satin finish would work better with walnut?...\n...user: Thanks for the advice. I think I'll go with a satin finish for my walnut dresser. What are some popular hardware options that would complement the mid-century modern style?...\n...user: I think I'll go with brass accents and simple knobs. The brass will add a touch of elegance and sophistication, while the simple knobs will keep the design understated and focused on the beautiful walnut wood. Thanks for the advice!...\n...If you have any more questions or need further guidance, feel free to ask. Otherwise, I wish you the best of luck with your project, and I'm confident that your mid-century modern walnut dresser will turn out to be a stunning piece of furniture that you'll cherish for years to come!\nuser: I think I'll start searching for some inspiration online, maybe look at some design blogs or websites to get a better sense of the style and aesthetic I'm going for. Do you have any recommendations for some good resources to check out?...\n...These resources will provide you with a wealth of inspiration and guidance as you work on your mid-century modern walnut dresser project. Remember to take notes, bookmark your favorite designs, and have fun exploring the world of mid-century modern design!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Mid-century modern design; Concept named Mid-century modern design.\n- entity entity:<1> [CONCEPT]: Satin finish; Concept named Satin finish.\n- entity entity:<2> [PRODUCT]: Oil-based stain; Product named Oil-based stain.\n- entity entity:<3> [PROJECT]: Mid-century modern walnut dresser project; Project named Mid-century modern walnut dresser project.\n- entity entity:<4> [TECHNOLOGY]: Walnut wood; Technology named Walnut wood.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "57f827a0",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking about rearranging the furniture in my bedroom this weekend. Any tips?\n\n                                Question date:\n                                2023/05/27 (Sat) 13:23\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that take into account their existing plans to replace the bedroom dresser and their interest in mid-century modern style, suggesting furniture layouts that accommodate the new dresser and incorporate elements of this design aesthetic. They might not prefer general furniture arrangement tips or suggestions that do not consider their specific design preferences.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:57f827a0\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-66fa71c33f1d-claim-11 [ACTIVE] has_constraint family=has_constraint: The mid-century modern walnut dresser design should stay understated and keep visual focus on the walnut wood.; scope=User's mid-century modern walnut dresser project; evidence=DIRECT source=external:provided-text:380eac23e84658b0b456bfed759f9737 quote=\"the simple knobs will keep the design understated and focused on the beautiful walnut wood\"\n\n            Retrieved notes:\n            - note hot-path-66fa71c33f1d-note-2 [DIRECTION/ACTIVE]: Mid-century modern walnut dresser design direction; For the mid-century modern walnut dresser project, the chosen direction is a walnut dresser with an oil-based stain, satin finish, brass accents, and simple knobs; the rationale is to highlight the walnut grain while keeping the design elegant, understated, and functional.; scope=Applies to the user's mid-century modern walnut dresser design/replacement project discussed in LongMemEval 57f827a0 session 1.; evidence=DIRECT source=external:provided-text:380eac23e84658b0b456bfed759f9737 quote=\"I think I'll go with brass accents and simple knobs. The brass will add a touch of elegance and sophistication, while the simple knobs will keep the design understated and focused on the beautiful walnut wood.\"\n\n            Retrieved evidence:\n            - source external:provided-text:380eac23e84658b0b456bfed759f9737 [external_record ref=longmemeval:57f827a0:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some mid-century modern design inspiration for a new bedroom dresser to replace my new one, do you have any recommendations for websites or designers I should check out?...\n...1. **Design Within Reach** (dwr.com): A go-to online retailer for mid-century modern furniture, including dressers.\n2. **West Elm** (westelm.com): Their \"Mid-Century\" collection features a range of stylish dressers.\n3. **Crate & Barrel** (crateandbarrel.com): Offers a variety of mid-century modern-inspired dressers.\n4. **AllModern** (allmodern.com): A great resource for affordable, modern dressers with a mid-century flair.\n5. **Pinterest** (pinterest.com): Create a board and start pinning your favorite mid-century modern dresser designs....\n...2. **Eero Saarinen**: Famous for his futuristic, organic designs that influenced mid-century modern furniture.\n3. **George Nelson**: Designed iconic pieces like the Ball Clock and Marshmallow Sofa, which can inspire your dresser design.\n4. **Milo Baughman**: A pioneer of mid-century modern design, known for his sleek, low-profile furniture....\n...4. **Furniture design books**: Check out books like \"Mid-Century Modern: Furniture of the 1950s\" by Cara Greenberg or \"Eames Design: The Work of Charles and Ray Eames\" by John Neuhart.\n\n**Inspirational Dresser Designs:**\n\n1. **Eames Storage Unit**: A classic, modular design that can inspire your dresser's layout and aesthetic.\n2. **Nelson Bench**: A sleek, low-profile design that can influence your dresser's silhouette....\n...user: What are some key elements that define a mid-century modern dresser? I want to make sure I incorporate them into my design.\nassistant: Mid-century modern dressers are characterized by several key elements that define their unique style. Here are some essential features to incorporate into your design:...\n...3. **Tapered Legs**: Tapered legs are a hallmark of mid-century modern furniture. They create a sense of lightness and airiness, making the piece feel less bulky.\n4. **Low Profile**: Mid-century modern dressers typically have a lower profile than traditional dressers. This creates a sense of calm and makes the room feel more spacious.\n5. **Wood Accents**: Wood was a popular material during the mid-century modern era. Consider using woods like walnut, oak, or teak for the dresser's frame, drawers, or accents....\n...* Don't be afraid to experiment with unique shapes and forms, like a curved or asymmetrical dresser front....\n...user: Can you recommend some popular wood types for a mid-century modern dresser, and what kind of finish would work well with them?...\n...user: I'm considering a walnut dresser with an oil-based stain. Do you think a matte or satin finish would work better with walnut?...\n...user: Thanks for the advice. I think I'll go with a satin finish for my walnut dresser. What are some popular hardware options that would complement the mid-century modern style?...\n...user: I think I'll go with brass accents and simple knobs. The brass will add a touch of elegance and sophistication, while the simple knobs will keep the design understated and focused on the beautiful walnut wood. Thanks for the advice!...\n...If you have any more questions or need further guidance, feel free to ask. Otherwise, I wish you the best of luck with your project, and I'm confident that your mid-century modern walnut dresser will turn out to be a stunning piece of furniture that you'll cherish for years to come!\nuser: I think I'll start searching for some inspiration online, maybe look at some design blogs or websites to get a better sense of the style and aesthetic I'm going for. Do you have any recommendations for some good resources to check out?...\n...These resources will provide you with a wealth of inspiration and guidance as you work on your mid-century modern walnut dresser project. Remember to take notes, bookmark your favorite designs, and have fun exploring the world of mid-century modern design!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Mid-century modern design; Concept named Mid-century modern design.\n- entity entity:<1> [CONCEPT]: Satin finish; Concept named Satin finish.\n- entity entity:<2> [PRODUCT]: Oil-based stain; Product named Oil-based stain.\n- entity entity:<3> [PROJECT]: Mid-century modern walnut dresser project; Project named Mid-century modern walnut dresser project.\n- entity entity:<4> [TECHNOLOGY]: Walnut wood; Technology named Walnut wood.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "57f827a0",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Tips should account for the user's mid-century modern walnut dresser project/replacement, using a layout that leaves room for the dresser and complements its understated walnut/brass/satin mid-century style.\",\"reason\":\"The memory directly documents the user's mid-century modern walnut dresser replacement/design project and chosen aesthetic details.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2276,
+                "completionTokens": 172,
+                "thinkingTokens": 89,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

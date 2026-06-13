@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "4f8e25fed6f1b4518d85fe246c4abd61083c0eae1229591ab7f94a270f4a97f3",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been sneezing quite a bit lately. Do you think it might be my living room?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:51\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that consider the potential impact of their cat, Luna, and her shedding on their sneezing, as well as the recent deep clean of the living room and its possible effect on stirring up dust. They might not prefer responses that fail to take into account these specific details previously mentioned, such as generic suggestions or unrelated factors.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:75f70248\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-fe60f7fc665e-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to keep their living room dust-free despite having a cat that sheds a lot.; scope=Applies to the user's living-room cleaning and dust-control context.; evidence=DIRECT source=external:provided-text:e9c9413275ae50630739ffdbae341298 quote=\"simple ways to keep my living room dust-free, especially with a cat that sheds a lot\"\n- claim hot-path-fe60f7fc665e-claim-9 [ACTIVE] has_goal family=has_goal: The user wants indoor plants that thrive indoors and help purify air in a room with a heavily shedding cat.; scope=Applies to the user's indoor plant search from the 2023-05-27 past chat session.; evidence=DIRECT source=external:provided-text:e9c9413275ae50630739ffdbae341298 quote=\"plants that can thrive in indoor conditions and help purify the air, especially in a room with a cat that sheds a lot\"\n- claim hot-path-fe60f7fc665e-claim-6 [ACTIVE] sheds_heavily family=sheds_heavily: The user's cat sheds a lot.; scope=Applies to the user's cat as described in the 2023-05-27 past chat session.; evidence=DIRECT source=external:provided-text:e9c9413275ae50630739ffdbae341298 quote=\"a cat that sheds a lot\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e9c9413275ae50630739ffdbae341298 [external_record ref=longmemeval:75f70248:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...3. **Local electronics stores**: Visit local electronics stores or retailers that sell TVs and ask if they offer repair services or know of any reputable repair shops in the area.\n4. **Google search**: Simply search for \"TV repair near me\" or \"TV repair [your city/state]\" to find local repair services....\n...user: What are some simple ways to keep my living room dust-free, especially with a cat that sheds a lot?\nassistant: The eternal struggle of keeping a living room dust-free, especially with a furry friend that sheds a lot! Here are some simple ways to help you maintain a cleaner and healthier living space:\n\n1. **Vacuum regularly**: Invest in a good vacuum cleaner with a HEPA filter, which can trap 99.97% of dust, dander, and other allergens. Vacuum all surfaces, including furniture, carpets, and upholstered chairs, at least twice a week....\n...3. **Use a lint roller**: A lint roller can be a lifesaver when it comes to pet hair. Run it over your furniture, clothes, and other surfaces to pick up loose hair.\n4. **Groom your cat regularly**: Brushing your cat regularly can help reduce shedding. Use a brush or comb specifically designed for cats, and do it outside or in a well-ventilated area to prevent hair from spreading.\n5. **Change air filters**: Replace the air filters in your home every 1-3 months to reduce dust and dander circulation. This can also help improve air quality and reduce allergy symptoms....\n...7. **Remove clutter**: Keep your living room clutter-free to reduce the number of surfaces that can collect dust. Donate or recycle items you no longer need, and organize the rest using storage bins and shelves.\n8. **Mop hard floors**: Regularly mop hard floors with a gentle cleaner to remove dust, dirt, and pet hair. This can help reduce the amount of dust that becomes airborne.\n9. **Use a dehumidifier**: Dust mites thrive in humid environments. Using a dehumidifier can help reduce the moisture levels in your living room, making it less hospitable to dust mites....\n...By following these simple tips, you can enjoy a cleaner, healthier, and more comfortable living room, even with a furry friend that sheds a lot!...\n...* Pros: High-quality construction, excellent for pet hair, and has a long warranty...\n...user: What are some good plants that can thrive in indoor conditions and help purify the air, especially in a room with a cat that sheds a lot?\nassistant: Adding some greenery to your indoor space can not only purify the air but also create a calming atmosphere for you and your feline friend. Here are some fantastic plants that can thrive in indoor conditions and help remove air pollutants, even in a room with a shedding cat:...\n...* Humidity: Indoor spaces can be dry, but some plants thrive in humid environments. You can use a humidifier or group plants together to create a microclimate....\n...By incorporating these air-purifying plants into your indoor space, you can create a healthier environment for you and your feline friend to enjoy....\n...Yes, getting a planter with good drainage is a great idea! Overwatering is one of the most common mistakes people make when caring for plants, and it can be detrimental to their health. A planter with good drainage will help prevent waterlogged soil and root rot, which can be especially problematic for plants like spider plants and snake plants that prefer well-draining soil....\n...Now, about fertilizing your plant... Fertilizing is essential to provide your plant with the necessary nutrients for healthy growth and development. However, it's crucial to fertilize sparingly, as overfertilization can harm your plant....\n...2. **Use a balanced fertilizer**: Look for a fertilizer with a balanced N-P-K ratio (e.g., 20-20-20). This will provide your plant with the necessary nutrients for healthy growth....\n...2. **Schultz Indoor Plant Food**: A balanced fertilizer that promotes healthy growth and development....\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: User's cat; Entity named User's cat.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "75f70248",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been sneezing quite a bit lately. Do you think it might be my living room?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:51\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that consider the potential impact of their cat, Luna, and her shedding on their sneezing, as well as the recent deep clean of the living room and its possible effect on stirring up dust. They might not prefer responses that fail to take into account these specific details previously mentioned, such as generic suggestions or unrelated factors.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:75f70248\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-fe60f7fc665e-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to keep their living room dust-free despite having a cat that sheds a lot.; scope=Applies to the user's living-room cleaning and dust-control context.; evidence=DIRECT source=external:provided-text:e9c9413275ae50630739ffdbae341298 quote=\"simple ways to keep my living room dust-free, especially with a cat that sheds a lot\"\n- claim hot-path-fe60f7fc665e-claim-9 [ACTIVE] has_goal family=has_goal: The user wants indoor plants that thrive indoors and help purify air in a room with a heavily shedding cat.; scope=Applies to the user's indoor plant search from the 2023-05-27 past chat session.; evidence=DIRECT source=external:provided-text:e9c9413275ae50630739ffdbae341298 quote=\"plants that can thrive in indoor conditions and help purify the air, especially in a room with a cat that sheds a lot\"\n- claim hot-path-fe60f7fc665e-claim-6 [ACTIVE] sheds_heavily family=sheds_heavily: The user's cat sheds a lot.; scope=Applies to the user's cat as described in the 2023-05-27 past chat session.; evidence=DIRECT source=external:provided-text:e9c9413275ae50630739ffdbae341298 quote=\"a cat that sheds a lot\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e9c9413275ae50630739ffdbae341298 [external_record ref=longmemeval:75f70248:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...3. **Local electronics stores**: Visit local electronics stores or retailers that sell TVs and ask if they offer repair services or know of any reputable repair shops in the area.\n4. **Google search**: Simply search for \"TV repair near me\" or \"TV repair [your city/state]\" to find local repair services....\n...user: What are some simple ways to keep my living room dust-free, especially with a cat that sheds a lot?\nassistant: The eternal struggle of keeping a living room dust-free, especially with a furry friend that sheds a lot! Here are some simple ways to help you maintain a cleaner and healthier living space:\n\n1. **Vacuum regularly**: Invest in a good vacuum cleaner with a HEPA filter, which can trap 99.97% of dust, dander, and other allergens. Vacuum all surfaces, including furniture, carpets, and upholstered chairs, at least twice a week....\n...3. **Use a lint roller**: A lint roller can be a lifesaver when it comes to pet hair. Run it over your furniture, clothes, and other surfaces to pick up loose hair.\n4. **Groom your cat regularly**: Brushing your cat regularly can help reduce shedding. Use a brush or comb specifically designed for cats, and do it outside or in a well-ventilated area to prevent hair from spreading.\n5. **Change air filters**: Replace the air filters in your home every 1-3 months to reduce dust and dander circulation. This can also help improve air quality and reduce allergy symptoms....\n...7. **Remove clutter**: Keep your living room clutter-free to reduce the number of surfaces that can collect dust. Donate or recycle items you no longer need, and organize the rest using storage bins and shelves.\n8. **Mop hard floors**: Regularly mop hard floors with a gentle cleaner to remove dust, dirt, and pet hair. This can help reduce the amount of dust that becomes airborne.\n9. **Use a dehumidifier**: Dust mites thrive in humid environments. Using a dehumidifier can help reduce the moisture levels in your living room, making it less hospitable to dust mites....\n...By following these simple tips, you can enjoy a cleaner, healthier, and more comfortable living room, even with a furry friend that sheds a lot!...\n...* Pros: High-quality construction, excellent for pet hair, and has a long warranty...\n...user: What are some good plants that can thrive in indoor conditions and help purify the air, especially in a room with a cat that sheds a lot?\nassistant: Adding some greenery to your indoor space can not only purify the air but also create a calming atmosphere for you and your feline friend. Here are some fantastic plants that can thrive in indoor conditions and help remove air pollutants, even in a room with a shedding cat:...\n...* Humidity: Indoor spaces can be dry, but some plants thrive in humid environments. You can use a humidifier or group plants together to create a microclimate....\n...By incorporating these air-purifying plants into your indoor space, you can create a healthier environment for you and your feline friend to enjoy....\n...Yes, getting a planter with good drainage is a great idea! Overwatering is one of the most common mistakes people make when caring for plants, and it can be detrimental to their health. A planter with good drainage will help prevent waterlogged soil and root rot, which can be especially problematic for plants like spider plants and snake plants that prefer well-draining soil....\n...Now, about fertilizing your plant... Fertilizing is essential to provide your plant with the necessary nutrients for healthy growth and development. However, it's crucial to fertilize sparingly, as overfertilization can harm your plant....\n...2. **Use a balanced fertilizer**: Look for a fertilizer with a balanced N-P-K ratio (e.g., 20-20-20). This will provide your plant with the necessary nutrients for healthy growth....\n...2. **Schultz Indoor Plant Food**: A balanced fertilizer that promotes healthy growth and development....\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: User's cat; Entity named User's cat.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "75f70248",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Yes, your living room could be contributing—especially dust, dander, and hair from your heavily shedding cat can trigger sneezing.\",\"reason\":\"The memory supports the user’s living-room dust concern and that their cat sheds a lot, though it does not mention Luna or a recent deep clean.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2195,
+                "completionTokens": 498,
+                "thinkingTokens": 414,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

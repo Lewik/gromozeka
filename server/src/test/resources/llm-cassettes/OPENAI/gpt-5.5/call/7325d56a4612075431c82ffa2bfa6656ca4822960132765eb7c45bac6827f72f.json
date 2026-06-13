@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "7325d56a4612075431c82ffa2bfa6656ca4822960132765eb7c45bac6827f72f",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:982b5123\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains multiple extractable durable personal events/plans plus richer context and recommendation history.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / me / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript refer to the stable user entity; no existing candidates are available.\n- mention=San Francisco; action=CREATE_NEW; id=entity:<1>; type=LOCATION; name=San Francisco; reason=Concrete reusable location discussed as the user's travel destination and prior wedding trip location.\n- mention=Haight-Ashbury; action=CREATE_NEW; id=entity:<2>; type=LOCATION; name=Haight-Ashbury; reason=Concrete reusable neighborhood mentioned for restaurant and shopping recommendations.\n- mention=The Pork Store Cafe; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=The Pork Store Cafe; reason=Concrete restaurant selected by the user for breakfast information.\n- mention=Bay Area; action=CREATE_NEW; id=entity:<4>; type=LOCATION; name=Bay Area; reason=Concrete reusable region discussed for scenic drives.\n- mention=my best friend / my friend's wedding; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=User's best friend; reason=A specific person is referenced as the person whose wedding the user attended; name is unknown.\n- mention=my sister; action=CREATE_NEW; id=entity:<6>; type=PERSON; name=User's sister; reason=A specific family member is referenced in the moving story; name is unknown.\n- mention=my family; action=CREATE_NEW; id=entity:<7>; type=OTHER; name=User's family; reason=A family group is referenced as participants in the road trip and may be needed for relationship/event claims.\n- mention=current project; action=CREATE_NEW; id=entity:<8>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|San Francisco|Haight-Ashbury|The Pork Store Cafe|Bay Area|user's best friend|user's sister|user's family\n        text_queries=San Francisco trip next month Haight-Ashbury restaurants Pork Store Cafe breakfast all day navy blue suit|best friend's wedding San Francisco five day trip navy blue suit local tailor|3-day road trip nearby mountains family campsite marshmallows ghost stories camping gear|sister moved into new apartment road closure landslide detour\n        predicate_hints=attended_event|prefers|has_goal|pending_pickup|generated_artifact_detail\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:6e24cc0b6b202e4d5a789817c2398b84] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:982b5123:session:1; title=LongMemEval 982b5123 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 20:54\nTranscript:\nuser: I'm planning a trip to San Francisco for next month and I was wondering if you could recommend some good restaurants in the Haight-Ashbury neighborhood. By the way, I've been to SF before, exactly two months ago, for my best friend's wedding - it was a 5-day trip and I had an amazing time.\nassistant: San Francisco is an amazing city! I'm happy to help you with restaurant recommendations in the Haight-Ashbury neighborhood.\n\nBefore we dive into that, congratulations to your best friend on their recent wedding! It's great to hear you had an amazing time on your previous trip.\n\nNow, about those Haight-Ashbury restaurants... This iconic neighborhood is known for its rich history, vintage shops, and delicious eats. Here are some popular spots to consider:\n\n1. **Zuni Cafe**: A San Francisco institution since 1979, Zuni Cafe is a must-visit for their famous brick oven roasted chicken, house-made bread, and delicious Mediterranean-inspired dishes.\n2. **The Pork Store Cafe**: A casual, no-frills spot serving up tasty breakfast and brunch options, including their famous \"Pork Store Sandwich\" with scrambled eggs, bacon, and cheddar on sourdough.\n3. **Nopalito**: For a taste of Mexico in the Haight, head to Nopalito for organic, farm-to-table dishes like tacos, burritos, and grilled meats.\n4. **The Alembic**: This gastropub offers creative, farm-to-table American cuisine, along with an impressive selection of craft cocktails and beers.\n5. **Magnolia Gastropub**: Another popular spot for craft beer enthusiasts, Magnolia serves up tasty pub fare, including burgers, sandwiches, and salads.\n6. **The Pork Store BBQ**: If you're in the mood for BBQ, this casual spot offers a variety of meats smoked in-house, including ribs, brisket, and sausages.\n7. **Cafe Cole**: A cozy, family-owned cafe serving up delicious coffee, sandwiches, salads, and baked goods.\n\nThese are just a few of the many great options in the Haight-Ashbury neighborhood. You can't go wrong with any of these choices, but feel free to explore and discover more hidden gems during your visit!\n\nDo you have any specific cuisine preferences or dietary restrictions I can help with?\nuser: I'm actually looking for a place to grab breakfast, so The Pork Store Cafe sounds great. Do you know if they serve breakfast all day or is it only until a certain time?\nassistant: The Pork Store Cafe is an excellent spot for breakfast, and they're known for their generous portions and delicious dishes.\n\nAccording to their website and online reviews, The Pork Store Cafe serves breakfast all day, every day! You can enjoy their breakfast menu items at any time during their operating hours, which are:\n\n* Monday to Friday: 8:00 AM - 3:00 PM\n* Saturday and Sunday: 8:00 AM - 4:00 PM\n\nSo, whether you're an early riser or a late sleeper, you can satisfy your breakfast cravings at The Pork Store Cafe anytime during their business hours.\n\nSome popular breakfast items on their menu include the famous \"Pork Store Sandwich\" (which I mentioned earlier), omelets, pancakes, waffles, and breakfast burritos. They also offer a variety of coffee drinks, juices, and teas to start your day off right.\n\nEnjoy your breakfast at The Pork Store Cafe, and I hope you have a fantastic time exploring the Haight-Ashbury neighborhood!\nuser: That's great, thanks for the info! By the way, I remember I wore a new navy blue suit to my friend's wedding, which I had bought specifically for the occasion from a local tailor in my hometown. Do you think I could find a similar style in San Francisco, maybe in the Haight-Ashbury area or nearby?\nassistant: Your new navy blue suit sounds sharp! I'm happy to help you with your question, but I have to clarify that I'm a large language model, I don't have real-time access to specific tailor shops or their inventory in San Francisco.\n\nHowever, I can suggest a few options to help you find a similar style in the Haight-Ashbury area or nearby:\n\n1. **Local Tailors in Haight-Ashbury**: You can try searching online for \"tailors in Haight-Ashbury\" or \"custom tailors in San Francisco\" to find shops in the area. Some popular review sites like Yelp or Google Maps can help you discover local tailors with good reputations.\n2. **Union Square or Downtown SF**: If you're willing to venture out of the Haight-Ashbury area, you might find more options in Union Square or Downtown San Francisco. These areas tend to have a higher concentration of department stores, menswear shops, and tailors.\n3. **Vintage or Thrift Stores**: If you're looking for a unique, one-of-a-kind find, you might consider exploring vintage or thrift stores in the Haight-Ashbury area. You might stumble upon a classic navy blue suit that fits your style.\n4. **Ask Locals or Hotel Staff**: Don't hesitate to ask locals, hotel staff, or your accommodation's concierge for recommendations on tailors or menswear shops in the area. They might have insider knowledge or suggestions that can help you find what you're looking for.\n\nRemember to check reviews, prices, and services offered by each tailor or shop before making a decision. You might also consider visiting a few places to compare styles, fabrics, and prices before making a purchase.\n\nGood luck in your search, and I hope you find a navy blue suit that fits your style!\nuser: I didn't think of checking out vintage or thrift stores. That's a great idea! I'll definitely keep that in mind. By the way, speaking of road trips, I took a short 3-day road trip to the nearby mountains with my family a week after returning from San Francisco. We drove for about 4 hours to reach the campsite, where we pitched our tent and spent the evening roasting marshmallows and telling ghost stories. Do you have any recommendations for camping gear or tips for a comfortable camping experience?\nassistant: I'm glad you liked the vintage/thrift store idea! Now, let's talk about camping!\n\nI'm happy to help with camping gear recommendations and tips, but I have to clarify that I'm a large language model, I don't have personal experiences or preferences. However, I can provide you with some general tips and suggestions that might be helpful:\n\n**Camping Gear:**\n\n1. **Tent:** Look for a waterproof, sturdy, and spacious tent that can accommodate your family comfortably. Consider a tent with a rain fly, good ventilation, and easy setup.\n2. **Sleeping Bag and Pad:** Invest in a good-quality sleeping bag and pad for a comfortable night's sleep. Consider the temperature rating and insulation type (down or synthetic) based on your camping location and climate.\n3. **Backpack:** Choose a comfortable, durable backpack with multiple compartments and pockets to keep your gear organized.\n4. **Cooking Gear:** Bring a portable stove, fuel, and cooking pot to prepare meals. Don't forget utensils, plates, and cups.\n5. **Lighting:** Pack a reliable flashlight, lantern, or headlamp for nighttime activities.\n\n**Tips for a Comfortable Camping Experience:**\n\n1. **Choose a Good Campsite:** Select a campsite with level ground, shade, and proximity to amenities (if available).\n2. **Pack Layers:** Bring clothing and gear for varying weather conditions, including rain, wind, and cold temperatures.\n3. **Plan Meals:** Prepare meals in advance, and consider bringing a cooler for perishable items.\n4. **Stay Hydrated:** Bring enough water and stay hydrated throughout your trip.\n5. **Be Prepared:** Pack a first-aid kit, sunscreen, insect repellent, and a map/compass or GPS device.\n6. **Respect Nature:** Follow Leave No Trace principles to minimize your impact on the environment.\n7. **Enjoy the Experience:** Take time to relax, enjoy nature, and spend quality time with your family!\n\nRemember to check the weather forecast and campsite regulations before your trip. It's also a good idea to test your gear beforehand to ensure everything is in working order.\n\nI hope these tips and suggestions help you plan a comfortable and enjoyable camping trip!\nuser: I'm actually planning to rent a car for my upcoming San Francisco trip, so I was wondering if you could recommend any scenic drives or routes that I shouldn't miss around the Bay Area.\nassistant: Renting a car is a great idea! The Bay Area offers some of the most scenic drives in the world, with stunning coastal routes, rolling hills, and picturesque towns. Here are some must-do scenic drives and routes around the Bay Area:\n\n1. **Pacific Coast Highway (Hwy 1):** Drive south from San Francisco to Santa Cruz (about 1.5 hours) and enjoy the stunning Pacific coastline, beaches, and scenic overlooks. Stop at famous spots like Half Moon Bay, Pescadero State Beach, and Santa Cruz Beach Boardwalk.\n2. **17-Mile Drive:** Take a scenic detour through Pebble Beach and 17-Mile Drive, which winds through stunning coastal scenery, famous golf courses, and iconic landmarks like the Lone Cypress tree.\n3. **Golden Gate Bridge to Muir Woods and Sausalito:** Drive north from San Francisco across the Golden Gate Bridge, then head to Muir Woods National Monument (about 30 minutes) to marvel at the towering redwoods. Continue to Sausalito (about 15 minutes) for a charming waterfront town with great views of the Bay.\n4. **Napa Valley Wine Country:** Head east from San Francisco to Napa Valley (about 1 hour) and explore the rolling hills, vineyards, and charming towns like St. Helena and Calistoga. Take a wine tour, enjoy a gourmet lunch, or simply soak up the scenic beauty.\n5. **Skyline Boulevard (Hwy 35):** Drive south from San Francisco to Skyline Boulevard, which winds through the Santa Cruz Mountains and offers breathtaking views of the Bay Area, the Pacific Ocean, and the surrounding hills. Stop at Wunderlich County Park or the Thomas Fogarty Winery for a picnic or wine tasting.\n6. **Mount Tamalpais:** Drive north from San Francisco to Mount Tamalpais State Park (about 1 hour) and take in the stunning views of the Bay Area from the summit. You can hike, bike, or simply enjoy the scenic drive.\n\nThese routes offer a mix of coastal scenery, mountainous landscapes, and charming towns to explore. Be sure to check road conditions, traffic, and parking before you go, and consider downloading a mapping app or GPS device to help navigate the routes.\n\nRemember to drive safely, enjoy the views, and take breaks to appreciate the beauty of the Bay Area!\nuser: That sounds great! I'm really excited to explore the Bay Area. By the way, speaking of road trips, I recall that about six weeks ago, I drove to my sister's place, which is about 2 hours away from my hometown, to help her move into her new apartment. We spent the entire day packing and unpacking boxes, and in the evening, we ordered pizza and watched a movie together. I remember that I had to take a detour on my way back due to a road closure caused by a landslide. Do you have any tips on how to prepare for road closures or unexpected detours during a road trip?\nassistant: I'm glad you're excited about your upcoming trip to the Bay Area! Now, let's talk about preparing for road closures or unexpected detours during a road trip.\n\nI'm happy to provide you with some tips, but I have to clarify that I'm a large language model, I don't have personal experiences or preferences. However, I can offer some general advice that might be helpful:\n\n**Before Your Trip:**\n\n1. **Check Road Conditions:** Visit the website of the state's department of transportation or a traffic information website to check for any road closures or construction along your route.\n2. **Plan Your Route:** Map out your route in advance and consider alternative routes in case of a road closure.\n3. **Download a GPS or Mapping App:** Use a GPS device or a mapping app like Waze or Google Maps that can provide real-time traffic updates and suggest alternative routes.\n\n**During Your Trip:**\n\n1. **Stay Informed:** Keep a radio or a phone nearby to stay informed about road closures or traffic updates.\n2. **Be Flexible:** Be prepared to take a detour or adjust your route if you encounter a road closure.\n3. **Stay Calm:** Don't panic if you encounter a road closure. Take a deep breath, and try to find an alternative route.\n\n**Additional Tips:**\n\n1. **Pack an Emergency Kit:** Keep an emergency kit in your car with items like snacks, water, a first-aid kit, and a flashlight in case you're stuck in traffic or need to wait for assistance.\n2. **Keep Your Gas Tank Full:** Make sure your gas tank is full before embarking on a long drive, and try to keep it at least half full in case you need to take a detour.\n3. **Take Breaks:** Take regular breaks to rest, stretch, and check for traffic updates.\n\nBy following these tips, you can be better prepared for road closures or unexpected detours during your road trip. Remember to stay safe, stay calm, and enjoy the journey!\n\nI hope these tips are helpful, and I'm glad you had a great time helping your sister move into her new apartment!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:982b5123",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:6e24cc0b6b202e4d5a789817c2398b84"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:982b5123\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains multiple extractable durable personal events/plans plus richer context and recommendation history.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / me / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript refer to the stable user entity; no existing candidates are available.\n- mention=San Francisco; action=CREATE_NEW; id=entity:<1>; type=LOCATION; name=San Francisco; reason=Concrete reusable location discussed as the user's travel destination and prior wedding trip location.\n- mention=Haight-Ashbury; action=CREATE_NEW; id=entity:<2>; type=LOCATION; name=Haight-Ashbury; reason=Concrete reusable neighborhood mentioned for restaurant and shopping recommendations.\n- mention=The Pork Store Cafe; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=The Pork Store Cafe; reason=Concrete restaurant selected by the user for breakfast information.\n- mention=Bay Area; action=CREATE_NEW; id=entity:<4>; type=LOCATION; name=Bay Area; reason=Concrete reusable region discussed for scenic drives.\n- mention=my best friend / my friend's wedding; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=User's best friend; reason=A specific person is referenced as the person whose wedding the user attended; name is unknown.\n- mention=my sister; action=CREATE_NEW; id=entity:<6>; type=PERSON; name=User's sister; reason=A specific family member is referenced in the moving story; name is unknown.\n- mention=my family; action=CREATE_NEW; id=entity:<7>; type=OTHER; name=User's family; reason=A family group is referenced as participants in the road trip and may be needed for relationship/event claims.\n- mention=current project; action=CREATE_NEW; id=entity:<8>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|San Francisco|Haight-Ashbury|The Pork Store Cafe|Bay Area|user's best friend|user's sister|user's family\n        text_queries=San Francisco trip next month Haight-Ashbury restaurants Pork Store Cafe breakfast all day navy blue suit|best friend's wedding San Francisco five day trip navy blue suit local tailor|3-day road trip nearby mountains family campsite marshmallows ghost stories camping gear|sister moved into new apartment road closure landslide detour\n        predicate_hints=attended_event|prefers|has_goal|pending_pickup|generated_artifact_detail\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:6e24cc0b6b202e4d5a789817c2398b84] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:982b5123:session:1; title=LongMemEval 982b5123 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 20:54\nTranscript:\nuser: I'm planning a trip to San Francisco for next month and I was wondering if you could recommend some good restaurants in the Haight-Ashbury neighborhood. By the way, I've been to SF before, exactly two months ago, for my best friend's wedding - it was a 5-day trip and I had an amazing time.\nassistant: San Francisco is an amazing city! I'm happy to help you with restaurant recommendations in the Haight-Ashbury neighborhood.\n\nBefore we dive into that, congratulations to your best friend on their recent wedding! It's great to hear you had an amazing time on your previous trip.\n\nNow, about those Haight-Ashbury restaurants... This iconic neighborhood is known for its rich history, vintage shops, and delicious eats. Here are some popular spots to consider:\n\n1. **Zuni Cafe**: A San Francisco institution since 1979, Zuni Cafe is a must-visit for their famous brick oven roasted chicken, house-made bread, and delicious Mediterranean-inspired dishes.\n2. **The Pork Store Cafe**: A casual, no-frills spot serving up tasty breakfast and brunch options, including their famous \"Pork Store Sandwich\" with scrambled eggs, bacon, and cheddar on sourdough.\n3. **Nopalito**: For a taste of Mexico in the Haight, head to Nopalito for organic, farm-to-table dishes like tacos, burritos, and grilled meats.\n4. **The Alembic**: This gastropub offers creative, farm-to-table American cuisine, along with an impressive selection of craft cocktails and beers.\n5. **Magnolia Gastropub**: Another popular spot for craft beer enthusiasts, Magnolia serves up tasty pub fare, including burgers, sandwiches, and salads.\n6. **The Pork Store BBQ**: If you're in the mood for BBQ, this casual spot offers a variety of meats smoked in-house, including ribs, brisket, and sausages.\n7. **Cafe Cole**: A cozy, family-owned cafe serving up delicious coffee, sandwiches, salads, and baked goods.\n\nThese are just a few of the many great options in the Haight-Ashbury neighborhood. You can't go wrong with any of these choices, but feel free to explore and discover more hidden gems during your visit!\n\nDo you have any specific cuisine preferences or dietary restrictions I can help with?\nuser: I'm actually looking for a place to grab breakfast, so The Pork Store Cafe sounds great. Do you know if they serve breakfast all day or is it only until a certain time?\nassistant: The Pork Store Cafe is an excellent spot for breakfast, and they're known for their generous portions and delicious dishes.\n\nAccording to their website and online reviews, The Pork Store Cafe serves breakfast all day, every day! You can enjoy their breakfast menu items at any time during their operating hours, which are:\n\n* Monday to Friday: 8:00 AM - 3:00 PM\n* Saturday and Sunday: 8:00 AM - 4:00 PM\n\nSo, whether you're an early riser or a late sleeper, you can satisfy your breakfast cravings at The Pork Store Cafe anytime during their business hours.\n\nSome popular breakfast items on their menu include the famous \"Pork Store Sandwich\" (which I mentioned earlier), omelets, pancakes, waffles, and breakfast burritos. They also offer a variety of coffee drinks, juices, and teas to start your day off right.\n\nEnjoy your breakfast at The Pork Store Cafe, and I hope you have a fantastic time exploring the Haight-Ashbury neighborhood!\nuser: That's great, thanks for the info! By the way, I remember I wore a new navy blue suit to my friend's wedding, which I had bought specifically for the occasion from a local tailor in my hometown. Do you think I could find a similar style in San Francisco, maybe in the Haight-Ashbury area or nearby?\nassistant: Your new navy blue suit sounds sharp! I'm happy to help you with your question, but I have to clarify that I'm a large language model, I don't have real-time access to specific tailor shops or their inventory in San Francisco.\n\nHowever, I can suggest a few options to help you find a similar style in the Haight-Ashbury area or nearby:\n\n1. **Local Tailors in Haight-Ashbury**: You can try searching online for \"tailors in Haight-Ashbury\" or \"custom tailors in San Francisco\" to find shops in the area. Some popular review sites like Yelp or Google Maps can help you discover local tailors with good reputations.\n2. **Union Square or Downtown SF**: If you're willing to venture out of the Haight-Ashbury area, you might find more options in Union Square or Downtown San Francisco. These areas tend to have a higher concentration of department stores, menswear shops, and tailors.\n3. **Vintage or Thrift Stores**: If you're looking for a unique, one-of-a-kind find, you might consider exploring vintage or thrift stores in the Haight-Ashbury area. You might stumble upon a classic navy blue suit that fits your style.\n4. **Ask Locals or Hotel Staff**: Don't hesitate to ask locals, hotel staff, or your accommodation's concierge for recommendations on tailors or menswear shops in the area. They might have insider knowledge or suggestions that can help you find what you're looking for.\n\nRemember to check reviews, prices, and services offered by each tailor or shop before making a decision. You might also consider visiting a few places to compare styles, fabrics, and prices before making a purchase.\n\nGood luck in your search, and I hope you find a navy blue suit that fits your style!\nuser: I didn't think of checking out vintage or thrift stores. That's a great idea! I'll definitely keep that in mind. By the way, speaking of road trips, I took a short 3-day road trip to the nearby mountains with my family a week after returning from San Francisco. We drove for about 4 hours to reach the campsite, where we pitched our tent and spent the evening roasting marshmallows and telling ghost stories. Do you have any recommendations for camping gear or tips for a comfortable camping experience?\nassistant: I'm glad you liked the vintage/thrift store idea! Now, let's talk about camping!\n\nI'm happy to help with camping gear recommendations and tips, but I have to clarify that I'm a large language model, I don't have personal experiences or preferences. However, I can provide you with some general tips and suggestions that might be helpful:\n\n**Camping Gear:**\n\n1. **Tent:** Look for a waterproof, sturdy, and spacious tent that can accommodate your family comfortably. Consider a tent with a rain fly, good ventilation, and easy setup.\n2. **Sleeping Bag and Pad:** Invest in a good-quality sleeping bag and pad for a comfortable night's sleep. Consider the temperature rating and insulation type (down or synthetic) based on your camping location and climate.\n3. **Backpack:** Choose a comfortable, durable backpack with multiple compartments and pockets to keep your gear organized.\n4. **Cooking Gear:** Bring a portable stove, fuel, and cooking pot to prepare meals. Don't forget utensils, plates, and cups.\n5. **Lighting:** Pack a reliable flashlight, lantern, or headlamp for nighttime activities.\n\n**Tips for a Comfortable Camping Experience:**\n\n1. **Choose a Good Campsite:** Select a campsite with level ground, shade, and proximity to amenities (if available).\n2. **Pack Layers:** Bring clothing and gear for varying weather conditions, including rain, wind, and cold temperatures.\n3. **Plan Meals:** Prepare meals in advance, and consider bringing a cooler for perishable items.\n4. **Stay Hydrated:** Bring enough water and stay hydrated throughout your trip.\n5. **Be Prepared:** Pack a first-aid kit, sunscreen, insect repellent, and a map/compass or GPS device.\n6. **Respect Nature:** Follow Leave No Trace principles to minimize your impact on the environment.\n7. **Enjoy the Experience:** Take time to relax, enjoy nature, and spend quality time with your family!\n\nRemember to check the weather forecast and campsite regulations before your trip. It's also a good idea to test your gear beforehand to ensure everything is in working order.\n\nI hope these tips and suggestions help you plan a comfortable and enjoyable camping trip!\nuser: I'm actually planning to rent a car for my upcoming San Francisco trip, so I was wondering if you could recommend any scenic drives or routes that I shouldn't miss around the Bay Area.\nassistant: Renting a car is a great idea! The Bay Area offers some of the most scenic drives in the world, with stunning coastal routes, rolling hills, and picturesque towns. Here are some must-do scenic drives and routes around the Bay Area:\n\n1. **Pacific Coast Highway (Hwy 1):** Drive south from San Francisco to Santa Cruz (about 1.5 hours) and enjoy the stunning Pacific coastline, beaches, and scenic overlooks. Stop at famous spots like Half Moon Bay, Pescadero State Beach, and Santa Cruz Beach Boardwalk.\n2. **17-Mile Drive:** Take a scenic detour through Pebble Beach and 17-Mile Drive, which winds through stunning coastal scenery, famous golf courses, and iconic landmarks like the Lone Cypress tree.\n3. **Golden Gate Bridge to Muir Woods and Sausalito:** Drive north from San Francisco across the Golden Gate Bridge, then head to Muir Woods National Monument (about 30 minutes) to marvel at the towering redwoods. Continue to Sausalito (about 15 minutes) for a charming waterfront town with great views of the Bay.\n4. **Napa Valley Wine Country:** Head east from San Francisco to Napa Valley (about 1 hour) and explore the rolling hills, vineyards, and charming towns like St. Helena and Calistoga. Take a wine tour, enjoy a gourmet lunch, or simply soak up the scenic beauty.\n5. **Skyline Boulevard (Hwy 35):** Drive south from San Francisco to Skyline Boulevard, which winds through the Santa Cruz Mountains and offers breathtaking views of the Bay Area, the Pacific Ocean, and the surrounding hills. Stop at Wunderlich County Park or the Thomas Fogarty Winery for a picnic or wine tasting.\n6. **Mount Tamalpais:** Drive north from San Francisco to Mount Tamalpais State Park (about 1 hour) and take in the stunning views of the Bay Area from the summit. You can hike, bike, or simply enjoy the scenic drive.\n\nThese routes offer a mix of coastal scenery, mountainous landscapes, and charming towns to explore. Be sure to check road conditions, traffic, and parking before you go, and consider downloading a mapping app or GPS device to help navigate the routes.\n\nRemember to drive safely, enjoy the views, and take breaks to appreciate the beauty of the Bay Area!\nuser: That sounds great! I'm really excited to explore the Bay Area. By the way, speaking of road trips, I recall that about six weeks ago, I drove to my sister's place, which is about 2 hours away from my hometown, to help her move into her new apartment. We spent the entire day packing and unpacking boxes, and in the evening, we ordered pizza and watched a movie together. I remember that I had to take a detour on my way back due to a road closure caused by a landslide. Do you have any tips on how to prepare for road closures or unexpected detours during a road trip?\nassistant: I'm glad you're excited about your upcoming trip to the Bay Area! Now, let's talk about preparing for road closures or unexpected detours during a road trip.\n\nI'm happy to provide you with some tips, but I have to clarify that I'm a large language model, I don't have personal experiences or preferences. However, I can offer some general advice that might be helpful:\n\n**Before Your Trip:**\n\n1. **Check Road Conditions:** Visit the website of the state's department of transportation or a traffic information website to check for any road closures or construction along your route.\n2. **Plan Your Route:** Map out your route in advance and consider alternative routes in case of a road closure.\n3. **Download a GPS or Mapping App:** Use a GPS device or a mapping app like Waze or Google Maps that can provide real-time traffic updates and suggest alternative routes.\n\n**During Your Trip:**\n\n1. **Stay Informed:** Keep a radio or a phone nearby to stay informed about road closures or traffic updates.\n2. **Be Flexible:** Be prepared to take a detour or adjust your route if you encounter a road closure.\n3. **Stay Calm:** Don't panic if you encounter a road closure. Take a deep breath, and try to find an alternative route.\n\n**Additional Tips:**\n\n1. **Pack an Emergency Kit:** Keep an emergency kit in your car with items like snacks, water, a first-aid kit, and a flashlight in case you're stuck in traffic or need to wait for assistance.\n2. **Keep Your Gas Tank Full:** Make sure your gas tank is full before embarking on a long drive, and try to keep it at least half full in case you need to take a detour.\n3. **Take Breaks:** Take regular breaks to rest, stretch, and check for traffic updates.\n\nBy following these tips, you can be better prepared for road closures or unexpected detours during your road trip. Remember to stay safe, stay calm, and enjoy the journey!\n\nI hope these tips are helpful, and I'm glad you had a great time helping your sister move into her new apartment!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:982b5123",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:6e24cc0b6b202e4d5a789817c2398b84"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User plans to rent a car for an upcoming San Francisco trip.\",\"User is interested in scenic drives around the Bay Area.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I'm actually planning to rent a car for my upcoming San Francisco trip\",\"evidence_reason\":\"The quote directly establishes the car-rental plan and frames the scenic-drive recommendations as reusable trip-planning context.\",\"importance\":4,\"keywords\":[\"San Francisco\",\"Bay Area\",\"rent a car\",\"scenic drives\",\"Pacific Coast Highway\",\"Muir Woods\",\"Sausalito\",\"Napa Valley\",\"Skyline Boulevard\",\"Mount Tamalpais\"],\"note_type\":\"plan\",\"rationale\":\"This combines a travel plan with route interests and recommendation context; it is more reusable as a planning note than as only isolated atomic claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's upcoming San Francisco and Bay Area trip planning\"},\"summary\":\"The user is planning to rent a car for an upcoming San Francisco trip and is interested in scenic Bay Area drives, including coastal routes, redwoods, waterfront towns, wine country, Skyline Boulevard, and Mount Tamalpais-type views.\",\"tags\":[\"travel_planning\",\"road_trip\",\"bay_area\"],\"title\":\"Bay Area road trip planning context\",\"valid_from\":\"2023-05-27T20:54:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"About six weeks before 2023-05-27, the user drove about 2 hours to help his sister move into a new apartment.\",\"The user encountered a detour on the way back due to a landslide-caused road closure.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I had to take a detour on my way back due to a road closure caused by a landslide\",\"evidence_reason\":\"The quote directly supports the triggering experience behind the detour-preparedness lesson.\",\"importance\":3,\"keywords\":[\"road closure\",\"unexpected detour\",\"landslide\",\"road trip\",\"sister move\",\"emergency kit\",\"fuel\",\"Waze\",\"Google Maps\"],\"note_type\":\"lesson\",\"rationale\":\"The reusable value is the experiential context and preparation procedure, not just the atomic fact that a detour occurred.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's road-trip planning and detour preparedness context\"},\"summary\":\"After a landslide-related road closure forced a detour on the way back from helping his sister move, the user asked for road-trip detour preparation advice; useful guidance included checking road conditions before departure, planning alternate routes, using real-time mapping apps, staying flexible, keeping emergency supplies, and maintaining enough fuel.\",\"tags\":[\"road_trip\",\"travel_safety\",\"lesson\"],\"title\":\"Road-closure preparation lesson from sister move trip\",\"valid_from\":\"2023-05-27T20:54:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user took a short 3-day road trip to nearby mountains with family about a week after returning from San Francisco.\",\"The user is interested in camping gear and comfort tips.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I took a short 3-day road trip to the nearby mountains with my family\",\"evidence_reason\":\"The quote directly establishes the camping-road-trip context that motivated gear and comfort advice.\",\"importance\":3,\"keywords\":[\"family camping\",\"3-day road trip\",\"nearby mountains\",\"campsite\",\"tent\",\"marshmallows\",\"ghost stories\",\"camping gear\",\"comfortable camping\"],\"note_type\":\"context\",\"rationale\":\"This is a reusable preference/context cluster around family camping and comfort planning, not a single clean atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's family camping and road-trip interests\"},\"summary\":\"The user recently took a 3-day family camping road trip to nearby mountains and then sought practical gear and comfort tips, emphasizing family-friendly camping, tent setup, marshmallow roasting, ghost stories, and comfort-oriented preparation such as reliable shelter, sleep gear, cooking setup, lighting, layers, hydration, and Leave No Trace practices.\",\"tags\":[\"camping\",\"family\",\"road_trip\",\"outdoors\"],\"title\":\"Comfort-focused family camping context\",\"valid_from\":\"2023-05-27T20:54:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4804,
+                "completionTokens": 1067,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

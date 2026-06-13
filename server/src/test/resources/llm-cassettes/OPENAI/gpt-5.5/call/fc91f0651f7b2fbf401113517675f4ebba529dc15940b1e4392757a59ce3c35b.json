@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "fc91f0651f7b2fbf401113517675f4ebba529dc15940b1e4392757a59ce3c35b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking of trying a new coffee creamer recipe. Any recommendations?\n\n                                Question date:\n                                2023/05/25 (Thu) 15:08\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that suggest variations on their existing almond milk, vanilla extract, and honey creamer recipe or new ideas that align with their goals of reducing sugar intake and saving money. They might not prefer responses that recommend commercial creamer products or recipes that are high in sugar or expensive.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:505af2f5\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-2f09cd84676b-claim-10 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The user's homemade flavored creamer uses almond milk, vanilla extract, and honey.; scope=Ingredient details for the user's homemade flavored creamer.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"with almond milk, vanilla extract, and honey\"\n- claim hot-path-2f09cd84676b-claim-7 [ACTIVE] has_goal family=has_goal: The user has a goal to reduce sugar intake.; scope=User's personal dietary goals.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"I'm trying to reduce my sugar intake\"\n- claim hot-path-2f09cd84676b-claim-8 [ACTIVE] has_goal family=has_goal: The user has a goal to save money on food or beverages.; scope=User's personal budgeting and food-preparation goals.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"and save money\"\n\n            Retrieved notes:\n            - note hot-path-2f09cd84676b-note-2 [CONTEXT/ACTIVE]: Healthier homemade flavored creamer strategy; The user is using homemade flavored creamer as part of a broader effort to reduce sugar intake and save money. Reusable guidance is to reduce or replace honey, use unsweetened almond milk, rely on spices/extracts and a pinch of salt for flavor, and optionally add nutrition boosters such as probiotics, collagen peptides, protein powder, or MCT oil.; scope=Applies when advising the user on homemade flavored creamer, coffee add-ins, sugar reduction, or budget-friendly dietary substitutions.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"I'm trying to reduce my sugar intake and save money, so I've started making my own flavored creamer with almond milk, vanilla extract, and honey.\"\n\n            Retrieved evidence:\n            - source external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 [external_record ref=longmemeval:505af2f5:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 03:12\nTranscript:\nuser: I'm trying to reduce my sugar intake and save money, so I've started making my own flavored creamer with almond milk, vanilla extract, and honey. Can you give me some tips on how to make it even healthier?\nassistant: What a great step you've taken! Making your own flavored creamer is a fantastic way to reduce sugar intake and save money. Here are some tips to make your homemade creamer even healthier:...\n...2. **Opt for a higher-quality almond milk**: Look for unsweetened, unflavored, and organic almond milk to avoid added sugars and preservatives. You can also try making your own almond milk at home to control the ingredients....\n...4. **Add spices for flavor**: Instead of relying on sweetener for flavor, try adding spices like cinnamon, nutmeg, or cardamom to give your creamer a unique taste. These spices also offer additional health benefits!...\n...6. **Add a pinch of salt**: Believe it or not, a small amount of salt can help balance the flavors in your creamer and reduce the need for sweetener. Use a high-quality, unrefined salt like Himalayan pink salt or sea salt.\n7. **Experiment with flavor combinations**: Try pairing vanilla with other flavor extracts like almond, coconut, or hazelnut to create unique and delicious flavor combinations. This can help you reduce the need for sweetener and add more variety to your creamer.\n8. **Make it a probiotic creamer**: Add a scoop of probiotic powder or a spoonful of probiotic-rich yogurt to your creamer to support gut health and immune function....\n...10. **Get creative with flavor enhancers**: Consider adding a teaspoon of collagen peptides, protein powder, or MCT oil to your creamer for an extra boost of nutrition and energy.\n\nBy incorporating these tips into your homemade creamer recipe, you'll not only reduce sugar intake but also add more nutrition and variety to your daily cup. Happy brewing!\nuser: What are some good snack options that I can prepare on Sunday for the entire week?...\n...5. **Protein-Packed Muffins**: Bake a batch of healthy muffins using ingredients like oats, bananas, eggs, and nuts. You can customize the recipe to fit your dietary needs and preferences....\n...9. **Homemade Granola**: Mix together rolled oats, nuts, seeds, and dried fruits to create a healthy and crunchy snack. You can customize the recipe to fit your dietary needs and preferences....\n...user: I've been experimenting with different types of granola, and I recently made a big batch at home using rolled oats, almonds, and honey. It turned out delicious, and I've been snacking on it throughout the day. Do you have any tips on how to customize granola recipes to fit my taste preferences?\nassistant: Homemade granola is the best! Congratulations on creating a delicious batch that you're enjoying. Customizing granola recipes to fit your taste preferences is easy and fun. Here are some tips to help you experiment and create your perfect blend:\n\n1. **Start with a base recipe**: Use a basic granola recipe as a starting point, and then modify it to your liking. You can find plenty of recipes online or in cookbooks....\n...5. **Spices and flavorings**: Add a pinch of cinnamon, nutmeg, or cardamom to give your granola a warm, spicy flavor. You can also try using vanilla extract, almond extract, or citrus zest for added depth....\n...user: What are some healthy snack options that I can take with me on the go, especially for those afternoon cravings when I need a quick energy boost?...\n...user: I've been craving sweet treats more often, especially in the afternoon around 3-4 pm. Do you have any tips on how to curb these cravings and make healthier choices?...\n...user: What are some healthy breakfast ideas that can help me start my day off right, especially since I've been skipping breakfast more frequently?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Homemade flavored creamer; Concept named Homemade flavored creamer.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "505af2f5",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking of trying a new coffee creamer recipe. Any recommendations?\n\n                                Question date:\n                                2023/05/25 (Thu) 15:08\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that suggest variations on their existing almond milk, vanilla extract, and honey creamer recipe or new ideas that align with their goals of reducing sugar intake and saving money. They might not prefer responses that recommend commercial creamer products or recipes that are high in sugar or expensive.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:505af2f5\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-2f09cd84676b-claim-10 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The user's homemade flavored creamer uses almond milk, vanilla extract, and honey.; scope=Ingredient details for the user's homemade flavored creamer.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"with almond milk, vanilla extract, and honey\"\n- claim hot-path-2f09cd84676b-claim-7 [ACTIVE] has_goal family=has_goal: The user has a goal to reduce sugar intake.; scope=User's personal dietary goals.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"I'm trying to reduce my sugar intake\"\n- claim hot-path-2f09cd84676b-claim-8 [ACTIVE] has_goal family=has_goal: The user has a goal to save money on food or beverages.; scope=User's personal budgeting and food-preparation goals.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"and save money\"\n\n            Retrieved notes:\n            - note hot-path-2f09cd84676b-note-2 [CONTEXT/ACTIVE]: Healthier homemade flavored creamer strategy; The user is using homemade flavored creamer as part of a broader effort to reduce sugar intake and save money. Reusable guidance is to reduce or replace honey, use unsweetened almond milk, rely on spices/extracts and a pinch of salt for flavor, and optionally add nutrition boosters such as probiotics, collagen peptides, protein powder, or MCT oil.; scope=Applies when advising the user on homemade flavored creamer, coffee add-ins, sugar reduction, or budget-friendly dietary substitutions.; evidence=DIRECT source=external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 quote=\"I'm trying to reduce my sugar intake and save money, so I've started making my own flavored creamer with almond milk, vanilla extract, and honey.\"\n\n            Retrieved evidence:\n            - source external:provided-text:13fbcc6c6a448ff0030da171d0a3abe0 [external_record ref=longmemeval:505af2f5:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 03:12\nTranscript:\nuser: I'm trying to reduce my sugar intake and save money, so I've started making my own flavored creamer with almond milk, vanilla extract, and honey. Can you give me some tips on how to make it even healthier?\nassistant: What a great step you've taken! Making your own flavored creamer is a fantastic way to reduce sugar intake and save money. Here are some tips to make your homemade creamer even healthier:...\n...2. **Opt for a higher-quality almond milk**: Look for unsweetened, unflavored, and organic almond milk to avoid added sugars and preservatives. You can also try making your own almond milk at home to control the ingredients....\n...4. **Add spices for flavor**: Instead of relying on sweetener for flavor, try adding spices like cinnamon, nutmeg, or cardamom to give your creamer a unique taste. These spices also offer additional health benefits!...\n...6. **Add a pinch of salt**: Believe it or not, a small amount of salt can help balance the flavors in your creamer and reduce the need for sweetener. Use a high-quality, unrefined salt like Himalayan pink salt or sea salt.\n7. **Experiment with flavor combinations**: Try pairing vanilla with other flavor extracts like almond, coconut, or hazelnut to create unique and delicious flavor combinations. This can help you reduce the need for sweetener and add more variety to your creamer.\n8. **Make it a probiotic creamer**: Add a scoop of probiotic powder or a spoonful of probiotic-rich yogurt to your creamer to support gut health and immune function....\n...10. **Get creative with flavor enhancers**: Consider adding a teaspoon of collagen peptides, protein powder, or MCT oil to your creamer for an extra boost of nutrition and energy.\n\nBy incorporating these tips into your homemade creamer recipe, you'll not only reduce sugar intake but also add more nutrition and variety to your daily cup. Happy brewing!\nuser: What are some good snack options that I can prepare on Sunday for the entire week?...\n...5. **Protein-Packed Muffins**: Bake a batch of healthy muffins using ingredients like oats, bananas, eggs, and nuts. You can customize the recipe to fit your dietary needs and preferences....\n...9. **Homemade Granola**: Mix together rolled oats, nuts, seeds, and dried fruits to create a healthy and crunchy snack. You can customize the recipe to fit your dietary needs and preferences....\n...user: I've been experimenting with different types of granola, and I recently made a big batch at home using rolled oats, almonds, and honey. It turned out delicious, and I've been snacking on it throughout the day. Do you have any tips on how to customize granola recipes to fit my taste preferences?\nassistant: Homemade granola is the best! Congratulations on creating a delicious batch that you're enjoying. Customizing granola recipes to fit your taste preferences is easy and fun. Here are some tips to help you experiment and create your perfect blend:\n\n1. **Start with a base recipe**: Use a basic granola recipe as a starting point, and then modify it to your liking. You can find plenty of recipes online or in cookbooks....\n...5. **Spices and flavorings**: Add a pinch of cinnamon, nutmeg, or cardamom to give your granola a warm, spicy flavor. You can also try using vanilla extract, almond extract, or citrus zest for added depth....\n...user: What are some healthy snack options that I can take with me on the go, especially for those afternoon cravings when I need a quick energy boost?...\n...user: I've been craving sweet treats more often, especially in the afternoon around 3-4 pm. Do you have any tips on how to curb these cravings and make healthier choices?...\n...user: What are some healthy breakfast ideas that can help me start my day off right, especially since I've been skipping breakfast more frequently?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Homemade flavored creamer; Concept named Homemade flavored creamer.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "505af2f5",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Recommend homemade creamer variations based on the user's almond milk, vanilla extract, and honey recipe, emphasizing lower sugar and budget-friendly options rather than sugary or expensive commercial creamers.\",\"reason\":\"The memory explicitly states the user's current creamer ingredients and goals to reduce sugar intake and save money, with relevant guidance for healthier homemade variations.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2338,
+                "completionTokens": 113,
+                "thinkingTokens": 23,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

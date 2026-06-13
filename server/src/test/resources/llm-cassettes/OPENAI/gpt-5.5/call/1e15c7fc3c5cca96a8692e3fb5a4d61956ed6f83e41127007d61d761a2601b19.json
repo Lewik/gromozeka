@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "1e15c7fc3c5cca96a8692e3fb5a4d61956ed6f83e41127007d61d761a2601b19",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking about our previous conversation about data privacy and security. You mentioned that companies use two-factor authentication to enhance security. Can you remind me what kind of two-factor authentication methods you were referring to?\n\n                                Question date:\n                                2023/05/23 (Tue) 18:45\n\n                                Noisy expected-answer label:\n                                I mentioned biometric authentication or one-time passwords (OTP) as examples of two-factor authentication methods.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:1d4da289\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a1221b34ccc8-claim-5 [ACTIVE] believes family=believes: The user believes extensive company efforts to protect the user's personal data may be unnecessary because the user does not think their information is very valuable.; scope=User viewpoint about the value of their personal data and the necessity of company data-protection measures.; evidence=DIRECT source=external:provided-text:6e828a0b2e45868bb017b418c1ea219c quote=\"I don't see why companies need to go through all this trouble just to protect my data. It's not like my information is that valuable.\"\n- claim hot-path-a1221b34ccc8-claim-4 [ACTIVE] believes family=believes: The user believes companies should make it easier for customers to access their own information instead of requiring many passwords and extra steps.; scope=User viewpoint about usability tradeoffs in customer data privacy and security.; evidence=DIRECT source=external:provided-text:6e828a0b2e45868bb017b418c1ea219c quote=\"I don't want to have to remember all these different passwords and go through extra steps just to access my own information. Companies should make it easier for us.\"\n\n            Retrieved notes:\n            - note hot-path-a1221b34ccc8-note-2 [CONTEXT/ACTIVE]: User prioritizes low-friction access in privacy/security tradeoffs; The user views many company data-protection measures as excessive hassle and prefers companies to make account access easier, especially by reducing password burden and extra authentication steps.; scope=User attitude toward data privacy/security usability tradeoffs; evidence=DIRECT source=external:provided-text:6e828a0b2e45868bb017b418c1ea219c quote=\"I don't want to have to remember all these different passwords and go through extra steps just to access my own information. Companies should make it easier for us.\"\n\n            Retrieved evidence:\n            - source external:provided-text:6e828a0b2e45868bb017b418c1ea219c [external_record ref=longmemeval:1d4da289:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 18:53\nTranscript:\nuser: What are some steps companies take to ensure data privacy and security for their customers?\nassistant: 1. Implementing robust data security measures: Companies take several measures to secure their customers' data, including using encryption algorithms, network security protocols, and access controls.\n\n2. Regular security audits and assessments: Regularly analyzing and updating their systems and protocols based on the latest threats and vulnerabilities.\n\n3. Two-factor authentication: Requiring two-factor authentication, such as biometric authentication or one-time passwords (OTP), enhances security by ensuring that only authorized users can access sensitive data.\n\n4. Data minimization: Limiting access to customer data only to necessary staff, which reduces the risk of data breaches.\n\n5. Regular employee training: Ensuring that all employees receive regular training on cybersecurity best practices and ensuring compliance with data privacy regulations.\n\n6. Secure data storage: Storing data securely, such as on secure cloud servers, encrypted hard drives, or secure data centers, reduce the likelihood of unauthorized access, theft, or cyber attacks.\n\n7. Comprehensive privacy policies: Clear communication, explicit consent, and transparent privacy policies help customers understand how their data is being collected, stored, and used.\n\n8. Rapid response to data breaches: Being prepared to respond quickly to security incidents, conducting forensic investigations and notifying customers in a timely and effective manner.\nuser: I don't see why companies need to go through all this trouble just to protect my data. It's not like my information is that valuable.\nassistant: I don't have personal opinions. however, your personal data may not seem valuable to you, but it can be highly valuable to criminals who can sell it on the dark web or use it for identity theft or other fraudulent activities. your personal information, such as your name, social security number, date of birth, email address, and financial information, can be used to open credit card accounts, apply for loans, and even file fraudulent tax returns. additionally, as more services are moving online, more of our personal information is being collected and stored, increasing the risk of data breaches and identity theft. therefore, companies take appropriate measures to ensure the privacy and security of their customers' data to protect them from cybercriminals and earn their trust.\nuser: But I still think it's too much hassle. I don't want to have to remember all these different passwords and go through extra steps just to access my own information. Companies should make it easier for us.\nassistant: It can definitely feel like a hassle to remember multiple passwords and go through extra steps to access your information. However, data privacy and security are critical to protecting your sensitive information and preventing identity theft and other cyber attacks.\n\nWhile it may feel inconvenient, companies have a responsibility to protect their customers' data to prevent any harm that may occur if such information is compromised. Additionally, many companies are implementing easier and more efficient security measures, such as fingerprint, facial recognition, or two-factor authentication, that simplify the process without sacrificing security.\n\nOverall, it's crucial to prioritize data privacy and security and to be mindful of the risks involved with sharing sensitive information online. While it may feel inconvenient at times, the extra steps taken by companies to protect your data are well worth it in the long run.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Data privacy and security; Concept named Data privacy and security.\n- entity entity:<1> [CONCEPT]: Passwords; Concept named Passwords.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "1d4da289",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking about our previous conversation about data privacy and security. You mentioned that companies use two-factor authentication to enhance security. Can you remind me what kind of two-factor authentication methods you were referring to?\n\n                                Question date:\n                                2023/05/23 (Tue) 18:45\n\n                                Noisy expected-answer label:\n                                I mentioned biometric authentication or one-time passwords (OTP) as examples of two-factor authentication methods.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:1d4da289\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a1221b34ccc8-claim-5 [ACTIVE] believes family=believes: The user believes extensive company efforts to protect the user's personal data may be unnecessary because the user does not think their information is very valuable.; scope=User viewpoint about the value of their personal data and the necessity of company data-protection measures.; evidence=DIRECT source=external:provided-text:6e828a0b2e45868bb017b418c1ea219c quote=\"I don't see why companies need to go through all this trouble just to protect my data. It's not like my information is that valuable.\"\n- claim hot-path-a1221b34ccc8-claim-4 [ACTIVE] believes family=believes: The user believes companies should make it easier for customers to access their own information instead of requiring many passwords and extra steps.; scope=User viewpoint about usability tradeoffs in customer data privacy and security.; evidence=DIRECT source=external:provided-text:6e828a0b2e45868bb017b418c1ea219c quote=\"I don't want to have to remember all these different passwords and go through extra steps just to access my own information. Companies should make it easier for us.\"\n\n            Retrieved notes:\n            - note hot-path-a1221b34ccc8-note-2 [CONTEXT/ACTIVE]: User prioritizes low-friction access in privacy/security tradeoffs; The user views many company data-protection measures as excessive hassle and prefers companies to make account access easier, especially by reducing password burden and extra authentication steps.; scope=User attitude toward data privacy/security usability tradeoffs; evidence=DIRECT source=external:provided-text:6e828a0b2e45868bb017b418c1ea219c quote=\"I don't want to have to remember all these different passwords and go through extra steps just to access my own information. Companies should make it easier for us.\"\n\n            Retrieved evidence:\n            - source external:provided-text:6e828a0b2e45868bb017b418c1ea219c [external_record ref=longmemeval:1d4da289:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 18:53\nTranscript:\nuser: What are some steps companies take to ensure data privacy and security for their customers?\nassistant: 1. Implementing robust data security measures: Companies take several measures to secure their customers' data, including using encryption algorithms, network security protocols, and access controls.\n\n2. Regular security audits and assessments: Regularly analyzing and updating their systems and protocols based on the latest threats and vulnerabilities.\n\n3. Two-factor authentication: Requiring two-factor authentication, such as biometric authentication or one-time passwords (OTP), enhances security by ensuring that only authorized users can access sensitive data.\n\n4. Data minimization: Limiting access to customer data only to necessary staff, which reduces the risk of data breaches.\n\n5. Regular employee training: Ensuring that all employees receive regular training on cybersecurity best practices and ensuring compliance with data privacy regulations.\n\n6. Secure data storage: Storing data securely, such as on secure cloud servers, encrypted hard drives, or secure data centers, reduce the likelihood of unauthorized access, theft, or cyber attacks.\n\n7. Comprehensive privacy policies: Clear communication, explicit consent, and transparent privacy policies help customers understand how their data is being collected, stored, and used.\n\n8. Rapid response to data breaches: Being prepared to respond quickly to security incidents, conducting forensic investigations and notifying customers in a timely and effective manner.\nuser: I don't see why companies need to go through all this trouble just to protect my data. It's not like my information is that valuable.\nassistant: I don't have personal opinions. however, your personal data may not seem valuable to you, but it can be highly valuable to criminals who can sell it on the dark web or use it for identity theft or other fraudulent activities. your personal information, such as your name, social security number, date of birth, email address, and financial information, can be used to open credit card accounts, apply for loans, and even file fraudulent tax returns. additionally, as more services are moving online, more of our personal information is being collected and stored, increasing the risk of data breaches and identity theft. therefore, companies take appropriate measures to ensure the privacy and security of their customers' data to protect them from cybercriminals and earn their trust.\nuser: But I still think it's too much hassle. I don't want to have to remember all these different passwords and go through extra steps just to access my own information. Companies should make it easier for us.\nassistant: It can definitely feel like a hassle to remember multiple passwords and go through extra steps to access your information. However, data privacy and security are critical to protecting your sensitive information and preventing identity theft and other cyber attacks.\n\nWhile it may feel inconvenient, companies have a responsibility to protect their customers' data to prevent any harm that may occur if such information is compromised. Additionally, many companies are implementing easier and more efficient security measures, such as fingerprint, facial recognition, or two-factor authentication, that simplify the process without sacrificing security.\n\nOverall, it's crucial to prioritize data privacy and security and to be mindful of the risks involved with sharing sensitive information online. While it may feel inconvenient at times, the extra steps taken by companies to protect your data are well worth it in the long run.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Data privacy and security; Concept named Data privacy and security.\n- entity entity:<1> [CONCEPT]: Passwords; Concept named Passwords.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "1d4da289",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The two-factor authentication examples were biometric authentication and one-time passwords (OTP).\",\"reason\":\"The retrieved transcript explicitly says companies use two-factor authentication, such as biometric authentication or one-time passwords (OTP), to enhance security.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2104,
+                "completionTokens": 101,
+                "thinkingTokens": 32,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
