@@ -383,10 +383,16 @@ class RuntimeMemoryReadPipeline(
                     "restoredProfiles=${coreProfileSelection.addedHits.joinToString("|") { it.profile.id.value }}"
             }
         }
-        val selectedHitsBeforeSafety = coreProfileSelection.hits.enforceBudget(plan)
         val selectorDecisions = selectionResult.decisions
             .filterNot { decision -> decision.ref in coreProfileSelection.addedRefs }
             .let { decisions -> decisions + coreProfileSelection.decisions }
+        val selectorSelectedRefs = selectorDecisions
+            .filter { it.selected }
+            .mapTo(mutableSetOf()) { it.ref }
+        val selectedHitsBeforeSafety = coreProfileSelection.hits.enforceBudget(
+            plan = plan,
+            protectedRefs = selectorSelectedRefs,
+        )
         val sourceFilteredHits = selectedHitsBeforeSafety.filterNonRequiredSourcesWhenTypedMemoryAnswers(plan)
         if (sourceFilteredHits.changed) {
             log.info {
@@ -1476,6 +1482,7 @@ private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.profilesLimi
 private fun List<MemoryStore.SearchHit>.enforceBudget(
     plan: MemoryReadPlan,
     expandForSelector: Boolean = false,
+    protectedRefs: Set<MemoryItemRef> = emptySet(),
 ): List<MemoryStore.SearchHit> {
     val profiles = mutableListOf<MemoryStore.SearchHit.ProfileHit>()
     val claims = mutableListOf<MemoryStore.SearchHit.ClaimHit>()
@@ -1499,14 +1506,53 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(
     }
 
     return buildList {
-        addAll(profiles.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.profilesLimit()))
-        addAll(claims.sortedForRuntimeMemoryRead(plan).take(plan.retrievalBudget.claims.budgetLimit(default = 6, expandForSelector = expandForSelector)))
-        addAll(notes.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.notes.budgetLimit(default = 4, expandForSelector = expandForSelector)))
-        addAll(actionItems.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.actionItems.budgetLimit(default = 3, expandForSelector = expandForSelector)))
-        addAll(sources.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.sources.budgetLimit(default = 3, expandForSelector = expandForSelector)))
-        addAll(episodes.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.episodes.budgetLimit(default = 2, expandForSelector = expandForSelector)))
-        addAll(entities.sortedForRuntimeMemoryRead().take(4))
+        addAll(profiles.sortedForRuntimeMemoryRead().takeWithProtectedRefs(plan.retrievalBudget.profilesLimit(), protectedRefs))
+        addAll(
+            claims.sortedForRuntimeMemoryRead(plan).takeWithProtectedRefs(
+                limit = plan.retrievalBudget.claims.budgetLimit(default = 6, expandForSelector = expandForSelector),
+                protectedRefs = protectedRefs,
+            )
+        )
+        addAll(
+            notes.sortedForRuntimeMemoryRead().takeWithProtectedRefs(
+                limit = plan.retrievalBudget.notes.budgetLimit(default = 4, expandForSelector = expandForSelector),
+                protectedRefs = protectedRefs,
+            )
+        )
+        addAll(
+            actionItems.sortedForRuntimeMemoryRead().takeWithProtectedRefs(
+                limit = plan.retrievalBudget.actionItems.budgetLimit(default = 3, expandForSelector = expandForSelector),
+                protectedRefs = protectedRefs,
+            )
+        )
+        addAll(
+            sources.sortedForRuntimeMemoryRead().takeWithProtectedRefs(
+                limit = plan.retrievalBudget.sources.budgetLimit(default = 3, expandForSelector = expandForSelector),
+                protectedRefs = protectedRefs,
+            )
+        )
+        addAll(
+            episodes.sortedForRuntimeMemoryRead().takeWithProtectedRefs(
+                limit = plan.retrievalBudget.episodes.budgetLimit(default = 2, expandForSelector = expandForSelector),
+                protectedRefs = protectedRefs,
+            )
+        )
+        addAll(entities.sortedForRuntimeMemoryRead().takeWithProtectedRefs(4, protectedRefs))
     }
+}
+
+private fun <T : MemoryStore.SearchHit> List<T>.takeWithProtectedRefs(
+    limit: Int,
+    protectedRefs: Set<MemoryItemRef>,
+): List<T> {
+    if (protectedRefs.isEmpty()) return take(limit)
+
+    val protectedHits = filter { it.toItemRef() in protectedRefs }
+    val protectedHitRefs = protectedHits.mapTo(mutableSetOf()) { it.toItemRef() }
+    val remainingLimit = (limit - protectedHits.size).coerceAtLeast(0)
+
+    return (protectedHits + filterNot { it.toItemRef() in protectedHitRefs }.take(remainingLimit))
+        .distinctBy { it.toItemRef() }
 }
 
 private fun Int.budgetLimit(default: Int, expandForSelector: Boolean): Int {

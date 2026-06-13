@@ -2283,6 +2283,79 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun runtimeReadKeepsExplicitSelectorPicksWhenSafetyHitsCompeteForBudget() = runBlocking {
+        val directClaim = claim(
+            id = "direct-date-claim",
+            predicate = "current_metric_value",
+            objectValue = JsonPrimitive("February 1"),
+            normalizedText = "ACL's submission date was February 1st.",
+            importance = 1,
+        )
+        val safetyClaims = (1..4).map { index ->
+            claim(
+                id = "safety-claim-$index",
+                predicate = "has_goal",
+                objectValue = JsonPrimitive("Sentiment analysis context $index"),
+                normalizedText = "The user has related sentiment analysis context $index.",
+                importance = 10 - index,
+            )
+        }
+        val directRef = MemoryItemRef(MemoryItemRef.Type.CLAIM, directClaim.id.value)
+        val safetyRefs = safetyClaims.map { MemoryItemRef(MemoryItemRef.Type.CLAIM, it.id.value) }
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "When did I submit my research paper on sentiment analysis?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = InMemoryMemoryStore(
+                MemoryNamespaceSnapshot(
+                    entities = listOf(entity()),
+                    claims = listOf(directClaim) + safetyClaims,
+                )
+            ),
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 4),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Retrieve the complete set of submission timing facts.",
+                            query = "research paper sentiment analysis submission date",
+                            topK = 5,
+                        )
+                    ),
+                )
+            ),
+            selector = FixedReadSelectorWithSafetyHits(
+                selectedRefs = listOf(directRef),
+                safetyRefs = safetyRefs,
+            ),
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(refs.contains(directRef))
+        assertEquals(4, refs.count { it.type == MemoryItemRef.Type.CLAIM })
+        assertTrue(safetyRefs.any { it !in refs })
+        assertTrue(prompt.contains("ACL's submission date was February 1st."))
+    }
+
+    @Test
     fun runtimeReadKeepsPreferredClaimPredicatesAfterCandidateMerging() = runBlocking {
         val metricPolicy = MemoryPredicateDefinition(
             predicate = "current_metric_value",
@@ -4124,6 +4197,33 @@ private class FixedReadSelector(
                     selected = ref in selectedRefSet,
                     rank = if (ref in selectedRefSet) index + 1 else 0,
                     reason = if (ref in selectedRefSet) "selected by fixed test selector" else "rejected by fixed test selector",
+                )
+            },
+        )
+    }
+}
+
+private class FixedReadSelectorWithSafetyHits(
+    private val selectedRefs: List<MemoryItemRef>,
+    private val safetyRefs: List<MemoryItemRef>,
+) : MemoryReadSelector {
+    override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult {
+        val hitsByRef = request.candidateHits.associateBy { it.toTestItemRef() }
+        val selectedRefSet = selectedRefs.toSet()
+        val safetyRefSet = safetyRefs.toSet()
+        return MemoryReadSelectionResult(
+            selectedHits = (selectedRefs + safetyRefs).mapNotNull(hitsByRef::get),
+            decisions = request.candidateHits.mapIndexed { index, hit ->
+                val ref = hit.toTestItemRef()
+                MemoryReadSelectionResult.Decision(
+                    ref = ref,
+                    selected = ref in selectedRefSet,
+                    rank = if (ref in selectedRefSet) index + 1 else Int.MAX_VALUE,
+                    reason = when (ref) {
+                        in selectedRefSet -> "selected by fixed test selector"
+                        in safetyRefSet -> "carried by selector safety"
+                        else -> "rejected by fixed test selector"
+                    },
                 )
             },
         )
