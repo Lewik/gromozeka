@@ -1,0 +1,177 @@
+{
+    "version": 1,
+    "hash": "1c2519ced3d475f9aa90191c5f9d17f24a5e6820c6b07c9c1335e8d0cab9a25e",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many bikes do I own?\n\n                                Question date:\n                                2023/05/21 (Sun) 04:11\n\n                                Noisy expected-answer label:\n                                three\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6b168ec8\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-c5e9bc94a666-claim-8 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a commuter bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike\"\n- claim hot-path-c5e9bc94a666-claim-7 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a mountain bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike\"\n- claim hot-path-c5e9bc94a666-claim-6 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a road bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike\"\n- claim hot-path-c5e9bc94a666-claim-5 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a Trek Emonda bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"my Trek Emonda\"\n- claim hot-path-c5e9bc94a666-claim-4 [ACTIVE] has_goal family=has_goal: The user plans to purchase carbon fiber wheels for their road bike in the next few months to make it lighter and faster.; scope=User's cycling equipment plans as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I think I'll make the purchase in the next few months\"\n- claim hot-path-c5e9bc94a666-claim-9 [ACTIVE] prefers family=prefers: The user is interested in upgrading their road bike with carbon fiber wheels.; scope=User's cycling equipment interests as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've been considering upgrading my road bike's wheels to make it even lighter and faster\"\n- claim hot-path-c5e9bc94a666-claim-12 [ACTIVE] prefers family=prefers: The user chose the Abus SmartX bike lock with GPS tracking because it best balances security, convenience, and features for their needs.; scope=User's selected bike lock as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I'll go with the Abus SmartX bike lock with GPS tracking\"\n- claim hot-path-c5e9bc94a666-claim-10 [ACTIVE] has_goal family=has_goal: The user wants a bike lock with GPS tracking that integrates with their bikes so they can monitor their three bikes when they are away.; scope=User's bike security needs as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"so I can keep an eye on my three bikes when I'm not around them\"\n\n            Retrieved notes:\n            - note hot-path-c5e9bc94a666-note-3 [DECISION/ACTIVE]: Abus SmartX selected for multi-bike GPS security; The user decided to get the Abus SmartX bike lock with GPS tracking because it best balances security, convenience, and features for protecting their road bike, mountain bike, and commuter bike when unattended.; scope=User's bike security purchase decision for protecting three bikes; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I think I'll go with the Abus SmartX bike lock with GPS tracking. It seems to offer the best balance of security, convenience, and features for my needs.\"\n- note hot-path-c5e9bc94a666-note-2 [CONTEXT/ACTIVE]: Cycling setup and upgrade direction; The user has three bikes—a road bike, a mountain bike, and a commuter bike—and uses them for different ride types. For road long-distance riding, the user favors taking the Trek Emonda and is considering carbon fiber wheel upgrades to make the road bike lighter and faster within the next few months.; scope=User cycling equipment, ride use, and near-term road-bike upgrade context; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike - and I've been using them for different types of rides.\"\n\n            Retrieved evidence:\n            - source external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 [external_record ref=longmemeval:6b168ec8:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 15:51\nTranscript:\nuser: I'm planning a long ride this weekend and want to make sure I'm prepared. Can you remind me what kind of bike is best for long rides on the road, and also suggest some tips on how to properly clean and lube my chain?...\n...1. **Road bike or endurance road bike**: These bikes are designed for speed and comfort on paved roads. They typically have a lightweight frame, narrow tires, and a drop handlebar that allows for an aerodynamic riding position....\n...5. **Tire clearance**: Ensure your bike has enough tire clearance to accommodate wider tires (e.g., 28mm or larger) for added comfort and traction....\n...user: I'm actually thinking of taking my Trek Emonda for the ride, since it's perfect for long distances on the road. By the way, do you have any recommendations on carbon fiber wheels? I've been considering upgrading my road bike's wheels to make it even lighter and faster.\nassistant: The Trek Emonda is a fantastic choice for long distances on the road, known for its lightweight and responsive ride....\n...user: I've been doing some research on carbon fiber wheels and I think I'll make the purchase in the next few months. By the way, speaking of my bikes, I've got three of them - a road bike, a mountain bike, and a commuter bike - and I've been using them for different types of rides. Do you have any tips on how to keep them organized and maintained properly?\nassistant: Congratulations on considering the carbon fiber wheel upgrade!\n\n**Organizing and Maintaining Multiple Bikes:**\n\nManaging multiple bikes can be a challenge, but with a few simple tips, you can keep them organized, maintained, and ready for their next adventure:\n\n1. **Dedicate a bike station**: Designate a specific area in your garage, basement, or shed as your bike station. This will help keep all your bikes and accessories organized and within reach....\n...8. **Consider a bike hook system**: Install a bike hook system to hang your bikes from the ceiling or wall, freeing up floor space and keeping them organized....\n...* Consider color-coding your bikes and accessories to differentiate between them....\n...user: I've been thinking about getting a bike lock with a GPS tracker to keep my bikes safe when I'm not around them. Do you have any recommendations on bike locks and GPS tracking systems?\nassistant: A wise investment! Bike locks with GPS tracking can provide an added layer of security and peace of mind when leaving your bikes unattended....\n...user: I'm thinking of getting a bike lock with GPS tracking that integrates with my bike, so I can keep an eye on my three bikes when I'm not around them. Do you have any recommendations on specific bike locks with GPS tracking that would work well for my road bike, mountain bike, and commuter bike?\nassistant: A wise decision! Bike locks with GPS tracking can provide an added layer of security and peace of mind when leaving your bikes unattended....\n...By choosing a bike lock with GPS tracking that integrates with your bikes, you'll be able to keep a watchful eye on your road bike, mountain bike, and commuter bike when you're not around them.\n\nStay safe, and happy cycling!\nuser: I've got it! I think I'll go with the Abus SmartX bike lock with GPS tracking. It seems to offer the best balance of security, convenience, and features for my needs. Thanks for the recommendations and tips!...\n...I'm glad I could help you navigate the world of bike locks and GPS tracking. Remember to always follow proper locking techniques, register your bike with the manufacturer and local authorities, and keep your lock's software and firmware up to date.\n\n**Stay Safe and Enjoy Your Rides!**\n\nWith your new Abus SmartX bike lock, you can ride with peace of mind, knowing your bikes are protected. Don't hesitate to reach out if you have any more questions or need further assistance....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Carbon fiber wheels; Product named Carbon fiber wheels.\n- entity entity:<1> [PRODUCT]: Commuter bike; Product named Commuter bike.\n- entity entity:<2> [PRODUCT]: Mountain bike; Product named Mountain bike.\n- entity entity:<3> [PRODUCT]: Road bike; Product named Road bike.\n- entity entity:<4> [PRODUCT]: Trek Emonda; Product named Trek Emonda.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6b168ec8",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many bikes do I own?\n\n                                Question date:\n                                2023/05/21 (Sun) 04:11\n\n                                Noisy expected-answer label:\n                                three\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6b168ec8\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-c5e9bc94a666-claim-8 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a commuter bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike\"\n- claim hot-path-c5e9bc94a666-claim-7 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a mountain bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike\"\n- claim hot-path-c5e9bc94a666-claim-6 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a road bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike\"\n- claim hot-path-c5e9bc94a666-claim-5 [ACTIVE] owns_vehicle family=owns_vehicle: The user owns or uses a Trek Emonda bike.; scope=User's bicycles as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"my Trek Emonda\"\n- claim hot-path-c5e9bc94a666-claim-4 [ACTIVE] has_goal family=has_goal: The user plans to purchase carbon fiber wheels for their road bike in the next few months to make it lighter and faster.; scope=User's cycling equipment plans as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I think I'll make the purchase in the next few months\"\n- claim hot-path-c5e9bc94a666-claim-9 [ACTIVE] prefers family=prefers: The user is interested in upgrading their road bike with carbon fiber wheels.; scope=User's cycling equipment interests as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've been considering upgrading my road bike's wheels to make it even lighter and faster\"\n- claim hot-path-c5e9bc94a666-claim-12 [ACTIVE] prefers family=prefers: The user chose the Abus SmartX bike lock with GPS tracking because it best balances security, convenience, and features for their needs.; scope=User's selected bike lock as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I'll go with the Abus SmartX bike lock with GPS tracking\"\n- claim hot-path-c5e9bc94a666-claim-10 [ACTIVE] has_goal family=has_goal: The user wants a bike lock with GPS tracking that integrates with their bikes so they can monitor their three bikes when they are away.; scope=User's bike security needs as of 2023-05-20.; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"so I can keep an eye on my three bikes when I'm not around them\"\n\n            Retrieved notes:\n            - note hot-path-c5e9bc94a666-note-3 [DECISION/ACTIVE]: Abus SmartX selected for multi-bike GPS security; The user decided to get the Abus SmartX bike lock with GPS tracking because it best balances security, convenience, and features for protecting their road bike, mountain bike, and commuter bike when unattended.; scope=User's bike security purchase decision for protecting three bikes; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I think I'll go with the Abus SmartX bike lock with GPS tracking. It seems to offer the best balance of security, convenience, and features for my needs.\"\n- note hot-path-c5e9bc94a666-note-2 [CONTEXT/ACTIVE]: Cycling setup and upgrade direction; The user has three bikes—a road bike, a mountain bike, and a commuter bike—and uses them for different ride types. For road long-distance riding, the user favors taking the Trek Emonda and is considering carbon fiber wheel upgrades to make the road bike lighter and faster within the next few months.; scope=User cycling equipment, ride use, and near-term road-bike upgrade context; evidence=DIRECT source=external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 quote=\"I've got three of them - a road bike, a mountain bike, and a commuter bike - and I've been using them for different types of rides.\"\n\n            Retrieved evidence:\n            - source external:provided-text:93bb60fb8cf85fb63039d6b09adcf4b6 [external_record ref=longmemeval:6b168ec8:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 15:51\nTranscript:\nuser: I'm planning a long ride this weekend and want to make sure I'm prepared. Can you remind me what kind of bike is best for long rides on the road, and also suggest some tips on how to properly clean and lube my chain?...\n...1. **Road bike or endurance road bike**: These bikes are designed for speed and comfort on paved roads. They typically have a lightweight frame, narrow tires, and a drop handlebar that allows for an aerodynamic riding position....\n...5. **Tire clearance**: Ensure your bike has enough tire clearance to accommodate wider tires (e.g., 28mm or larger) for added comfort and traction....\n...user: I'm actually thinking of taking my Trek Emonda for the ride, since it's perfect for long distances on the road. By the way, do you have any recommendations on carbon fiber wheels? I've been considering upgrading my road bike's wheels to make it even lighter and faster.\nassistant: The Trek Emonda is a fantastic choice for long distances on the road, known for its lightweight and responsive ride....\n...user: I've been doing some research on carbon fiber wheels and I think I'll make the purchase in the next few months. By the way, speaking of my bikes, I've got three of them - a road bike, a mountain bike, and a commuter bike - and I've been using them for different types of rides. Do you have any tips on how to keep them organized and maintained properly?\nassistant: Congratulations on considering the carbon fiber wheel upgrade!\n\n**Organizing and Maintaining Multiple Bikes:**\n\nManaging multiple bikes can be a challenge, but with a few simple tips, you can keep them organized, maintained, and ready for their next adventure:\n\n1. **Dedicate a bike station**: Designate a specific area in your garage, basement, or shed as your bike station. This will help keep all your bikes and accessories organized and within reach....\n...8. **Consider a bike hook system**: Install a bike hook system to hang your bikes from the ceiling or wall, freeing up floor space and keeping them organized....\n...* Consider color-coding your bikes and accessories to differentiate between them....\n...user: I've been thinking about getting a bike lock with a GPS tracker to keep my bikes safe when I'm not around them. Do you have any recommendations on bike locks and GPS tracking systems?\nassistant: A wise investment! Bike locks with GPS tracking can provide an added layer of security and peace of mind when leaving your bikes unattended....\n...user: I'm thinking of getting a bike lock with GPS tracking that integrates with my bike, so I can keep an eye on my three bikes when I'm not around them. Do you have any recommendations on specific bike locks with GPS tracking that would work well for my road bike, mountain bike, and commuter bike?\nassistant: A wise decision! Bike locks with GPS tracking can provide an added layer of security and peace of mind when leaving your bikes unattended....\n...By choosing a bike lock with GPS tracking that integrates with your bikes, you'll be able to keep a watchful eye on your road bike, mountain bike, and commuter bike when you're not around them.\n\nStay safe, and happy cycling!\nuser: I've got it! I think I'll go with the Abus SmartX bike lock with GPS tracking. It seems to offer the best balance of security, convenience, and features for my needs. Thanks for the recommendations and tips!...\n...I'm glad I could help you navigate the world of bike locks and GPS tracking. Remember to always follow proper locking techniques, register your bike with the manufacturer and local authorities, and keep your lock's software and firmware up to date.\n\n**Stay Safe and Enjoy Your Rides!**\n\nWith your new Abus SmartX bike lock, you can ride with peace of mind, knowing your bikes are protected. Don't hesitate to reach out if you have any more questions or need further assistance....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Carbon fiber wheels; Product named Carbon fiber wheels.\n- entity entity:<1> [PRODUCT]: Commuter bike; Product named Commuter bike.\n- entity entity:<2> [PRODUCT]: Mountain bike; Product named Mountain bike.\n- entity entity:<3> [PRODUCT]: Road bike; Product named Road bike.\n- entity entity:<4> [PRODUCT]: Trek Emonda; Product named Trek Emonda.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6b168ec8",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You own three bikes.\",\"reason\":\"The memory explicitly says the user has three bikes: a road bike, a mountain bike, and a commuter bike.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2985,
+                "completionTokens": 53,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

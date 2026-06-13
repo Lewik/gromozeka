@@ -707,6 +707,41 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun profileProjectionUsesStableOrderingForEqualRankedFacts() = runBlocking {
+        val laterClaim = claim(
+            id = "claim-b",
+            normalizedText = "The user has been experimenting with a French press.",
+            confidence = 0.95,
+            importance = 6,
+        )
+        val earlierClaim = claim(
+            id = "claim-a",
+            normalizedText = "The user has signed up for a coffee subscription service.",
+            confidence = 0.95,
+            importance = 6,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source()),
+                entities = listOf(entity()),
+                claims = listOf(laterClaim, earlierClaim),
+            )
+        )
+
+        val result = ProjectionMemoryProfileUpdater(store).updateNamespaceProfiles(
+            namespace = TEST_NAMESPACE,
+            logSubject = "test=stable_profile_order",
+            appliedBatch = MemoryUpdateBatch(claims = listOf(laterClaim, earlierClaim)),
+            completedAt = NOW,
+            force = true,
+        )
+
+        val profileText = result.profiles.single().profileText
+
+        assertTrue(profileText.indexOf("coffee subscription service") < profileText.indexOf("French press"))
+    }
+
+    @Test
     fun directWriteMarksNotesSupportedBySupersededClaimsAsStaleEvenWhenNotesWereNotRetrieved() = runBlocking {
         val obsidian = entity(
             id = MemoryEntity.Id("entity-obsidian"),

@@ -163,7 +163,7 @@ class InMemoryMemoryStore(
 
     override suspend fun findSourcesByIds(sourceIds: List<MemorySource.Id>): List<MemorySource> {
         val ids = sourceIds.toSet()
-        return sources.filter { it.id in ids }
+        return sources.filter { it.id in ids }.sortedBy { it.id.value }
     }
 
     override suspend fun findTypedMemoryByEvidenceSourceIds(
@@ -199,15 +199,19 @@ class InMemoryMemoryStore(
         return buildList {
             (directClaims + replacementClaims)
                 .distinctBy { it.id }
+                .sortedBy { it.id.value }
                 .mapTo(this) { MemoryStore.SearchHit.ClaimHit(it, score = 1.0) }
             (directNotes + replacementNotes)
                 .distinctBy { it.id }
+                .sortedBy { it.id.value }
                 .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 1.0) }
             actionItems
                 .filter { it.namespace == namespace && it.archivedAt == null && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds } }
+                .sortedBy { it.id.value }
                 .mapTo(this) { MemoryStore.SearchHit.ActionItemHit(it, score = 1.0) }
             episodes
                 .filter { it.namespace == namespace && it.archivedAt == null && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds } }
+                .sortedBy { it.id.value }
                 .mapTo(this) { MemoryStore.SearchHit.EpisodeHit(it, score = 1.0) }
         }.distinctBy { it.toMemoryStoreItemRef() }
     }
@@ -239,21 +243,22 @@ class InMemoryMemoryStore(
         runs.firstOrNull { it.id == runId }
 
     override suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun> =
-        runs.filter { it.parentRunId == parentRunId }
+        runs.filter { it.parentRunId == parentRunId }.sortedBy { it.id.value }
 
     override suspend fun findProfile(
         namespace: MemoryNamespace,
         ownerEntityId: MemoryEntity.Id?,
     ): MemoryProfile? {
-        return profiles.firstOrNull {
-            it.namespace == namespace && (ownerEntityId == null || it.ownerEntityId == ownerEntityId)
-        }
+        return profiles
+            .filter { it.namespace == namespace && (ownerEntityId == null || it.ownerEntityId == ownerEntityId) }
+            .sortedWith(compareByDescending<MemoryProfile> { it.updatedAt }.thenBy { it.id.value })
+            .firstOrNull()
     }
 
     override suspend fun findConversationSources(conversationId: Conversation.Id): List<MemorySource> {
-        return sources.filter {
-            it is MemorySource.ChatTurn && it.conversationId == conversationId
-        }
+        return sources
+            .filter { it is MemorySource.ChatTurn && it.conversationId == conversationId }
+            .sortedBy { it.id.value }
     }
 
     override suspend fun touchReferences(
@@ -292,14 +297,14 @@ class InMemoryMemoryStore(
             predicateDefinitions = predicateDefinitions
                 .filter { it.namespace == namespace }
                 .activeDefinitions(),
-            sources = sources.filter { it.namespace == namespace && (includeArchived || it.deletedAt == null) },
-            runs = runs.filter { it.namespace == namespace },
-            entities = entities.filter { it.namespace == namespace },
-            claims = claims.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-            notes = notes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-            actionItems = actionItems.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-            profiles = profiles.filter { it.namespace == namespace },
-            episodes = episodes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
+            sources = sources.filter { it.namespace == namespace && (includeArchived || it.deletedAt == null) }.sortedBy { it.id.value },
+            runs = runs.filter { it.namespace == namespace }.sortedBy { it.id.value },
+            entities = entities.filter { it.namespace == namespace }.sortedBy { it.id.value },
+            claims = claims.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) }.sortedBy { it.id.value },
+            notes = notes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) }.sortedBy { it.id.value },
+            actionItems = actionItems.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) }.sortedBy { it.id.value },
+            profiles = profiles.filter { it.namespace == namespace }.sortedBy { it.id.value },
+            episodes = episodes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) }.sortedBy { it.id.value },
         )
 
     private fun <T> MutableList<T>.upsertAll(

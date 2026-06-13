@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "07e06fcbf9839df5a7122f30a6b606028ee13a79d4dcea42f0495bf884431459",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning my trip to Speyer again and I wanted to confirm, what's the phone number of the Speyer tourism board that you provided me earlier?\n\n                                Question date:\n                                2023/05/29 (Mon) 10:13\n\n                                Noisy expected-answer label:\n                                +49 (0) 62 32 / 14 23 - 0\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:71a3fd6b\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0194e87c6aef-claim-3 [ACTIVE] contact_details family=contact_details: Speyer Tourismus Marketing GmbH can be contacted at Maximilianstraße 13, 67346 Speyer, by phone at +49 (0) 62 32 / 14 23 - 0, by email at info@speyer.de, and via https://www.speyer.de/.; scope=Contact details for Speyer Tourismus Marketing GmbH as provided in the imported past chat session.; evidence=IMPORTED source=external:provided-text:ffc0aa4496473484c1df0cf0c5eccd20 quote=\"Speyer Tourismus Marketing GmbH\nMaximilianstraße 13\n67346 Speyer\nPhone: +49 (0) 62 32 / 14 23 - 0\nEmail: info@speyer.de\nWebsite: https://www.speyer.de/\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:ffc0aa4496473484c1df0cf0c5eccd20 [external_record ref=longmemeval:71a3fd6b:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 05:24\nTranscript:\nuser: Are there any upcoming sporting events in Speyer that visitors can attend or participate in?\nassistant: I do not have access to real-time information about events or functions happening in speyer. however, visitors can check local event calendars, sports club websites or consult with the tourism board of speyer to know about any upcoming sporting events. additionally, major sporting events in germany such as the bundesliga, triathlon events, or marathon races might feature speyer as a destination, and visitors can participate in those.\nuser: Can you provide me with the contact details of the local tourism board of Speyer?\nassistant: Certainly! You can contact the tourism board of Speyer using the following details:\n\nSpeyer Tourismus Marketing GmbH\nMaximilianstraße 13\n67346 Speyer\nPhone: +49 (0) 62 32 / 14 23 - 0\nEmail: info@speyer.de\nWebsite: https://www.speyer.de/\nuser: Thanks for providing me with the contact details of the tourism board of Speyer. Can you tell me how I can get to Speyer from Frankfurt?\nassistant: Yes, there are several ways to get to Speyer from Frankfurt. Here are some options:\n\n1. By car: Speyer is about 1 hour and 10 minutes drive from Frankfurt. You can rent a car at Frankfurt airport or in the city and drive to Speyer on the A67 and A61 highways.\n\n2. By train: The train is a convenient way to get to Speyer from Frankfurt. You can take a train from Frankfurt's main train station Frankfurt am Main Hauptbahnhof to Speyer Hauptbahnhof. The journey takes around 1 hour and 20 minutes, and there are several direct and indirect trains available throughout the day.\n\n3. By bus: You can also take a bus from Frankfurt to Speyer. There are several bus companies that operate between the two cities, and the journey takes around 1 hour and 30 minutes.\n\n4. By taxi: You can take a taxi from Frankfurt Airport or the city center to Speyer. The journey takes around 1 hour and can be quite expensive.\n\nI hope this information helps you!\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Speyer Tourismus Marketing GmbH; Organization named Speyer Tourismus Marketing GmbH.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "71a3fd6b",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning my trip to Speyer again and I wanted to confirm, what's the phone number of the Speyer tourism board that you provided me earlier?\n\n                                Question date:\n                                2023/05/29 (Mon) 10:13\n\n                                Noisy expected-answer label:\n                                +49 (0) 62 32 / 14 23 - 0\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:71a3fd6b\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0194e87c6aef-claim-3 [ACTIVE] contact_details family=contact_details: Speyer Tourismus Marketing GmbH can be contacted at Maximilianstraße 13, 67346 Speyer, by phone at +49 (0) 62 32 / 14 23 - 0, by email at info@speyer.de, and via https://www.speyer.de/.; scope=Contact details for Speyer Tourismus Marketing GmbH as provided in the imported past chat session.; evidence=IMPORTED source=external:provided-text:ffc0aa4496473484c1df0cf0c5eccd20 quote=\"Speyer Tourismus Marketing GmbH\nMaximilianstraße 13\n67346 Speyer\nPhone: +49 (0) 62 32 / 14 23 - 0\nEmail: info@speyer.de\nWebsite: https://www.speyer.de/\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:ffc0aa4496473484c1df0cf0c5eccd20 [external_record ref=longmemeval:71a3fd6b:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 05:24\nTranscript:\nuser: Are there any upcoming sporting events in Speyer that visitors can attend or participate in?\nassistant: I do not have access to real-time information about events or functions happening in speyer. however, visitors can check local event calendars, sports club websites or consult with the tourism board of speyer to know about any upcoming sporting events. additionally, major sporting events in germany such as the bundesliga, triathlon events, or marathon races might feature speyer as a destination, and visitors can participate in those.\nuser: Can you provide me with the contact details of the local tourism board of Speyer?\nassistant: Certainly! You can contact the tourism board of Speyer using the following details:\n\nSpeyer Tourismus Marketing GmbH\nMaximilianstraße 13\n67346 Speyer\nPhone: +49 (0) 62 32 / 14 23 - 0\nEmail: info@speyer.de\nWebsite: https://www.speyer.de/\nuser: Thanks for providing me with the contact details of the tourism board of Speyer. Can you tell me how I can get to Speyer from Frankfurt?\nassistant: Yes, there are several ways to get to Speyer from Frankfurt. Here are some options:\n\n1. By car: Speyer is about 1 hour and 10 minutes drive from Frankfurt. You can rent a car at Frankfurt airport or in the city and drive to Speyer on the A67 and A61 highways.\n\n2. By train: The train is a convenient way to get to Speyer from Frankfurt. You can take a train from Frankfurt's main train station Frankfurt am Main Hauptbahnhof to Speyer Hauptbahnhof. The journey takes around 1 hour and 20 minutes, and there are several direct and indirect trains available throughout the day.\n\n3. By bus: You can also take a bus from Frankfurt to Speyer. There are several bus companies that operate between the two cities, and the journey takes around 1 hour and 30 minutes.\n\n4. By taxi: You can take a taxi from Frankfurt Airport or the city center to Speyer. The journey takes around 1 hour and can be quite expensive.\n\nI hope this information helps you!\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Speyer Tourismus Marketing GmbH; Organization named Speyer Tourismus Marketing GmbH.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "71a3fd6b",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"+49 (0) 62 32 / 14 23 - 0\",\"reason\":\"The retrieved claim and transcript explicitly list the Speyer tourism board phone number as +49 (0) 62 32 / 14 23 - 0.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1666,
+                "completionTokens": 99,
+                "thinkingTokens": 22,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

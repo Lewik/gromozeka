@@ -367,7 +367,7 @@ class PostgresMemoryStore(
 
     override suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun> =
         dataSource.connection.use { connection ->
-            connection.prepareStatement("SELECT payload::text FROM memory_runs WHERE parent_run_id = ?").use { statement ->
+            connection.prepareStatement("SELECT payload::text FROM memory_runs WHERE parent_run_id = ? ORDER BY created_at ASC, id ASC").use { statement ->
                 statement.setString(1, parentRunId.value)
                 statement.executeQuery().use { resultSet ->
                     buildList {
@@ -385,9 +385,9 @@ class PostgresMemoryStore(
     ): MemoryProfile? =
         dataSource.connection.use { connection ->
             val sql = if (ownerEntityId == null) {
-                "SELECT payload::text FROM memory_profiles WHERE namespace = ? ORDER BY updated_at DESC LIMIT 1"
+                "SELECT payload::text FROM memory_profiles WHERE namespace = ? ORDER BY updated_at DESC, id ASC LIMIT 1"
             } else {
-                "SELECT payload::text FROM memory_profiles WHERE namespace = ? AND owner_entity_id = ? ORDER BY updated_at DESC LIMIT 1"
+                "SELECT payload::text FROM memory_profiles WHERE namespace = ? AND owner_entity_id = ? ORDER BY updated_at DESC, id ASC LIMIT 1"
             }
             connection.prepareStatement(sql).use { statement ->
                 statement.setString(1, namespace.value)
@@ -400,7 +400,7 @@ class PostgresMemoryStore(
 
     override suspend fun findConversationSources(conversationId: Conversation.Id): List<MemorySource> =
         dataSource.connection.use { connection ->
-            connection.prepareStatement("SELECT payload::text FROM memory_sources WHERE conversation_id = ?").use { statement ->
+            connection.prepareStatement("SELECT payload::text FROM memory_sources WHERE conversation_id = ? ORDER BY created_at ASC, id ASC").use { statement ->
                 statement.setString(1, conversationId.value)
                 statement.executeQuery().use { resultSet ->
                     buildList {
@@ -784,9 +784,9 @@ class PostgresMemoryStore(
             .takeIf { conditions.isNotEmpty() }
             .orEmpty()
         val orderSql = if (request.query.isBlank()) {
-            "ORDER BY ${table.orderColumn} DESC, search_text ASC"
+            "ORDER BY ${table.orderColumn} DESC, search_text ASC, id ASC"
         } else {
-            "ORDER BY GREATEST(similarity(search_text, ?), CASE WHEN search_text ILIKE ? ESCAPE '\\' THEN 1.0 ELSE 0.0 END) DESC, search_text ASC"
+            "ORDER BY GREATEST(similarity(search_text, ?), CASE WHEN search_text ILIKE ? ESCAPE '\\' THEN 1.0 ELSE 0.0 END) DESC, search_text ASC, id ASC"
         }
         val sql = """
             SELECT id, payload::text
@@ -900,7 +900,7 @@ class PostgresMemoryStore(
 
     private fun Connection.selectPayloadsByIds(tableName: String, ids: List<String>): List<String> {
         val placeholders = ids.joinToString(",") { "?" }
-        return prepareStatement("SELECT payload::text FROM $tableName WHERE id IN ($placeholders)").use { statement ->
+        return prepareStatement("SELECT payload::text FROM $tableName WHERE id IN ($placeholders) ORDER BY id ASC").use { statement ->
             ids.forEachIndexed { index, id -> statement.setString(index + 1, id) }
             statement.executeQuery().use { resultSet ->
                 buildList {
@@ -915,7 +915,7 @@ class PostgresMemoryStore(
     private fun Connection.selectSearchPayloadsByIds(table: MemorySearchTable, ids: List<String>): List<MemorySearchPayload> {
         if (ids.isEmpty()) return emptyList()
         val placeholders = ids.joinToString(",") { "?" }
-        return prepareStatement("SELECT id, payload::text FROM ${table.tableName} WHERE id IN ($placeholders)").use { statement ->
+        return prepareStatement("SELECT id, payload::text FROM ${table.tableName} WHERE id IN ($placeholders) ORDER BY id ASC").use { statement ->
             ids.forEachIndexed { index, id -> statement.setString(index + 1, id) }
             statement.executeQuery().use { resultSet ->
                 buildList {
@@ -929,9 +929,9 @@ class PostgresMemoryStore(
 
     private fun Connection.selectPayloads(tableName: String, namespace: MemoryNamespace?): List<String> {
         val sql = if (namespace == null) {
-            "SELECT payload::text FROM $tableName"
+            "SELECT payload::text FROM $tableName ORDER BY id ASC"
         } else {
-            "SELECT payload::text FROM $tableName WHERE namespace = ?"
+            "SELECT payload::text FROM $tableName WHERE namespace = ? ORDER BY id ASC"
         }
         return prepareStatement(sql).use { statement ->
             namespace?.let { statement.setString(1, it.value) }
@@ -987,6 +987,7 @@ class PostgresMemoryStore(
             WHERE namespace = ?
               AND status = ?
               AND (${conditions.sql})
+            ORDER BY id ASC
         """.trimIndent()
         return prepareStatement(sql).use { statement ->
             statement.setString(1, namespace.value)
@@ -1014,6 +1015,7 @@ class PostgresMemoryStore(
             WHERE namespace = ?
               AND status = ?
               AND (${condition.sql})
+            ORDER BY id ASC
         """.trimIndent()
         return prepareStatement(sql).use { statement ->
             statement.setString(1, namespace.value)

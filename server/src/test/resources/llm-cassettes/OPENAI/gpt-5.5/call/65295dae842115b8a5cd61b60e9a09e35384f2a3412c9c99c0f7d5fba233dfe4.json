@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "65295dae842115b8a5cd61b60e9a09e35384f2a3412c9c99c0f7d5fba233dfe4",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been feeling nostalgic lately. Do you think it would be a good idea to attend my high school reunion?\n\n                                Question date:\n                                2023/05/27 (Sat) 22:13\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that draw upon their personal experiences and memories, specifically their positive high school experiences such as being part of the debate team and taking advanced placement courses. They would prefer suggestions that highlight the potential benefits of attending the reunion, such as reconnecting with old friends and revisiting favorite subjects like history and economics. The user might not prefer generic or vague responses that do not take into account their individual experiences and interests.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:d6233ab6\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-0e6019885ab0-note-4 [CONTEXT/ACTIVE]: Economics major background connected to debate and AP economics; The user is preparing to become an Economics major and connects this path to positive high school experiences, including debate team participation and advanced placement economics coursework.; scope=User's academic background and motivation around Economics; evidence=DIRECT source=external:provided-text:4f2969f30f787700238994ad94710f1e quote=\"I still remember the happy high school experiences such as being part of the debate team and taking advanced placement courses in economics.\"\n\n            Retrieved evidence:\n            - source external:provided-text:4f2969f30f787700238994ad94710f1e [external_record ref=longmemeval:d6233ab6:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 23:57\nTranscript:\nuser: I'm considering majoring in Economics. Can you recommend some online resources or courses to help me prepare for the program?...\n...user: I still remember the happy high school experiences such as being part of the debate team and taking advanced placement courses in economics. Now, I am surprised that I will become a Economics major so soon. Speaking of future, what are the average salaries for data scientists in different industries, and are there any specific industries that are more in demand for data scientists?\nassistant: It's great that you have such positive memories from high school! Regarding data scientists, salaries can vary significantly by industry. Here’s a general overview of average salaries for data scientists across different industries:...\n...As for demand, industries like technology, finance, and healthcare are particularly strong in hiring data scientists due to their heavy reliance on data analysis for decision-making and innovation. The rapid growth of data-driven technologies also keeps these fields in high demand for skilled professionals.\nuser: I'm still weighing the pros and cons of pursuing a Master's degree. How can I assess whether I have a strong enough foundation in math and statistics to succeed in a Data Science program?...\n...user: I'm not sure if I'm ready to commit to a full Master's program yet. I am asking because a lot of old high school friends plan to work after the graduate from university. Can you recommend some online courses or certifications that can help me build my skills in data science and get a feel for the field?...\n...user: I've already taken some online certification courses in Python programming and data visualization, and I've been reading books on machine learning and artificial intelligence. I'd like to explore more courses or certifications that can help me build my skills in data science, specifically in machine learning and deep learning. Can you recommend some courses or certifications that can help me achieve this goal?...\n...2. **TensorFlow and PyTorch Tutorials**: Complete tutorials on TensorFlow and PyTorch to gain hands-on experience with popular deep learning frameworks....\n...1. **Practice**: Practice is key to mastering machine learning and deep learning concepts. Work on projects and participate in Kaggle competitions to gain hands-on experience....\n...user: I'd like to explore more courses or certifications that can help me build my skills in data science, specifically in machine learning and deep learning. I've already taken some online certification courses in Python programming and data visualization, and I've been reading books on machine learning and artificial intelligence. Can you recommend some courses or certifications that can help me achieve this goal?...\n...2. **TensorFlow and PyTorch Tutorials**: Complete tutorials on TensorFlow and PyTorch to gain hands-on experience with popular deep learning frameworks....\n...1. **Practice**: Practice is key to mastering machine learning and deep learning concepts. Work on projects and participate in Kaggle competitions to gain hands-on experience....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Economics; Concept named Economics.\n- entity entity:<1> [CONCEPT]: High school debate team; Concept named High school debate team.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "d6233ab6",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been feeling nostalgic lately. Do you think it would be a good idea to attend my high school reunion?\n\n                                Question date:\n                                2023/05/27 (Sat) 22:13\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that draw upon their personal experiences and memories, specifically their positive high school experiences such as being part of the debate team and taking advanced placement courses. They would prefer suggestions that highlight the potential benefits of attending the reunion, such as reconnecting with old friends and revisiting favorite subjects like history and economics. The user might not prefer generic or vague responses that do not take into account their individual experiences and interests.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:d6233ab6\n            Answer mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-0e6019885ab0-note-4 [CONTEXT/ACTIVE]: Economics major background connected to debate and AP economics; The user is preparing to become an Economics major and connects this path to positive high school experiences, including debate team participation and advanced placement economics coursework.; scope=User's academic background and motivation around Economics; evidence=DIRECT source=external:provided-text:4f2969f30f787700238994ad94710f1e quote=\"I still remember the happy high school experiences such as being part of the debate team and taking advanced placement courses in economics.\"\n\n            Retrieved evidence:\n            - source external:provided-text:4f2969f30f787700238994ad94710f1e [external_record ref=longmemeval:d6233ab6:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 23:57\nTranscript:\nuser: I'm considering majoring in Economics. Can you recommend some online resources or courses to help me prepare for the program?...\n...user: I still remember the happy high school experiences such as being part of the debate team and taking advanced placement courses in economics. Now, I am surprised that I will become a Economics major so soon. Speaking of future, what are the average salaries for data scientists in different industries, and are there any specific industries that are more in demand for data scientists?\nassistant: It's great that you have such positive memories from high school! Regarding data scientists, salaries can vary significantly by industry. Here’s a general overview of average salaries for data scientists across different industries:...\n...As for demand, industries like technology, finance, and healthcare are particularly strong in hiring data scientists due to their heavy reliance on data analysis for decision-making and innovation. The rapid growth of data-driven technologies also keeps these fields in high demand for skilled professionals.\nuser: I'm still weighing the pros and cons of pursuing a Master's degree. How can I assess whether I have a strong enough foundation in math and statistics to succeed in a Data Science program?...\n...user: I'm not sure if I'm ready to commit to a full Master's program yet. I am asking because a lot of old high school friends plan to work after the graduate from university. Can you recommend some online courses or certifications that can help me build my skills in data science and get a feel for the field?...\n...user: I've already taken some online certification courses in Python programming and data visualization, and I've been reading books on machine learning and artificial intelligence. I'd like to explore more courses or certifications that can help me build my skills in data science, specifically in machine learning and deep learning. Can you recommend some courses or certifications that can help me achieve this goal?...\n...2. **TensorFlow and PyTorch Tutorials**: Complete tutorials on TensorFlow and PyTorch to gain hands-on experience with popular deep learning frameworks....\n...1. **Practice**: Practice is key to mastering machine learning and deep learning concepts. Work on projects and participate in Kaggle competitions to gain hands-on experience....\n...user: I'd like to explore more courses or certifications that can help me build my skills in data science, specifically in machine learning and deep learning. I've already taken some online certification courses in Python programming and data visualization, and I've been reading books on machine learning and artificial intelligence. Can you recommend some courses or certifications that can help me achieve this goal?...\n...2. **TensorFlow and PyTorch Tutorials**: Complete tutorials on TensorFlow and PyTorch to gain hands-on experience with popular deep learning frameworks....\n...1. **Practice**: Practice is key to mastering machine learning and deep learning concepts. Work on projects and participate in Kaggle competitions to gain hands-on experience....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Economics; Concept named Economics.\n- entity entity:<1> [CONCEPT]: High school debate team; Concept named High school debate team.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "d6233ab6",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Yes, attending could be a good idea because the user has happy high school memories, including debate team participation and AP economics, and may value reconnecting with old high school friends.\",\"reason\":\"The retrieved context directly supports the user's positive high school associations and mentions old high school friends, which is enough for the core personalized recommendation.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1813,
+                "completionTokens": 182,
+                "thinkingTokens": 92,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

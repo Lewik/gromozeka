@@ -123,19 +123,31 @@ class ProjectionMemoryProfileUpdater(
             addAll(profileTasks.mapNotNull { it.ownerEntityId })
         }
 
-        return ownerIds.mapNotNull { ownerId ->
+        return ownerIds.sortedBy { it.value }.mapNotNull { ownerId ->
             val owner = entitiesById[ownerId]
             val claims = profileClaims
                 .filter { it.subjectEntityId == ownerId }
-                .sortedWith(compareByDescending<MemoryClaim> { it.importance }.thenByDescending { it.updatedAt })
+                .sortedWith(
+                    compareByDescending<MemoryClaim> { it.importance }
+                        .thenByDescending { it.updatedAt }
+                        .thenBy { it.id.value },
+                )
                 .take(MAX_PROFILE_CLAIMS)
             val notes = profileNotes
                 .filter { it.profileOwnerEntityId() == ownerId }
-                .sortedWith(compareByDescending<MemoryNote> { it.importance }.thenByDescending { it.updatedAt })
+                .sortedWith(
+                    compareByDescending<MemoryNote> { it.importance }
+                        .thenByDescending { it.updatedAt }
+                        .thenBy { it.id.value },
+                )
                 .take(MAX_PROFILE_NOTES)
             val actionItems = profileTasks
                 .filter { it.ownerEntityId == ownerId }
-                .sortedWith(compareByDescending<MemoryActionItem> { it.priority.profileWeight() }.thenByDescending { it.updatedAt })
+                .sortedWith(
+                    compareByDescending<MemoryActionItem> { it.priority.profileWeight() }
+                        .thenByDescending { it.updatedAt }
+                        .thenBy { it.id.value },
+                )
                 .take(MAX_PROFILE_ACTION_ITEMS)
 
             buildProfile(

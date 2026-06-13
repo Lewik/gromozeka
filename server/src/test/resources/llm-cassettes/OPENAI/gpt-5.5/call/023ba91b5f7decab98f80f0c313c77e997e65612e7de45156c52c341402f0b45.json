@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "023ba91b5f7decab98f80f0c313c77e997e65612e7de45156c52c341402f0b45",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:d682f1a2\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable user context and preferences around healthy cooking, meal prep, Fresh Fusion, quinoa/black bean salad, pesto pasta ingredients, and breakfast burritos, plus reusable recipe/reheating guidance worth storing as a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / me (user in transcript); action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript require the stable USER entity; no existing candidates are provided.\n- mention=Fresh Fusion; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Fresh Fusion; reason=Concrete named food delivery service with no existing candidate.\n- mention=Quinoa and Black Bean Salad; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Quinoa and Black Bean Salad; reason=Concrete reusable recipe idea selected by the user; no existing candidate.\n- mention=One-Pot Pesto Pasta with Cherry Tomatoes and Spinach; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=One-Pot Pesto Pasta with Cherry Tomatoes and Spinach; reason=Concrete reusable recipe discussed as a dinner option; no existing candidate.\n- mention=Breakfast Burritos; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Breakfast Burritos; reason=Concrete reusable meal-prep food concept repeatedly discussed; no existing candidate.\n- mention=current project; action=CREATE_NEW; id=entity:<5>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Fresh Fusion|Quinoa and Black Bean Salad|One-Pot Pesto Pasta with Cherry Tomatoes and Spinach|Breakfast Burritos\n        text_queries=healthy lunch recipe ideas Fresh Fusion pre-made meals quinoa black bean salad|quick healthy dinner pesto pasta cherry tomatoes spinach ingredients at home|weekend meal prep breakfast burritos frozen reheating fillings toppings\n        predicate_hints=prefers|has_goal|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:99f26d9268929ece2a58dd627fec302f] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:d682f1a2:session:1; title=LongMemEval d682f1a2 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 21:05\nTranscript:\nuser: I'm looking for some healthy recipe ideas for lunch. Do you have any suggestions? By the way, I've been really busy lately and have been relying on food delivery services, like this new one I found called Fresh Fusion - they have some great pre-made meals.\nassistant: I'm glad you're looking to get back to healthy cooking! While food delivery services can be convenient, it's great that you're wanting to take control of your nutrition again.\n\nI'd be happy to help you with some healthy lunch recipe ideas. Here are a few suggestions:\n\n**Salads**\n\n1. Grilled Chicken and Avocado Salad: Top mixed greens with grilled chicken, sliced avocado, cherry tomatoes, and a citrus vinaigrette.\n2. Quinoa and Black Bean Salad: Mix cooked quinoa with black beans, diced veggies (bell peppers, onions, tomatoes), and a drizzle of balsamic vinaigrette.\n\n**Sandwiches and Wraps**\n\n1. Turkey and Avocado Wrap: Spread hummus on a whole-grain wrap, layer with sliced turkey breast, avocado, lettuce, and tomato.\n2. Grilled Chicken and Veggie Sandwich: Grill chicken breast and serve on whole-grain bread with roasted veggies (zucchini, bell peppers, onions) and a side of sweet potato fries.\n\n**Soups**\n\n1. Lentil Soup: Simmer lentils with diced veggies (carrots, celery, onions) and spices. Serve with a side of whole-grain bread or a green salad.\n2. Tomato and Spinach Soup: Blend canned tomatoes with fresh spinach, garlic, and low-sodium chicken broth. Serve with a side of whole-grain crackers or crusty bread.\n\n**Global Inspirations**\n\n1. Korean-Style Chicken and Veggies: Marinate chicken breast in a Korean-inspired sauce (gochujang, soy sauce, honey) and grill with roasted veggies (broccoli, carrots, bell peppers). Serve with brown rice or cauliflower rice.\n2. Indian-Style Lentil and Veggie Bowl: Cook lentils and mix with sautéed veggies (onions, bell peppers, tomatoes) and a blend of Indian spices. Serve over brown rice or with whole-grain naan.\n\n**Easy and Quick Options**\n\n1. Overnight Oats: Mix rolled oats, milk, and your choice of nuts, seeds, or fruit in a jar. Refrigerate overnight and enjoy in the morning.\n2. Quesadilla: Fill a whole-grain tortilla with shredded veggies (zucchini, carrots, beans), cheese, and beans. Cook in a pan until crispy and serve with salsa or guacamole.\n\nFeel free to get creative and modify these recipes to suit your taste preferences and dietary needs.\n\nAs for Fresh Fusion, it's great that you've found a convenient option that works for you. Just be mindful of the nutritional content and ingredient quality of the meals they offer. Try to balance your reliance on delivery services with home-cooked meals to ensure you're getting the nutrients your body needs.\nuser: I like the Quinoa and Black Bean Salad idea, as I actually made something similar recently. Do you have any recipe suggestions for a healthy dinner option that's quick to make and doesn't require a lot of ingredients?\nassistant: Quinoa and Black Bean Salad is a nutritious and delicious option.\n\nFor a quick and easy healthy dinner, I've got just the thing:\n\n**One-Pot Pesto Pasta with Cherry Tomatoes and Spinach**\n\n**Prep Time:** 10 minutes\n**Cook Time:** 15 minutes\n**Total Time:** 25 minutes\n\n**Ingredients:**\n\n* 1 cup whole-grain pasta (e.g., spaghetti or linguine)\n* 1/4 cup pesto sauce (homemade or store-bought)\n* 1 cup cherry tomatoes, halved\n* 1 cup fresh spinach leaves\n* 1/2 cup grated mozzarella cheese (optional)\n* Salt and pepper to taste\n* 1 tablespoon olive oil\n\n**Instructions:**\n\n1. Bring a large pot of salted water to a boil. Cook the pasta according to package instructions until al dente.\n2. In the same pot, add the pesto sauce, cherry tomatoes, and spinach. Stir to combine.\n3. Cook for an additional 2-3 minutes, until the spinach has wilted and the tomatoes are tender.\n4. Drain the pasta and return it to the pot. Toss everything together until the pasta is well coated with the pesto sauce and veggies.\n5. Season with salt, pepper, and a drizzle of olive oil.\n6. If using mozzarella, sprinkle on top and serve hot.\n\n**Why it's healthy:**\n\n* Whole-grain pasta provides fiber and complex carbs.\n* Pesto sauce is rich in healthy fats from olive oil and antioxidants from basil.\n* Cherry tomatoes are packed with vitamin C and lycopene.\n* Spinach adds a boost of iron and vitamins A and K.\n\nThis recipe is quick, easy, and requires minimal ingredients. You can also customize it to your taste by adding protein sources like grilled chicken, shrimp, or tofu.\n\nHow does that sound?\nuser: That sounds like a great option. I actually have all the ingredients at home, so I'll give it a try tonight. By the way, do you have any recommendations for healthy breakfast options that can be meal-prepped on the weekends?\nassistant: Perfect! I'm glad you have all the ingredients on hand.\n\nNow, about healthy breakfast options that can be meal-prepped on the weekends... **absolutely!**\n\nHere are some delicious and nutritious breakfast ideas that can be prepared in advance:\n\n**1. Overnight Oats**\n\n* Mix rolled oats, milk, and your choice of nuts, seeds, or fruit in a jar or container. Refrigerate overnight and enjoy in the morning.\n\n**2. Breakfast Burritos**\n\n* Scramble eggs, cook sausage or bacon, and add black beans, cheese, and veggies. Wrap individual burritos and refrigerate or freeze for up to 3 days.\n\n**3. Muffin Tin Frittatas**\n\n* Whisk eggs, milk, and diced veggies, then pour into muffin tins. Bake until set, then refrigerate or freeze for up to 5 days.\n\n**4. Smoothie Packs**\n\n* Prepare individual smoothie packs by freezing your favorite fruits, veggies, and milk or yogurt in small bags. In the morning, simply add to a blender and blend.\n\n**5. Avocado Toast**\n\n* Toast whole-grain bread, mash avocado, and sprinkle with salt and pepper. Add eggs, tomatoes, or spinach for extra protein and flavor. Prepare the avocado mixture on the weekend and store in the fridge for up to 3 days.\n\n**6. Quiche**\n\n* Prepare a quiche on the weekend and slice into individual portions. Refrigerate or freeze for up to 5 days.\n\n**7. Chia Seed Pudding**\n\n* Mix chia seeds with milk and let it sit in the refrigerator overnight. Top with fruit and nuts in the morning.\n\n**8. Breakfast Casseroles**\n\n* Prepare a breakfast casserole on the weekend and refrigerate or freeze for up to 5 days. Simply reheat in the morning.\n\nThese breakfast ideas are perfect for meal prep, as they can be made in advance and refrigerated or frozen for later use. Just remember to label and date your containers so you know what you have and how long it's been stored.\n\nWhich one of these options sounds appealing to you?\nuser: I think I'll try the Breakfast Burritos. I've been wanting to meal prep more on the weekends, and this seems like a convenient and healthy option.\nassistant: Breakfast Burritos are a fantastic option for meal prep, and they're so versatile. You can customize them with your favorite ingredients and dietary preferences.\n\nHere are some tips to help you meal prep Breakfast Burritos like a pro:\n\n**Tips for Meal Prepping Breakfast Burritos:**\n\n1. **Batch Cooking:** Cook your scrambled eggs, sausage or bacon, and black beans in bulk on the weekend. This will save you time during the week when assembling the burritos.\n2. **Use a Variety of Fillings:** Experiment with different ingredients like diced bell peppers, onions, mushrooms, and cheese to add flavor and nutrients to your burritos.\n3. **Choose Whole-Grain Tortillas:** Opt for whole-grain tortillas to increase the fiber content of your burritos.\n4. **Portion Control:** Divide your fillings into individual portions to make assembly easier and to prevent overeating.\n5. **Freeze for Later:** Assemble the burritos, wrap them individually in plastic wrap or aluminum foil, and freeze for up to 3 months. Simply thaw and reheat when you're ready.\n6. **Reheat Safely:** Reheat your burritos in the microwave or oven until they're steaming hot and cooked through.\n7. **Get Creative:** Don't be afraid to try new ingredients and flavor combinations to keep your burritos interesting and exciting.\n\nBy following these tips, you'll be able to enjoy healthy, convenient, and delicious Breakfast Burritos all week long.\n\nIf you have any more questions or need further guidance, feel free to ask. Happy meal prepping!\nuser: What's the best way to reheat the frozen breakfast burritos? Should I microwave them or use the oven?\nassistant: Reheating frozen breakfast burritos can be a bit tricky, but I've got some tips to help you achieve the perfect reheat.\n\n**Microwaving:**\n\n* Wrap the burrito in a microwave-safe paper towel to help retain moisture.\n* Microwave on high for 1-2 minutes, depending on your microwave's power level.\n* Check the burrito after 1 minute and rotate it to ensure even heating.\n* If the burrito is still frozen or not hot enough, continue to microwave in 30-second increments until heated through.\n\n**Note:** Microwaving can sometimes result in uneven heating, leading to cold spots or overcooked areas. Be cautious when reheating in the microwave, and adjust the time as needed.\n\n**Oven Reheating:**\n\n* Preheat your oven to 350°F (180°C).\n* Wrap the burrito in foil and place it on a baking sheet.\n* Bake for 15-20 minutes, or until the burrito is hot and the tortilla is crispy.\n* Check the burrito after 10 minutes and rotate it to ensure even heating.\n\n**Note:** Oven reheating takes longer, but it's a great way to achieve a crispy tortilla and even heating.\n\n**Tips for Reheating:**\n\n* Make sure to reheat the burrito to an internal temperature of 165°F (74°C) to ensure food safety.\n* If you're reheating multiple burritos, you can wrap them individually in foil and reheat them together in the oven.\n* To add some crispy texture, you can broil the burrito for an additional 1-2 minutes after reheating in the oven. Keep an eye on it to prevent burning.\n\nIn general, oven reheating is a safer and more reliable method, but microwaving can be faster and more convenient. Choose the method that works best for your schedule and preferences.\n\nDo you have any other questions about reheating frozen breakfast burritos?\nuser: I'm thinking of trying out some new ingredients in my Breakfast Burritos. Do you have any suggestions for some unique fillings or toppings that I could add to give them an extra boost of flavor and nutrition?\nassistant: What a great idea! Adding new ingredients can definitely give your Breakfast Burritos a flavor and nutrition boost. Here are some unique fillings and toppings you could consider:\n\n**Unique Fillings:**\n\n1. **Roasted Vegetables:** Roasted sweet potatoes, Brussels sprouts, or broccoli add a delicious sweetness and a nutrient-dense punch.\n2. **Spicy Sausage:** Try using chorizo or Korean chorizo (gochujang) for a spicy kick.\n3. **Mushroom Duxelles:** Sautéed mushrooms with onions and herbs add an earthy flavor and meaty texture.\n4. **Black Beans with Cumin and Coriander:** Add some warmth and depth to your black beans with these Indian-inspired spices.\n5. **Grilled Pineapple:** Sweet and savory, grilled pineapple pairs surprisingly well with scrambled eggs and cheese.\n\n**Toppings:**\n\n1. **Avocado Salsa:** Mash ripe avocados with lime juice, salt, and your favorite spices for a creamy and refreshing topping.\n2. **Pickled Onions:** Sweet and tangy, pickled onions add a nice crunch and flavor contrast.\n3. **Cilantro Lime Crema:** Mix Greek yogurt with lime juice, cilantro, and a pinch of salt for a cool and zesty topping.\n4. **Sliced Radishes:** Add some crunch and a spicy kick with thinly sliced radishes.\n5. **Feta Cheese:** Salty and crumbly, feta adds a nice contrast to the soft tortilla and fillings.\n\n**Other Ideas:**\n\n1. **Kimchi:** Spicy Korean kimchi adds a bold flavor and probiotic benefits.\n2. **Sliced Jalapeños:** Add some heat to your burrito with sliced jalapeños.\n3. **Fresh Cilantro:** Chopped cilantro adds a fresh and herbaceous flavor.\n4. **Sliced Scallions:** Thinly sliced scallions add a nice crunch and oniony flavor.\n5. **Guacamole:** Mash ripe avocados with lime juice and salt for a creamy and nutritious topping.\n\nFeel free to get creative and experiment with different combinations to find your new favorite Breakfast Burrito flavor!\n\nWhich of these ingredients resonates with you, or do you have any other questions about adding new fillings or toppings?",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d682f1a2",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:99f26d9268929ece2a58dd627fec302f"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:d682f1a2\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable user context and preferences around healthy cooking, meal prep, Fresh Fusion, quinoa/black bean salad, pesto pasta ingredients, and breakfast burritos, plus reusable recipe/reheating guidance worth storing as a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / me (user in transcript); action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript require the stable USER entity; no existing candidates are provided.\n- mention=Fresh Fusion; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Fresh Fusion; reason=Concrete named food delivery service with no existing candidate.\n- mention=Quinoa and Black Bean Salad; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Quinoa and Black Bean Salad; reason=Concrete reusable recipe idea selected by the user; no existing candidate.\n- mention=One-Pot Pesto Pasta with Cherry Tomatoes and Spinach; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=One-Pot Pesto Pasta with Cherry Tomatoes and Spinach; reason=Concrete reusable recipe discussed as a dinner option; no existing candidate.\n- mention=Breakfast Burritos; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Breakfast Burritos; reason=Concrete reusable meal-prep food concept repeatedly discussed; no existing candidate.\n- mention=current project; action=CREATE_NEW; id=entity:<5>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Fresh Fusion|Quinoa and Black Bean Salad|One-Pot Pesto Pasta with Cherry Tomatoes and Spinach|Breakfast Burritos\n        text_queries=healthy lunch recipe ideas Fresh Fusion pre-made meals quinoa black bean salad|quick healthy dinner pesto pasta cherry tomatoes spinach ingredients at home|weekend meal prep breakfast burritos frozen reheating fillings toppings\n        predicate_hints=prefers|has_goal|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:99f26d9268929ece2a58dd627fec302f] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:d682f1a2:session:1; title=LongMemEval d682f1a2 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 21:05\nTranscript:\nuser: I'm looking for some healthy recipe ideas for lunch. Do you have any suggestions? By the way, I've been really busy lately and have been relying on food delivery services, like this new one I found called Fresh Fusion - they have some great pre-made meals.\nassistant: I'm glad you're looking to get back to healthy cooking! While food delivery services can be convenient, it's great that you're wanting to take control of your nutrition again.\n\nI'd be happy to help you with some healthy lunch recipe ideas. Here are a few suggestions:\n\n**Salads**\n\n1. Grilled Chicken and Avocado Salad: Top mixed greens with grilled chicken, sliced avocado, cherry tomatoes, and a citrus vinaigrette.\n2. Quinoa and Black Bean Salad: Mix cooked quinoa with black beans, diced veggies (bell peppers, onions, tomatoes), and a drizzle of balsamic vinaigrette.\n\n**Sandwiches and Wraps**\n\n1. Turkey and Avocado Wrap: Spread hummus on a whole-grain wrap, layer with sliced turkey breast, avocado, lettuce, and tomato.\n2. Grilled Chicken and Veggie Sandwich: Grill chicken breast and serve on whole-grain bread with roasted veggies (zucchini, bell peppers, onions) and a side of sweet potato fries.\n\n**Soups**\n\n1. Lentil Soup: Simmer lentils with diced veggies (carrots, celery, onions) and spices. Serve with a side of whole-grain bread or a green salad.\n2. Tomato and Spinach Soup: Blend canned tomatoes with fresh spinach, garlic, and low-sodium chicken broth. Serve with a side of whole-grain crackers or crusty bread.\n\n**Global Inspirations**\n\n1. Korean-Style Chicken and Veggies: Marinate chicken breast in a Korean-inspired sauce (gochujang, soy sauce, honey) and grill with roasted veggies (broccoli, carrots, bell peppers). Serve with brown rice or cauliflower rice.\n2. Indian-Style Lentil and Veggie Bowl: Cook lentils and mix with sautéed veggies (onions, bell peppers, tomatoes) and a blend of Indian spices. Serve over brown rice or with whole-grain naan.\n\n**Easy and Quick Options**\n\n1. Overnight Oats: Mix rolled oats, milk, and your choice of nuts, seeds, or fruit in a jar. Refrigerate overnight and enjoy in the morning.\n2. Quesadilla: Fill a whole-grain tortilla with shredded veggies (zucchini, carrots, beans), cheese, and beans. Cook in a pan until crispy and serve with salsa or guacamole.\n\nFeel free to get creative and modify these recipes to suit your taste preferences and dietary needs.\n\nAs for Fresh Fusion, it's great that you've found a convenient option that works for you. Just be mindful of the nutritional content and ingredient quality of the meals they offer. Try to balance your reliance on delivery services with home-cooked meals to ensure you're getting the nutrients your body needs.\nuser: I like the Quinoa and Black Bean Salad idea, as I actually made something similar recently. Do you have any recipe suggestions for a healthy dinner option that's quick to make and doesn't require a lot of ingredients?\nassistant: Quinoa and Black Bean Salad is a nutritious and delicious option.\n\nFor a quick and easy healthy dinner, I've got just the thing:\n\n**One-Pot Pesto Pasta with Cherry Tomatoes and Spinach**\n\n**Prep Time:** 10 minutes\n**Cook Time:** 15 minutes\n**Total Time:** 25 minutes\n\n**Ingredients:**\n\n* 1 cup whole-grain pasta (e.g., spaghetti or linguine)\n* 1/4 cup pesto sauce (homemade or store-bought)\n* 1 cup cherry tomatoes, halved\n* 1 cup fresh spinach leaves\n* 1/2 cup grated mozzarella cheese (optional)\n* Salt and pepper to taste\n* 1 tablespoon olive oil\n\n**Instructions:**\n\n1. Bring a large pot of salted water to a boil. Cook the pasta according to package instructions until al dente.\n2. In the same pot, add the pesto sauce, cherry tomatoes, and spinach. Stir to combine.\n3. Cook for an additional 2-3 minutes, until the spinach has wilted and the tomatoes are tender.\n4. Drain the pasta and return it to the pot. Toss everything together until the pasta is well coated with the pesto sauce and veggies.\n5. Season with salt, pepper, and a drizzle of olive oil.\n6. If using mozzarella, sprinkle on top and serve hot.\n\n**Why it's healthy:**\n\n* Whole-grain pasta provides fiber and complex carbs.\n* Pesto sauce is rich in healthy fats from olive oil and antioxidants from basil.\n* Cherry tomatoes are packed with vitamin C and lycopene.\n* Spinach adds a boost of iron and vitamins A and K.\n\nThis recipe is quick, easy, and requires minimal ingredients. You can also customize it to your taste by adding protein sources like grilled chicken, shrimp, or tofu.\n\nHow does that sound?\nuser: That sounds like a great option. I actually have all the ingredients at home, so I'll give it a try tonight. By the way, do you have any recommendations for healthy breakfast options that can be meal-prepped on the weekends?\nassistant: Perfect! I'm glad you have all the ingredients on hand.\n\nNow, about healthy breakfast options that can be meal-prepped on the weekends... **absolutely!**\n\nHere are some delicious and nutritious breakfast ideas that can be prepared in advance:\n\n**1. Overnight Oats**\n\n* Mix rolled oats, milk, and your choice of nuts, seeds, or fruit in a jar or container. Refrigerate overnight and enjoy in the morning.\n\n**2. Breakfast Burritos**\n\n* Scramble eggs, cook sausage or bacon, and add black beans, cheese, and veggies. Wrap individual burritos and refrigerate or freeze for up to 3 days.\n\n**3. Muffin Tin Frittatas**\n\n* Whisk eggs, milk, and diced veggies, then pour into muffin tins. Bake until set, then refrigerate or freeze for up to 5 days.\n\n**4. Smoothie Packs**\n\n* Prepare individual smoothie packs by freezing your favorite fruits, veggies, and milk or yogurt in small bags. In the morning, simply add to a blender and blend.\n\n**5. Avocado Toast**\n\n* Toast whole-grain bread, mash avocado, and sprinkle with salt and pepper. Add eggs, tomatoes, or spinach for extra protein and flavor. Prepare the avocado mixture on the weekend and store in the fridge for up to 3 days.\n\n**6. Quiche**\n\n* Prepare a quiche on the weekend and slice into individual portions. Refrigerate or freeze for up to 5 days.\n\n**7. Chia Seed Pudding**\n\n* Mix chia seeds with milk and let it sit in the refrigerator overnight. Top with fruit and nuts in the morning.\n\n**8. Breakfast Casseroles**\n\n* Prepare a breakfast casserole on the weekend and refrigerate or freeze for up to 5 days. Simply reheat in the morning.\n\nThese breakfast ideas are perfect for meal prep, as they can be made in advance and refrigerated or frozen for later use. Just remember to label and date your containers so you know what you have and how long it's been stored.\n\nWhich one of these options sounds appealing to you?\nuser: I think I'll try the Breakfast Burritos. I've been wanting to meal prep more on the weekends, and this seems like a convenient and healthy option.\nassistant: Breakfast Burritos are a fantastic option for meal prep, and they're so versatile. You can customize them with your favorite ingredients and dietary preferences.\n\nHere are some tips to help you meal prep Breakfast Burritos like a pro:\n\n**Tips for Meal Prepping Breakfast Burritos:**\n\n1. **Batch Cooking:** Cook your scrambled eggs, sausage or bacon, and black beans in bulk on the weekend. This will save you time during the week when assembling the burritos.\n2. **Use a Variety of Fillings:** Experiment with different ingredients like diced bell peppers, onions, mushrooms, and cheese to add flavor and nutrients to your burritos.\n3. **Choose Whole-Grain Tortillas:** Opt for whole-grain tortillas to increase the fiber content of your burritos.\n4. **Portion Control:** Divide your fillings into individual portions to make assembly easier and to prevent overeating.\n5. **Freeze for Later:** Assemble the burritos, wrap them individually in plastic wrap or aluminum foil, and freeze for up to 3 months. Simply thaw and reheat when you're ready.\n6. **Reheat Safely:** Reheat your burritos in the microwave or oven until they're steaming hot and cooked through.\n7. **Get Creative:** Don't be afraid to try new ingredients and flavor combinations to keep your burritos interesting and exciting.\n\nBy following these tips, you'll be able to enjoy healthy, convenient, and delicious Breakfast Burritos all week long.\n\nIf you have any more questions or need further guidance, feel free to ask. Happy meal prepping!\nuser: What's the best way to reheat the frozen breakfast burritos? Should I microwave them or use the oven?\nassistant: Reheating frozen breakfast burritos can be a bit tricky, but I've got some tips to help you achieve the perfect reheat.\n\n**Microwaving:**\n\n* Wrap the burrito in a microwave-safe paper towel to help retain moisture.\n* Microwave on high for 1-2 minutes, depending on your microwave's power level.\n* Check the burrito after 1 minute and rotate it to ensure even heating.\n* If the burrito is still frozen or not hot enough, continue to microwave in 30-second increments until heated through.\n\n**Note:** Microwaving can sometimes result in uneven heating, leading to cold spots or overcooked areas. Be cautious when reheating in the microwave, and adjust the time as needed.\n\n**Oven Reheating:**\n\n* Preheat your oven to 350°F (180°C).\n* Wrap the burrito in foil and place it on a baking sheet.\n* Bake for 15-20 minutes, or until the burrito is hot and the tortilla is crispy.\n* Check the burrito after 10 minutes and rotate it to ensure even heating.\n\n**Note:** Oven reheating takes longer, but it's a great way to achieve a crispy tortilla and even heating.\n\n**Tips for Reheating:**\n\n* Make sure to reheat the burrito to an internal temperature of 165°F (74°C) to ensure food safety.\n* If you're reheating multiple burritos, you can wrap them individually in foil and reheat them together in the oven.\n* To add some crispy texture, you can broil the burrito for an additional 1-2 minutes after reheating in the oven. Keep an eye on it to prevent burning.\n\nIn general, oven reheating is a safer and more reliable method, but microwaving can be faster and more convenient. Choose the method that works best for your schedule and preferences.\n\nDo you have any other questions about reheating frozen breakfast burritos?\nuser: I'm thinking of trying out some new ingredients in my Breakfast Burritos. Do you have any suggestions for some unique fillings or toppings that I could add to give them an extra boost of flavor and nutrition?\nassistant: What a great idea! Adding new ingredients can definitely give your Breakfast Burritos a flavor and nutrition boost. Here are some unique fillings and toppings you could consider:\n\n**Unique Fillings:**\n\n1. **Roasted Vegetables:** Roasted sweet potatoes, Brussels sprouts, or broccoli add a delicious sweetness and a nutrient-dense punch.\n2. **Spicy Sausage:** Try using chorizo or Korean chorizo (gochujang) for a spicy kick.\n3. **Mushroom Duxelles:** Sautéed mushrooms with onions and herbs add an earthy flavor and meaty texture.\n4. **Black Beans with Cumin and Coriander:** Add some warmth and depth to your black beans with these Indian-inspired spices.\n5. **Grilled Pineapple:** Sweet and savory, grilled pineapple pairs surprisingly well with scrambled eggs and cheese.\n\n**Toppings:**\n\n1. **Avocado Salsa:** Mash ripe avocados with lime juice, salt, and your favorite spices for a creamy and refreshing topping.\n2. **Pickled Onions:** Sweet and tangy, pickled onions add a nice crunch and flavor contrast.\n3. **Cilantro Lime Crema:** Mix Greek yogurt with lime juice, cilantro, and a pinch of salt for a cool and zesty topping.\n4. **Sliced Radishes:** Add some crunch and a spicy kick with thinly sliced radishes.\n5. **Feta Cheese:** Salty and crumbly, feta adds a nice contrast to the soft tortilla and fillings.\n\n**Other Ideas:**\n\n1. **Kimchi:** Spicy Korean kimchi adds a bold flavor and probiotic benefits.\n2. **Sliced Jalapeños:** Add some heat to your burrito with sliced jalapeños.\n3. **Fresh Cilantro:** Chopped cilantro adds a fresh and herbaceous flavor.\n4. **Sliced Scallions:** Thinly sliced scallions add a nice crunch and oniony flavor.\n5. **Guacamole:** Mash ripe avocados with lime juice and salt for a creamy and nutritious topping.\n\nFeel free to get creative and experiment with different combinations to find your new favorite Breakfast Burrito flavor!\n\nWhich of these ingredients resonates with you, or do you have any other questions about adding new fillings or toppings?",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d682f1a2",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:99f26d9268929ece2a58dd627fec302f"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user plans to try Breakfast Burritos as a weekend meal-prep option.\",\"The user wants convenient healthy breakfast options that can be meal-prepped on weekends.\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Freeze for Later: Assemble the burritos, wrap them individually in plastic wrap or aluminum foil, and freeze for up to 3 months.\",\"evidence_reason\":\"The transcript includes concrete preparation, storage, and reheating steps for Breakfast Burritos that form a reusable cooking procedure.\",\"importance\":4,\"keywords\":[\"Breakfast Burritos\",\"meal prep\",\"frozen burritos\",\"reheating\",\"165°F\",\"350°F\"],\"note_type\":\"context\",\"rationale\":\"This is procedural guidance with trade-offs and steps, not a single atomic user fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable cooking guidance for the user's Breakfast Burritos meal-prep workflow.\"},\"summary\":\"Breakfast Burritos were treated as a weekend meal-prep option: batch cook eggs/protein/beans, vary fillings, use whole-grain tortillas, portion fillings, wrap individually, freeze up to 3 months, and reheat to 165°F (74°C). Microwave reheating is faster but can heat unevenly; oven reheating at 350°F (180°C) for 15–20 minutes in foil is slower but more reliable for even heating and crispness.\",\"tags\":[\"cooking\",\"meal_prep\",\"breakfast\",\"reheating\"],\"title\":\"Breakfast Burrito meal-prep and reheating guidance\",\"valid_from\":\"2023-05-20T21:05:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user is interested in trying new ingredients in Breakfast Burritos for extra flavor and nutrition.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Adding new ingredients can definitely give your Breakfast Burritos a flavor and nutrition boost.\",\"evidence_reason\":\"The transcript contains a reusable list of fillings and toppings specifically proposed for improving Breakfast Burritos.\",\"importance\":3,\"keywords\":[\"Breakfast Burritos\",\"fillings\",\"toppings\",\"kimchi\",\"avocado salsa\",\"pickled onions\",\"roasted vegetables\"],\"note_type\":\"context\",\"rationale\":\"This is a reusable recipe customization digest rather than a precise atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable ingredient ideas for customizing the user's Breakfast Burritos.\"},\"summary\":\"Suggested ways to make Breakfast Burritos more flavorful and nutritious include roasted sweet potatoes/Brussels sprouts/broccoli, chorizo or gochujang-style spicy sausage, mushroom duxelles, cumin-coriander black beans, grilled pineapple, kimchi, jalapeños, avocado salsa, pickled onions, cilantro lime crema, radishes, feta, cilantro, scallions, and guacamole.\",\"tags\":[\"cooking\",\"meal_prep\",\"ingredients\",\"breakfast\"],\"title\":\"Flavor and nutrition add-ins for Breakfast Burritos\",\"valid_from\":\"2023-05-20T21:05:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user had all ingredients at home and planned to try One-Pot Pesto Pasta that night.\"],\"confidence\":0.91,\"entity_refs\":[{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"One-Pot Pesto Pasta with Cherry Tomatoes and Spinach\",\"evidence_reason\":\"The transcript provides a concrete recipe, timing, ingredients, and customization suggestions for this named dinner option.\",\"importance\":3,\"keywords\":[\"One-Pot Pesto Pasta\",\"Cherry Tomatoes\",\"Spinach\",\"quick dinner\",\"whole-grain pasta\",\"pesto\"],\"note_type\":\"context\",\"rationale\":\"The recipe is a compact reusable context/procedure; storing it as a note preserves the how-to details better than a single claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable recipe context for the dinner option the user intended to try.\"},\"summary\":\"One-Pot Pesto Pasta with Cherry Tomatoes and Spinach was recommended as a quick, minimal-ingredient healthy dinner: whole-grain pasta, pesto, cherry tomatoes, spinach, optional mozzarella, salt, pepper, and olive oil; it takes about 25 minutes and can be customized with grilled chicken, shrimp, or tofu.\",\"tags\":[\"cooking\",\"dinner\",\"recipe\",\"healthy\"],\"title\":\"Quick healthy dinner option: One-Pot Pesto Pasta\",\"valid_from\":\"2023-05-20T21:05:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4643,
+                "completionTokens": 1080,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

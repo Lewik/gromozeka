@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "487d65c1db635c6bfcc350557947fab3c9ac917bbc913e60907b46180aa26345",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:6071bd76\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains durable user preferences/habits plus reusable tea/coffee context and recommendation rationale.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:6071bd76:profile:<0> Profile for User (USER).\nStable facts:\n- The user prefers a French press ratio of 1 tablespoon of coffee for every 6 ounces of water.\n- The user wants to try new roasts and flavors from their coffee subscription.\n- The user plans to use their French press to brew new coffee beans from their subscription shipment.\n- The user has been experimenting with a French press for coffee brewing.\n- The user chose to try Kenyan coffee first for citrus-flavored coffee experimentation.\n- The user chose to try Earl Grey tea with citrus-infused coffee.\n- The user has been experimenting with citrus-infused coffee.\n- The user signed up for a coffee subscription service in January 2023 and received the first shipment of beans on 2023-02-10.\n- claim hot-path-00ce6679b70b-claim-5: prefers; The user prefers a French press ratio of 1 tablespoon of coffee for every 6 ounces of water.; scope=User French press coffee brewing preferences\n- claim hot-path-00ce6679b70b-claim-11: works_with; The user plans to use their French press to brew new coffee beans from their subscription shipment.; scope=User current coffee brewing method for subscription beans\n- note hot-path-00ce6679b70b-note-2: CONTEXT; Citrus-infused coffee experimentation context; The user is experimenting with citrus-infused coffee using a French press and intends to try new subscription beans in it, expecting bright, vibrant flavors to pair well with citrus notes. Earlier in the same session, the user selected Kenyan coffee first and Earl Grey tea as a citrus pairing.; scope=User's coffee experimentation and pairing context from LongMemEval 6071bd76 session 1\n- note hot-path-00ce6679b70b-note-3: LESSON; Coffee bean freshness storage guidance; For preserving coffee bean freshness, the discussed procedure was to store beans in an airtight container in a cool, dark place at room temperature, use opened beans within about 2 weeks, freeze only for longer storage, and grind just before brewing.; scope=Coffee bean storage advice provided in LongMemEval 6071bd76 session 1\n- claim hot-path-00ce6679b70b-claim-7: prefers; The user chose to try Earl Grey tea with citrus-infused coffee.; scope=User tea pairing choice for citrus-infused coffee\n- claim hot-path-00ce6679b70b-claim-10: has_goal; The user wants to try new roasts and flavors from their coffee subscription.; scope=User coffee exploration goals\n- claim hot-path-00ce6679b70b-claim-9: has_experience_with; The user signed up for a coffee subscription service in January 2023 and received the first shipment of beans on 2023-02-10.; scope=User coffee subscription experience\n- claim hot-path-00ce6679b70b-claim-6: prefers; The user chose to try Kenyan coffee first for citrus-flavored coffee experimentation.; scope=User coffee bean choice for citrus-flavored coffee experimentation\n- claim hot-path-00ce6679b70b-claim-4: has_experience_with; The user has been experimenting with a French press for coffee brewing.; scope=User coffee brewing experience\n- claim hot-path-00ce6679b70b-claim-8: has_experience_with; The user has been experimenting with citrus-infused coffee.; scope=User coffee recipe experimentation\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=French press; action=LINK_EXISTING; id=entity:<1>; type=existing; name=French press; reason=Mention safely matches existing product entity French press.\n- mention=new beans; action=LINK_EXISTING; id=entity:<2>; type=existing; name=new beans; reason=User's new beans are coffee beans in the coffee brewing context and safely match the existing coffee beans entity.\n- mention=tea leaves; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=tea leaves; reason=Concrete reusable product discussed for storage, with no existing matching entity.\n- mention=tea cabinet; action=CREATE_NEW; id=entity:<4>; type=OTHER; name=tea cabinet; reason=Concrete reusable storage object mentioned by the user; no existing candidate matches.\n- mention=tea subscription service; action=CREATE_NEW; id=entity:<5>; type=SERVICE; name=tea subscription service; reason=Distinct from the existing coffee subscription service and is discussed as a reusable service category.\n- mention=Adagio Teas; action=CREATE_NEW; id=entity:<6>; type=ORGANIZATION; name=Adagio Teas; reason=Named organization/service provider discussed as a concrete option; no existing entity matches.\n- mention=The Tea Spot; action=CREATE_NEW; id=entity:<7>; type=ORGANIZATION; name=The Tea Spot; reason=Named organization/service provider discussed as a concrete option; no existing entity matches.\n- mention=rose tea; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=rose tea; reason=Concrete tea product discussed by the user; no existing entity matches.\n- mention=my sister; action=CREATE_NEW; id=entity:<9>; type=PERSON; name=User's sister; reason=A concrete person related to the user, introduced as the source of rose tea recommendation.\n- mention=shortbread cookies; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=shortbread cookies; reason=Concrete food product discussed as a pairing with rose tea; no existing entity matches.\n- mention=Lavender tea; action=CREATE_NEW; id=entity:<11>; type=PRODUCT; name=lavender tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Tulsi tea; action=CREATE_NEW; id=entity:<12>; type=PRODUCT; name=Tulsi tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Rooibos tea; action=CREATE_NEW; id=entity:<13>; type=PRODUCT; name=Rooibos tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Passionflower tea; action=CREATE_NEW; id=entity:<14>; type=PRODUCT; name=passionflower tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Valerian root tea; action=CREATE_NEW; id=entity:<15>; type=PRODUCT; name=valerian root tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=current project; action=CREATE_NEW; id=entity:<16>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|French press|coffee beans|tea|rose tea|Adagio Teas|The Tea Spot|sister\n        text_queries=French press ratio 1 tablespoon coffee for every 5 ounces water|relaxing tea similar to chamomile recommendations|tea leaves storage fresh airtight dark cool dry|tea subscription Adagio Teas The Tea Spot promotions|rose tea shortbread cookies sister introduced\n        predicate_hints=prefers|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:020bb0818f0475c8b707f3936d9ff510] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:6071bd76:session:2; title=LongMemEval 6071bd76 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/06/30 (Fri) 11:33\nTranscript:\nuser: I'm thinking of trying out a new tea blend this weekend. Do you have any recommendations for a relaxing tea that's similar to chamomile? By the way, I'm planning to brew a fresh pot of coffee in the morning, and I'm feeling excited to use my new beans - I've got my French press ratio down to a science: 1 tablespoon of coffee for every 5 ounces of water.\nassistant: A new tea blend sounds like a lovely way to unwind! If you're looking for a relaxing tea similar to chamomile, I'd be happy to suggest a few options:\n\n1. **Lavender tea**: Like chamomile, lavender is known for its calming effects and can promote a good night's sleep. The floral flavor is soothing and gentle, making it a great choice for unwinding.\n2. **Tulsi tea** (Holy Basil): Tulsi is an herbal tea that's also known for its calming properties. It has a slightly sweet and spicy flavor, which can help reduce stress and anxiety.\n3. **Rooibos tea**: This caffeine-free tea from South Africa has a nutty flavor and is rich in antioxidants. It's a great choice for a relaxing evening tea, as it can help promote a good night's sleep.\n4. **Passionflower tea**: Another herbal tea with calming properties, passionflower can help reduce anxiety and promote relaxation.\n5. **Valerian root tea**: Valerian root is a natural sedative and can help with sleep disorders. The flavor is earthy and slightly sweet, making it a nice alternative to chamomile.\n\nAs for your coffee, I'm glad to hear you're excited to brew a fresh pot! Your French press ratio of 1:5 sounds spot on. Enjoy your coffee and tea adventures this weekend!\n\nRemember, when trying a new tea, you can always adjust the steeping time and amount of tea leaves to your liking. Happy sipping!\nuser: What's the best way to store tea leaves to keep them fresh?\nassistant: Proper storage is crucial to maintaining the flavor, aroma, and quality of your tea leaves. Here are some tips to help you store your tea leaves fresh:\n\n1. **Airtight containers**: Store tea leaves in airtight containers, such as glass jars or ceramic canisters, to prevent air from entering and spoiling the tea.\n2. **Dark containers**: Use containers that block out light, as light can cause tea to lose its flavor and aroma. Dark glass or ceramic containers are ideal.\n3. **Cool, dry place**: Store tea leaves in a cool, dry place, away from direct sunlight, heat sources, and moisture. Avoid storing tea near a stove, oven, or radiator.\n4. **Avoid humid environments**: Keep tea away from humid environments, such as basements or attics, as moisture can cause tea to become stale or develop mold.\n5. **Don't store tea near strong-smelling foods**: Tea can absorb odors from nearby foods, so store it away from pungent ingredients like onions, garlic, and spices.\n6. **Keep tea away from heat sources**: Heat can cause tea to lose its flavor and aroma, so avoid storing it near heaters, ovens, or microwaves.\n7. **Use a tea tin or canister with a tight-fitting lid**: If you're using a tea tin or canister, make sure it has a tight-fitting lid to prevent air from entering.\n8. **Store tea in small quantities**: Divide your tea into smaller quantities (e.g., 1-2 ounces) and store them in separate containers to prevent exposure to air and light.\n9. **Use a tea storage box or chest**: Consider investing in a tea storage box or chest with individual compartments to store different teas and keep them organized.\n10. **Check on your tea regularly**: Regularly inspect your stored tea for signs of staleness, mold, or pest infestation. If you notice any issues, it's time to refresh your tea supply.\n\nBy following these guidelines, you can enjoy your tea at its best and maintain its flavor, aroma, and quality.\nuser: That's really helpful, thanks! I've been meaning to organize my tea cabinet, so I'll definitely use these tips. Speaking of which, I'm thinking of trying out a new tea subscription service - have you heard of any good ones?\nassistant: Tea subscription services are a great way to discover new teas and expand your tea collection. There are many excellent options out there, but I'll mention a few popular ones:\n\n1. **Adagio Teas**: Adagio offers a monthly tea subscription service with a wide variety of teas, including loose-leaf, herbal, and caffeinated options. They also have a \"Tea of the Month\" club that introduces you to new teas from around the world.\n2. **Teavana** (now part of Teavana by AT&T): Although Teavana closed their physical stores, their online subscription service remains popular. They offer a monthly tea subscription with a selection of loose-leaf teas, including exclusive blends.\n3. **The Tea Spot**: This Colorado-based company offers a monthly tea subscription service with a focus on organic, fair-trade, and artisanal teas. They also have a \"Tea of the Month\" club and a \"Tea Explorer\" club for more adventurous tea drinkers.\n4. **Harney & Sons**: This renowned tea company offers a monthly tea subscription service with a selection of their premium teas, including single-origin, blended, and herbal options.\n5. **Mighty Leaf Tea**: Mighty Leaf offers a monthly tea subscription service with a focus on artisanal, handcrafted teas from around the world. They also have a \"Tea of the Month\" club and a \"Tea Sampler\" option.\n6. **The Republic of Tea**: This company offers a monthly tea subscription service with a wide variety of teas, including herbal, green, black, and white teas. They also have a \"Tea of the Month\" club and a \"Tea Explorer\" club.\n\nThese are just a few examples, but there are many more tea subscription services out there. When choosing a service, consider factors like:\n\n* Tea selection: Do they offer a variety of teas, including herbal and caffeinated options?\n* Quality: Are the teas high-quality, and do they source from reputable suppliers?\n* Customization: Can you choose the teas you receive, or is it a surprise each month?\n* Price: What's the cost per month, and is it within your budget?\n* Reviews: Check online reviews to see what other customers think of the service.\n\nRemember to read the fine print and understand the subscription terms before signing up. Happy tea exploring!\nuser: I've heard of a few of those, but not all. I think I'll check out Adagio Teas and The Tea Spot. Do you know if they offer any discounts or promotions for new customers?\nassistant: Both Adagio Teas and The Tea Spot offer promotions and discounts for new customers. Here are some deals you can take advantage of:\n\n**Adagio Teas**:\n\n* **New Customer Discount**: 10% off your first order with code WELCOME10\n* **Free Shipping**: On orders over $49 (continental US only)\n* **Tea of the Month Club**: Get 20% off your first month's subscription with code TEA20\n* **Refer a Friend**: Refer friends and get 20% off your next order when they make a purchase\n\n**The Tea Spot**:\n\n* **New Customer Discount**: 15% off your first order with code TEA15\n* **Free Shipping**: On orders over $50 (continental US only)\n* **Tea of the Month Club**: Get 15% off your first month's subscription with code TEA15\n* **Sign-up Bonus**: Get a free tea sample with your first order when you sign up for their newsletter\n\nPlease note that promotions and discounts are subject to change, so it's always a good idea to check their websites or social media pages for the latest offers.\n\nAdditionally, both Adagio Teas and The Tea Spot offer rewards programs and loyalty points for repeat customers, so be sure to sign up for those to earn points and redeem rewards.\n\nHappy shopping, and I hope you enjoy your tea adventures with these companies!\nuser: I'll definitely check out those promotions. By the way, I've been meaning to ask: what's the best way to clean my French press? I want to make sure I'm getting all the old coffee oils out.\nassistant: Cleaning your French press is crucial to prevent old coffee oils and residue from affecting the flavor of your next brew. Here's a step-by-step guide to clean your French press:\n\n1. **Disassemble the French press**: Take apart the French press by removing the plunger and the lid.\n2. **Rinse with hot water**: Rinse the French press with hot water to remove any loose coffee grounds and oils.\n3. **Soak the French press**: Soak the French press in hot, soapy water for about 30 minutes. You can use a gentle dish soap or a mixture of equal parts water and white vinegar.\n4. **Scrub the French press**: Use a soft-bristled brush or a non-abrasive scrubber to scrub away any stubborn coffee oils and residue. Focus on the areas around the rim, lid, and plunger.\n5. **Rinse thoroughly**: Rinse the French press thoroughly with hot water to remove any soap or vinegar residue.\n6. **Dry the French press**: Dry the French press with a towel, paying extra attention to the crevices and areas where water may collect.\n7. **Sanitize the French press (optional)**: If you want to sanitize your French press, mix 1 tablespoon of unscented chlorine bleach with 1 quart of water. Soak the French press for 10-15 minutes, then rinse thoroughly with hot water.\n\nSome additional tips to keep in mind:\n\n* Avoid using abrasive cleaners or scouring pads, as they can scratch the French press.\n* Don't put your French press in the dishwasher, as the high heat and harsh detergents can damage the material.\n* If you notice any stubborn stains or residue, you can soak the French press in a mixture of equal parts water and baking soda for several hours or overnight.\n* Regularly cleaning your French press will help prevent old coffee oils from building up and affecting the flavor of your coffee.\n\nBy following these steps, you'll be able to remove old coffee oils and residue from your French press, ensuring a fresh and flavorful cup every time.\nuser: I was thinking of trying out that new rose tea my sister introduced me to. Do you think it would pair well with a sweet treat, like shortbread cookies?\nassistant: Rose tea is a lovely choice! It's a delicate and floral tea that can be quite versatile when it comes to pairing with sweet treats. Shortbread cookies sound like a great match for rose tea, as the buttery, crumbly texture and subtle sweetness of the cookies can complement the tea's floral notes nicely.\n\nHere are a few reasons why rose tea and shortbread cookies might make a lovely pair:\n\n1. **Floral harmony**: Rose tea's floral flavors can find a harmonious match with the subtle sweetness of shortbread cookies. The tea's delicate rose petals can enhance the cookie's sweetness without overpowering it.\n2. **Texture contrast**: The crumbly texture of shortbread cookies can provide a nice contrast to the smooth, velvety texture of the tea. This contrast can add depth and interest to the pairing.\n3. **Balancing sweetness**: Shortbread cookies can help balance the subtle bitterness of the rose tea, while the tea can help cut through the richness of the cookies.\n\nThat being said, feel free to experiment with different sweet treats to find your perfect pairing. Rose tea can also pair well with other sweet treats like:\n\n* Fresh fruit, like strawberries or grapes, to enhance the tea's floral flavors\n* Cakes, like vanilla or lemon, to complement the tea's sweetness\n* Chocolate truffles, like rose-petal infused or white chocolate, to create a romantic and indulgent treat\n\nRemember, the key to pairing tea with sweet treats is to find balance and harmony between the flavors and textures. Don't be afraid to experiment and find your own perfect pairings!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:6071bd76",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:020bb0818f0475c8b707f3936d9ff510"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:6071bd76\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains durable user preferences/habits plus reusable tea/coffee context and recommendation rationale.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:6071bd76:profile:<0> Profile for User (USER).\nStable facts:\n- The user prefers a French press ratio of 1 tablespoon of coffee for every 6 ounces of water.\n- The user wants to try new roasts and flavors from their coffee subscription.\n- The user plans to use their French press to brew new coffee beans from their subscription shipment.\n- The user has been experimenting with a French press for coffee brewing.\n- The user chose to try Kenyan coffee first for citrus-flavored coffee experimentation.\n- The user chose to try Earl Grey tea with citrus-infused coffee.\n- The user has been experimenting with citrus-infused coffee.\n- The user signed up for a coffee subscription service in January 2023 and received the first shipment of beans on 2023-02-10.\n- claim hot-path-00ce6679b70b-claim-5: prefers; The user prefers a French press ratio of 1 tablespoon of coffee for every 6 ounces of water.; scope=User French press coffee brewing preferences\n- claim hot-path-00ce6679b70b-claim-11: works_with; The user plans to use their French press to brew new coffee beans from their subscription shipment.; scope=User current coffee brewing method for subscription beans\n- note hot-path-00ce6679b70b-note-2: CONTEXT; Citrus-infused coffee experimentation context; The user is experimenting with citrus-infused coffee using a French press and intends to try new subscription beans in it, expecting bright, vibrant flavors to pair well with citrus notes. Earlier in the same session, the user selected Kenyan coffee first and Earl Grey tea as a citrus pairing.; scope=User's coffee experimentation and pairing context from LongMemEval 6071bd76 session 1\n- note hot-path-00ce6679b70b-note-3: LESSON; Coffee bean freshness storage guidance; For preserving coffee bean freshness, the discussed procedure was to store beans in an airtight container in a cool, dark place at room temperature, use opened beans within about 2 weeks, freeze only for longer storage, and grind just before brewing.; scope=Coffee bean storage advice provided in LongMemEval 6071bd76 session 1\n- claim hot-path-00ce6679b70b-claim-7: prefers; The user chose to try Earl Grey tea with citrus-infused coffee.; scope=User tea pairing choice for citrus-infused coffee\n- claim hot-path-00ce6679b70b-claim-10: has_goal; The user wants to try new roasts and flavors from their coffee subscription.; scope=User coffee exploration goals\n- claim hot-path-00ce6679b70b-claim-9: has_experience_with; The user signed up for a coffee subscription service in January 2023 and received the first shipment of beans on 2023-02-10.; scope=User coffee subscription experience\n- claim hot-path-00ce6679b70b-claim-6: prefers; The user chose to try Kenyan coffee first for citrus-flavored coffee experimentation.; scope=User coffee bean choice for citrus-flavored coffee experimentation\n- claim hot-path-00ce6679b70b-claim-4: has_experience_with; The user has been experimenting with a French press for coffee brewing.; scope=User coffee brewing experience\n- claim hot-path-00ce6679b70b-claim-8: has_experience_with; The user has been experimenting with citrus-infused coffee.; scope=User coffee recipe experimentation\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=French press; action=LINK_EXISTING; id=entity:<1>; type=existing; name=French press; reason=Mention safely matches existing product entity French press.\n- mention=new beans; action=LINK_EXISTING; id=entity:<2>; type=existing; name=new beans; reason=User's new beans are coffee beans in the coffee brewing context and safely match the existing coffee beans entity.\n- mention=tea leaves; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=tea leaves; reason=Concrete reusable product discussed for storage, with no existing matching entity.\n- mention=tea cabinet; action=CREATE_NEW; id=entity:<4>; type=OTHER; name=tea cabinet; reason=Concrete reusable storage object mentioned by the user; no existing candidate matches.\n- mention=tea subscription service; action=CREATE_NEW; id=entity:<5>; type=SERVICE; name=tea subscription service; reason=Distinct from the existing coffee subscription service and is discussed as a reusable service category.\n- mention=Adagio Teas; action=CREATE_NEW; id=entity:<6>; type=ORGANIZATION; name=Adagio Teas; reason=Named organization/service provider discussed as a concrete option; no existing entity matches.\n- mention=The Tea Spot; action=CREATE_NEW; id=entity:<7>; type=ORGANIZATION; name=The Tea Spot; reason=Named organization/service provider discussed as a concrete option; no existing entity matches.\n- mention=rose tea; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=rose tea; reason=Concrete tea product discussed by the user; no existing entity matches.\n- mention=my sister; action=CREATE_NEW; id=entity:<9>; type=PERSON; name=User's sister; reason=A concrete person related to the user, introduced as the source of rose tea recommendation.\n- mention=shortbread cookies; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=shortbread cookies; reason=Concrete food product discussed as a pairing with rose tea; no existing entity matches.\n- mention=Lavender tea; action=CREATE_NEW; id=entity:<11>; type=PRODUCT; name=lavender tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Tulsi tea; action=CREATE_NEW; id=entity:<12>; type=PRODUCT; name=Tulsi tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Rooibos tea; action=CREATE_NEW; id=entity:<13>; type=PRODUCT; name=Rooibos tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Passionflower tea; action=CREATE_NEW; id=entity:<14>; type=PRODUCT; name=passionflower tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=Valerian root tea; action=CREATE_NEW; id=entity:<15>; type=PRODUCT; name=valerian root tea; reason=Concrete tea type recommended in the conversation; no existing entity matches.\n- mention=current project; action=CREATE_NEW; id=entity:<16>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|French press|coffee beans|tea|rose tea|Adagio Teas|The Tea Spot|sister\n        text_queries=French press ratio 1 tablespoon coffee for every 5 ounces water|relaxing tea similar to chamomile recommendations|tea leaves storage fresh airtight dark cool dry|tea subscription Adagio Teas The Tea Spot promotions|rose tea shortbread cookies sister introduced\n        predicate_hints=prefers|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:020bb0818f0475c8b707f3936d9ff510] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:6071bd76:session:2; title=LongMemEval 6071bd76 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/06/30 (Fri) 11:33\nTranscript:\nuser: I'm thinking of trying out a new tea blend this weekend. Do you have any recommendations for a relaxing tea that's similar to chamomile? By the way, I'm planning to brew a fresh pot of coffee in the morning, and I'm feeling excited to use my new beans - I've got my French press ratio down to a science: 1 tablespoon of coffee for every 5 ounces of water.\nassistant: A new tea blend sounds like a lovely way to unwind! If you're looking for a relaxing tea similar to chamomile, I'd be happy to suggest a few options:\n\n1. **Lavender tea**: Like chamomile, lavender is known for its calming effects and can promote a good night's sleep. The floral flavor is soothing and gentle, making it a great choice for unwinding.\n2. **Tulsi tea** (Holy Basil): Tulsi is an herbal tea that's also known for its calming properties. It has a slightly sweet and spicy flavor, which can help reduce stress and anxiety.\n3. **Rooibos tea**: This caffeine-free tea from South Africa has a nutty flavor and is rich in antioxidants. It's a great choice for a relaxing evening tea, as it can help promote a good night's sleep.\n4. **Passionflower tea**: Another herbal tea with calming properties, passionflower can help reduce anxiety and promote relaxation.\n5. **Valerian root tea**: Valerian root is a natural sedative and can help with sleep disorders. The flavor is earthy and slightly sweet, making it a nice alternative to chamomile.\n\nAs for your coffee, I'm glad to hear you're excited to brew a fresh pot! Your French press ratio of 1:5 sounds spot on. Enjoy your coffee and tea adventures this weekend!\n\nRemember, when trying a new tea, you can always adjust the steeping time and amount of tea leaves to your liking. Happy sipping!\nuser: What's the best way to store tea leaves to keep them fresh?\nassistant: Proper storage is crucial to maintaining the flavor, aroma, and quality of your tea leaves. Here are some tips to help you store your tea leaves fresh:\n\n1. **Airtight containers**: Store tea leaves in airtight containers, such as glass jars or ceramic canisters, to prevent air from entering and spoiling the tea.\n2. **Dark containers**: Use containers that block out light, as light can cause tea to lose its flavor and aroma. Dark glass or ceramic containers are ideal.\n3. **Cool, dry place**: Store tea leaves in a cool, dry place, away from direct sunlight, heat sources, and moisture. Avoid storing tea near a stove, oven, or radiator.\n4. **Avoid humid environments**: Keep tea away from humid environments, such as basements or attics, as moisture can cause tea to become stale or develop mold.\n5. **Don't store tea near strong-smelling foods**: Tea can absorb odors from nearby foods, so store it away from pungent ingredients like onions, garlic, and spices.\n6. **Keep tea away from heat sources**: Heat can cause tea to lose its flavor and aroma, so avoid storing it near heaters, ovens, or microwaves.\n7. **Use a tea tin or canister with a tight-fitting lid**: If you're using a tea tin or canister, make sure it has a tight-fitting lid to prevent air from entering.\n8. **Store tea in small quantities**: Divide your tea into smaller quantities (e.g., 1-2 ounces) and store them in separate containers to prevent exposure to air and light.\n9. **Use a tea storage box or chest**: Consider investing in a tea storage box or chest with individual compartments to store different teas and keep them organized.\n10. **Check on your tea regularly**: Regularly inspect your stored tea for signs of staleness, mold, or pest infestation. If you notice any issues, it's time to refresh your tea supply.\n\nBy following these guidelines, you can enjoy your tea at its best and maintain its flavor, aroma, and quality.\nuser: That's really helpful, thanks! I've been meaning to organize my tea cabinet, so I'll definitely use these tips. Speaking of which, I'm thinking of trying out a new tea subscription service - have you heard of any good ones?\nassistant: Tea subscription services are a great way to discover new teas and expand your tea collection. There are many excellent options out there, but I'll mention a few popular ones:\n\n1. **Adagio Teas**: Adagio offers a monthly tea subscription service with a wide variety of teas, including loose-leaf, herbal, and caffeinated options. They also have a \"Tea of the Month\" club that introduces you to new teas from around the world.\n2. **Teavana** (now part of Teavana by AT&T): Although Teavana closed their physical stores, their online subscription service remains popular. They offer a monthly tea subscription with a selection of loose-leaf teas, including exclusive blends.\n3. **The Tea Spot**: This Colorado-based company offers a monthly tea subscription service with a focus on organic, fair-trade, and artisanal teas. They also have a \"Tea of the Month\" club and a \"Tea Explorer\" club for more adventurous tea drinkers.\n4. **Harney & Sons**: This renowned tea company offers a monthly tea subscription service with a selection of their premium teas, including single-origin, blended, and herbal options.\n5. **Mighty Leaf Tea**: Mighty Leaf offers a monthly tea subscription service with a focus on artisanal, handcrafted teas from around the world. They also have a \"Tea of the Month\" club and a \"Tea Sampler\" option.\n6. **The Republic of Tea**: This company offers a monthly tea subscription service with a wide variety of teas, including herbal, green, black, and white teas. They also have a \"Tea of the Month\" club and a \"Tea Explorer\" club.\n\nThese are just a few examples, but there are many more tea subscription services out there. When choosing a service, consider factors like:\n\n* Tea selection: Do they offer a variety of teas, including herbal and caffeinated options?\n* Quality: Are the teas high-quality, and do they source from reputable suppliers?\n* Customization: Can you choose the teas you receive, or is it a surprise each month?\n* Price: What's the cost per month, and is it within your budget?\n* Reviews: Check online reviews to see what other customers think of the service.\n\nRemember to read the fine print and understand the subscription terms before signing up. Happy tea exploring!\nuser: I've heard of a few of those, but not all. I think I'll check out Adagio Teas and The Tea Spot. Do you know if they offer any discounts or promotions for new customers?\nassistant: Both Adagio Teas and The Tea Spot offer promotions and discounts for new customers. Here are some deals you can take advantage of:\n\n**Adagio Teas**:\n\n* **New Customer Discount**: 10% off your first order with code WELCOME10\n* **Free Shipping**: On orders over $49 (continental US only)\n* **Tea of the Month Club**: Get 20% off your first month's subscription with code TEA20\n* **Refer a Friend**: Refer friends and get 20% off your next order when they make a purchase\n\n**The Tea Spot**:\n\n* **New Customer Discount**: 15% off your first order with code TEA15\n* **Free Shipping**: On orders over $50 (continental US only)\n* **Tea of the Month Club**: Get 15% off your first month's subscription with code TEA15\n* **Sign-up Bonus**: Get a free tea sample with your first order when you sign up for their newsletter\n\nPlease note that promotions and discounts are subject to change, so it's always a good idea to check their websites or social media pages for the latest offers.\n\nAdditionally, both Adagio Teas and The Tea Spot offer rewards programs and loyalty points for repeat customers, so be sure to sign up for those to earn points and redeem rewards.\n\nHappy shopping, and I hope you enjoy your tea adventures with these companies!\nuser: I'll definitely check out those promotions. By the way, I've been meaning to ask: what's the best way to clean my French press? I want to make sure I'm getting all the old coffee oils out.\nassistant: Cleaning your French press is crucial to prevent old coffee oils and residue from affecting the flavor of your next brew. Here's a step-by-step guide to clean your French press:\n\n1. **Disassemble the French press**: Take apart the French press by removing the plunger and the lid.\n2. **Rinse with hot water**: Rinse the French press with hot water to remove any loose coffee grounds and oils.\n3. **Soak the French press**: Soak the French press in hot, soapy water for about 30 minutes. You can use a gentle dish soap or a mixture of equal parts water and white vinegar.\n4. **Scrub the French press**: Use a soft-bristled brush or a non-abrasive scrubber to scrub away any stubborn coffee oils and residue. Focus on the areas around the rim, lid, and plunger.\n5. **Rinse thoroughly**: Rinse the French press thoroughly with hot water to remove any soap or vinegar residue.\n6. **Dry the French press**: Dry the French press with a towel, paying extra attention to the crevices and areas where water may collect.\n7. **Sanitize the French press (optional)**: If you want to sanitize your French press, mix 1 tablespoon of unscented chlorine bleach with 1 quart of water. Soak the French press for 10-15 minutes, then rinse thoroughly with hot water.\n\nSome additional tips to keep in mind:\n\n* Avoid using abrasive cleaners or scouring pads, as they can scratch the French press.\n* Don't put your French press in the dishwasher, as the high heat and harsh detergents can damage the material.\n* If you notice any stubborn stains or residue, you can soak the French press in a mixture of equal parts water and baking soda for several hours or overnight.\n* Regularly cleaning your French press will help prevent old coffee oils from building up and affecting the flavor of your coffee.\n\nBy following these steps, you'll be able to remove old coffee oils and residue from your French press, ensuring a fresh and flavorful cup every time.\nuser: I was thinking of trying out that new rose tea my sister introduced me to. Do you think it would pair well with a sweet treat, like shortbread cookies?\nassistant: Rose tea is a lovely choice! It's a delicate and floral tea that can be quite versatile when it comes to pairing with sweet treats. Shortbread cookies sound like a great match for rose tea, as the buttery, crumbly texture and subtle sweetness of the cookies can complement the tea's floral notes nicely.\n\nHere are a few reasons why rose tea and shortbread cookies might make a lovely pair:\n\n1. **Floral harmony**: Rose tea's floral flavors can find a harmonious match with the subtle sweetness of shortbread cookies. The tea's delicate rose petals can enhance the cookie's sweetness without overpowering it.\n2. **Texture contrast**: The crumbly texture of shortbread cookies can provide a nice contrast to the smooth, velvety texture of the tea. This contrast can add depth and interest to the pairing.\n3. **Balancing sweetness**: Shortbread cookies can help balance the subtle bitterness of the rose tea, while the tea can help cut through the richness of the cookies.\n\nThat being said, feel free to experiment with different sweet treats to find your perfect pairing. Rose tea can also pair well with other sweet treats like:\n\n* Fresh fruit, like strawberries or grapes, to enhance the tea's floral flavors\n* Cakes, like vanilla or lemon, to complement the tea's sweetness\n* Chocolate truffles, like rose-petal infused or white chocolate, to create a romantic and indulgent treat\n\nRemember, the key to pairing tea with sweet treats is to find balance and harmony between the flavors and textures. Don't be afraid to experiment and find your own perfect pairings!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:6071bd76",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:020bb0818f0475c8b707f3936d9ff510"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<0>\",\"role\":\"subject\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Store tea leaves in airtight containers\",\"evidence_reason\":\"The target transcript gives concrete storage steps for preserving tea leaves, including airtight containers and storage conditions.\",\"importance\":4,\"keywords\":[\"tea leaves\",\"storage\",\"freshness\",\"airtight containers\",\"cool dry place\",\"tea cabinet\"],\"note_type\":\"lesson\",\"rationale\":\"This is reusable procedural guidance with multiple conditions and trade-offs, not a single atomic preference or fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Tea leaves storage and freshness guidance from LongMemEval 6071bd76 session 2\"},\"summary\":\"To keep tea leaves fresh, store them in airtight, light-blocking containers in a cool, dry place away from sunlight, heat, humidity, and strong-smelling foods; smaller portions and regular checks help prevent stale or contaminated tea.\",\"tags\":[\"tea_storage\",\"freshness\",\"procedure\"],\"title\":\"Tea leaf freshness storage procedure\",\"valid_from\":\"2023-06-30T11:33:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<11>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<12>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<13>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<14>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<15>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"If you're looking for a relaxing tea similar to chamomile\",\"evidence_reason\":\"The transcript explicitly frames the recommendations as relaxing teas similar to chamomile.\",\"importance\":3,\"keywords\":[\"chamomile\",\"relaxing tea\",\"lavender tea\",\"Tulsi tea\",\"Rooibos tea\",\"passionflower tea\",\"valerian root tea\"],\"note_type\":\"context\",\"rationale\":\"This captures a reusable recommendation set and rationale category rather than one precise factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's exploration of relaxing tea blends similar to chamomile in LongMemEval 6071bd76 session 2\"},\"summary\":\"For a relaxing tea similar to chamomile, the recommended options were lavender tea, Tulsi tea, Rooibos tea, passionflower tea, and valerian root tea, each chosen for calming or sleep-supporting qualities.\",\"tags\":[\"tea_recommendations\",\"relaxation\",\"herbal_tea\"],\"title\":\"Relaxing teas similar to chamomile\",\"valid_from\":\"2023-06-30T11:33:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"When choosing a service, consider factors like\",\"evidence_reason\":\"The transcript provides both candidate services and criteria for choosing among tea subscriptions.\",\"importance\":3,\"keywords\":[\"tea subscription service\",\"Adagio Teas\",\"The Tea Spot\",\"tea selection\",\"customization\",\"price\",\"reviews\"],\"note_type\":\"context\",\"rationale\":\"The value is in the reusable evaluation frame and context of explored services, not a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's tea subscription exploration in LongMemEval 6071bd76 session 2\"},\"summary\":\"When exploring a tea subscription service, the discussed options included Adagio Teas and The Tea Spot, and the evaluation criteria were tea selection, quality, customization, price, reviews, and subscription terms.\",\"tags\":[\"tea_subscription\",\"shopping_context\",\"selection_criteria\"],\"title\":\"Tea subscription options and selection criteria\",\"valid_from\":\"2023-06-30T11:33:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.86,\"entity_refs\":[{\"entity_id\":\"entity:<6>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<0>\",\"role\":\"subject\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"promotions and discounts are subject to change\",\"evidence_reason\":\"The transcript lists concrete promotions and explicitly cautions that they may change.\",\"importance\":2,\"keywords\":[\"Adagio Teas\",\"The Tea Spot\",\"WELCOME10\",\"TEA20\",\"TEA15\",\"free shipping\",\"new customer discount\"],\"note_type\":\"context\",\"rationale\":\"Promotion details are contextual, time-sensitive shopping information with caveats, better stored as a note than durable factual claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Promotion context for Adagio Teas and The Tea Spot from LongMemEval 6071bd76 session 2\"},\"summary\":\"The discussed new-customer promotions were Adagio Teas: 10% off first order with code WELCOME10, free shipping over $49, 20% off first Tea of the Month subscription month with code TEA20; The Tea Spot: 15% off first order or first subscription month with code TEA15, free shipping over $50, and a free sample via newsletter signup. These promotions were noted as subject to change.\",\"tags\":[\"promotions\",\"tea_subscription\",\"discount_codes\"],\"title\":\"Adagio Teas and The Tea Spot new-customer promotion context\",\"valid_from\":\"2023-06-30T11:33:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"subject\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Cleaning your French press is crucial to prevent old coffee oils\",\"evidence_reason\":\"The transcript gives a step-by-step cleaning method specifically to remove old coffee oils and residue from a French press.\",\"importance\":4,\"keywords\":[\"French press\",\"cleaning\",\"coffee oils\",\"hot soapy water\",\"vinegar\",\"non-abrasive scrubber\",\"dishwasher\"],\"note_type\":\"lesson\",\"rationale\":\"This is reusable procedural knowledge with steps and warnings, not a single clean factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"French press cleaning guidance for the user's coffee brewing equipment\"},\"summary\":\"To remove old coffee oils from a French press, disassemble it, rinse with hot water, soak in hot soapy water or water/vinegar, scrub gently around the rim, lid, and plunger, rinse thoroughly, dry well, and optionally sanitize; avoid abrasive cleaners, scouring pads, and dishwashers.\",\"tags\":[\"coffee\",\"french_press\",\"cleaning_procedure\"],\"title\":\"French press cleaning procedure for removing coffee oils\",\"valid_from\":\"2023-06-30T11:33:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<8>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<0>\",\"role\":\"subject\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Shortbread cookies sound like a great match for rose tea\",\"evidence_reason\":\"The transcript explicitly endorses the pairing and then explains the flavor and texture rationale.\",\"importance\":3,\"keywords\":[\"rose tea\",\"shortbread cookies\",\"pairing\",\"floral notes\",\"buttery\",\"sister\"],\"note_type\":\"context\",\"rationale\":\"This stores reusable pairing rationale and context rather than only the atomic fact that the user may try rose tea.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Rose tea pairing context introduced by the user's sister in LongMemEval 6071bd76 session 2\"},\"summary\":\"Rose tea was considered a good match for shortbread cookies because the cookies' buttery texture and subtle sweetness can complement rose tea's delicate floral notes, provide texture contrast, and balance subtle bitterness and richness.\",\"tags\":[\"tea_pairing\",\"rose_tea\",\"food_pairing\"],\"title\":\"Rose tea and shortbread pairing rationale\",\"valid_from\":\"2023-06-30T11:33:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5684,
+                "completionTokens": 2014,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

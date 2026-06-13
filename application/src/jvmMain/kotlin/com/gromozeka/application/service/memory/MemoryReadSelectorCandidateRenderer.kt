@@ -102,7 +102,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             overriddenBy = overriddenBy,
             selectionHint = when {
                 overriddenBy.isNotEmpty() ->
-                    "Historical evidence only. Select for historical/previous-state questions; prefer the ACTIVE overridden_by item for current-state factual answers."
+                    "Historical evidence only. Do not select as current truth. Select for historical/previous-state questions; prefer the ACTIVE overridden_by item for current-state factual answers."
                 supportsActive ->
                     "Evidence only. Select only when exact wording/provenance is required; typed ACTIVE memory carries the current truth."
                 else ->
