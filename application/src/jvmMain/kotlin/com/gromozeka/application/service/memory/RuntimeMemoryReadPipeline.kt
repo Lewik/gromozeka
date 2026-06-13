@@ -1613,8 +1613,14 @@ private fun List<MemoryStore.SearchHit>.filterNonRequiredSourcesWhenTypedMemoryA
 private fun List<MemoryStore.SearchHit>.renderClaims(includeEvidence: Boolean): String =
     filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
         .joinToString("\n") {
+            val context = it.claim.contextText
+                ?.trim()
+                ?.takeIf { contextText -> contextText.isNotBlank() && contextText != it.claim.normalizedText }
+                ?.truncateForRuntimeMemoryPrompt(MAX_RUNTIME_CLAIM_CONTEXT_CHARS)
+                ?.let { contextText -> "; context=\"$contextText\"" }
+                .orEmpty()
             val evidence = if (includeEvidence) "; evidence=${it.claim.evidenceRefs.renderEvidenceRefs()}" else ""
-            "- claim ${it.claim.id.value} [${it.claim.status.name}] ${it.claim.predicate} family=${it.claim.predicateFamily ?: "unknown"}: ${it.claim.normalizedText}; scope=${it.claim.scope.text}$evidence"
+            "- claim ${it.claim.id.value} [${it.claim.status.name}] ${it.claim.predicate} family=${it.claim.predicateFamily ?: "unknown"}: ${it.claim.normalizedText}; scope=${it.claim.scope.text}$context$evidence"
         }
         .ifBlank { "none" }
 
@@ -1644,7 +1650,12 @@ private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean, 
 }
 
 private fun String.queryFocusedExcerptForMemoryPrompt(query: String, maxChars: Int = 4_000): String =
-    RuntimeMemorySourceExcerpt.queryFocused(text = this, query = query, maxChars = maxChars)
+    RuntimeMemorySourceExcerpt.queryFocused(
+        text = this,
+        query = query,
+        maxChars = maxChars,
+        fullTextMaxChars = MAX_RUNTIME_FULL_SOURCE_CHARS,
+    )
 
 private fun List<MemoryStore.SearchHit>.renderEntities(): String =
     filterIsInstance<MemoryStore.SearchHit.EntityHit>()
@@ -1938,6 +1949,9 @@ private fun String.truncateForRuntimeMemoryPrompt(maxChars: Int): String {
     }
     return trimmed.take(maxChars) + "\n[truncated ${trimmed.length - maxChars} chars]"
 }
+
+private const val MAX_RUNTIME_CLAIM_CONTEXT_CHARS = 700
+private const val MAX_RUNTIME_FULL_SOURCE_CHARS = 12_000
 
 private fun MemorySource.sourceLabelForMemoryPrompt(): String =
     when (this) {

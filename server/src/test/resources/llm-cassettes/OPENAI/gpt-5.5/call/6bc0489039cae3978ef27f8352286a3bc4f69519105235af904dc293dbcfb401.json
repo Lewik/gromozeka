@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "6bc0489039cae3978ef27f8352286a3bc4f69519105235af904dc293dbcfb401",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long had I been watching stand-up comedy specials regularly when I attended the open mic night at the local comedy club?\n\n                                Question date:\n                                2023/05/27 (Sat) 08:13\n\n                                Noisy expected-answer label:\n                                2 months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:c9f37c46\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-6f33f8cbe2e0-claim-6 [ACTIVE] attended_event family=attended_event: The user attended an open mic night at a local comedy club in April 2023.; scope=User's stand-up comedy event attendance history.; context=\"In a 2023-05-27 session, the user said they attended the open mic last month, which resolves to April 2023.\"; evidence=DIRECT source=external:provided-text:e8e19d7f1a59f81fd947340bd050583b quote=\"Last month, I finally worked up the courage to attend an open mic night at a local comedy club\"\n- claim hot-path-1916fefba3c5-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to try performing stand-up comedy, likely at an open mic.; scope=User comedy-related goals as of 2023-05-27.; context=\"The user asked about comedy clubs or open mics nearby and said they might try their hand at live comedy.\"; evidence=DIRECT source=external:provided-text:f447d38fae48e2836cc548e7657a28e1 quote=\"maybe even try my hand at it\"\n- claim hot-path-6f33f8cbe2e0-claim-12 [ACTIVE] has_goal family=has_goal: The user wants to apply what they learned from attending an open mic night to their own writing.; scope=User's stand-up comedy learning workflow as of the 2023-05-27 session.; context=\"The user attended an open mic at a local comedy club and then tried applying that experience to writing jokes.\"; evidence=DIRECT source=external:provided-text:e8e19d7f1a59f81fd947340bd050583b quote=\"I've been trying to apply what I learned from that experience to my own writing\"\n- claim hot-path-1916fefba3c5-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has been watching stand-up comedy regularly since around February 2023.; scope=User entertainment interests and comedy experience as of 2023-05-27.; context=\"In a past chat on 2023-05-27, the user said they got into stand-up about three months earlier after watching a John Mulaney Netflix special.\"; evidence=DIRECT source=external:provided-text:f447d38fae48e2836cc548e7657a28e1 quote=\"I've been really into stand-up lately - I think it started about 3 months ago when I watched that Netflix special by John Mulaney, and I've been watching stand-ups regularly ever since.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:f447d38fae48e2836cc548e7657a28e1 [external_record ref=longmemeval:c9f37c46:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some comedy recommendations. I've been really into stand-up lately - I think it started about 3 months ago when I watched that Netflix special by John Mulaney, and I've been watching stand-ups regularly ever since. Can you suggest some comedians or specials I might enjoy?...\n...user: I'll definitely check those out. Are there any comedy clubs or open mics in my area that you'd recommend? I'd love to see some live comedy and maybe even try my hand at it.\nassistant: Live comedy is a whole different beast, and it's great that you're interested in exploring it! Unfortunately, I'm a large language model, I don't have access to your location, so I can't provide specific recommendations for comedy clubs or open mics in your area.\n\nHowever, I can suggest a few ways to find live comedy events and open mics near you:\n\n1. **Google Search**: Type in \"comedy clubs near me\" or \"open mics near me\" along with your city or zip code. This should give you a list of nearby comedy clubs, bars, or venues that host comedy events.\n2. **Comedy Club Websites**: Look up well-known comedy clubs like Comedy Cellar, Carolines on Broadway, or the Laugh Factory, and see if they have a location near you. These clubs often have a calendar of upcoming shows and open mics.\n3. **Facebook Events**: Search for comedy events in your area on Facebook. Many comedy clubs, promoters, and comedians create events on Facebook to promote their shows.\n4. **Meetup.com**: Join local comedy-related Meetup groups, which often organize outings to comedy clubs, open mics, or improv nights.\n5. **Local Comedy Communities**: Search for online forums, social media groups, or Reddit communities focused on comedy in your area. These can be great resources for finding out about upcoming shows, open mics, and opportunities to perform.\n\nWhen it comes to trying your hand at stand-up, here are some tips:\n\n1. **Start with Open Mics**: Look for open mics in your area, which are usually free or low-cost events where anyone can sign up to perform. This is a great way to get stage time, experiment with material, and meet other comedians....\n...user: I'll definitely try out those methods to find some live comedy events in my area. Do you think it's a good idea to attend a few open mics before taking a comedy class, or should I just dive right in and sign up for a class?...\n...1. **Get a feel for the scene**: Attend open mics to get a sense of the local comedy community, the types of comedians performing, and the audience's preferences....\n...2. **Take a beginner's class**: If you enjoy the open mics and want to learn more, sign up for a beginner's comedy class. This will give you a structured environment to learn and grow.\n3. **Continue attending open mics**: While taking the class, continue attending open mics to apply what you're learning, get more stage time, and stay connected with the local comedy community....\n...user: That's really helpful, thanks! I think I'll try attending a few open mics first to get a feel for the scene and see how I like it. Do you think it's better to try to come up with new material for each open mic, or should I focus on refining a few jokes and trying to make them better?...\n...1. **Identify your strongest material**: After a few open mics, you'll start to notice which jokes are getting consistent laughs and which ones are bombing. Identify your strongest material and focus on refining those jokes....\n...user: That makes sense. I think I'll try to come up with some new material for the first few open mics, and then start refining my best jokes as I get more comfortable. Do you think it's a good idea to record my performances and watch them to see what I can improve on?...\n- source external:provided-text:e8e19d7f1a59f81fd947340bd050583b [external_record ref=longmemeval:c9f37c46:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 13:51\nTranscript:\nuser: I'm looking for some advice on writing jokes. I've recently gotten into stand-up comedy and I'm trying to improve my craft. Last month, I finally worked up the courage to attend an open mic night at a local comedy club, and it was amazing to see people trying out their material in front of a live audience.\nassistant: Congratulations on taking the first step into the world of stand-up comedy! Attending an open mic night is a great way to get a feel for the stage and see how different comedians approach their craft. Now that you've dipped your toes in, you're probably eager to develop your own material and improve your joke-writing skills. Here are some tips to help you get started:\n\n1. **Write regularly**: Make writing jokes a habit. Set aside time each day or week to brainstorm and write down ideas, even if they're not fully formed. The more you write, the better you'll become at recognizing what works and what doesn't.\n2. **Observe life**: Comedy often comes from observing the mundane and finding the humor in everyday situations. Pay attention to your daily experiences, conversations, and surroundings. Take note of things that make you laugh or raise an eyebrow....\n...4. **Start with a strong premise**: A good joke usually begins with a solid premise or setup. This is the foundation of your joke. Make sure it's clear, concise, and relatable....\n...12. **Keep writing and performing**: The more you write and perform, the better you'll become. Make comedy a habit, and you'll see improvement over time....\n...6. **Make connections**: Find unexpected connections between two seemingly unrelated things. This can create humor through surprise and cleverness. For example, \"I realized that my relationship is like a pizza delivery – it starts hot, but eventually gets cold and stale.\"...\n...user: I've been trying to write jokes about my everyday experiences, but I'm struggling to make them funny. Last month, I finally worked up the courage to attend an open mic night at a local comedy club, and it was amazing to see people trying out their material in front of a live audience. I've been trying to apply what I learned from that experience to my own writing, but I'm still having trouble finding the humor in mundane situations. Do you have any tips on how to make my jokes more relatable and funny?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Stand-up comedy; Concept named Stand-up comedy.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "c9f37c46",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long had I been watching stand-up comedy specials regularly when I attended the open mic night at the local comedy club?\n\n                                Question date:\n                                2023/05/27 (Sat) 08:13\n\n                                Noisy expected-answer label:\n                                2 months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:c9f37c46\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-6f33f8cbe2e0-claim-6 [ACTIVE] attended_event family=attended_event: The user attended an open mic night at a local comedy club in April 2023.; scope=User's stand-up comedy event attendance history.; context=\"In a 2023-05-27 session, the user said they attended the open mic last month, which resolves to April 2023.\"; evidence=DIRECT source=external:provided-text:e8e19d7f1a59f81fd947340bd050583b quote=\"Last month, I finally worked up the courage to attend an open mic night at a local comedy club\"\n- claim hot-path-1916fefba3c5-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to try performing stand-up comedy, likely at an open mic.; scope=User comedy-related goals as of 2023-05-27.; context=\"The user asked about comedy clubs or open mics nearby and said they might try their hand at live comedy.\"; evidence=DIRECT source=external:provided-text:f447d38fae48e2836cc548e7657a28e1 quote=\"maybe even try my hand at it\"\n- claim hot-path-6f33f8cbe2e0-claim-12 [ACTIVE] has_goal family=has_goal: The user wants to apply what they learned from attending an open mic night to their own writing.; scope=User's stand-up comedy learning workflow as of the 2023-05-27 session.; context=\"The user attended an open mic at a local comedy club and then tried applying that experience to writing jokes.\"; evidence=DIRECT source=external:provided-text:e8e19d7f1a59f81fd947340bd050583b quote=\"I've been trying to apply what I learned from that experience to my own writing\"\n- claim hot-path-1916fefba3c5-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has been watching stand-up comedy regularly since around February 2023.; scope=User entertainment interests and comedy experience as of 2023-05-27.; context=\"In a past chat on 2023-05-27, the user said they got into stand-up about three months earlier after watching a John Mulaney Netflix special.\"; evidence=DIRECT source=external:provided-text:f447d38fae48e2836cc548e7657a28e1 quote=\"I've been really into stand-up lately - I think it started about 3 months ago when I watched that Netflix special by John Mulaney, and I've been watching stand-ups regularly ever since.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:f447d38fae48e2836cc548e7657a28e1 [external_record ref=longmemeval:c9f37c46:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some comedy recommendations. I've been really into stand-up lately - I think it started about 3 months ago when I watched that Netflix special by John Mulaney, and I've been watching stand-ups regularly ever since. Can you suggest some comedians or specials I might enjoy?...\n...user: I'll definitely check those out. Are there any comedy clubs or open mics in my area that you'd recommend? I'd love to see some live comedy and maybe even try my hand at it.\nassistant: Live comedy is a whole different beast, and it's great that you're interested in exploring it! Unfortunately, I'm a large language model, I don't have access to your location, so I can't provide specific recommendations for comedy clubs or open mics in your area.\n\nHowever, I can suggest a few ways to find live comedy events and open mics near you:\n\n1. **Google Search**: Type in \"comedy clubs near me\" or \"open mics near me\" along with your city or zip code. This should give you a list of nearby comedy clubs, bars, or venues that host comedy events.\n2. **Comedy Club Websites**: Look up well-known comedy clubs like Comedy Cellar, Carolines on Broadway, or the Laugh Factory, and see if they have a location near you. These clubs often have a calendar of upcoming shows and open mics.\n3. **Facebook Events**: Search for comedy events in your area on Facebook. Many comedy clubs, promoters, and comedians create events on Facebook to promote their shows.\n4. **Meetup.com**: Join local comedy-related Meetup groups, which often organize outings to comedy clubs, open mics, or improv nights.\n5. **Local Comedy Communities**: Search for online forums, social media groups, or Reddit communities focused on comedy in your area. These can be great resources for finding out about upcoming shows, open mics, and opportunities to perform.\n\nWhen it comes to trying your hand at stand-up, here are some tips:\n\n1. **Start with Open Mics**: Look for open mics in your area, which are usually free or low-cost events where anyone can sign up to perform. This is a great way to get stage time, experiment with material, and meet other comedians....\n...user: I'll definitely try out those methods to find some live comedy events in my area. Do you think it's a good idea to attend a few open mics before taking a comedy class, or should I just dive right in and sign up for a class?...\n...1. **Get a feel for the scene**: Attend open mics to get a sense of the local comedy community, the types of comedians performing, and the audience's preferences....\n...2. **Take a beginner's class**: If you enjoy the open mics and want to learn more, sign up for a beginner's comedy class. This will give you a structured environment to learn and grow.\n3. **Continue attending open mics**: While taking the class, continue attending open mics to apply what you're learning, get more stage time, and stay connected with the local comedy community....\n...user: That's really helpful, thanks! I think I'll try attending a few open mics first to get a feel for the scene and see how I like it. Do you think it's better to try to come up with new material for each open mic, or should I focus on refining a few jokes and trying to make them better?...\n...1. **Identify your strongest material**: After a few open mics, you'll start to notice which jokes are getting consistent laughs and which ones are bombing. Identify your strongest material and focus on refining those jokes....\n...user: That makes sense. I think I'll try to come up with some new material for the first few open mics, and then start refining my best jokes as I get more comfortable. Do you think it's a good idea to record my performances and watch them to see what I can improve on?...\n- source external:provided-text:e8e19d7f1a59f81fd947340bd050583b [external_record ref=longmemeval:c9f37c46:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 13:51\nTranscript:\nuser: I'm looking for some advice on writing jokes. I've recently gotten into stand-up comedy and I'm trying to improve my craft. Last month, I finally worked up the courage to attend an open mic night at a local comedy club, and it was amazing to see people trying out their material in front of a live audience.\nassistant: Congratulations on taking the first step into the world of stand-up comedy! Attending an open mic night is a great way to get a feel for the stage and see how different comedians approach their craft. Now that you've dipped your toes in, you're probably eager to develop your own material and improve your joke-writing skills. Here are some tips to help you get started:\n\n1. **Write regularly**: Make writing jokes a habit. Set aside time each day or week to brainstorm and write down ideas, even if they're not fully formed. The more you write, the better you'll become at recognizing what works and what doesn't.\n2. **Observe life**: Comedy often comes from observing the mundane and finding the humor in everyday situations. Pay attention to your daily experiences, conversations, and surroundings. Take note of things that make you laugh or raise an eyebrow....\n...4. **Start with a strong premise**: A good joke usually begins with a solid premise or setup. This is the foundation of your joke. Make sure it's clear, concise, and relatable....\n...12. **Keep writing and performing**: The more you write and perform, the better you'll become. Make comedy a habit, and you'll see improvement over time....\n...6. **Make connections**: Find unexpected connections between two seemingly unrelated things. This can create humor through surprise and cleverness. For example, \"I realized that my relationship is like a pizza delivery – it starts hot, but eventually gets cold and stale.\"...\n...user: I've been trying to write jokes about my everyday experiences, but I'm struggling to make them funny. Last month, I finally worked up the courage to attend an open mic night at a local comedy club, and it was amazing to see people trying out their material in front of a live audience. I've been trying to apply what I learned from that experience to my own writing, but I'm still having trouble finding the humor in mundane situations. Do you have any tips on how to make my jokes more relatable and funny?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Stand-up comedy; Concept named Stand-up comedy.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "c9f37c46",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"About 2 months.\",\"reason\":\"The context says the user began watching stand-up regularly around February 2023 and attended the open mic in April 2023, which is about two months later.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2900,
+                "completionTokens": 146,
+                "thinkingTokens": 81,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

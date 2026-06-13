@@ -1,9 +1,9 @@
 package com.gromozeka.application.service.memory
 
 internal object RuntimeMemorySourceExcerpt {
-    fun queryFocused(text: String, query: String, maxChars: Int = 4_000): String {
+    fun queryFocused(text: String, query: String, maxChars: Int = 4_000, fullTextMaxChars: Int = maxChars): String {
         val source = text.trim()
-        if (source.length <= maxChars) return source
+        if (source.length <= fullTextMaxChars) return source
 
         val queryNeedles = query.queryNeedles(source)
         if (queryNeedles.terms.isEmpty() && queryNeedles.phrases.isEmpty()) {

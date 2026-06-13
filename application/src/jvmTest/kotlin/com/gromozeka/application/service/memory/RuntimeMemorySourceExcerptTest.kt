@@ -6,6 +6,29 @@ import kotlin.test.assertTrue
 
 class RuntimeMemorySourceExcerptTest {
     @Test
+    fun keepsCompleteSmallSourceWhenFullTextThresholdAllowsIt() {
+        val source = buildString {
+            appendLine("1. Dialogue")
+            appendLine("2. Monologue")
+            appendLine("3. Sound effects")
+            append("extra context ".repeat(120))
+        }
+
+        val excerpt = RuntimeMemorySourceExcerpt.queryFocused(
+            text = source,
+            query = "What was the 3rd item?",
+            maxChars = 200,
+            fullTextMaxChars = 2_000,
+        )
+
+        assertTrue(excerpt.contains("1. Dialogue"), excerpt)
+        assertTrue(excerpt.contains("2. Monologue"), excerpt)
+        assertTrue(excerpt.contains("3. Sound effects"), excerpt)
+        assertFalse(excerpt.contains("[matching excerpts]"), excerpt)
+        assertFalse(excerpt.contains("[truncated"), excerpt)
+    }
+
+    @Test
     fun prefersDenseQueryWindowOverFirstWeakTermOccurrence() {
         val earlyAdvice = "Retailer coupons can be useful. ".repeat(120)
         val targetSentence = "I redeemed a $5 coupon on coffee creamer at Target last Sunday."

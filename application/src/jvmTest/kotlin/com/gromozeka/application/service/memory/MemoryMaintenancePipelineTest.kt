@@ -3214,6 +3214,53 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun runtimePromptRendersClaimContextText() = runBlocking {
+        val source = source(
+            id = "routine-source",
+            text = "The user wakes up at 7:00 AM. On Tuesdays and Thursdays they wake up 15 minutes earlier.",
+        )
+        val claim = claim(
+            id = "routine-claim",
+            sourceId = source.id.value,
+            predicate = "morning_routine",
+            objectValue = JsonPrimitive("Tuesday Thursday meditation"),
+            normalizedText = "The user meditates on Tuesdays and Thursdays as part of their morning routine.",
+            contextText = "On Tuesdays and Thursdays, the user wakes up 15 minutes earlier before meditating.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                entities = listOf(entity()),
+                claims = listOf(claim),
+            )
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Routine detail answers the target.",
+                            query = "Tuesday Thursday wake up 15 minutes earlier meditation",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+            selector = PassthroughMemoryReadSelector,
+        ).read(memoryReadRequest("claim-context-target", "What time do I wake up on Tuesdays and Thursdays?"))
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        assertTrue(prompt.contains("The user meditates on Tuesdays and Thursdays as part of their morning routine."))
+        assertTrue(prompt.contains("context=\"On Tuesdays and Thursdays, the user wakes up 15 minutes earlier before meditating.\""))
+    }
+
+    @Test
     fun runtimeReadSuppressesRawSourcesLinkedToSupersededMemory() = runBlocking {
         val oldSource = source("old-csv-source", "ShelfLog primary export is currently CSV.")
         val newSource = source("new-json-source", "ShelfLog primary export is currently JSON Lines instead of CSV.")
@@ -4187,6 +4234,7 @@ private fun claim(
     objectEntityId: MemoryEntity.Id? = null,
     objectValue: JsonPrimitive? = JsonPrimitive("Toyota"),
     normalizedText: String = "The user prefers Toyota.",
+    contextText: String? = null,
     status: MemoryClaim.Status = MemoryClaim.Status.ACTIVE,
     confidence: Double = 0.8,
     importance: Int = 7,
@@ -4199,6 +4247,7 @@ private fun claim(
         objectEntityId = objectEntityId,
         objectValue = objectValue,
         normalizedText = normalizedText,
+        contextText = contextText,
         scope = MemoryScope.Global("User-level preference"),
         confidence = confidence,
         importance = importance,

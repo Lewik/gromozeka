@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "9c57eed421b64afad697e3327df350951744baf67979a2de0faafefb43ce5d70",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning a trip to Denver soon. Any suggestions on what to do there?\n\n                                Question date:\n                                2023/05/26 (Fri) 02:11\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that take into account their previous experience in Denver, specifically their interest in live music and memorable encounter with Brandon Flowers. They might appreciate suggestions that revisit or build upon this experience, such as revisiting the same bar or exploring similar music venues in the area. The user may not prefer general tourist recommendations or activities unrelated to their interest in live music.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:a89d7624\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-4a822e1b6f1e-claim-10 [ACTIVE] has_goal family=has_goal: The user is interested in music venues and festivals in Denver that they should not miss.; scope=Denver music-travel planning and recommendations.; context=\"Asked after saying they loved Denver's music scene during a previous visit.\"; evidence=DIRECT source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"Are there any good music venues or festivals in Denver that I shouldn't miss?\"\n- claim hot-path-4a822e1b6f1e-claim-9 [ACTIVE] prefers family=prefers: The user loves Denver's music scene.; scope=User's music-scene and travel interests.; context=\"The user said this after a previous visit to Denver where they met Brandon Flowers after The Killers' concert.\"; evidence=DIRECT source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"I realized how much I love the city's music scene\"\n- claim hot-path-4a822e1b6f1e-claim-12 [ACTIVE] has_goal family=has_goal: The user wants BBQ place recommendations near Red Rocks Amphitheater.; scope=Potential Red Rocks concert trip planning as of 2023-05-23.; context=\"Asked while thinking of going back to Denver for another concert.\"; evidence=DIRECT source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"Do you know if there are any good BBQ places near the Red Rocks Amphitheater?\"\n\n            Retrieved notes:\n            - note hot-path-4a822e1b6f1e-note-2 [CONTEXT/ACTIVE]: Denver concert trip planning around Red Rocks and The Killers; The user has a recurring Denver concert-planning context centered on Red Rocks Amphitheatre, The Killers, and meeting Brandon Flowers; recommendations should connect new music discovery, Denver venues/festivals, and pre-concert dining near Red Rocks when relevant.; scope=Reusable context for the user's Denver and Red Rocks music/concert planning preferences and experiences.; evidence=SUMMARIZED source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"I realized how much I love the city's music scene\"\n- note hot-path-4a822e1b6f1e-note-3 [CONTEXT/ACTIVE]: Pre-concert dining preference near Red Rocks; When planning Red Rocks concerts, the user values arriving early for dinner nearby, especially options within walking distance and tables or patios with views of Red Rocks or the stage; The Ship Rock Grille is a named candidate they were considering.; scope=Reusable context for Red Rocks Amphitheatre pre-concert dining and seating recommendations for the user.; evidence=SUMMARIZED source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"I'm going to ask them if they have any tables available with a view of the stage.\"\n\n            Retrieved evidence:\n            - source external:provided-text:e6a66c60984455d6ffe85572395c8138 [external_record ref=longmemeval:a89d7624:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 21:26\nTranscript:\nuser: I'm looking for some music recommendations. I've been to three concerts recently, including The Killers at Red Rocks Amphitheater, and I'm always looking for new bands to check out.\nassistant: That sounds like an amazing experience! The Killers are a great live band, and Red Rocks is an incredible venue. I'd be happy to help you discover some new music and bands that might resonate with you. Here are a few recommendations based on The Killers' style and sound:...\n...I hope you enjoy exploring these recommendations! Do you have a preferred streaming platform or method for discovering new music?\nuser: I met Brandon Flowers, the lead singer of The Killers, after attending their concert in Denver. What's the best way to keep up with new music releases and concerts in my area?...\n...1. **Streaming platforms:** Follow your favorite artists and genres on streaming services like Spotify, Apple Music, or Tidal. They often feature new releases, recommendations, and playlists curated by music experts.\n2. **Music blogs and websites:** Websites like Pitchfork, NME, Stereogum, and Indie Shuffle regularly feature new music releases, reviews, and recommendations....\n...user: During my previous visit to Denver, where I had a great time meeting Brandon Flowers after The Killers' concert, I realized how much I love the city's music scene. Are there any good music venues or festivals in Denver that I shouldn't miss?\nassistant: Denver's music scene is indeed thriving! You're lucky to have experienced it firsthand. As a music enthusiast, you'll love exploring the city's vibrant venues and festivals. Here are some must-visit spots and events to add to your Denver music bucket list:...\n...2. **Denver Folk Festival**: If you're a fan of folk, bluegrass, or roots music, this festival is a must-visit.\n3. **Denver Jazz Festival**: Celebrating jazz in all its forms, this festival features local and national acts.\n4. **Westword Music Showcase**: A one-day festival featuring local and national acts, with a focus on showcasing Denver's thriving music scene.\n5. **Riot Fest Denver**: A punk, rock, and alternative festival that takes place in September....\n...When planning your next visit to Denver, be sure to check out these venues and festivals. You might even stumble upon some new favorite bands or discover hidden gems in the city's music scene!\nuser: I'm thinking of going back to Denver for another concert. Do you know if there are any good BBQ places near the Red Rocks Amphitheater?\nassistant: You're heading back to Denver for another concert, and you're craving some delicious BBQ to fuel up before the show? You're in luck! There are some fantastic BBQ joints near Red Rocks Amphitheater. Here are a few recommendations:...\n...user: I'll definitely check those out. I'm thinking of getting to Red Rocks a bit earlier to grab some dinner before the concert. Do you know if there are any good restaurants or food options within walking distance of the amphitheater?\nassistant: You're planning to grab dinner before the concert, and you're wondering if there are any good restaurants or food options within walking distance of Red Rocks? Yes, there are some excellent options to fuel up before the show! Here are a few recommendations:...\n...user: I'm thinking of getting some dinner at The Ship Rock Grille before the concert. Do they have any outdoor seating with a view of the Red Rocks?...\n...user: I'm going to ask them if they have any tables available with a view of the stage....\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Denver; Location named Denver.\n- entity entity:<1> [LOCATION]: Red Rocks Amphitheatre; Location named Red Rocks Amphitheatre.\n- entity entity:<2> [ORGANIZATION]: The Killers; Organization named The Killers.\n- entity entity:<3> [ORGANIZATION]: The Ship Rock Grille; Organization named The Ship Rock Grille.\n- entity entity:<4> [PERSON]: Brandon Flowers; Person named Brandon Flowers.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "a89d7624",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning a trip to Denver soon. Any suggestions on what to do there?\n\n                                Question date:\n                                2023/05/26 (Fri) 02:11\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that take into account their previous experience in Denver, specifically their interest in live music and memorable encounter with Brandon Flowers. They might appreciate suggestions that revisit or build upon this experience, such as revisiting the same bar or exploring similar music venues in the area. The user may not prefer general tourist recommendations or activities unrelated to their interest in live music.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:a89d7624\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-4a822e1b6f1e-claim-10 [ACTIVE] has_goal family=has_goal: The user is interested in music venues and festivals in Denver that they should not miss.; scope=Denver music-travel planning and recommendations.; context=\"Asked after saying they loved Denver's music scene during a previous visit.\"; evidence=DIRECT source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"Are there any good music venues or festivals in Denver that I shouldn't miss?\"\n- claim hot-path-4a822e1b6f1e-claim-9 [ACTIVE] prefers family=prefers: The user loves Denver's music scene.; scope=User's music-scene and travel interests.; context=\"The user said this after a previous visit to Denver where they met Brandon Flowers after The Killers' concert.\"; evidence=DIRECT source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"I realized how much I love the city's music scene\"\n- claim hot-path-4a822e1b6f1e-claim-12 [ACTIVE] has_goal family=has_goal: The user wants BBQ place recommendations near Red Rocks Amphitheater.; scope=Potential Red Rocks concert trip planning as of 2023-05-23.; context=\"Asked while thinking of going back to Denver for another concert.\"; evidence=DIRECT source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"Do you know if there are any good BBQ places near the Red Rocks Amphitheater?\"\n\n            Retrieved notes:\n            - note hot-path-4a822e1b6f1e-note-2 [CONTEXT/ACTIVE]: Denver concert trip planning around Red Rocks and The Killers; The user has a recurring Denver concert-planning context centered on Red Rocks Amphitheatre, The Killers, and meeting Brandon Flowers; recommendations should connect new music discovery, Denver venues/festivals, and pre-concert dining near Red Rocks when relevant.; scope=Reusable context for the user's Denver and Red Rocks music/concert planning preferences and experiences.; evidence=SUMMARIZED source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"I realized how much I love the city's music scene\"\n- note hot-path-4a822e1b6f1e-note-3 [CONTEXT/ACTIVE]: Pre-concert dining preference near Red Rocks; When planning Red Rocks concerts, the user values arriving early for dinner nearby, especially options within walking distance and tables or patios with views of Red Rocks or the stage; The Ship Rock Grille is a named candidate they were considering.; scope=Reusable context for Red Rocks Amphitheatre pre-concert dining and seating recommendations for the user.; evidence=SUMMARIZED source=external:provided-text:e6a66c60984455d6ffe85572395c8138 quote=\"I'm going to ask them if they have any tables available with a view of the stage.\"\n\n            Retrieved evidence:\n            - source external:provided-text:e6a66c60984455d6ffe85572395c8138 [external_record ref=longmemeval:a89d7624:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 21:26\nTranscript:\nuser: I'm looking for some music recommendations. I've been to three concerts recently, including The Killers at Red Rocks Amphitheater, and I'm always looking for new bands to check out.\nassistant: That sounds like an amazing experience! The Killers are a great live band, and Red Rocks is an incredible venue. I'd be happy to help you discover some new music and bands that might resonate with you. Here are a few recommendations based on The Killers' style and sound:...\n...I hope you enjoy exploring these recommendations! Do you have a preferred streaming platform or method for discovering new music?\nuser: I met Brandon Flowers, the lead singer of The Killers, after attending their concert in Denver. What's the best way to keep up with new music releases and concerts in my area?...\n...1. **Streaming platforms:** Follow your favorite artists and genres on streaming services like Spotify, Apple Music, or Tidal. They often feature new releases, recommendations, and playlists curated by music experts.\n2. **Music blogs and websites:** Websites like Pitchfork, NME, Stereogum, and Indie Shuffle regularly feature new music releases, reviews, and recommendations....\n...user: During my previous visit to Denver, where I had a great time meeting Brandon Flowers after The Killers' concert, I realized how much I love the city's music scene. Are there any good music venues or festivals in Denver that I shouldn't miss?\nassistant: Denver's music scene is indeed thriving! You're lucky to have experienced it firsthand. As a music enthusiast, you'll love exploring the city's vibrant venues and festivals. Here are some must-visit spots and events to add to your Denver music bucket list:...\n...2. **Denver Folk Festival**: If you're a fan of folk, bluegrass, or roots music, this festival is a must-visit.\n3. **Denver Jazz Festival**: Celebrating jazz in all its forms, this festival features local and national acts.\n4. **Westword Music Showcase**: A one-day festival featuring local and national acts, with a focus on showcasing Denver's thriving music scene.\n5. **Riot Fest Denver**: A punk, rock, and alternative festival that takes place in September....\n...When planning your next visit to Denver, be sure to check out these venues and festivals. You might even stumble upon some new favorite bands or discover hidden gems in the city's music scene!\nuser: I'm thinking of going back to Denver for another concert. Do you know if there are any good BBQ places near the Red Rocks Amphitheater?\nassistant: You're heading back to Denver for another concert, and you're craving some delicious BBQ to fuel up before the show? You're in luck! There are some fantastic BBQ joints near Red Rocks Amphitheater. Here are a few recommendations:...\n...user: I'll definitely check those out. I'm thinking of getting to Red Rocks a bit earlier to grab some dinner before the concert. Do you know if there are any good restaurants or food options within walking distance of the amphitheater?\nassistant: You're planning to grab dinner before the concert, and you're wondering if there are any good restaurants or food options within walking distance of Red Rocks? Yes, there are some excellent options to fuel up before the show! Here are a few recommendations:...\n...user: I'm thinking of getting some dinner at The Ship Rock Grille before the concert. Do they have any outdoor seating with a view of the Red Rocks?...\n...user: I'm going to ask them if they have any tables available with a view of the stage....\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Denver; Location named Denver.\n- entity entity:<1> [LOCATION]: Red Rocks Amphitheatre; Location named Red Rocks Amphitheatre.\n- entity entity:<2> [ORGANIZATION]: The Killers; Organization named The Killers.\n- entity entity:<3> [ORGANIZATION]: The Ship Rock Grille; Organization named The Ship Rock Grille.\n- entity entity:<4> [PERSON]: Brandon Flowers; Person named Brandon Flowers.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "a89d7624",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest Denver activities centered on the user's prior love of the city's live music scene, especially venues/festivals and possibly Red Rocks-related concert plans, noting their memorable experience meeting Brandon Flowers after The Killers' concert.\",\"reason\":\"The retrieved context directly states the user loved Denver's music scene after meeting Brandon Flowers and asked for Denver music venues, festivals, and Red Rocks concert-related recommendations.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2541,
+                "completionTokens": 148,
+                "thinkingTokens": 46,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

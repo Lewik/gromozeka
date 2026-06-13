@@ -148,6 +148,15 @@ tasks.withType<Test> {
     System.getProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs")?.let {
         systemProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs", it)
     }
+    System.getProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms")?.let {
+        systemProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms", it)
+    }
+    System.getProperty("gromozeka.ai.openai-subscription.websocket-transport-timeout-ms")?.let {
+        systemProperty("gromozeka.ai.openai-subscription.websocket-transport-timeout-ms", it)
+    }
+    System.getProperty("gromozeka.memory.llm.timeoutMs")?.let {
+        systemProperty("gromozeka.memory.llm.timeoutMs", it)
+    }
     System.getProperty("gromozeka.llm.cassette.mode")?.let {
         systemProperty("gromozeka.llm.cassette.mode", it)
     }
