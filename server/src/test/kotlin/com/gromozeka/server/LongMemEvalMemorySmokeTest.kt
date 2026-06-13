@@ -199,10 +199,10 @@ class LongMemEvalMemorySmokeTest {
                     } +
                     ". Artifact: $summaryPath"
             )
-            val failedCases = caseResults.filterNot { it.answerSupportedByMemory }
+            val failedCases = caseResults.filterNot { it.memorySmokePassed }
             assertTrue(
                 failedCases.isEmpty(),
-                "Expected answer was not supported by memory_context for ${failedCases.size}/${caseResults.size} cases. " +
+                "Expected answer was not supported by memory_context and gold evidence was not fully selected for ${failedCases.size}/${caseResults.size} cases. " +
                     "Artifact: $summaryPath"
             )
         }
@@ -315,6 +315,13 @@ class LongMemEvalMemorySmokeTest {
             progressPath,
             "support_judge_done id=${entry.questionId} supported=${supportJudgement.supported} hypothesis=${supportJudgement.hypothesis.oneLineForArtifact(180)} reason=${supportJudgement.reason.oneLineForArtifact(240)}"
         )
+        val memorySmokePassReason = when {
+            supportJudgement.supported -> "support_judge"
+            exactAnswerTextVisible -> "exact_answer_visible"
+            allEvidenceSourcesHit == true -> "all_expected_evidence_sources_selected"
+            else -> "missing_supported_answer_or_gold_sources"
+        }
+        val memorySmokePassed = memorySmokePassReason != "missing_supported_answer_or_gold_sources"
         val caseDossierPath = caseArtifactDirectory.resolve("${entry.questionId.sanitizePathSegment()}.md")
         caseDossierPath.writeText(
             renderCaseDossier(
@@ -328,6 +335,8 @@ class LongMemEvalMemorySmokeTest {
                 exactAnswerTextVisible = exactAnswerTextVisible,
                 evidenceSourceHit = evidenceSourceHit,
                 allEvidenceSourcesHit = allEvidenceSourcesHit,
+                memorySmokePassed = memorySmokePassed,
+                memorySmokePassReason = memorySmokePassReason,
                 supportJudgement = supportJudgement,
                 memoryContext = memoryContext,
             )
@@ -341,6 +350,8 @@ class LongMemEvalMemorySmokeTest {
             retrievedCount = enrichResult.retrievedCount ?: 0,
             exactAnswerTextVisible = exactAnswerTextVisible,
             answerSupportedByMemory = supportJudgement.supported,
+            memorySmokePassed = memorySmokePassed,
+            memorySmokePassReason = memorySmokePassReason,
             expectedEvidenceSourceIds = expectedEvidenceSourceIds,
             selectedEvidenceSourceIds = selectedEvidenceSourceIds,
             selectedExpectedEvidenceSourceIds = selectedExpectedEvidenceSourceIds,
@@ -650,7 +661,7 @@ class LongMemEvalMemorySmokeTest {
         }
         appendLine("# LongMemEval Memory Smoke")
         appendLine()
-        appendLine("status | ${if (results.all { it.answerSupportedByMemory } && completedRememberSessions == allRememberSessions) "PASS" else "FAIL"}")
+        appendLine("status | ${if (results.all { it.memorySmokePassed } && completedRememberSessions == allRememberSessions) "PASS" else "FAIL"}")
         appendLine()
         appendLine("- data: `$dataFile`")
         appendLine("- model: `$modelName`")
@@ -658,6 +669,7 @@ class LongMemEvalMemorySmokeTest {
         appendLine("- namespace prefix: `$LONGMEMEVAL_NAMESPACE`")
         appendLine("- cases: ${results.size}")
         appendLine("- memory writes completed: $completedRememberSessions/$allRememberSessions")
+        appendLine("- memory smoke pass: ${results.count { it.memorySmokePassed }}/${results.size}")
         appendLine("- answer supported by memory: ${results.count { it.answerSupportedByMemory }}/${results.size}")
         appendLine("- exact answer text visible: ${results.count { it.exactAnswerTextVisible }}/${results.size}")
         val evidenceMeasuredResults = results.filter { it.evidenceSourceHit != null }
@@ -676,6 +688,7 @@ class LongMemEvalMemorySmokeTest {
             appendLine("- retrieved count: ${result.retrievedCount}")
             appendLine("- exact answer text visible: ${result.exactAnswerTextVisible}")
             appendLine("- answer supported by memory: ${result.answerSupportedByMemory}")
+            appendLine("- memory smoke pass: ${result.memorySmokePassed} (${result.memorySmokePassReason})")
             appendLine("- evidence source hit: ${result.evidenceSourceHit}")
             appendLine("- all evidence sources hit: ${result.allEvidenceSourcesHit}")
             appendLine("- expected evidence source ids: ${result.expectedEvidenceSourceIds.joinToString()}")
@@ -712,6 +725,8 @@ class LongMemEvalMemorySmokeTest {
         exactAnswerTextVisible: Boolean,
         evidenceSourceHit: Boolean?,
         allEvidenceSourcesHit: Boolean?,
+        memorySmokePassed: Boolean,
+        memorySmokePassReason: String,
         supportJudgement: LongMemEvalSupportJudgement,
         memoryContext: String,
     ): String = buildString {
@@ -724,6 +739,8 @@ class LongMemEvalMemorySmokeTest {
         appendLine("question | ${entry.question}")
         appendLine("expectedAnswer | $expectedAnswer")
         appendLine("supportedByMemory | ${supportJudgement.supported}")
+        appendLine("memorySmokePassed | $memorySmokePassed")
+        appendLine("memorySmokePassReason | $memorySmokePassReason")
         appendLine("exactAnswerTextVisible | $exactAnswerTextVisible")
         appendLine("evidenceSourceHit | $evidenceSourceHit")
         appendLine("allEvidenceSourcesHit | $allEvidenceSourcesHit")
@@ -1115,6 +1132,8 @@ private data class LongMemEvalSmokeCaseResult(
     val retrievedCount: Int,
     val exactAnswerTextVisible: Boolean,
     val answerSupportedByMemory: Boolean,
+    val memorySmokePassed: Boolean,
+    val memorySmokePassReason: String,
     val expectedEvidenceSourceIds: List<String>,
     val selectedEvidenceSourceIds: List<String>,
     val selectedExpectedEvidenceSourceIds: List<String>,
