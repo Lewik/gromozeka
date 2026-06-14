@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "4af192200e17f65e29dcc867e71242c2a14e8498f5e680f5a83629d1b60eb91e",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned that I participated in an art-related event two weeks ago. Where was that event held at?\n\n                                Question date:\n                                2023/02/01 (Wed) 21:37\n\n                                Noisy expected-answer label:\n                                The Metropolitan Museum of Art.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_59149c78\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-38ef6c8d6d39-claim-8 [ACTIVE] attended_event family=attended_event: The user attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art on 2023-01-15.; scope=User's dated personal museum attendance history.; context=\"The user said they attended the exhibit today in a session dated 2023-01-15.\"; evidence=DIRECT source=external:provided-text:a1bb7cd5f04ef9ff79ec716efcb4ad4a quote=\"I attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art today.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a1bb7cd5f04ef9ff79ec716efcb4ad4a [external_record ref=longmemeval:gpt4_59149c78:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/01/15 (Sun) 16:29\nTranscript:\nuser: I'm trying to learn more about ancient cultures. Can you tell me more about the significance of mummification in ancient Egyptian culture?...\n...The elaborate process of mummification took around 70 days and involved several stages:\n\n1. **Removal of internal organs**: As mentioned, the organs were removed, except for the heart.\n2. **Dehydration**: The body was covered in natron, a natural salt, to dry out the body and prevent decay.\n3. **Embalming**: The body was treated with resin and linen to prevent moisture from entering the body....\n...* The oldest known mummy, \"Gebelein Man,\" dates back to around 3500 BCE, during the Predynastic Period....\n...user: That's really interesting! I had no idea that the Egyptians believed the heart was the seat of the soul. I was particularly fascinated by the sarcophagi at the exhibit, can you tell me more about their significance and symbolism?...\n...4. **Colors**: The colors used on sarcophagi held significant meaning, with red representing life and vitality, blue representing the heavens and the afterlife, and gold representing the sun and divine power.\n\n**Interesting facts**\n\n* The oldest known sarcophagus dates back to around 2600 BCE, during the Old Kingdom period....\n...user: That's amazing! I didn't know that the sarcophagus symbolized the womb and represented Isis. I was also surprised to learn that the heart was considered the seat of the soul. Speaking of which, I was wondering, are there any other ancient civilizations that also believed in mummification or similar practices?...\n...4. **Inca Empire (Peru, 1200-1532 CE)**: The Incas practiced a form of mummification called \"natural mummification,\" where the body was left to dry in the cold, dry Andean air. They believed that the mummy needed to be preserved to ensure the person's spirit could return to the body and to maintain the balance of the cosmos....\n...These examples illustrate that the concept of preserving the body for the afterlife was not unique to ancient Egypt and was practiced by various cultures around the world....\n...user: That's fascinating! I had no idea that mummification was practiced in so many ancient cultures. I've always been interested in ancient civilizations, which is why I attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art today. Speaking of which, I was wondering, are there any other exhibits or museums in New York City that you would recommend for someone interested in ancient cultures?...\n...* **The Metropolitan Museum of Art's Temple of Dendur**: This ancient Egyptian temple, built around 15 BCE, is located in the Met's Sackler Wing. It's a must-see for anyone interested in ancient Egyptian architecture and culture....\n...* **The New York University Institute for the Study of the Ancient World's (ISAW) lecture series**: ISAW regularly hosts lectures and events on various topics related to the ancient world. These events are usually free and open to the public....\n...user: That's great, thank you for the recommendations! I'll definitely check them out. I'm particularly interested in the American Museum of Natural History, as I've heard their dinosaur exhibits are amazing. I've also been meaning to visit the Brooklyn Museum, as I've heard great things about their collection of ancient artifacts. Do you know if any of these museums offer guided tours or special programs for adults?...\n...* **Curator Tours**: The Brooklyn Museum occasionally offers curator-led tours of their exhibitions, providing a unique perspective on the artifacts and artworks on display....\n...* **Special Events**: Keep an eye on the museums' websites and social media for special events, like lectures, performances, or festivals, which may be of interest to adults....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_59149c78",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned that I participated in an art-related event two weeks ago. Where was that event held at?\n\n                                Question date:\n                                2023/02/01 (Wed) 21:37\n\n                                Noisy expected-answer label:\n                                The Metropolitan Museum of Art.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_59149c78\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-38ef6c8d6d39-claim-8 [ACTIVE] attended_event family=attended_event: The user attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art on 2023-01-15.; scope=User's dated personal museum attendance history.; context=\"The user said they attended the exhibit today in a session dated 2023-01-15.\"; evidence=DIRECT source=external:provided-text:a1bb7cd5f04ef9ff79ec716efcb4ad4a quote=\"I attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art today.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a1bb7cd5f04ef9ff79ec716efcb4ad4a [external_record ref=longmemeval:gpt4_59149c78:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/01/15 (Sun) 16:29\nTranscript:\nuser: I'm trying to learn more about ancient cultures. Can you tell me more about the significance of mummification in ancient Egyptian culture?...\n...The elaborate process of mummification took around 70 days and involved several stages:\n\n1. **Removal of internal organs**: As mentioned, the organs were removed, except for the heart.\n2. **Dehydration**: The body was covered in natron, a natural salt, to dry out the body and prevent decay.\n3. **Embalming**: The body was treated with resin and linen to prevent moisture from entering the body....\n...* The oldest known mummy, \"Gebelein Man,\" dates back to around 3500 BCE, during the Predynastic Period....\n...user: That's really interesting! I had no idea that the Egyptians believed the heart was the seat of the soul. I was particularly fascinated by the sarcophagi at the exhibit, can you tell me more about their significance and symbolism?...\n...4. **Colors**: The colors used on sarcophagi held significant meaning, with red representing life and vitality, blue representing the heavens and the afterlife, and gold representing the sun and divine power.\n\n**Interesting facts**\n\n* The oldest known sarcophagus dates back to around 2600 BCE, during the Old Kingdom period....\n...user: That's amazing! I didn't know that the sarcophagus symbolized the womb and represented Isis. I was also surprised to learn that the heart was considered the seat of the soul. Speaking of which, I was wondering, are there any other ancient civilizations that also believed in mummification or similar practices?...\n...4. **Inca Empire (Peru, 1200-1532 CE)**: The Incas practiced a form of mummification called \"natural mummification,\" where the body was left to dry in the cold, dry Andean air. They believed that the mummy needed to be preserved to ensure the person's spirit could return to the body and to maintain the balance of the cosmos....\n...These examples illustrate that the concept of preserving the body for the afterlife was not unique to ancient Egypt and was practiced by various cultures around the world....\n...user: That's fascinating! I had no idea that mummification was practiced in so many ancient cultures. I've always been interested in ancient civilizations, which is why I attended the \"Ancient Civilizations\" exhibit at the Metropolitan Museum of Art today. Speaking of which, I was wondering, are there any other exhibits or museums in New York City that you would recommend for someone interested in ancient cultures?...\n...* **The Metropolitan Museum of Art's Temple of Dendur**: This ancient Egyptian temple, built around 15 BCE, is located in the Met's Sackler Wing. It's a must-see for anyone interested in ancient Egyptian architecture and culture....\n...* **The New York University Institute for the Study of the Ancient World's (ISAW) lecture series**: ISAW regularly hosts lectures and events on various topics related to the ancient world. These events are usually free and open to the public....\n...user: That's great, thank you for the recommendations! I'll definitely check them out. I'm particularly interested in the American Museum of Natural History, as I've heard their dinosaur exhibits are amazing. I've also been meaning to visit the Brooklyn Museum, as I've heard great things about their collection of ancient artifacts. Do you know if any of these museums offer guided tours or special programs for adults?...\n...* **Curator Tours**: The Brooklyn Museum occasionally offers curator-led tours of their exhibitions, providing a unique perspective on the artifacts and artworks on display....\n...* **Special Events**: Keep an eye on the museums' websites and social media for special events, like lectures, performances, or festivals, which may be of interest to adults....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_59149c78",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The event was held at the Metropolitan Museum of Art.\",\"reason\":\"The retrieved claim and evidence state the user attended the “Ancient Civilizations” exhibit at the Metropolitan Museum of Art on 2023-01-15, matching the referenced art-related event.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1944,
+                "completionTokens": 127,
+                "thinkingTokens": 50,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
