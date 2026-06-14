@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "88a6d26c39e1b71b3327ae595428485b3389417bec3e7ce3a2b80f3a38e66afc",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_98f46fc6\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Contains durable past experiences, fundraising goals, organization/event names, and selected platform, plus reusable context about motivation and fundraising planning.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:gpt4_98f46fc6:profile:<0> Profile for User (USER).\nStable facts:\n- The user helps organize a charity bake sale at the user's office.\n- claim hot-path-78d99eb49688-claim-6: responsible_for; The user helps organize a charity bake sale at the user's office.; scope=Specific charity bake sale at the user's office discussed in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-4: CONTEXT; Charity event motivation guidance; For staying motivated after participating in charity events, the past guidance emphasized reflecting on one's personal “why,” celebrating impact, joining with a charity buddy, exploring different causes, making giving back a habit, staying informed, choosing enjoyable formats, getting creative, and leading by example.; scope=Reusable motivational guidance connected to the user's charity participation and community giving\n- claim hot-path-78d99eb49688-claim-7: attended_event; The user participated in a charity walk for cancer research in February 2023.; scope=User's participation in the specific charity walk for cancer research mentioned in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-2: CONTEXT; Charity bake sale support materials from 2023-03-15; In a past session dated 2023-03-15, the user planned savory snack balance and donor communications for an office charity bake sale. Reusable materials included a Spicy Roasted Chickpeas recipe, charity-focused social media post examples, and a post-event thank-you note/email template.; scope=Past chat session about the user's office charity bake sale planning and communications\n- claim hot-path-78d99eb49688-claim-10: generated_artifact_detail; The generated Spicy Roasted Chickpeas recipe instructs roasting chickpeas at 400°F (200°C) for 30–35 minutes, stirring halfway through, until crispy and golden brown.; scope=Spicy Roasted Chickpeas recipe generated in the imported 2023-03-15 chat session.\n- claim hot-path-78d99eb49688-claim-8: generated_artifact_detail; The generated charity thank-you note/email template uses the subject line \"Thank You for Your Sweet Support!\".; scope=Charity thank-you note/email template generated in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-5: CONTEXT; General uses of funds from cancer research charity walks; When the user asked how funds from a cancer research charity walk are typically used, the answer clarified that no specific walk details were available and gave general categories: research grants, lab equipment and infrastructure, clinical trials, patient support, and education/awareness, with impacts such as new treatments, improved diagnosis, higher survival rates, and better patient care.; scope=General explanation provided for cancer research charity walk fund allocation, not specific to a named organization\n- claim hot-path-78d99eb49688-claim-9: generated_artifact_detail; The generated Spicy Roasted Chickpeas recipe uses 1 can chickpeas (15 ounces), 2 tablespoons olive oil, 1 teaspoon ground cumin, 1 teaspoon smoked paprika, 1/2 teaspoon garlic powder, 1/2 teaspoon salt, 1/4 teaspoon black pepper, and 1/4 teaspoon cayenne pepper.; scope=Spicy Roasted Chickpeas recipe generated in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-3: DOC_DIGEST; Spicy Roasted Chickpeas recipe details; The past bake-sale snack recipe for Spicy Roasted Chickpeas used 1 15-ounce can chickpeas, 2 tablespoons olive oil, cumin, optional smoked paprika, garlic powder, salt, black pepper, and cayenne, roasted at 400°F (200°C) for 30–35 minutes until crispy; an extra-crispy variation used 425°F (220°C) for 20–25 minutes.; scope=Reusable recipe artifact for Spicy Roasted Chickpeas from the office charity bake sale session\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person references resolve to the stable namespace-level User entity.\n- mention=local food bank; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=Local food bank; reason=No existing candidate matches the local food bank; it is a concrete reusable organization.\n- mention=Run for Hunger; action=CREATE_NEW; id=entity:<2>; type=OTHER; name=Run for Hunger; reason=The text describes a named charity event not present among existing entities.\n- mention=5K run; action=CREATE_NEW; id=entity:<3>; type=OTHER; name=User's planned 5K charity run for the local food bank; reason=The mention refers to a specific planned charity run, not merely the generic concept of a 5K run.\n- mention=charity gala; action=CREATE_NEW; id=entity:<4>; type=OTHER; name=Charity gala attended by the user for the local food bank; reason=The mention refers to a concrete gala attendance event relevant to fundraising, though the gala is unnamed.\n- mention=Classy; action=CREATE_NEW; id=entity:<5>; type=SERVICE; name=Classy; reason=Classy is a named fundraising platform selected by the user and not among existing entities.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|local food bank|Run for Hunger|Classy|charity gala|5K charity run\n        text_queries=charity events motivation fundraising goals local food bank Run for Hunger Classy|raised $250 donations friends family beat that goal 5K local food bank|charity gala attendance fundraising page\n        predicate_hints=attended_event|has_goal|current_metric_value|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:b42528dbe56f11a0e9a494279f75affa] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_98f46fc6:session:2; title=LongMemEval gpt4_98f46fc6 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/28 (Tue) 07:27\nTranscript:\nuser: I'm looking for some tips on how to stay motivated to continue participating in charity events. I've been doing a lot lately, and I want to keep the momentum going.\nassistant: Here are some tips to help you stay motivated to continue participating in charity events:\n\n1. **Reflect on your why**: Remember why you started participating in charity events in the first place. What causes are close to your heart? What motivates you to make a difference? Reflecting on your purpose can help you stay focused and inspired.\n2. **Set goals and challenges**: Set specific goals for yourself, such as participating in a certain number of events per year or raising a certain amount of money for a particular cause. Meeting these challenges can give you a sense of accomplishment and motivation.\n3. **Find a charity buddy**: Having a friend or like-minded individual to participate in charity events with can make the experience more enjoyable and help you stay accountable.\n4. **Celebrate your impact**: Take time to reflect on the positive impact you've made through your charity work. Celebrate the differences you've made, no matter how small they may seem.\n5. **Mix it up**: If you're feeling burnt out or uninspired, try participating in a different type of charity event or volunteering for a new cause. This can help keep things fresh and exciting.\n6. **Make it a habit**: Incorporate charity work into your regular routine, just like exercise or hobbies. The more you make it a habit, the more likely you'll continue to participate.\n7. **Stay informed**: Stay up-to-date on the causes and charities you're passionate about. Learn about the latest developments, successes, and challenges. This can help you stay engaged and motivated.\n8. **Reward yourself**: Give yourself a treat or reward for reaching certain milestones or completing a particularly challenging event. This can help make the experience more enjoyable and motivate you to continue.\n9. **Find ways to make it fun**: Participate in charity events that align with your interests or hobbies. This can make the experience more enjoyable and increase your motivation to continue.\n10. **Take breaks when needed**: It's okay to take a break or step back when you're feeling overwhelmed or burnt out. Take time to recharge and come back to charity work when you're feeling refreshed and motivated.\n\nI hope these tips help you stay motivated to continue participating in charity events!\nuser: I like those tips, especially the one about setting goals and challenges. Speaking of which, I was thinking of participating in a charity run soon. Do you have any recommendations for a good training plan for a 5K run?\nassistant: A charity run is a fantastic way to stay active and give back to the community.\n\nFor a 5K run, a well-structured training plan can help you prepare and achieve your goal. Here's a general 8-week training plan that you can follow:\n\n**Weeks 1-2: Walking and Running**\n\n* Start with 2-3 times of walking for 30 minutes each\n* Incorporate short running segments (1-2 minutes) into your walks, with 2-3 minutes of walking in between\n* Gradually increase the duration of your runs by 1-2 minutes each week\n\n**Weeks 3-4: Building Endurance**\n\n* Continue to alternate between walking and running\n* Aim for 20-30 minutes of total exercise time, with 10-15 minutes of running\n* Incorporate strength training exercises 2-3 times a week to improve your overall endurance (focus on legs, core, and glutes)\n\n**Weeks 5-6: Building Distance**\n\n* Start to increase your total exercise time to 30-40 minutes\n* Aim to run for 20-25 minutes without stopping, with 5-10 minutes of walking to cool down\n* Introduce interval training: run at a faster pace for 1-2 minutes, then walk or jog at a slower pace for 2-3 minutes\n\n**Weeks 7-8: Taper and Rest**\n\n* Reduce your exercise time to 20-30 minutes, with 15-20 minutes of running\n* Focus on active recovery: incorporate stretching, yoga, or light cardio to help your body recover\n* Rest and taper your training in the last week before the race to allow your body to recover and prepare for the event\n\n**Additional Tips**\n\n* Start with a beginner-friendly pace and gradually increase your speed as you build endurance\n* Listen to your body: rest when you need to, and don't push yourself too hard\n* Incorporate proper warm-up and cool-down routines to prevent injuries\n* Make sure to stay hydrated and fuel your body with a balanced diet\n* Get plenty of sleep and try to get at least one or two rest days per week\n\nRemember, this is just a general plan, and you should adjust it based on your current fitness level, goals, and progress. It's also essential to consult with a doctor or a medical professional before starting any new exercise program.\n\nI hope this helps, and good luck with your charity run!\nuser: I like that training plan, it seems pretty comprehensive. I was thinking of doing a 5K run to raise money for the local food bank, which is actually the same organization that organized the \"Run for Hunger\" event I participated in a few weeks ago. I managed to raise $250 in donations from friends and family, so I'm hoping to beat that goal this time around.\nassistant: That's great to hear! It's wonderful that you're continuing to support the local food bank, and I'm sure they appreciate your dedication.\n\nRaising $250 is an impressive achievement, and I'm sure you can beat that goal this time around. Here are some tips to help you increase your fundraising efforts:\n\n1. **Start early**: The more time you have to fundraise, the better. Create a fundraising page and start sharing it with friends, family, and social networks as soon as possible.\n2. **Set a specific goal**: Instead of just saying \"I want to raise more than $250,\" set a specific goal, like \"I want to raise $500 for the local food bank.\" This will give you a clear target to work towards.\n3. **Tell your story**: Share why you're participating in the 5K and why the local food bank is important to you. This will help people connect with your cause and be more likely to donate.\n4. **Use social media**: Share your fundraising page on social media platforms, and encourage your friends and family to share it with their networks. Use hashtags to reach a wider audience.\n5. **Reach out to local businesses**: Consider reaching out to local businesses to see if they'd be willing to sponsor you or make a donation to your fundraising efforts.\n6. **Offer incentives**: Consider offering incentives for different donation levels, such as \"If you donate $25, I'll send you a personalized thank-you note\" or \"If you donate $50, I'll wear a funny costume during the 5K.\"\n7. **Follow up**: Don't be afraid to follow up with people who haven't donated yet. A gentle reminder can go a long way in encouraging people to support your cause.\n\nRemember, every dollar counts, and even if you don't reach your goal, you'll still be making a difference for the local food bank.\n\nGood luck with your fundraising efforts, and I hope you have a fantastic time at the 5K event!\nuser: I'll definitely keep those tips in mind. By the way, I was thinking of mentioning my charity gala attendance tonight in my fundraising page, since it's relevant to the cause and might help inspire others to donate. Do you think that's a good idea?\nassistant: What a great idea! Mentioning your charity gala attendance tonight can definitely help add context and credibility to your fundraising page. It shows that you're committed to the cause and willing to take action beyond just participating in the 5K.\n\nBy sharing your experience at the gala, you can:\n\n1. **Show your passion**: Highlighting your attendance at the gala demonstrates your genuine interest in supporting the local food bank and its mission.\n2. **Add social proof**: Mentioning the gala can help establish credibility and show potential donors that you're part of a larger community committed to making a difference.\n3. **Create a sense of urgency**: By sharing your experience at the gala, you can create a sense of urgency and encourage people to donate before the 5K event.\n\nWhen you mention the gala on your fundraising page, be sure to:\n\n* Keep it brief and to the point\n* Focus on the impact of the gala and the cause, rather than just the event itself\n* Use it as an opportunity to reiterate your fundraising goal and encourage donations\n\nHere's an example of how you could mention the gala on your fundraising page:\n\n\"I'm excited to share that I'm attending the charity gala tonight, supporting the local food bank's mission to provide food and resources to those in need. This event is a powerful reminder of the importance of our collective efforts to make a difference. As I prepare for the 5K, I'm more committed than ever to raising funds for this incredible organization. Your donation will help me reach my goal of $500 and make a tangible impact in our community. Please consider supporting my efforts and the local food bank's mission!\"\n\nRemember to keep your tone enthusiastic and sincere, and I'm sure it'll help inspire others to donate to your cause!\nuser: That's a great idea! I'll definitely mention the gala on my fundraising page. Speaking of which, do you have any suggestions for some good fundraising page platforms that I could use to create my page and share it with others?\nassistant: There are many fantastic fundraising page platforms that can help you create a professional-looking page and share it with others. Here are some popular options:\n\n1. **Classy**: Classy is a popular platform for charity fundraising, with a user-friendly interface and a wide range of customization options. They offer a free plan, as well as paid plans with additional features.\n2. **GoFundMe Charity**: GoFundMe Charity is a great option for charity fundraising, with a large community and a wide range of features, including team fundraising and event registration.\n3. **Fundly**: Fundly is another popular platform that allows you to create a fundraising page and share it with others. They offer a range of features, including social media integration and customizable templates.\n4. **Network for Good**: Network for Good is a well-established platform that allows you to create a fundraising page and donate to your favorite charities. They offer a range of features, including donation tracking and reporting.\n5. **Qgiv**: Qgiv is a fundraising platform that offers a range of features, including event registration, peer-to-peer fundraising, and donation tracking. They offer a free plan, as well as paid plans with additional features.\n6. **Kickstarter**: While Kickstarter is primarily known for project-based fundraising, they also offer a section for charity fundraising. This can be a great option if you're looking to raise funds for a specific project or initiative.\n\nWhen choosing a fundraising page platform, consider the following factors:\n\n* **Fees**: Look for platforms with low or no fees, so you can keep more of the donations.\n* **Customization**: Choose a platform that allows you to customize your page with your own images, text, and branding.\n* **Ease of use**: Opt for a platform with a user-friendly interface that's easy to navigate.\n* **Integration**: Consider platforms that integrate with social media and other tools, making it easy to share your page and track donations.\n* **Security**: Make sure the platform is secure and reputable, with measures in place to protect donor information.\n\nTake some time to explore these options and find the one that best fits your needs. Good luck with your fundraising efforts!\nuser: I think I'll go with Classy, it seems like a popular and user-friendly option. Thanks for the suggestions!\nassistant: Classy is a fantastic choice! They're a well-established and reputable platform with a user-friendly interface, making it easy to create and manage your fundraising page. Plus, they have a wide range of features and integrations to help you reach your fundraising goals.\n\nIf you need any help setting up your page or have any questions, Classy's customer support is top-notch. They're always available to assist you and provide guidance.\n\nRemember to make the most of your fundraising page by:\n\n* Customizing it with your own images, text, and branding\n* Setting a clear and specific fundraising goal\n* Sharing your page with friends, family, and social networks\n* Posting regular updates and thanking your donors\n* Using social media to promote your page and share your progress\n\nYou got this! I'm confident you'll create a fantastic fundraising page and reach your goal. Good luck, and don't hesitate to reach out if you need any further assistance!\n\nOh, and don't forget to have fun and enjoy the process! You're making a difference, and that's something to celebrate!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_98f46fc6",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:b42528dbe56f11a0e9a494279f75affa"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_98f46fc6\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Contains durable past experiences, fundraising goals, organization/event names, and selected platform, plus reusable context about motivation and fundraising planning.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:gpt4_98f46fc6:profile:<0> Profile for User (USER).\nStable facts:\n- The user helps organize a charity bake sale at the user's office.\n- claim hot-path-78d99eb49688-claim-6: responsible_for; The user helps organize a charity bake sale at the user's office.; scope=Specific charity bake sale at the user's office discussed in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-4: CONTEXT; Charity event motivation guidance; For staying motivated after participating in charity events, the past guidance emphasized reflecting on one's personal “why,” celebrating impact, joining with a charity buddy, exploring different causes, making giving back a habit, staying informed, choosing enjoyable formats, getting creative, and leading by example.; scope=Reusable motivational guidance connected to the user's charity participation and community giving\n- claim hot-path-78d99eb49688-claim-7: attended_event; The user participated in a charity walk for cancer research in February 2023.; scope=User's participation in the specific charity walk for cancer research mentioned in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-2: CONTEXT; Charity bake sale support materials from 2023-03-15; In a past session dated 2023-03-15, the user planned savory snack balance and donor communications for an office charity bake sale. Reusable materials included a Spicy Roasted Chickpeas recipe, charity-focused social media post examples, and a post-event thank-you note/email template.; scope=Past chat session about the user's office charity bake sale planning and communications\n- claim hot-path-78d99eb49688-claim-10: generated_artifact_detail; The generated Spicy Roasted Chickpeas recipe instructs roasting chickpeas at 400°F (200°C) for 30–35 minutes, stirring halfway through, until crispy and golden brown.; scope=Spicy Roasted Chickpeas recipe generated in the imported 2023-03-15 chat session.\n- claim hot-path-78d99eb49688-claim-8: generated_artifact_detail; The generated charity thank-you note/email template uses the subject line \"Thank You for Your Sweet Support!\".; scope=Charity thank-you note/email template generated in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-5: CONTEXT; General uses of funds from cancer research charity walks; When the user asked how funds from a cancer research charity walk are typically used, the answer clarified that no specific walk details were available and gave general categories: research grants, lab equipment and infrastructure, clinical trials, patient support, and education/awareness, with impacts such as new treatments, improved diagnosis, higher survival rates, and better patient care.; scope=General explanation provided for cancer research charity walk fund allocation, not specific to a named organization\n- claim hot-path-78d99eb49688-claim-9: generated_artifact_detail; The generated Spicy Roasted Chickpeas recipe uses 1 can chickpeas (15 ounces), 2 tablespoons olive oil, 1 teaspoon ground cumin, 1 teaspoon smoked paprika, 1/2 teaspoon garlic powder, 1/2 teaspoon salt, 1/4 teaspoon black pepper, and 1/4 teaspoon cayenne pepper.; scope=Spicy Roasted Chickpeas recipe generated in the imported 2023-03-15 chat session.\n- note hot-path-78d99eb49688-note-3: DOC_DIGEST; Spicy Roasted Chickpeas recipe details; The past bake-sale snack recipe for Spicy Roasted Chickpeas used 1 15-ounce can chickpeas, 2 tablespoons olive oil, cumin, optional smoked paprika, garlic powder, salt, black pepper, and cayenne, roasted at 400°F (200°C) for 30–35 minutes until crispy; an extra-crispy variation used 425°F (220°C) for 20–25 minutes.; scope=Reusable recipe artifact for Spicy Roasted Chickpeas from the office charity bake sale session\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person references resolve to the stable namespace-level User entity.\n- mention=local food bank; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=Local food bank; reason=No existing candidate matches the local food bank; it is a concrete reusable organization.\n- mention=Run for Hunger; action=CREATE_NEW; id=entity:<2>; type=OTHER; name=Run for Hunger; reason=The text describes a named charity event not present among existing entities.\n- mention=5K run; action=CREATE_NEW; id=entity:<3>; type=OTHER; name=User's planned 5K charity run for the local food bank; reason=The mention refers to a specific planned charity run, not merely the generic concept of a 5K run.\n- mention=charity gala; action=CREATE_NEW; id=entity:<4>; type=OTHER; name=Charity gala attended by the user for the local food bank; reason=The mention refers to a concrete gala attendance event relevant to fundraising, though the gala is unnamed.\n- mention=Classy; action=CREATE_NEW; id=entity:<5>; type=SERVICE; name=Classy; reason=Classy is a named fundraising platform selected by the user and not among existing entities.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|local food bank|Run for Hunger|Classy|charity gala|5K charity run\n        text_queries=charity events motivation fundraising goals local food bank Run for Hunger Classy|raised $250 donations friends family beat that goal 5K local food bank|charity gala attendance fundraising page\n        predicate_hints=attended_event|has_goal|current_metric_value|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:b42528dbe56f11a0e9a494279f75affa] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_98f46fc6:session:2; title=LongMemEval gpt4_98f46fc6 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/28 (Tue) 07:27\nTranscript:\nuser: I'm looking for some tips on how to stay motivated to continue participating in charity events. I've been doing a lot lately, and I want to keep the momentum going.\nassistant: Here are some tips to help you stay motivated to continue participating in charity events:\n\n1. **Reflect on your why**: Remember why you started participating in charity events in the first place. What causes are close to your heart? What motivates you to make a difference? Reflecting on your purpose can help you stay focused and inspired.\n2. **Set goals and challenges**: Set specific goals for yourself, such as participating in a certain number of events per year or raising a certain amount of money for a particular cause. Meeting these challenges can give you a sense of accomplishment and motivation.\n3. **Find a charity buddy**: Having a friend or like-minded individual to participate in charity events with can make the experience more enjoyable and help you stay accountable.\n4. **Celebrate your impact**: Take time to reflect on the positive impact you've made through your charity work. Celebrate the differences you've made, no matter how small they may seem.\n5. **Mix it up**: If you're feeling burnt out or uninspired, try participating in a different type of charity event or volunteering for a new cause. This can help keep things fresh and exciting.\n6. **Make it a habit**: Incorporate charity work into your regular routine, just like exercise or hobbies. The more you make it a habit, the more likely you'll continue to participate.\n7. **Stay informed**: Stay up-to-date on the causes and charities you're passionate about. Learn about the latest developments, successes, and challenges. This can help you stay engaged and motivated.\n8. **Reward yourself**: Give yourself a treat or reward for reaching certain milestones or completing a particularly challenging event. This can help make the experience more enjoyable and motivate you to continue.\n9. **Find ways to make it fun**: Participate in charity events that align with your interests or hobbies. This can make the experience more enjoyable and increase your motivation to continue.\n10. **Take breaks when needed**: It's okay to take a break or step back when you're feeling overwhelmed or burnt out. Take time to recharge and come back to charity work when you're feeling refreshed and motivated.\n\nI hope these tips help you stay motivated to continue participating in charity events!\nuser: I like those tips, especially the one about setting goals and challenges. Speaking of which, I was thinking of participating in a charity run soon. Do you have any recommendations for a good training plan for a 5K run?\nassistant: A charity run is a fantastic way to stay active and give back to the community.\n\nFor a 5K run, a well-structured training plan can help you prepare and achieve your goal. Here's a general 8-week training plan that you can follow:\n\n**Weeks 1-2: Walking and Running**\n\n* Start with 2-3 times of walking for 30 minutes each\n* Incorporate short running segments (1-2 minutes) into your walks, with 2-3 minutes of walking in between\n* Gradually increase the duration of your runs by 1-2 minutes each week\n\n**Weeks 3-4: Building Endurance**\n\n* Continue to alternate between walking and running\n* Aim for 20-30 minutes of total exercise time, with 10-15 minutes of running\n* Incorporate strength training exercises 2-3 times a week to improve your overall endurance (focus on legs, core, and glutes)\n\n**Weeks 5-6: Building Distance**\n\n* Start to increase your total exercise time to 30-40 minutes\n* Aim to run for 20-25 minutes without stopping, with 5-10 minutes of walking to cool down\n* Introduce interval training: run at a faster pace for 1-2 minutes, then walk or jog at a slower pace for 2-3 minutes\n\n**Weeks 7-8: Taper and Rest**\n\n* Reduce your exercise time to 20-30 minutes, with 15-20 minutes of running\n* Focus on active recovery: incorporate stretching, yoga, or light cardio to help your body recover\n* Rest and taper your training in the last week before the race to allow your body to recover and prepare for the event\n\n**Additional Tips**\n\n* Start with a beginner-friendly pace and gradually increase your speed as you build endurance\n* Listen to your body: rest when you need to, and don't push yourself too hard\n* Incorporate proper warm-up and cool-down routines to prevent injuries\n* Make sure to stay hydrated and fuel your body with a balanced diet\n* Get plenty of sleep and try to get at least one or two rest days per week\n\nRemember, this is just a general plan, and you should adjust it based on your current fitness level, goals, and progress. It's also essential to consult with a doctor or a medical professional before starting any new exercise program.\n\nI hope this helps, and good luck with your charity run!\nuser: I like that training plan, it seems pretty comprehensive. I was thinking of doing a 5K run to raise money for the local food bank, which is actually the same organization that organized the \"Run for Hunger\" event I participated in a few weeks ago. I managed to raise $250 in donations from friends and family, so I'm hoping to beat that goal this time around.\nassistant: That's great to hear! It's wonderful that you're continuing to support the local food bank, and I'm sure they appreciate your dedication.\n\nRaising $250 is an impressive achievement, and I'm sure you can beat that goal this time around. Here are some tips to help you increase your fundraising efforts:\n\n1. **Start early**: The more time you have to fundraise, the better. Create a fundraising page and start sharing it with friends, family, and social networks as soon as possible.\n2. **Set a specific goal**: Instead of just saying \"I want to raise more than $250,\" set a specific goal, like \"I want to raise $500 for the local food bank.\" This will give you a clear target to work towards.\n3. **Tell your story**: Share why you're participating in the 5K and why the local food bank is important to you. This will help people connect with your cause and be more likely to donate.\n4. **Use social media**: Share your fundraising page on social media platforms, and encourage your friends and family to share it with their networks. Use hashtags to reach a wider audience.\n5. **Reach out to local businesses**: Consider reaching out to local businesses to see if they'd be willing to sponsor you or make a donation to your fundraising efforts.\n6. **Offer incentives**: Consider offering incentives for different donation levels, such as \"If you donate $25, I'll send you a personalized thank-you note\" or \"If you donate $50, I'll wear a funny costume during the 5K.\"\n7. **Follow up**: Don't be afraid to follow up with people who haven't donated yet. A gentle reminder can go a long way in encouraging people to support your cause.\n\nRemember, every dollar counts, and even if you don't reach your goal, you'll still be making a difference for the local food bank.\n\nGood luck with your fundraising efforts, and I hope you have a fantastic time at the 5K event!\nuser: I'll definitely keep those tips in mind. By the way, I was thinking of mentioning my charity gala attendance tonight in my fundraising page, since it's relevant to the cause and might help inspire others to donate. Do you think that's a good idea?\nassistant: What a great idea! Mentioning your charity gala attendance tonight can definitely help add context and credibility to your fundraising page. It shows that you're committed to the cause and willing to take action beyond just participating in the 5K.\n\nBy sharing your experience at the gala, you can:\n\n1. **Show your passion**: Highlighting your attendance at the gala demonstrates your genuine interest in supporting the local food bank and its mission.\n2. **Add social proof**: Mentioning the gala can help establish credibility and show potential donors that you're part of a larger community committed to making a difference.\n3. **Create a sense of urgency**: By sharing your experience at the gala, you can create a sense of urgency and encourage people to donate before the 5K event.\n\nWhen you mention the gala on your fundraising page, be sure to:\n\n* Keep it brief and to the point\n* Focus on the impact of the gala and the cause, rather than just the event itself\n* Use it as an opportunity to reiterate your fundraising goal and encourage donations\n\nHere's an example of how you could mention the gala on your fundraising page:\n\n\"I'm excited to share that I'm attending the charity gala tonight, supporting the local food bank's mission to provide food and resources to those in need. This event is a powerful reminder of the importance of our collective efforts to make a difference. As I prepare for the 5K, I'm more committed than ever to raising funds for this incredible organization. Your donation will help me reach my goal of $500 and make a tangible impact in our community. Please consider supporting my efforts and the local food bank's mission!\"\n\nRemember to keep your tone enthusiastic and sincere, and I'm sure it'll help inspire others to donate to your cause!\nuser: That's a great idea! I'll definitely mention the gala on my fundraising page. Speaking of which, do you have any suggestions for some good fundraising page platforms that I could use to create my page and share it with others?\nassistant: There are many fantastic fundraising page platforms that can help you create a professional-looking page and share it with others. Here are some popular options:\n\n1. **Classy**: Classy is a popular platform for charity fundraising, with a user-friendly interface and a wide range of customization options. They offer a free plan, as well as paid plans with additional features.\n2. **GoFundMe Charity**: GoFundMe Charity is a great option for charity fundraising, with a large community and a wide range of features, including team fundraising and event registration.\n3. **Fundly**: Fundly is another popular platform that allows you to create a fundraising page and share it with others. They offer a range of features, including social media integration and customizable templates.\n4. **Network for Good**: Network for Good is a well-established platform that allows you to create a fundraising page and donate to your favorite charities. They offer a range of features, including donation tracking and reporting.\n5. **Qgiv**: Qgiv is a fundraising platform that offers a range of features, including event registration, peer-to-peer fundraising, and donation tracking. They offer a free plan, as well as paid plans with additional features.\n6. **Kickstarter**: While Kickstarter is primarily known for project-based fundraising, they also offer a section for charity fundraising. This can be a great option if you're looking to raise funds for a specific project or initiative.\n\nWhen choosing a fundraising page platform, consider the following factors:\n\n* **Fees**: Look for platforms with low or no fees, so you can keep more of the donations.\n* **Customization**: Choose a platform that allows you to customize your page with your own images, text, and branding.\n* **Ease of use**: Opt for a platform with a user-friendly interface that's easy to navigate.\n* **Integration**: Consider platforms that integrate with social media and other tools, making it easy to share your page and track donations.\n* **Security**: Make sure the platform is secure and reputable, with measures in place to protect donor information.\n\nTake some time to explore these options and find the one that best fits your needs. Good luck with your fundraising efforts!\nuser: I think I'll go with Classy, it seems like a popular and user-friendly option. Thanks for the suggestions!\nassistant: Classy is a fantastic choice! They're a well-established and reputable platform with a user-friendly interface, making it easy to create and manage your fundraising page. Plus, they have a wide range of features and integrations to help you reach your fundraising goals.\n\nIf you need any help setting up your page or have any questions, Classy's customer support is top-notch. They're always available to assist you and provide guidance.\n\nRemember to make the most of your fundraising page by:\n\n* Customizing it with your own images, text, and branding\n* Setting a clear and specific fundraising goal\n* Sharing your page with friends, family, and social networks\n* Posting regular updates and thanking your donors\n* Using social media to promote your page and share your progress\n\nYou got this! I'm confident you'll create a fantastic fundraising page and reach your goal. Good luck, and don't hesitate to reach out if you need any further assistance!\n\nOh, and don't forget to have fun and enjoy the process! You're making a difference, and that's something to celebrate!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_98f46fc6",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:b42528dbe56f11a0e9a494279f75affa"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user planned to do a 5K run to raise money for the local food bank.\",\"The local food bank organized the \\\"Run for Hunger\\\" event the user participated in a few weeks before 2023-03-28.\",\"The user raised $250 in donations from friends and family for Run for Hunger.\",\"The user hoped to beat the $250 donation amount in a later 5K fundraiser.\"],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I managed to raise $250 in donations from friends and family, so I'm hoping to beat that goal this time around.\",\"evidence_reason\":\"The quoted text establishes the prior fundraising benchmark and intent to exceed it; surrounding transcript states the 5K is for the local food bank and links it to Run for Hunger.\",\"importance\":4,\"keywords\":[\"5K\",\"local food bank\",\"Run for Hunger\",\"fundraising\",\"$250\",\"$500\",\"donations\"],\"note_type\":\"plan\",\"rationale\":\"This combines a fundraising strategy, benchmark, and event context; it is more reusable as a planning note than as a single atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's planned 5K charity run and fundraising effort for the local food bank\"},\"summary\":\"The user planned a 5K charity run to raise money for the local food bank after previously raising $250 at the \\\"Run for Hunger\\\" event, and intended to beat that prior amount. Suggested fundraising approach included starting early, setting a concrete goal such as $500, telling the personal story, using social media, contacting local businesses, offering donor incentives, and following up.\",\"tags\":[\"charity\",\"fundraising_plan\",\"5k_run\"],\"title\":\"5K fundraising plan for local food bank\",\"valid_from\":\"2023-03-28T07:27:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user intended to mention charity gala attendance on the fundraising page.\",\"The charity gala was relevant to the local food bank cause.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'll definitely mention the gala on my fundraising page.\",\"evidence_reason\":\"The quote confirms the user's decision; the surrounding assistant guidance explains the rationale and recommended framing.\",\"importance\":3,\"keywords\":[\"charity gala\",\"fundraising page\",\"local food bank\",\"social proof\",\"credibility\",\"urgency\"],\"note_type\":\"direction\",\"rationale\":\"This captures messaging rationale and reusable copy direction for a fundraising page, not merely the fact that the user attended or mentioned a gala.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Fundraising page messaging for the user's local food bank 5K fundraiser\"},\"summary\":\"For the user's local food bank fundraiser, mentioning the charity gala attendance on the fundraising page was endorsed as a way to show commitment, add credibility/social proof, create urgency, and connect the 5K effort to the broader cause; the mention should stay brief, impact-focused, and tied back to the fundraising goal.\",\"tags\":[\"fundraising_copy\",\"charity_gala\",\"messaging\"],\"title\":\"Use charity gala attendance on fundraising page\",\"valid_from\":\"2023-03-28T07:27:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user chose Classy as the fundraising page platform.\",\"The user perceived Classy as popular and user-friendly.\"],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll go with Classy, it seems like a popular and user-friendly option.\",\"evidence_reason\":\"The quote directly states the platform decision and the user's reason for choosing Classy.\",\"importance\":4,\"keywords\":[\"Classy\",\"fundraising page\",\"platform\",\"local food bank\",\"5K\",\"donor updates\"],\"note_type\":\"decision\",\"rationale\":\"The decision includes context and downstream setup guidance; as a note it preserves reusable rationale and next-step framing beyond an atomic preference claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Platform choice for the user's local food bank fundraising page\"},\"summary\":\"After considering fundraising platforms, the user chose Classy for creating and sharing the local food bank fundraising page because it seemed popular and user-friendly. Follow-up setup guidance emphasized customizing the page, setting a clear goal, sharing it widely, posting updates, thanking donors, and promoting progress on social media.\",\"tags\":[\"platform_decision\",\"fundraising\",\"classy\"],\"title\":\"Classy selected for fundraising page platform\",\"valid_from\":\"2023-03-28T07:27:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5463,
+                "completionTokens": 1220,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
