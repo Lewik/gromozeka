@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "18a0430bdb7492d8cafef361d3485f79f832818bd81a92f451984c76e3f33d87",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What gardening-related activity did I do two weeks ago?\n\n                                Question date:\n                                2023/05/05 (Fri) 03:53\n\n                                Noisy expected-answer label:\n                                planting 12 new tomato saplings\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_1e4a8aec\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d93d5e772497-claim-5 [ACTIVE] current_metric_value family=current_metric_value: The user planted 12 new tomato saplings on 2023-04-21.; scope=Applies to the user's tomato saplings mentioned in the 2023-04-21 gardening session.; context=\"In a gardening advice conversation about keeping tomato plants healthy and pest-free, the user mentioned a same-day planting of new tomato saplings.\"; evidence=DIRECT source=external:provided-text:5736dff6d73423afb1efa02cab9febd6 quote=\"I just planted 12 new tomato saplings today\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:5736dff6d73423afb1efa02cab9febd6 [external_record ref=longmemeval:gpt4_1e4a8aec:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/21 (Fri) 21:31\nTranscript:\n...Session date: 2023/04/21 (Fri) 21:31\nTranscript:\nuser: I'm looking for some advice on how to keep my tomato plants healthy and pest-free. By the way, I just planted 12 new tomato saplings today and I'm excited to see them grow.\nassistant: Congratulations on planting your new tomato saplings! With proper care and attention, they'll thrive and provide you with a bountiful harvest. Here are some tips to keep your tomato plants healthy and pest-free:...\n...3. **Mulch around the plants**: Mulch helps retain moisture, suppress weeds, and regulate soil temperature. Use organic mulch like straw, bark chips, or grass clippings around 2-3 inches thick....\n...**Support and Pruning**...\n...By following these tips, you'll be well on your way to growing healthy, pest-free tomato plants. Good luck, and happy gardening!\nuser: I was thinking of using neem oil and insecticidal soap to control aphids and whiteflies on my tomato plants. Do you think that's a good approach?...\n...3. **Spray thoroughly**: Spray the leaves, stems, and soil around the base of the plants to ensure thorough coverage....\n...user: I've been using a gardening app to track the weather and soil moisture levels, which has helped me to plan my gardening activities more effectively. However, I'm not sure how often I should water my tomato plants during this dry spell. Can you provide some guidance on that?\nassistant: That's a great idea to use a gardening app to track weather and soil moisture levels! Watering tomatoes during a dry spell can be a bit tricky, but I'd be happy to help you out.\n\n**Watering Frequency for Tomato Plants:**\n\nThe ideal watering frequency for tomato plants depends on several factors, including:...\n...4. **Plant size and age**: Younger tomato plants may need more frequent watering than mature plants....\n...4. **Water in the morning**: Water your tomato plants in the morning to give them the entire day to absorb the water. Avoid watering in the evening, as this can encourage fungal growth.\n\n**Additional Tips:**\n\n1. **Mulch around the plants**: Mulch helps retain soil moisture, reduces evaporation, and regulates soil temperature....\n...3. **Monitor plant signs**: Keep an eye on your tomato plants' signs of water stress, such as wilting, yellowing leaves, or reduced growth. Adjust your watering schedule accordingly.\n\nBy following these guidelines and monitoring your soil moisture levels, you should be able to provide your tomato plants with the right amount of water during this dry spell. Happy gardening!\nuser: I've been noticing that my cucumber plants have started to climb up rapidly, so I plan to build a small trellis for them. Do you think I should provide additional support for my tomato plants as well?...\n...2. **Promotes better fruiting**: By keeping the plant upright, you'll encourage more even fruiting and better air circulation around the fruit....\n...By providing support for your tomato plants, you'll be encouraging healthy growth, promoting better fruiting, and making harvesting easier. Happy gardening!\nuser: I'm also wondering if I can use neem oil and insecticidal soap to control aphids and whiteflies on my cucumber plants as well. Would that be effective?...\n...3. **Spray thoroughly**: Spray the leaves, stems, and soil around the base of the plants to ensure thorough coverage....\n...By using neem oil and insecticidal soap together, you'll be taking a strong step towards controlling aphids and whiteflies on your cucumber plants. Just remember to always follow the label instructions and take necessary precautions to avoid harming beneficial insects. Happy gardening!...\n...By using a mulch layer, you'll be taking a significant step towards conserving water, reducing evaporation, and promoting healthy soil and plants. Happy gardening!\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: User's tomato saplings; Entity named User's tomato saplings.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_1e4a8aec",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What gardening-related activity did I do two weeks ago?\n\n                                Question date:\n                                2023/05/05 (Fri) 03:53\n\n                                Noisy expected-answer label:\n                                planting 12 new tomato saplings\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_1e4a8aec\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d93d5e772497-claim-5 [ACTIVE] current_metric_value family=current_metric_value: The user planted 12 new tomato saplings on 2023-04-21.; scope=Applies to the user's tomato saplings mentioned in the 2023-04-21 gardening session.; context=\"In a gardening advice conversation about keeping tomato plants healthy and pest-free, the user mentioned a same-day planting of new tomato saplings.\"; evidence=DIRECT source=external:provided-text:5736dff6d73423afb1efa02cab9febd6 quote=\"I just planted 12 new tomato saplings today\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:5736dff6d73423afb1efa02cab9febd6 [external_record ref=longmemeval:gpt4_1e4a8aec:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/21 (Fri) 21:31\nTranscript:\n...Session date: 2023/04/21 (Fri) 21:31\nTranscript:\nuser: I'm looking for some advice on how to keep my tomato plants healthy and pest-free. By the way, I just planted 12 new tomato saplings today and I'm excited to see them grow.\nassistant: Congratulations on planting your new tomato saplings! With proper care and attention, they'll thrive and provide you with a bountiful harvest. Here are some tips to keep your tomato plants healthy and pest-free:...\n...3. **Mulch around the plants**: Mulch helps retain moisture, suppress weeds, and regulate soil temperature. Use organic mulch like straw, bark chips, or grass clippings around 2-3 inches thick....\n...**Support and Pruning**...\n...By following these tips, you'll be well on your way to growing healthy, pest-free tomato plants. Good luck, and happy gardening!\nuser: I was thinking of using neem oil and insecticidal soap to control aphids and whiteflies on my tomato plants. Do you think that's a good approach?...\n...3. **Spray thoroughly**: Spray the leaves, stems, and soil around the base of the plants to ensure thorough coverage....\n...user: I've been using a gardening app to track the weather and soil moisture levels, which has helped me to plan my gardening activities more effectively. However, I'm not sure how often I should water my tomato plants during this dry spell. Can you provide some guidance on that?\nassistant: That's a great idea to use a gardening app to track weather and soil moisture levels! Watering tomatoes during a dry spell can be a bit tricky, but I'd be happy to help you out.\n\n**Watering Frequency for Tomato Plants:**\n\nThe ideal watering frequency for tomato plants depends on several factors, including:...\n...4. **Plant size and age**: Younger tomato plants may need more frequent watering than mature plants....\n...4. **Water in the morning**: Water your tomato plants in the morning to give them the entire day to absorb the water. Avoid watering in the evening, as this can encourage fungal growth.\n\n**Additional Tips:**\n\n1. **Mulch around the plants**: Mulch helps retain soil moisture, reduces evaporation, and regulates soil temperature....\n...3. **Monitor plant signs**: Keep an eye on your tomato plants' signs of water stress, such as wilting, yellowing leaves, or reduced growth. Adjust your watering schedule accordingly.\n\nBy following these guidelines and monitoring your soil moisture levels, you should be able to provide your tomato plants with the right amount of water during this dry spell. Happy gardening!\nuser: I've been noticing that my cucumber plants have started to climb up rapidly, so I plan to build a small trellis for them. Do you think I should provide additional support for my tomato plants as well?...\n...2. **Promotes better fruiting**: By keeping the plant upright, you'll encourage more even fruiting and better air circulation around the fruit....\n...By providing support for your tomato plants, you'll be encouraging healthy growth, promoting better fruiting, and making harvesting easier. Happy gardening!\nuser: I'm also wondering if I can use neem oil and insecticidal soap to control aphids and whiteflies on my cucumber plants as well. Would that be effective?...\n...3. **Spray thoroughly**: Spray the leaves, stems, and soil around the base of the plants to ensure thorough coverage....\n...By using neem oil and insecticidal soap together, you'll be taking a strong step towards controlling aphids and whiteflies on your cucumber plants. Just remember to always follow the label instructions and take necessary precautions to avoid harming beneficial insects. Happy gardening!...\n...By using a mulch layer, you'll be taking a significant step towards conserving water, reducing evaporation, and promoting healthy soil and plants. Happy gardening!\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: User's tomato saplings; Entity named User's tomato saplings.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_1e4a8aec",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You planted 12 new tomato saplings.\",\"reason\":\"The retrieved memory explicitly says the user planted 12 new tomato saplings on 2023-04-21, which is two weeks before 2023-05-05.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1953,
+                "completionTokens": 132,
+                "thinkingTokens": 60,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
