@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "0f861eda5c23c4a85d0d5b88813b0c77d1aac506595bff52254964a0db19e902",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned cooking something for my friend a couple of days ago. What was it?\n\n                                Question date:\n                                2022/04/12 (Tue) 13:26\n\n                                Noisy expected-answer label:\n                                a chocolate cake\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:9a707b82\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1bf16b69ce33-claim-21 [ACTIVE] has_experience_with family=has_experience_with: The user baked a chocolate cake for a friend's birthday party the weekend before 2022-04-10, and it turned out amazing.; scope=User's recent baking experiences before 2022-04-10.; context=\"The user said the chocolate cake used a new online recipe with espresso powder to intensify the chocolate flavor.\"; evidence=DIRECT source=external:provided-text:057399745eec21e4553faeb8af852512 quote=\"I just baked a chocolate cake for my friend's birthday party last weekend that turned out amazing.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:057399745eec21e4553faeb8af852512 [external_record ref=longmemeval:9a707b82:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2022/04/10 (Sun) 06:33\nTranscript:\nuser: I'm looking for some new recipe ideas for a dinner party I'm hosting next weekend. I've been really into baking lately. Do you have any suggestions for a unique dessert I could make for my dinner party?...\n...10. **Espresso Granita**: End the meal with a refreshing, icy treat. This Italian-style granita is made with espresso, sugar, and water, then scraped with a fork to create a slushy, crystalline texture....\n...user: I love these ideas, especially the matcha tiramisu and salted caramel chocolate tart. I've been experimenting with different flavors lately, like strawberries, and I think a strawberry rhubarb crisp I made a few weeks ago was incredible. Do you have any ideas for a savory dish that would complement these sweet treats?...\n...For a savory dish to complement your sweet treats, I'd recommend something with bright, fresh flavors to cut through the richness of the desserts. Here are some ideas:...\n...4. **Grilled Asparagus with Lemon-Parmesan Vinaigrette**: Asparagus is a natural pairing with rich desserts. Grill it to perfection and serve with a light, zesty vinaigrette made with lemon juice, olive oil, and Parmesan cheese....\n...These ideas should provide a nice balance to your sweet treats. You can't go wrong with a classic grilled chicken or scallops, but if you want to offer something a bit more adventurous, the roasted vegetable tart or herbed quinoa salad could be great options.\nuser: I'm thinking of making some sandwiches with my sourdough bread for the dinner party. Do you have any suggestions for fillings that would complement the flavors of the matcha tiramisu and salted caramel chocolate tart?...\n...user: I'm also thinking of making some lemon bars for the dinner party. Do you have any tips for making a shortbread crust? I recently made a batch with a shortbread crust and a lemon curd made with fresh lemons and eggs, and they turned out tangy and sweet....\n...1. **Use high-quality butter**: European-style or cultured butter with a high fat content (around 82-86%) will give you a richer, more tender crust....\n...1. **Use a double boiler**: Cooking the curd over a double boiler will help you achieve a smooth, creamy texture....\n...3. **Don't overcook**: Cook the curd until it's just set and still slightly jiggly in the center. Overcooking will cause the curd to become too thick and scrambled....\n...user: I'm excited to make these lemon bars, and I think I'll also make some croissants from scratch, even though my last attempt didn't turn out so well. Do you have any tips for making flaky, buttery croissants?...\n...1. **Use high-quality ingredients**: European-style butter with a high fat content (around 82-86%) is essential for creating flaky layers. Use unbleached, unbromated all-purpose flour, and make sure your yeast is fresh and active....\n...user: I'm excited to try making croissants again, and I think I'll also make some banana bread for the dinner party. I recently made a batch with walnuts, and it turned out amazing. By the way, I just baked a chocolate cake for my friend's birthday party last weekend that turned out amazing. It was a new recipe I found online that used espresso powder to intensify the chocolate flavor. Anyways, do you have any tips for making a moist and flavorful banana bread?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: chocolate cake; Concept named chocolate cake.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "9a707b82",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned cooking something for my friend a couple of days ago. What was it?\n\n                                Question date:\n                                2022/04/12 (Tue) 13:26\n\n                                Noisy expected-answer label:\n                                a chocolate cake\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:9a707b82\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1bf16b69ce33-claim-21 [ACTIVE] has_experience_with family=has_experience_with: The user baked a chocolate cake for a friend's birthday party the weekend before 2022-04-10, and it turned out amazing.; scope=User's recent baking experiences before 2022-04-10.; context=\"The user said the chocolate cake used a new online recipe with espresso powder to intensify the chocolate flavor.\"; evidence=DIRECT source=external:provided-text:057399745eec21e4553faeb8af852512 quote=\"I just baked a chocolate cake for my friend's birthday party last weekend that turned out amazing.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:057399745eec21e4553faeb8af852512 [external_record ref=longmemeval:9a707b82:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2022/04/10 (Sun) 06:33\nTranscript:\nuser: I'm looking for some new recipe ideas for a dinner party I'm hosting next weekend. I've been really into baking lately. Do you have any suggestions for a unique dessert I could make for my dinner party?...\n...10. **Espresso Granita**: End the meal with a refreshing, icy treat. This Italian-style granita is made with espresso, sugar, and water, then scraped with a fork to create a slushy, crystalline texture....\n...user: I love these ideas, especially the matcha tiramisu and salted caramel chocolate tart. I've been experimenting with different flavors lately, like strawberries, and I think a strawberry rhubarb crisp I made a few weeks ago was incredible. Do you have any ideas for a savory dish that would complement these sweet treats?...\n...For a savory dish to complement your sweet treats, I'd recommend something with bright, fresh flavors to cut through the richness of the desserts. Here are some ideas:...\n...4. **Grilled Asparagus with Lemon-Parmesan Vinaigrette**: Asparagus is a natural pairing with rich desserts. Grill it to perfection and serve with a light, zesty vinaigrette made with lemon juice, olive oil, and Parmesan cheese....\n...These ideas should provide a nice balance to your sweet treats. You can't go wrong with a classic grilled chicken or scallops, but if you want to offer something a bit more adventurous, the roasted vegetable tart or herbed quinoa salad could be great options.\nuser: I'm thinking of making some sandwiches with my sourdough bread for the dinner party. Do you have any suggestions for fillings that would complement the flavors of the matcha tiramisu and salted caramel chocolate tart?...\n...user: I'm also thinking of making some lemon bars for the dinner party. Do you have any tips for making a shortbread crust? I recently made a batch with a shortbread crust and a lemon curd made with fresh lemons and eggs, and they turned out tangy and sweet....\n...1. **Use high-quality butter**: European-style or cultured butter with a high fat content (around 82-86%) will give you a richer, more tender crust....\n...1. **Use a double boiler**: Cooking the curd over a double boiler will help you achieve a smooth, creamy texture....\n...3. **Don't overcook**: Cook the curd until it's just set and still slightly jiggly in the center. Overcooking will cause the curd to become too thick and scrambled....\n...user: I'm excited to make these lemon bars, and I think I'll also make some croissants from scratch, even though my last attempt didn't turn out so well. Do you have any tips for making flaky, buttery croissants?...\n...1. **Use high-quality ingredients**: European-style butter with a high fat content (around 82-86%) is essential for creating flaky layers. Use unbleached, unbromated all-purpose flour, and make sure your yeast is fresh and active....\n...user: I'm excited to try making croissants again, and I think I'll also make some banana bread for the dinner party. I recently made a batch with walnuts, and it turned out amazing. By the way, I just baked a chocolate cake for my friend's birthday party last weekend that turned out amazing. It was a new recipe I found online that used espresso powder to intensify the chocolate flavor. Anyways, do you have any tips for making a moist and flavorful banana bread?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: chocolate cake; Concept named chocolate cake.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "9a707b82",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"A chocolate cake for a friend's birthday party.\",\"reason\":\"The retrieved context explicitly says the user baked a chocolate cake for a friend's birthday party last weekend.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1895,
+                "completionTokens": 112,
+                "thinkingTokens": 57,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
