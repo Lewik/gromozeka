@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "973e39cab574f8c02329b70e45c5eeae0ed86ea8aaba1c9ce5ecb632c390fca8",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_1e4a8aeb\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Forced memory write. The transcript includes stable user gardening context and past experiences plus reusable advice/digests, so mixed claim and note storage is appropriate.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my / me; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript refer to the stable user entity, and no existing User entity is available.\n- mention=herbs; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Herbs; reason=The transcript contains reusable assertions about the user's herbs as a gardening subject.\n- mention=basil; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Basil; reason=Basil is a concrete plant type mentioned as part of the user's garden.\n- mention=mint; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Mint; reason=Mint is a concrete plant type mentioned as part of the user's garden.\n- mention=parsley; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Parsley; reason=Parsley is a concrete plant type mentioned as part of the user's garden.\n- mention=gardening workshop; action=CREATE_NEW; id=entity:<5>; type=OTHER; name=Gardening workshop; reason=The user reports attending a gardening workshop; the exact organizer/name is unknown, but the event is a reusable referent for an attended-event claim.\n- mention=companion planting; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Companion planting; reason=Companion planting is a reusable gardening concept the user learned about.\n- mention=crop rotation; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Crop rotation; reason=Crop rotation is a reusable gardening concept the user learned about.\n- mention=compost; action=CREATE_NEW; id=entity:<8>; type=CONCEPT; name=Compost; reason=Compost is a reusable gardening material discussed as a fertilizer option.\n- mention=gardening app; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=Gardening app; reason=The user mentions using an unspecified gardening app; the exact product identity is unknown but it can serve as an object for claims.\n- mention=weather; action=CREATE_NEW; id=entity:<10>; type=CONCEPT; name=Weather; reason=Weather is tracked by the user's gardening app and may be needed as a claim object.\n- mention=soil moisture levels; action=CREATE_NEW; id=entity:<11>; type=CONCEPT; name=Soil moisture levels; reason=Soil moisture levels are tracked by the user's gardening app and are a reusable gardening concept.\n- mention=beginner gardener; action=CREATE_NEW; id=entity:<12>; type=CONCEPT; name=Beginner gardener; reason=The phrase describes the user's gardening experience level; creating a concept allows later claims to classify the user if needed.\n- mention=aphids; action=CREATE_NEW; id=entity:<13>; type=CONCEPT; name=Aphids; reason=Aphids are concrete pests the user struggles with and treats.\n- mention=whiteflies; action=CREATE_NEW; id=entity:<14>; type=CONCEPT; name=Whiteflies; reason=Whiteflies are concrete pests the user struggles with and treats.\n- mention=neem oil; action=CREATE_NEW; id=entity:<15>; type=CONCEPT; name=Neem oil; reason=Neem oil is a reusable pest-control material the user reports using.\n- mention=insecticidal soap; action=CREATE_NEW; id=entity:<16>; type=CONCEPT; name=Insecticidal soap; reason=Insecticidal soap is a reusable pest-control material the user reports using.\n- mention=fungal diseases; action=CREATE_NEW; id=entity:<17>; type=CONCEPT; name=Fungal diseases; reason=The user asks about preventing fungal diseases and reports issues with them.\n- mention=tomato plants; action=CREATE_NEW; id=entity:<18>; type=CONCEPT; name=Tomato plants; reason=Tomato plants are concrete plants in the user's gardening context.\n- mention=current project; action=CREATE_NEW; id=entity:<19>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|user garden|herbs|tomato plants|gardening app|gardening workshop\n        text_queries=garden herbs basil mint parsley compost fertilizer companion planting crop rotation|gardening app weather soil moisture beginner gardener tools|aphids whiteflies neem oil insecticidal soap natural pest control|fungal diseases tomato plants\n        predicate_hints=has_experience_with|attended_event|works_with|prefers|has_goal\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:773a0171ef2248441fef0cce56e32d67] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_1e4a8aeb:session:1; title=LongMemEval gpt4_1e4a8aeb session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 18:09\nTranscript:\nuser: I'm trying to figure out what type of fertilizer to use for my herbs. I've been experimenting with different types of plants in my garden, including basil, mint, and parsley, and I want to make sure I'm giving them the right nutrients. By the way, I attended a gardening workshop in my neighborhood today where I learned about companion planting and crop rotation, and it's been really helpful in planning my garden layout.\nassistant: That's great to hear that you're taking steps to improve your gardening skills! Choosing the right fertilizer for your herbs can make a big difference in their health and productivity.\n\nFor herbs like basil, mint, and parsley, you'll want to focus on fertilizers that provide a balanced mix of nutrients. Here are some tips to consider:\n\n1. **Balanced fertilizer**: Look for a fertilizer with a balanced N-P-K ratio, such as 10-10-10 or 20-20-20. This means the fertilizer contains equal amounts of nitrogen (N), phosphorus (P), and potassium (K).\n2. **Organic or synthetic**: You can choose between organic and synthetic fertilizers. Organic fertilizers, like compost or manure, release nutrients slowly and promote soil health. Synthetic fertilizers, like chemical-based formulas, provide quick results but may not improve soil structure.\n3. **Water-soluble or granular**: Water-soluble fertilizers are easy to apply and provide quick results, while granular fertilizers release nutrients slowly over time.\n4. **Herb-specific formulas**: Some fertilizers are specifically formulated for herbs and may contain additional nutrients like iron or magnesium that are beneficial for their growth.\n\nSome good options for herb fertilizers include:\n\n* Miracle-Gro Shake 'n Feed All Purpose Plant Food (organic, slow-release)\n* Espoma Organic Indoor! 8-2-4 Herb & Vegetable Fertilizer (organic, water-soluble)\n* Schultz Super Bloom! Plant Food (synthetic, water-soluble)\n\nRemember to always follow the instructions on the fertilizer package and start with a small amount to avoid over-fertilizing, which can harm your plants.\n\nIt's great that you attended a gardening workshop and learned about companion planting and crop rotation! These techniques can really help improve the health and productivity of your garden. Companion planting can help deter pests and attract beneficial insects, while crop rotation can prevent soil depletion and reduce the risk of disease.\n\nDo you have any other questions about fertilizing your herbs or other gardening topics?\nuser: I was thinking of using compost as a fertilizer for my herbs. Would that work?\nassistant: Compost is an excellent choice as a fertilizer for your herbs. Compost is a natural, organic, and nutrient-rich fertilizer that can provide many benefits to your herbs. Here are some reasons why compost is a great option:\n\n1. **Nutrient-rich**: Compost is a slow-release fertilizer that contains a balanced mix of nutrients, including nitrogen, phosphorus, potassium, and other micronutrients that are essential for plant growth.\n2. **Improves soil structure**: Compost can help improve the structure of your soil, making it more conducive to healthy root growth and better water retention.\n3. **Supports beneficial microbes**: Compost is a food source for beneficial microorganisms in the soil, which helps to create a healthy soil ecosystem.\n4. **Environmentally friendly**: Using compost as a fertilizer reduces the need for synthetic fertilizers and helps to recycle organic waste.\n5. **Cost-effective**: Compost is a free or low-cost fertilizer option, especially if you make your own compost at home.\n\nTo use compost as a fertilizer for your herbs, you can:\n\n1. **Mix it into the soil**: Add a 2- to 4-inch layer of compost to the soil before planting your herbs.\n2. **Use it as a top dressing**: Sprinkle a thin layer of compost around the base of your herb plants as a top dressing.\n3. **Make a compost tea**: Steep a bucket of compost in water to create a nutrient-rich liquid fertilizer for your herbs.\n\nSome tips to keep in mind when using compost as a fertilizer:\n\n* Make sure your compost is fully broken down and has an earthy, soil-like aroma. If it's still recognizable as individual ingredients, it's not ready to use.\n* Avoid using too much compost, as this can lead to an overabundance of nutrients and cause more harm than good.\n* Consider making your own compost at home using kitchen scraps, leaves, and other organic materials.\n\nOverall, compost is an excellent choice as a fertilizer for your herbs. It's a natural, sustainable, and effective way to provide your plants with the nutrients they need to thrive.\nuser: I've been using a gardening app to track the weather and soil moisture levels, which has been really helpful in planning my gardening activities. I was wondering if you could recommend any other apps or tools that might be useful for a beginner gardener like me?\nassistant: That's great to hear that you're using a gardening app to track the weather and soil moisture levels! There are many apps and tools available that can help beginner gardeners like you to improve their gardening skills and make the most of their garden. Here are some recommendations:\n\n**Gardening Apps:**\n\n1. **Gardening Know How**: A comprehensive app that provides gardening advice, plant care guides, and a pest and disease identifier.\n2. **PlantSnap**: A plant identification app that allows you to snap a photo of a plant and get instant identification.\n3. **Garden Plan Pro**: A garden planning app that helps you design and organize your garden, track progress, and set reminders.\n4. **Weather Underground**: A weather app that provides hyperlocal weather forecasts, which is useful for planning gardening activities.\n5. **Blossom**: A gardening app that provides personalized plant care advice, watering reminders, and a journal to track your progress.\n\n**Gardening Tools:**\n\n1. **Soil pH Meter**: A handheld device that measures the pH level of your soil, helping you adjust it for optimal plant growth.\n2. **Moisture Meter**: A tool that measures soil moisture levels, ensuring you don't overwater or underwater your plants.\n3. **Gardening Gloves**: Good-quality gardening gloves can protect your hands from thorns, dirt, and other debris while gardening.\n4. **Gardening Hand Trowel**: A versatile tool for planting, transplanting, and mixing soil.\n5. **Gardening Journal**: A physical or digital journal to record your gardening progress, note weather patterns, and plan for future seasons.\n\n**Online Resources:**\n\n1. **Gardening Websites**: Websites like Gardening Know How, The Spruce, and Gardener's Supply Company offer a wealth of gardening information, tutorials, and advice.\n2. **Gardening Forums**: Online forums like Reddit's r/gardening and gardening subforums on GardenWeb allow you to connect with other gardeners, ask questions, and share experiences.\n3. **YouTube Channels**: YouTube channels like Gardening with Cody, Epic Gardening, and CaliKim offer video tutorials, gardening tips, and inspiration.\n\n**Other Tools:**\n\n1. **Gardening Books**: Books like \"The New Seed Starter's Handbook\" by Nancy Bubel and \"The Vegetable Gardener's Bible\" by Edward C. Smith provide in-depth gardening knowledge and guidance.\n2. **Gardening Classes**: Local gardening classes, workshops, or online courses can help you learn new skills and connect with other gardeners in your area.\n\nRemember, gardening is a learning process, and it's essential to be patient, flexible, and willing to adapt to changing conditions. These apps, tools, and resources can help you improve your gardening skills and enjoy the process. Happy gardening!\nuser: I've been struggling with pests like aphids and whiteflies on my plants. Do you have any advice on how to control their population naturally?\nassistant: Pest problems can be frustrating! Don't worry, I've got some natural and organic methods to help you control aphids and whiteflies without harming your plants or the environment.\n\n**Aphid Control:**\n\n1. **Spray soapy water**: Mix 1 tablespoon of mild dish soap with 1 quart of water and spray it on the affected areas. This will suffocate the aphids.\n2. **Neem oil**: Neem oil is a natural insecticide that can be used to control aphids. Mix 2 tablespoons of neem oil with 1 quart of water and spray it on the plants.\n3. **Ladybugs**: Ladybugs are natural predators of aphids. Introduce ladybugs to your garden, and they'll take care of the aphid population.\n4. **Garlic spray**: Garlic has natural insecticidal properties. Blend 3 cloves of garlic with 1 quart of water and spray it on the plants.\n5. **Horticultural oil**: Horticultural oil is a refined mineral oil that suffocates aphids. Mix 2 tablespoons of horticultural oil with 1 quart of water and spray it on the plants.\n\n**Whitefly Control:**\n\n1. **Yellow sticky traps**: Whiteflies are attracted to yellow, so use yellow sticky traps to capture them.\n2. **Insecticidal soap**: Insecticidal soap is a gentle, non-toxic soap that can be used to control whiteflies. Mix 1 tablespoon of insecticidal soap with 1 quart of water and spray it on the plants.\n3. **Neem oil**: Neem oil is also effective against whiteflies. Mix 2 tablespoons of neem oil with 1 quart of water and spray it on the plants.\n4. **Predatory insects**: Introduce natural predators like ladybugs or lacewings, which feed on whiteflies.\n5. **Vacuum**: Use a handheld vacuum to suck up whiteflies, especially on indoor plants.\n\n**General Tips:**\n\n1. **Keep your plants healthy**: Healthy plants are less susceptible to pest infestations. Ensure your plants receive adequate water, nutrients, and sunlight.\n2. **Inspect your plants regularly**: Regularly inspect your plants to catch pest infestations early, making it easier to control them.\n3. **Remove weeds**: Weeds can harbor pests, so remove them regularly to prevent infestations from spreading.\n4. **Use physical barriers**: Use fine-mesh screens or fine-netted bags to cover your plants to prevent whiteflies and aphids from reaching them.\n5. **Companion planting**: Some plants, like basil and marigold, repel pests naturally. Plant them alongside your affected plants to deter pests.\n\nRemember, it's essential to be patient and persistent when using natural methods to control pests. It may take some time to see results, but with consistent effort, you can maintain a healthy and pest-free garden.\nuser: That's helpful! I've been using neem oil and insecticidal soap to control the aphid and whitefly population, but I haven't tried some of the other methods you mentioned. I'll definitely give them a shot. By the way, do you have any tips on how to prevent fungal diseases on tomato plants? I've been having some issues with that lately.\nassistant: Neem oil and insecticidal soap are both effective tools in controlling aphids and whiteflies.\n\nNow, about fungal diseases on tomato plants... Fungal diseases can be a real challenge, but there are several ways to prevent and manage them. Here are some tips to help you prevent fungal diseases on your tomato plants:\n\n**1. Water wisely**: Fungal diseases thrive in moist environments. Avoid overwatering, and make sure the soil drains well. Water your tomato plants at the base, avoiding the leaves to prevent water from splashing onto the foliage.\n\n**2. Provide good air circulation**: Good air circulation helps to dry the leaves and stems, making it harder for fungal spores to germinate. Remove any nearby plants that may be blocking airflow, and consider using fans to improve circulation.\n\n**3. Remove infected leaves**: If you notice any infected leaves, remove them immediately to prevent the disease from spreading. Dispose of the infected leaves in a sealed bag to prevent the fungal spores from spreading.\n\n**4. Improve soil health**: Fungal diseases often occur when the soil is depleted of nutrients or has poor structure. Add organic matter like compost or well-rotted manure to improve soil health and structure.\n\n**5. Use crop rotation**: Rotate your tomato crops to break the disease cycle. Move your tomato plants to a different location each season to reduce the risk of fungal diseases.\n\n**6. Use fungicides**: If you do encounter fungal diseases, use organic fungicides like copper-based products or bicarbonate-based products. These are safer for the environment and your plants.\n\n**7. Monitor for pests**: Pests like hornworms and aphids can spread fungal diseases. Monitor your plants regularly for pests and take action if you notice any.\n\n**8. Use resistant varieties**: Some tomato varieties are bred to be resistant to specific fungal diseases. Look for varieties with built-in resistance to diseases like Verticillium and Fusarium wilt.\n\n**9. Mulch around plants**: Mulching helps to reduce soil moisture and prevent fungal spores from splashing onto the plants. Use organic mulch like straw or wood chips around your tomato plants.\n\n**10. Keep your garden clean**: Keep your garden clean by removing any debris, weeds, or infected plants. This will help to reduce the risk of fungal diseases spreading.\n\nBy following these tips, you can reduce the risk of fungal diseases on your tomato plants. Remember to monitor your plants regularly and take action quickly if you notice any signs of disease.\n\nI hope these tips help you prevent fungal diseases on your tomato plants!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_1e4a8aeb",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:773a0171ef2248441fef0cce56e32d67"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_1e4a8aeb\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Forced memory write. The transcript includes stable user gardening context and past experiences plus reusable advice/digests, so mixed claim and note storage is appropriate.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my / me; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements in the transcript refer to the stable user entity, and no existing User entity is available.\n- mention=herbs; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Herbs; reason=The transcript contains reusable assertions about the user's herbs as a gardening subject.\n- mention=basil; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Basil; reason=Basil is a concrete plant type mentioned as part of the user's garden.\n- mention=mint; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Mint; reason=Mint is a concrete plant type mentioned as part of the user's garden.\n- mention=parsley; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Parsley; reason=Parsley is a concrete plant type mentioned as part of the user's garden.\n- mention=gardening workshop; action=CREATE_NEW; id=entity:<5>; type=OTHER; name=Gardening workshop; reason=The user reports attending a gardening workshop; the exact organizer/name is unknown, but the event is a reusable referent for an attended-event claim.\n- mention=companion planting; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Companion planting; reason=Companion planting is a reusable gardening concept the user learned about.\n- mention=crop rotation; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Crop rotation; reason=Crop rotation is a reusable gardening concept the user learned about.\n- mention=compost; action=CREATE_NEW; id=entity:<8>; type=CONCEPT; name=Compost; reason=Compost is a reusable gardening material discussed as a fertilizer option.\n- mention=gardening app; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=Gardening app; reason=The user mentions using an unspecified gardening app; the exact product identity is unknown but it can serve as an object for claims.\n- mention=weather; action=CREATE_NEW; id=entity:<10>; type=CONCEPT; name=Weather; reason=Weather is tracked by the user's gardening app and may be needed as a claim object.\n- mention=soil moisture levels; action=CREATE_NEW; id=entity:<11>; type=CONCEPT; name=Soil moisture levels; reason=Soil moisture levels are tracked by the user's gardening app and are a reusable gardening concept.\n- mention=beginner gardener; action=CREATE_NEW; id=entity:<12>; type=CONCEPT; name=Beginner gardener; reason=The phrase describes the user's gardening experience level; creating a concept allows later claims to classify the user if needed.\n- mention=aphids; action=CREATE_NEW; id=entity:<13>; type=CONCEPT; name=Aphids; reason=Aphids are concrete pests the user struggles with and treats.\n- mention=whiteflies; action=CREATE_NEW; id=entity:<14>; type=CONCEPT; name=Whiteflies; reason=Whiteflies are concrete pests the user struggles with and treats.\n- mention=neem oil; action=CREATE_NEW; id=entity:<15>; type=CONCEPT; name=Neem oil; reason=Neem oil is a reusable pest-control material the user reports using.\n- mention=insecticidal soap; action=CREATE_NEW; id=entity:<16>; type=CONCEPT; name=Insecticidal soap; reason=Insecticidal soap is a reusable pest-control material the user reports using.\n- mention=fungal diseases; action=CREATE_NEW; id=entity:<17>; type=CONCEPT; name=Fungal diseases; reason=The user asks about preventing fungal diseases and reports issues with them.\n- mention=tomato plants; action=CREATE_NEW; id=entity:<18>; type=CONCEPT; name=Tomato plants; reason=Tomato plants are concrete plants in the user's gardening context.\n- mention=current project; action=CREATE_NEW; id=entity:<19>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|user garden|herbs|tomato plants|gardening app|gardening workshop\n        text_queries=garden herbs basil mint parsley compost fertilizer companion planting crop rotation|gardening app weather soil moisture beginner gardener tools|aphids whiteflies neem oil insecticidal soap natural pest control|fungal diseases tomato plants\n        predicate_hints=has_experience_with|attended_event|works_with|prefers|has_goal\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:773a0171ef2248441fef0cce56e32d67] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_1e4a8aeb:session:1; title=LongMemEval gpt4_1e4a8aeb session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 18:09\nTranscript:\nuser: I'm trying to figure out what type of fertilizer to use for my herbs. I've been experimenting with different types of plants in my garden, including basil, mint, and parsley, and I want to make sure I'm giving them the right nutrients. By the way, I attended a gardening workshop in my neighborhood today where I learned about companion planting and crop rotation, and it's been really helpful in planning my garden layout.\nassistant: That's great to hear that you're taking steps to improve your gardening skills! Choosing the right fertilizer for your herbs can make a big difference in their health and productivity.\n\nFor herbs like basil, mint, and parsley, you'll want to focus on fertilizers that provide a balanced mix of nutrients. Here are some tips to consider:\n\n1. **Balanced fertilizer**: Look for a fertilizer with a balanced N-P-K ratio, such as 10-10-10 or 20-20-20. This means the fertilizer contains equal amounts of nitrogen (N), phosphorus (P), and potassium (K).\n2. **Organic or synthetic**: You can choose between organic and synthetic fertilizers. Organic fertilizers, like compost or manure, release nutrients slowly and promote soil health. Synthetic fertilizers, like chemical-based formulas, provide quick results but may not improve soil structure.\n3. **Water-soluble or granular**: Water-soluble fertilizers are easy to apply and provide quick results, while granular fertilizers release nutrients slowly over time.\n4. **Herb-specific formulas**: Some fertilizers are specifically formulated for herbs and may contain additional nutrients like iron or magnesium that are beneficial for their growth.\n\nSome good options for herb fertilizers include:\n\n* Miracle-Gro Shake 'n Feed All Purpose Plant Food (organic, slow-release)\n* Espoma Organic Indoor! 8-2-4 Herb & Vegetable Fertilizer (organic, water-soluble)\n* Schultz Super Bloom! Plant Food (synthetic, water-soluble)\n\nRemember to always follow the instructions on the fertilizer package and start with a small amount to avoid over-fertilizing, which can harm your plants.\n\nIt's great that you attended a gardening workshop and learned about companion planting and crop rotation! These techniques can really help improve the health and productivity of your garden. Companion planting can help deter pests and attract beneficial insects, while crop rotation can prevent soil depletion and reduce the risk of disease.\n\nDo you have any other questions about fertilizing your herbs or other gardening topics?\nuser: I was thinking of using compost as a fertilizer for my herbs. Would that work?\nassistant: Compost is an excellent choice as a fertilizer for your herbs. Compost is a natural, organic, and nutrient-rich fertilizer that can provide many benefits to your herbs. Here are some reasons why compost is a great option:\n\n1. **Nutrient-rich**: Compost is a slow-release fertilizer that contains a balanced mix of nutrients, including nitrogen, phosphorus, potassium, and other micronutrients that are essential for plant growth.\n2. **Improves soil structure**: Compost can help improve the structure of your soil, making it more conducive to healthy root growth and better water retention.\n3. **Supports beneficial microbes**: Compost is a food source for beneficial microorganisms in the soil, which helps to create a healthy soil ecosystem.\n4. **Environmentally friendly**: Using compost as a fertilizer reduces the need for synthetic fertilizers and helps to recycle organic waste.\n5. **Cost-effective**: Compost is a free or low-cost fertilizer option, especially if you make your own compost at home.\n\nTo use compost as a fertilizer for your herbs, you can:\n\n1. **Mix it into the soil**: Add a 2- to 4-inch layer of compost to the soil before planting your herbs.\n2. **Use it as a top dressing**: Sprinkle a thin layer of compost around the base of your herb plants as a top dressing.\n3. **Make a compost tea**: Steep a bucket of compost in water to create a nutrient-rich liquid fertilizer for your herbs.\n\nSome tips to keep in mind when using compost as a fertilizer:\n\n* Make sure your compost is fully broken down and has an earthy, soil-like aroma. If it's still recognizable as individual ingredients, it's not ready to use.\n* Avoid using too much compost, as this can lead to an overabundance of nutrients and cause more harm than good.\n* Consider making your own compost at home using kitchen scraps, leaves, and other organic materials.\n\nOverall, compost is an excellent choice as a fertilizer for your herbs. It's a natural, sustainable, and effective way to provide your plants with the nutrients they need to thrive.\nuser: I've been using a gardening app to track the weather and soil moisture levels, which has been really helpful in planning my gardening activities. I was wondering if you could recommend any other apps or tools that might be useful for a beginner gardener like me?\nassistant: That's great to hear that you're using a gardening app to track the weather and soil moisture levels! There are many apps and tools available that can help beginner gardeners like you to improve their gardening skills and make the most of their garden. Here are some recommendations:\n\n**Gardening Apps:**\n\n1. **Gardening Know How**: A comprehensive app that provides gardening advice, plant care guides, and a pest and disease identifier.\n2. **PlantSnap**: A plant identification app that allows you to snap a photo of a plant and get instant identification.\n3. **Garden Plan Pro**: A garden planning app that helps you design and organize your garden, track progress, and set reminders.\n4. **Weather Underground**: A weather app that provides hyperlocal weather forecasts, which is useful for planning gardening activities.\n5. **Blossom**: A gardening app that provides personalized plant care advice, watering reminders, and a journal to track your progress.\n\n**Gardening Tools:**\n\n1. **Soil pH Meter**: A handheld device that measures the pH level of your soil, helping you adjust it for optimal plant growth.\n2. **Moisture Meter**: A tool that measures soil moisture levels, ensuring you don't overwater or underwater your plants.\n3. **Gardening Gloves**: Good-quality gardening gloves can protect your hands from thorns, dirt, and other debris while gardening.\n4. **Gardening Hand Trowel**: A versatile tool for planting, transplanting, and mixing soil.\n5. **Gardening Journal**: A physical or digital journal to record your gardening progress, note weather patterns, and plan for future seasons.\n\n**Online Resources:**\n\n1. **Gardening Websites**: Websites like Gardening Know How, The Spruce, and Gardener's Supply Company offer a wealth of gardening information, tutorials, and advice.\n2. **Gardening Forums**: Online forums like Reddit's r/gardening and gardening subforums on GardenWeb allow you to connect with other gardeners, ask questions, and share experiences.\n3. **YouTube Channels**: YouTube channels like Gardening with Cody, Epic Gardening, and CaliKim offer video tutorials, gardening tips, and inspiration.\n\n**Other Tools:**\n\n1. **Gardening Books**: Books like \"The New Seed Starter's Handbook\" by Nancy Bubel and \"The Vegetable Gardener's Bible\" by Edward C. Smith provide in-depth gardening knowledge and guidance.\n2. **Gardening Classes**: Local gardening classes, workshops, or online courses can help you learn new skills and connect with other gardeners in your area.\n\nRemember, gardening is a learning process, and it's essential to be patient, flexible, and willing to adapt to changing conditions. These apps, tools, and resources can help you improve your gardening skills and enjoy the process. Happy gardening!\nuser: I've been struggling with pests like aphids and whiteflies on my plants. Do you have any advice on how to control their population naturally?\nassistant: Pest problems can be frustrating! Don't worry, I've got some natural and organic methods to help you control aphids and whiteflies without harming your plants or the environment.\n\n**Aphid Control:**\n\n1. **Spray soapy water**: Mix 1 tablespoon of mild dish soap with 1 quart of water and spray it on the affected areas. This will suffocate the aphids.\n2. **Neem oil**: Neem oil is a natural insecticide that can be used to control aphids. Mix 2 tablespoons of neem oil with 1 quart of water and spray it on the plants.\n3. **Ladybugs**: Ladybugs are natural predators of aphids. Introduce ladybugs to your garden, and they'll take care of the aphid population.\n4. **Garlic spray**: Garlic has natural insecticidal properties. Blend 3 cloves of garlic with 1 quart of water and spray it on the plants.\n5. **Horticultural oil**: Horticultural oil is a refined mineral oil that suffocates aphids. Mix 2 tablespoons of horticultural oil with 1 quart of water and spray it on the plants.\n\n**Whitefly Control:**\n\n1. **Yellow sticky traps**: Whiteflies are attracted to yellow, so use yellow sticky traps to capture them.\n2. **Insecticidal soap**: Insecticidal soap is a gentle, non-toxic soap that can be used to control whiteflies. Mix 1 tablespoon of insecticidal soap with 1 quart of water and spray it on the plants.\n3. **Neem oil**: Neem oil is also effective against whiteflies. Mix 2 tablespoons of neem oil with 1 quart of water and spray it on the plants.\n4. **Predatory insects**: Introduce natural predators like ladybugs or lacewings, which feed on whiteflies.\n5. **Vacuum**: Use a handheld vacuum to suck up whiteflies, especially on indoor plants.\n\n**General Tips:**\n\n1. **Keep your plants healthy**: Healthy plants are less susceptible to pest infestations. Ensure your plants receive adequate water, nutrients, and sunlight.\n2. **Inspect your plants regularly**: Regularly inspect your plants to catch pest infestations early, making it easier to control them.\n3. **Remove weeds**: Weeds can harbor pests, so remove them regularly to prevent infestations from spreading.\n4. **Use physical barriers**: Use fine-mesh screens or fine-netted bags to cover your plants to prevent whiteflies and aphids from reaching them.\n5. **Companion planting**: Some plants, like basil and marigold, repel pests naturally. Plant them alongside your affected plants to deter pests.\n\nRemember, it's essential to be patient and persistent when using natural methods to control pests. It may take some time to see results, but with consistent effort, you can maintain a healthy and pest-free garden.\nuser: That's helpful! I've been using neem oil and insecticidal soap to control the aphid and whitefly population, but I haven't tried some of the other methods you mentioned. I'll definitely give them a shot. By the way, do you have any tips on how to prevent fungal diseases on tomato plants? I've been having some issues with that lately.\nassistant: Neem oil and insecticidal soap are both effective tools in controlling aphids and whiteflies.\n\nNow, about fungal diseases on tomato plants... Fungal diseases can be a real challenge, but there are several ways to prevent and manage them. Here are some tips to help you prevent fungal diseases on your tomato plants:\n\n**1. Water wisely**: Fungal diseases thrive in moist environments. Avoid overwatering, and make sure the soil drains well. Water your tomato plants at the base, avoiding the leaves to prevent water from splashing onto the foliage.\n\n**2. Provide good air circulation**: Good air circulation helps to dry the leaves and stems, making it harder for fungal spores to germinate. Remove any nearby plants that may be blocking airflow, and consider using fans to improve circulation.\n\n**3. Remove infected leaves**: If you notice any infected leaves, remove them immediately to prevent the disease from spreading. Dispose of the infected leaves in a sealed bag to prevent the fungal spores from spreading.\n\n**4. Improve soil health**: Fungal diseases often occur when the soil is depleted of nutrients or has poor structure. Add organic matter like compost or well-rotted manure to improve soil health and structure.\n\n**5. Use crop rotation**: Rotate your tomato crops to break the disease cycle. Move your tomato plants to a different location each season to reduce the risk of fungal diseases.\n\n**6. Use fungicides**: If you do encounter fungal diseases, use organic fungicides like copper-based products or bicarbonate-based products. These are safer for the environment and your plants.\n\n**7. Monitor for pests**: Pests like hornworms and aphids can spread fungal diseases. Monitor your plants regularly for pests and take action if you notice any.\n\n**8. Use resistant varieties**: Some tomato varieties are bred to be resistant to specific fungal diseases. Look for varieties with built-in resistance to diseases like Verticillium and Fusarium wilt.\n\n**9. Mulch around plants**: Mulching helps to reduce soil moisture and prevent fungal spores from splashing onto the plants. Use organic mulch like straw or wood chips around your tomato plants.\n\n**10. Keep your garden clean**: Keep your garden clean by removing any debris, weeds, or infected plants. This will help to reduce the risk of fungal diseases spreading.\n\nBy following these tips, you can reduce the risk of fungal diseases on your tomato plants. Remember to monitor your plants regularly and take action quickly if you notice any signs of disease.\n\nI hope these tips help you prevent fungal diseases on your tomato plants!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_1e4a8aeb",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:773a0171ef2248441fef0cce56e32d67"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User has struggled with aphids and whiteflies on plants\",\"User has used neem oil and insecticidal soap for aphids and whiteflies\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<13>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<14>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<15>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<16>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I've been using neem oil and insecticidal soap to control the aphid and whitefly population\",\"evidence_reason\":\"The transcript contains a concrete pest problem, methods already used, and a reusable set of natural control approaches discussed in response.\",\"importance\":4,\"keywords\":[\"aphids\",\"whiteflies\",\"neem oil\",\"insecticidal soap\",\"ladybugs\",\"yellow sticky traps\",\"companion planting\",\"natural pest control\"],\"note_type\":\"lesson\",\"rationale\":\"This is reusable gardening procedure/advice with multiple methods and context; it is broader than a single atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Natural pest management advice for the user's plants, especially aphids and whiteflies\"},\"summary\":\"For the user's garden, natural aphid and whitefly control advice included soapy water, neem oil, ladybugs/lacewings, garlic spray, horticultural oil, yellow sticky traps, insecticidal soap, handheld vacuuming, regular inspection, weed removal, physical barriers, and companion planting with pest-repelling plants such as basil and marigold.\",\"tags\":[\"gardening\",\"pest_control\",\"organic_methods\"],\"title\":\"Natural pest-control methods for aphids and whiteflies\",\"valid_from\":\"2023-04-15T18:09:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User has been having issues with fungal diseases on tomato plants\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<17>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<18>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"do you have any tips on how to prevent fungal diseases on tomato plants? I've been having some issues with that lately.\",\"evidence_reason\":\"The user reports tomato fungal disease issues and the transcript provides a reusable prevention checklist.\",\"importance\":4,\"keywords\":[\"tomato plants\",\"fungal diseases\",\"watering\",\"air circulation\",\"compost\",\"crop rotation\",\"mulch\",\"organic fungicides\"],\"note_type\":\"lesson\",\"rationale\":\"This is procedural disease-prevention guidance and troubleshooting context, not a single clean factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable prevention and management guidance for fungal diseases on the user's tomato plants\"},\"summary\":\"To prevent fungal diseases on tomato plants, emphasize wise watering at the base, good drainage and air circulation, removing infected leaves, improving soil with compost or manure, crop rotation, organic fungicides when needed, pest monitoring, resistant varieties, mulching, and garden sanitation.\",\"tags\":[\"gardening\",\"tomatoes\",\"disease_prevention\"],\"title\":\"Tomato fungal disease prevention approach\",\"valid_from\":\"2023-04-15T18:09:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User grows basil, mint, and parsley\",\"User attended a gardening workshop about companion planting and crop rotation\",\"User uses a gardening app to track weather and soil moisture levels\",\"User is a beginner gardener\"],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<2>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<9>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<12>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I've been experimenting with different types of plants in my garden, including basil, mint, and parsley\",\"evidence_reason\":\"Several parts of the transcript jointly establish reusable gardening context, practices, and planning concepts.\",\"importance\":4,\"keywords\":[\"beginner gardener\",\"herbs\",\"basil\",\"mint\",\"parsley\",\"compost\",\"gardening app\",\"weather\",\"soil moisture\",\"companion planting\",\"crop rotation\"],\"note_type\":\"context\",\"rationale\":\"This combines multiple contextual gardening practices into a reusable situation digest; individual plant/app/workshop facts may become claims, but the planning context is better represented as a note.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable context for the user's beginner gardening setup and planning practices\"},\"summary\":\"The user is a beginner gardener growing herbs such as basil, mint, and parsley, using compost/fertilizer planning, a gardening app for weather and soil moisture, and workshop concepts like companion planting and crop rotation to plan the garden layout.\",\"tags\":[\"gardening\",\"herbs\",\"planning_context\"],\"title\":\"Beginner herb-gardening planning context\",\"valid_from\":\"2023-04-15T18:09:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5409,
+                "completionTokens": 1347,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
