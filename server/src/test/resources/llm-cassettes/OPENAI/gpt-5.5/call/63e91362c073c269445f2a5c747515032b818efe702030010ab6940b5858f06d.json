@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "63e91362c073c269445f2a5c747515032b818efe702030010ab6940b5858f06d",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:c18a7dc8\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 18:33\nTranscript:\nuser: I'm looking to explore ways to advance my career in marketing. I've been in the industry for a while now. Can you suggest some online courses or certifications that would be beneficial for a Digital Marketing Specialist like myself?\nassistant: As a Digital Marketing Specialist with industry experience, you're wise to invest in upskilling and reskilling to stay ahead in the rapidly evolving marketing landscape. Here are some online courses and certifications that can help advance your career:\n\n**Certifications:**\n\n1. **Google Analytics Certification**: Demonstrate your expertise in Google Analytics and data analysis with this certification.\n2. **HubSpot Inbound Marketing Certification**: Showcase your knowledge of inbound marketing, sales, and customer service with HubSpot's certification.\n3. **Facebook Blueprint Certification**: Prove your skills in Facebook and Instagram advertising with this certification.\n4. **Certified Digital Marketing Professional (CDMP)**: Offered by the Digital Marketing Institute, this certification covers a broad range of digital marketing topics.\n5. **Certified Content Marketing Specialist (CCMS)**: This certification, offered by the Content Marketing Institute, focuses on content marketing strategy and creation.\n\n**Online Courses:**\n\n1. **Digital Marketing Specializations**:\n\t* Coursera's Digital Marketing Specialization (University of Illinois at Urbana-Champaign)\n\t* edX's Digital Marketing MicroMasters (University of Illinois at Urbana-Champaign)\n2. **Marketing Strategy and Planning**:\n\t* Coursera's Marketing Strategy (University of Pennsylvania)\n\t* edX's Marketing Strategy and Planning (Boston University)\n3. **Data Analysis and Science**:\n\t* Coursera's Data Science Specialization (Johns Hopkins University)\n\t* edX's Data Analysis and Visualization (Microsoft)\n4. **Content Creation and Storytelling**:\n\t* Coursera's Content Strategy for Professionals (Northwestern University)\n\t* Skillshare's Content Marketing and Storytelling courses\n5. **Emerging Trends and Technologies**:\n\t* Coursera's AI and Machine Learning in Marketing (University of Toronto)\n\t* edX's Blockchain and Digital Marketing (University of Oxford)\n\n**Platforms and Providers:**\n\n1. **Coursera**: Offers a wide range of marketing courses and specializations from top universities.\n2. **edX**: Provides a variety of marketing courses and MicroMasters programs from leading institutions.\n3. **HubSpot Academy**: Offers free online courses and certifications in inbound marketing, sales, and customer service.\n4. **Udemy**: Features a vast array of marketing courses, from beginner to advanced levels.\n5. **LinkedIn Learning (formerly Lynda.com)**: Offers video courses and tutorials on various marketing topics.\n\n**Tips:**\n\n1. **Choose courses that align with your goals and interests**: Focus on areas you want to specialize in or improve upon.\n2. **Set a schedule and commit to learning**: Allocate time each week to complete courses and certifications.\n3. **Apply what you learn**: Implement new skills and knowledge in your current role or personal projects to reinforce your learning.\n4. **Network and join online communities**: Engage with others in the marketing industry to stay updated on industry trends and best practices.\n5. **Stay up-to-date**: Continuously update your skills and knowledge to stay competitive in the ever-changing marketing landscape.\n\nBy investing in these online courses and certifications, you'll not only enhance your skills but also demonstrate your commitment to professional growth and development, making you a more attractive candidate for future opportunities.\nuser: I'm interested in the Certified Digital Marketing Professional (CDMP) certification. Can you provide more information on the curriculum and what kind of topics it covers?\nassistant: The Certified Digital Marketing Professional (CDMP) certification is a well-respected credential in the digital marketing industry. Here's an overview of the curriculum and topics covered:\n\n**Certified Digital Marketing Professional (CDMP) Certification**\n\n**Provider:** Digital Marketing Institute (DMI)\n\n**Duration:** 3-6 months (self-paced online learning)\n\n**Curriculum:**\n\nThe CDMP certification program is divided into three modules, covering a comprehensive range of digital marketing topics:\n\n**Module 1: Digital Marketing Fundamentals**\n\n1. Introduction to Digital Marketing\n2. Digital Marketing Strategy and Planning\n3. Understanding the Digital Consumer\n4. Digital Marketing Channels (Overview)\n\n**Module 2: Digital Channels and Platforms**\n\n1. Search Engine Optimization (SEO)\n2. Pay-Per-Click (PPC) Advertising\n3. Social Media Marketing\n4. Email Marketing\n5. Mobile Marketing\n6. Content Marketing\n7. Affiliate Marketing\n8. Influencer Marketing\n\n**Module 3: Digital Analytics and Measurement**\n\n1. Digital Analytics Fundamentals\n2. Google Analytics (GA) Setup and Configuration\n3. GA Reporting and Analysis\n4. Conversion Rate Optimization (CRO)\n5. A/B Testing and Experimentation\n6. Digital Marketing Metrics and KPIs\n7. Data-Driven Decision Making\n\n**Topics Covered:**\n\nThroughout the program, you'll learn about:\n\n* Digital marketing strategy and planning\n* Search engine optimization (SEO) and pay-per-click (PPC) advertising\n* Social media marketing, email marketing, and mobile marketing\n* Content marketing, affiliate marketing, and influencer marketing\n* Digital analytics, Google Analytics, and data-driven decision making\n* Conversion rate optimization (CRO) and A/B testing\n* Digital marketing metrics and key performance indicators (KPIs)\n\n**Learning Outcomes:**\n\nUpon completing the CDMP certification program, you'll be able to:\n\n* Develop a comprehensive digital marketing strategy\n* Plan and execute digital marketing campaigns across various channels\n* Analyze and optimize digital marketing performance using Google Analytics\n* Create effective content and social media marketing strategies\n* Measure and report on digital marketing metrics and KPIs\n\n**Exam and Certification:**\n\nTo become certified, you'll need to pass a 3-hour, 180-question multiple-choice exam. The exam is administered online, and you'll have two attempts to pass within a 12-month period.\n\n**Cost:**\n\nThe CDMP certification program costs around $1,995 (may vary depending on the region and any applicable discounts).\n\n**Why Choose CDMP?**\n\nThe Certified Digital Marketing Professional certification is a well-established and respected credential in the industry. It demonstrates your expertise and commitment to digital marketing, enhancing your career prospects and earning potential.\n\nI hope this information helps you make an informed decision about pursuing the CDMP certification!\nuser: I'm interested in the CDMP certification, but I want to know how it can benefit my career advancement. Can you provide some insights on how this certification can increase my earning potential and job prospects?\nassistant: The Certified Digital Marketing Professional (CDMP) certification can indeed have a significant impact on your career advancement, earning potential, and job prospects. Here are some insights to help you understand the benefits:\n\n**Earning Potential:**\n\n1. **Salary Increase:** According to various sources, including the Digital Marketing Institute, CDMP certified professionals can expect a salary increase of up to 20% compared to non-certified professionals.\n2. **Average Salary Range:** In the United States, the average salary range for digital marketing professionals with a CDMP certification is around $65,000 - $110,000 per year, depending on experience and location.\n3. **Higher Earning Potential:** A survey by Indeed found that certified digital marketing professionals can earn up to $125,000 per year or more, especially in senior roles or as digital marketing consultants.\n\n**Job Prospects:**\n\n1. **Increased Job Opportunities:** The CDMP certification is recognized globally, making you a more attractive candidate for digital marketing roles across industries.\n2. **Competitive Advantage:** With the certification, you'll stand out from non-certified professionals, giving you a competitive advantage in the job market.\n3. **Career Advancement:** The CDMP certification can help you move up the career ladder, from entry-level to senior roles, such as Digital Marketing Manager, Marketing Director, or even CMO.\n4. **Freelance and Consulting Opportunities:** As a certified digital marketing professional, you'll be more likely to attract freelance or consulting clients, which can lead to additional income streams.\n\n**Industry Recognition:**\n\n1. **Industry-Recognized Certification:** The CDMP certification is recognized by top industry players, including Google, Facebook, and Microsoft, demonstrating your expertise and commitment to digital marketing.\n2. **DMI's Global Network:** As a CDMP certified professional, you'll become part of the Digital Marketing Institute's global network, connecting you with other professionals, job opportunities, and industry events.\n\n**Skills and Knowledge:**\n\n1. **Comprehensive Digital Marketing Knowledge:** The CDMP certification program covers a broad range of digital marketing topics, ensuring you have a deep understanding of the latest trends, tools, and best practices.\n2. **Staying Up-to-Date:** The certification requires ongoing professional development, ensuring you stay current with the latest industry developments and advancements.\n\n**Employer Benefits:**\n\n1. **Demonstrated Expertise:** The CDMP certification demonstrates your expertise and commitment to digital marketing, making you a more valuable asset to your current or future employer.\n2. **Improved Job Performance:** With the certification, you'll be able to optimize digital marketing campaigns, improve ROI, and drive business growth, leading to increased job satisfaction and recognition.\n\nBy obtaining the CDMP certification, you'll not only enhance your skills and knowledge but also increase your earning potential, job prospects, and industry recognition. This certification can be a significant career booster, helping you achieve your professional goals and advance in the digital marketing industry.\nuser: I'm currently working as a Digital Marketing Specialist at TechSavvy Inc., and I'm looking to advance my career in the industry. I'm considering pursuing an MBA in the near future to further advance my career and increase my earning potential. Do you think having the CDMP certification would be beneficial for me, given my current role and future career goals?\nassistant: As a Digital Marketing Specialist at TechSavvy Inc., you're already in a great position to advance your career in the industry. Pursuing an MBA is a fantastic long-term goal, but let's discuss how the CDMP certification can benefit you in the short-term and complement your future MBA pursuits.\n\n**Current Role: Digital Marketing Specialist**\n\nThe CDMP certification can benefit you in your current role in several ways:\n\n1. **Enhance your skills:** The certification will help you develop a deeper understanding of digital marketing strategies, channels, and analytics, making you a more effective Digital Marketing Specialist.\n2. **Increase your value:** With the certification, you'll be able to optimize digital marketing campaigns, improve ROI, and drive business growth, making you a more valuable asset to TechSavvy Inc.\n3. **Take on more responsibilities:** The CDMP certification can lead to additional responsibilities, such as leading digital marketing projects, mentoring junior team members, or contributing to strategic planning.\n\n**Future Career Goals: MBA and Beyond**\n\nConsidering an MBA in the near future is a great career move. The CDMP certification can complement your MBA pursuits in several ways:\n\n1. **Foundational knowledge:** The CDMP certification will provide a solid foundation in digital marketing, which will be beneficial when you pursue your MBA. You'll be able to build upon this knowledge and apply it to more advanced business and marketing concepts.\n2. **Differentiation:** Having both the CDMP certification and an MBA will differentiate you from other professionals in the industry, making you a more attractive candidate for senior roles or leadership positions.\n3. **Career advancement:** The combination of the CDMP certification and an MBA can open up opportunities for career advancement, such as moving into a Marketing Director or CMO role, or even starting your own digital marketing agency.\n\n**Why get the CDMP certification now?**\n\n1. **Timing:** Pursuing the CDMP certification now will give you a head start on developing your digital marketing skills and knowledge, which will be beneficial when you start your MBA program.\n2. **Relevance:** The CDMP certification is directly applicable to your current role and industry, so you'll be able to immediately apply your new skills and knowledge.\n3. **Confidence boost:** Achieving the CDMP certification will give you a confidence boost, which will be beneficial when you embark on your MBA journey.\n\nIn conclusion, having the CDMP certification will be beneficial for you in your current role as a Digital Marketing Specialist, and it will also complement your future MBA pursuits. It's a great way to enhance your skills, increase your value, and differentiate yourself in the industry.\nuser: I'm considering pursuing the CDMP certification to enhance my skills and knowledge in digital marketing. As a 32-year-old Digital Marketing Specialist at TechSavvy Inc., I believe the certification will not only benefit me in my current role but also prepare me for my future career goals, including pursuing an MBA. Can you provide more information on the certification process, including the exam format, duration, and study materials?\nassistant: As a Digital Marketing Specialist at TechSavvy Inc., pursuing the CDMP certification is a great way to enhance your skills and knowledge in digital marketing. Here's an overview of the certification process, including the exam format, duration, and study materials:\n\n**Certification Process:**\n\n1. **Eligibility:** There are no specific eligibility criteria for the CDMP certification, but it's recommended that you have at least 1-2 years of experience in digital marketing.\n2. **Registration:** Register for the CDMP certification program on the Digital Marketing Institute's website.\n3. **Study Materials:** You'll receive access to the CDMP study materials, which include:\n\t* A comprehensive digital marketing textbook (PDF)\n\t* Online learning modules (video lessons, quizzes, and exercises)\n\t* Practice exam questions and answers\n4. **Exam Format:** The CDMP exam consists of 180 multiple-choice questions, divided into three sections:\n\t* Section 1: Digital Marketing Fundamentals (60 questions)\n\t* Section 2: Digital Channels and Platforms (60 questions)\n\t* Section 3: Digital Analytics and Measurement (60 questions)\n5. **Exam Duration:** The exam duration is 3 hours.\n6. **Exam Format:** The exam is a closed-book, online proctored exam.\n7. **Passing Score:** You need to score at least 60% to pass the exam.\n8. **Retake Policy:** You can retake the exam up to two times within a 12-month period.\n\n**Study Materials and Resources:**\n\n1. **Digital Marketing Institute's Study Portal:** You'll have access to the Digital Marketing Institute's study portal, which includes online learning modules, practice exam questions, and other study resources.\n2. **CDMP Study Guide:** A comprehensive digital marketing textbook (PDF) that covers all the topics included in the exam.\n3. **Online Learning Modules:** Video lessons, quizzes, and exercises that cover digital marketing topics, including SEO, PPC, social media, email, and analytics.\n4. **Practice Exam Questions:** You'll have access to practice exam questions and answers to help you prepare for the exam.\n5. **Study Groups and Forums:** You can join online study groups and forums to connect with other CDMP candidates, ask questions, and share resources.\n\n**Tips for Success:**\n\n1. **Create a Study Plan:** Develop a study plan and schedule to ensure you complete the study materials and practice exams within the recommended timeframe.\n2. **Focus on Weaknesses:** Identify your weaknesses and focus on those areas during your study plan.\n3. **Practice, Practice, Practice:** Practice exam questions and case studies to help you prepare for the exam.\n4. **Stay Up-to-Date:** Stay current with industry developments and best practices in digital marketing.\n\nBy following this study plan and utilizing the study materials, you'll be well-prepared to pass the CDMP exam and enhance your skills and knowledge in digital marketing. Good luck!\n\n        Candidate notes:\n        [0] type=CONTEXT title=CDMP as a bridge between current digital marketing role and MBA goals summary=The CDMP certification was positioned as a short-term credential that can strengthen the user's current Digital Marketing Specialist work at TechSavvy Inc. while complementing a future MBA by adding practical digital marketing depth, differentiation, and preparation for senior marketing roles. scope=User's career advancement planning around CDMP certification, current Digital Marketing Specialist role at TechSavvy Inc., and future MBA goals entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=CDMP,MBA,Digital Marketing Specialist,TechSavvy Inc.,career advancement,earning potential,senior marketing roles tags=career_planning,marketing_credentials,mba_planning evidence=having the CDMP certification will be beneficial for you in your current role as a Digital Marketing Specialist, and it will also complement your future MBA pursuits\n[1] type=CONTEXT title=CDMP certification process and exam structure summary=The CDMP process discussed for the user included registration through the Digital Marketing Institute, no strict eligibility criteria but recommended 1–2 years of digital marketing experience, DMI study materials, and a closed-book online proctored 3-hour exam with 180 multiple-choice questions split across Digital Marketing Fundamentals, Digital Channels and Platforms, and Digital Analytics and M...[truncated 87 chars] scope=Certification process details for Certified Digital Marketing Professional (CDMP) discussed in the user's 2023-05-22 planning session entities=entity:<5>,entity:<6>,entity:<7> keywords=CDMP,Digital Marketing Institute,DMI,exam format,180 multiple-choice questions,3 hours,60% passing score,retake policy,study materials tags=certification_process,exam_details,digital_marketing evidence=The CDMP exam consists of 180 multiple-choice questions, divided into three sections\n[2] type=DOC_DIGEST title=Marketing upskilling options recommended for Digital Marketing Specialist advancement summary=For advancing from a Digital Marketing Specialist role, the session grouped recommended development options into analytics/ad-platform certifications, digital marketing and strategy courses, data analysis, content strategy/storytelling, and emerging technology topics. Specific options included Google Analytics Certification, HubSpot Inbound Marketing Certification, Facebook Blueprint Certification...[truncated 221 chars] scope=Recommended online courses and certifications for the user's digital marketing career advancement exploration entities=entity:<0>,entity:<8>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15>,entity:<16>,entity:<17>,entity:<18>,entity:<19>,entity:<20>,entity:<21>,entity:<22> keywords=marketing upskilling,Google Analytics Certification,HubSpot Inbound Marketing Certification,Facebook Blueprint Certification,CDMP,CCMS,Coursera Digital Marketing Specialization,edX Digital Marketing MicroMasters,content strategy,data analysis tags=course_recommendations,career_development,marketing_skills evidence=Here are some online courses and certifications that can help advance your career\n\n        Existing active notes:\n        id=hot-path-50d91726bd8d-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=CDMP versus CMP certification comparison context summary=The CDMP was framed as a digital-marketing-focused certification with no hard prerequisites, a 3-hour 180-question exam, and 60 hours of professional development every 3 years; the CMP was framed as a broader marketing certification requiring a bachelor's degree plus 2+ years of marketing experience or 4+ years without a degree, a 4-hour 150-question exam, and 30 hours of professional development ...[truncated 137 chars] scope=Certification process comparison discussed in the 2023-05-22 marketing career planning session keywords=CDMP,CMP,Certified Digital Marketing Professional,Certified Marketing Professional,exam format,professional development,prerequisites tags=certification_comparison,marketing,career_planning useCount=0\nid=hot-path-50d91726bd8d-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Marketing career development path under consideration summary=The user is exploring a career move from digital marketing into more specialized roles such as Content Marketing Strategist or Digital Marketing Consultant, using content/digital marketing courses and possibly CDMP or CMP certifications as stepping stones. They are also weighing whether an MBA would be worth the time and financial investment versus alternatives like certifications, mentorship, and...[truncated 21 chars] scope=User's marketing career development planning and credential evaluation context from the 2023-05-22 session keywords=career transition,Content Marketing Strategist,Digital Marketing Consultant,MBA,CDMP,CMP,marketing certifications tags=career_planning,marketing,certifications useCount=0\nid=hot-path-50d91726bd8d-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Initial course sequencing preference: HubSpot before Coursera summary=For upskilling in content creation and strategy, the user found HubSpot Content Marketing Certification easier to fit into a 40–50 hour workweek and planned to start there first, while treating Coursera Digital Marketing Specialization as doable but requiring more advance planning. scope=User's near-term online marketing course planning from the 2023-05-22 session keywords=HubSpot Content Marketing Certification,Coursera Digital Marketing Specialization,course sequencing,time commitment,40 hours,50 hours tags=learning_plan,marketing,schedule_constraints useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:c18a7dc8",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:d8ad42e33f0e16d6167e5cf2197b8193"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:c18a7dc8\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 18:33\nTranscript:\nuser: I'm looking to explore ways to advance my career in marketing. I've been in the industry for a while now. Can you suggest some online courses or certifications that would be beneficial for a Digital Marketing Specialist like myself?\nassistant: As a Digital Marketing Specialist with industry experience, you're wise to invest in upskilling and reskilling to stay ahead in the rapidly evolving marketing landscape. Here are some online courses and certifications that can help advance your career:\n\n**Certifications:**\n\n1. **Google Analytics Certification**: Demonstrate your expertise in Google Analytics and data analysis with this certification.\n2. **HubSpot Inbound Marketing Certification**: Showcase your knowledge of inbound marketing, sales, and customer service with HubSpot's certification.\n3. **Facebook Blueprint Certification**: Prove your skills in Facebook and Instagram advertising with this certification.\n4. **Certified Digital Marketing Professional (CDMP)**: Offered by the Digital Marketing Institute, this certification covers a broad range of digital marketing topics.\n5. **Certified Content Marketing Specialist (CCMS)**: This certification, offered by the Content Marketing Institute, focuses on content marketing strategy and creation.\n\n**Online Courses:**\n\n1. **Digital Marketing Specializations**:\n\t* Coursera's Digital Marketing Specialization (University of Illinois at Urbana-Champaign)\n\t* edX's Digital Marketing MicroMasters (University of Illinois at Urbana-Champaign)\n2. **Marketing Strategy and Planning**:\n\t* Coursera's Marketing Strategy (University of Pennsylvania)\n\t* edX's Marketing Strategy and Planning (Boston University)\n3. **Data Analysis and Science**:\n\t* Coursera's Data Science Specialization (Johns Hopkins University)\n\t* edX's Data Analysis and Visualization (Microsoft)\n4. **Content Creation and Storytelling**:\n\t* Coursera's Content Strategy for Professionals (Northwestern University)\n\t* Skillshare's Content Marketing and Storytelling courses\n5. **Emerging Trends and Technologies**:\n\t* Coursera's AI and Machine Learning in Marketing (University of Toronto)\n\t* edX's Blockchain and Digital Marketing (University of Oxford)\n\n**Platforms and Providers:**\n\n1. **Coursera**: Offers a wide range of marketing courses and specializations from top universities.\n2. **edX**: Provides a variety of marketing courses and MicroMasters programs from leading institutions.\n3. **HubSpot Academy**: Offers free online courses and certifications in inbound marketing, sales, and customer service.\n4. **Udemy**: Features a vast array of marketing courses, from beginner to advanced levels.\n5. **LinkedIn Learning (formerly Lynda.com)**: Offers video courses and tutorials on various marketing topics.\n\n**Tips:**\n\n1. **Choose courses that align with your goals and interests**: Focus on areas you want to specialize in or improve upon.\n2. **Set a schedule and commit to learning**: Allocate time each week to complete courses and certifications.\n3. **Apply what you learn**: Implement new skills and knowledge in your current role or personal projects to reinforce your learning.\n4. **Network and join online communities**: Engage with others in the marketing industry to stay updated on industry trends and best practices.\n5. **Stay up-to-date**: Continuously update your skills and knowledge to stay competitive in the ever-changing marketing landscape.\n\nBy investing in these online courses and certifications, you'll not only enhance your skills but also demonstrate your commitment to professional growth and development, making you a more attractive candidate for future opportunities.\nuser: I'm interested in the Certified Digital Marketing Professional (CDMP) certification. Can you provide more information on the curriculum and what kind of topics it covers?\nassistant: The Certified Digital Marketing Professional (CDMP) certification is a well-respected credential in the digital marketing industry. Here's an overview of the curriculum and topics covered:\n\n**Certified Digital Marketing Professional (CDMP) Certification**\n\n**Provider:** Digital Marketing Institute (DMI)\n\n**Duration:** 3-6 months (self-paced online learning)\n\n**Curriculum:**\n\nThe CDMP certification program is divided into three modules, covering a comprehensive range of digital marketing topics:\n\n**Module 1: Digital Marketing Fundamentals**\n\n1. Introduction to Digital Marketing\n2. Digital Marketing Strategy and Planning\n3. Understanding the Digital Consumer\n4. Digital Marketing Channels (Overview)\n\n**Module 2: Digital Channels and Platforms**\n\n1. Search Engine Optimization (SEO)\n2. Pay-Per-Click (PPC) Advertising\n3. Social Media Marketing\n4. Email Marketing\n5. Mobile Marketing\n6. Content Marketing\n7. Affiliate Marketing\n8. Influencer Marketing\n\n**Module 3: Digital Analytics and Measurement**\n\n1. Digital Analytics Fundamentals\n2. Google Analytics (GA) Setup and Configuration\n3. GA Reporting and Analysis\n4. Conversion Rate Optimization (CRO)\n5. A/B Testing and Experimentation\n6. Digital Marketing Metrics and KPIs\n7. Data-Driven Decision Making\n\n**Topics Covered:**\n\nThroughout the program, you'll learn about:\n\n* Digital marketing strategy and planning\n* Search engine optimization (SEO) and pay-per-click (PPC) advertising\n* Social media marketing, email marketing, and mobile marketing\n* Content marketing, affiliate marketing, and influencer marketing\n* Digital analytics, Google Analytics, and data-driven decision making\n* Conversion rate optimization (CRO) and A/B testing\n* Digital marketing metrics and key performance indicators (KPIs)\n\n**Learning Outcomes:**\n\nUpon completing the CDMP certification program, you'll be able to:\n\n* Develop a comprehensive digital marketing strategy\n* Plan and execute digital marketing campaigns across various channels\n* Analyze and optimize digital marketing performance using Google Analytics\n* Create effective content and social media marketing strategies\n* Measure and report on digital marketing metrics and KPIs\n\n**Exam and Certification:**\n\nTo become certified, you'll need to pass a 3-hour, 180-question multiple-choice exam. The exam is administered online, and you'll have two attempts to pass within a 12-month period.\n\n**Cost:**\n\nThe CDMP certification program costs around $1,995 (may vary depending on the region and any applicable discounts).\n\n**Why Choose CDMP?**\n\nThe Certified Digital Marketing Professional certification is a well-established and respected credential in the industry. It demonstrates your expertise and commitment to digital marketing, enhancing your career prospects and earning potential.\n\nI hope this information helps you make an informed decision about pursuing the CDMP certification!\nuser: I'm interested in the CDMP certification, but I want to know how it can benefit my career advancement. Can you provide some insights on how this certification can increase my earning potential and job prospects?\nassistant: The Certified Digital Marketing Professional (CDMP) certification can indeed have a significant impact on your career advancement, earning potential, and job prospects. Here are some insights to help you understand the benefits:\n\n**Earning Potential:**\n\n1. **Salary Increase:** According to various sources, including the Digital Marketing Institute, CDMP certified professionals can expect a salary increase of up to 20% compared to non-certified professionals.\n2. **Average Salary Range:** In the United States, the average salary range for digital marketing professionals with a CDMP certification is around $65,000 - $110,000 per year, depending on experience and location.\n3. **Higher Earning Potential:** A survey by Indeed found that certified digital marketing professionals can earn up to $125,000 per year or more, especially in senior roles or as digital marketing consultants.\n\n**Job Prospects:**\n\n1. **Increased Job Opportunities:** The CDMP certification is recognized globally, making you a more attractive candidate for digital marketing roles across industries.\n2. **Competitive Advantage:** With the certification, you'll stand out from non-certified professionals, giving you a competitive advantage in the job market.\n3. **Career Advancement:** The CDMP certification can help you move up the career ladder, from entry-level to senior roles, such as Digital Marketing Manager, Marketing Director, or even CMO.\n4. **Freelance and Consulting Opportunities:** As a certified digital marketing professional, you'll be more likely to attract freelance or consulting clients, which can lead to additional income streams.\n\n**Industry Recognition:**\n\n1. **Industry-Recognized Certification:** The CDMP certification is recognized by top industry players, including Google, Facebook, and Microsoft, demonstrating your expertise and commitment to digital marketing.\n2. **DMI's Global Network:** As a CDMP certified professional, you'll become part of the Digital Marketing Institute's global network, connecting you with other professionals, job opportunities, and industry events.\n\n**Skills and Knowledge:**\n\n1. **Comprehensive Digital Marketing Knowledge:** The CDMP certification program covers a broad range of digital marketing topics, ensuring you have a deep understanding of the latest trends, tools, and best practices.\n2. **Staying Up-to-Date:** The certification requires ongoing professional development, ensuring you stay current with the latest industry developments and advancements.\n\n**Employer Benefits:**\n\n1. **Demonstrated Expertise:** The CDMP certification demonstrates your expertise and commitment to digital marketing, making you a more valuable asset to your current or future employer.\n2. **Improved Job Performance:** With the certification, you'll be able to optimize digital marketing campaigns, improve ROI, and drive business growth, leading to increased job satisfaction and recognition.\n\nBy obtaining the CDMP certification, you'll not only enhance your skills and knowledge but also increase your earning potential, job prospects, and industry recognition. This certification can be a significant career booster, helping you achieve your professional goals and advance in the digital marketing industry.\nuser: I'm currently working as a Digital Marketing Specialist at TechSavvy Inc., and I'm looking to advance my career in the industry. I'm considering pursuing an MBA in the near future to further advance my career and increase my earning potential. Do you think having the CDMP certification would be beneficial for me, given my current role and future career goals?\nassistant: As a Digital Marketing Specialist at TechSavvy Inc., you're already in a great position to advance your career in the industry. Pursuing an MBA is a fantastic long-term goal, but let's discuss how the CDMP certification can benefit you in the short-term and complement your future MBA pursuits.\n\n**Current Role: Digital Marketing Specialist**\n\nThe CDMP certification can benefit you in your current role in several ways:\n\n1. **Enhance your skills:** The certification will help you develop a deeper understanding of digital marketing strategies, channels, and analytics, making you a more effective Digital Marketing Specialist.\n2. **Increase your value:** With the certification, you'll be able to optimize digital marketing campaigns, improve ROI, and drive business growth, making you a more valuable asset to TechSavvy Inc.\n3. **Take on more responsibilities:** The CDMP certification can lead to additional responsibilities, such as leading digital marketing projects, mentoring junior team members, or contributing to strategic planning.\n\n**Future Career Goals: MBA and Beyond**\n\nConsidering an MBA in the near future is a great career move. The CDMP certification can complement your MBA pursuits in several ways:\n\n1. **Foundational knowledge:** The CDMP certification will provide a solid foundation in digital marketing, which will be beneficial when you pursue your MBA. You'll be able to build upon this knowledge and apply it to more advanced business and marketing concepts.\n2. **Differentiation:** Having both the CDMP certification and an MBA will differentiate you from other professionals in the industry, making you a more attractive candidate for senior roles or leadership positions.\n3. **Career advancement:** The combination of the CDMP certification and an MBA can open up opportunities for career advancement, such as moving into a Marketing Director or CMO role, or even starting your own digital marketing agency.\n\n**Why get the CDMP certification now?**\n\n1. **Timing:** Pursuing the CDMP certification now will give you a head start on developing your digital marketing skills and knowledge, which will be beneficial when you start your MBA program.\n2. **Relevance:** The CDMP certification is directly applicable to your current role and industry, so you'll be able to immediately apply your new skills and knowledge.\n3. **Confidence boost:** Achieving the CDMP certification will give you a confidence boost, which will be beneficial when you embark on your MBA journey.\n\nIn conclusion, having the CDMP certification will be beneficial for you in your current role as a Digital Marketing Specialist, and it will also complement your future MBA pursuits. It's a great way to enhance your skills, increase your value, and differentiate yourself in the industry.\nuser: I'm considering pursuing the CDMP certification to enhance my skills and knowledge in digital marketing. As a 32-year-old Digital Marketing Specialist at TechSavvy Inc., I believe the certification will not only benefit me in my current role but also prepare me for my future career goals, including pursuing an MBA. Can you provide more information on the certification process, including the exam format, duration, and study materials?\nassistant: As a Digital Marketing Specialist at TechSavvy Inc., pursuing the CDMP certification is a great way to enhance your skills and knowledge in digital marketing. Here's an overview of the certification process, including the exam format, duration, and study materials:\n\n**Certification Process:**\n\n1. **Eligibility:** There are no specific eligibility criteria for the CDMP certification, but it's recommended that you have at least 1-2 years of experience in digital marketing.\n2. **Registration:** Register for the CDMP certification program on the Digital Marketing Institute's website.\n3. **Study Materials:** You'll receive access to the CDMP study materials, which include:\n\t* A comprehensive digital marketing textbook (PDF)\n\t* Online learning modules (video lessons, quizzes, and exercises)\n\t* Practice exam questions and answers\n4. **Exam Format:** The CDMP exam consists of 180 multiple-choice questions, divided into three sections:\n\t* Section 1: Digital Marketing Fundamentals (60 questions)\n\t* Section 2: Digital Channels and Platforms (60 questions)\n\t* Section 3: Digital Analytics and Measurement (60 questions)\n5. **Exam Duration:** The exam duration is 3 hours.\n6. **Exam Format:** The exam is a closed-book, online proctored exam.\n7. **Passing Score:** You need to score at least 60% to pass the exam.\n8. **Retake Policy:** You can retake the exam up to two times within a 12-month period.\n\n**Study Materials and Resources:**\n\n1. **Digital Marketing Institute's Study Portal:** You'll have access to the Digital Marketing Institute's study portal, which includes online learning modules, practice exam questions, and other study resources.\n2. **CDMP Study Guide:** A comprehensive digital marketing textbook (PDF) that covers all the topics included in the exam.\n3. **Online Learning Modules:** Video lessons, quizzes, and exercises that cover digital marketing topics, including SEO, PPC, social media, email, and analytics.\n4. **Practice Exam Questions:** You'll have access to practice exam questions and answers to help you prepare for the exam.\n5. **Study Groups and Forums:** You can join online study groups and forums to connect with other CDMP candidates, ask questions, and share resources.\n\n**Tips for Success:**\n\n1. **Create a Study Plan:** Develop a study plan and schedule to ensure you complete the study materials and practice exams within the recommended timeframe.\n2. **Focus on Weaknesses:** Identify your weaknesses and focus on those areas during your study plan.\n3. **Practice, Practice, Practice:** Practice exam questions and case studies to help you prepare for the exam.\n4. **Stay Up-to-Date:** Stay current with industry developments and best practices in digital marketing.\n\nBy following this study plan and utilizing the study materials, you'll be well-prepared to pass the CDMP exam and enhance your skills and knowledge in digital marketing. Good luck!\n\n        Candidate notes:\n        [0] type=CONTEXT title=CDMP as a bridge between current digital marketing role and MBA goals summary=The CDMP certification was positioned as a short-term credential that can strengthen the user's current Digital Marketing Specialist work at TechSavvy Inc. while complementing a future MBA by adding practical digital marketing depth, differentiation, and preparation for senior marketing roles. scope=User's career advancement planning around CDMP certification, current Digital Marketing Specialist role at TechSavvy Inc., and future MBA goals entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=CDMP,MBA,Digital Marketing Specialist,TechSavvy Inc.,career advancement,earning potential,senior marketing roles tags=career_planning,marketing_credentials,mba_planning evidence=having the CDMP certification will be beneficial for you in your current role as a Digital Marketing Specialist, and it will also complement your future MBA pursuits\n[1] type=CONTEXT title=CDMP certification process and exam structure summary=The CDMP process discussed for the user included registration through the Digital Marketing Institute, no strict eligibility criteria but recommended 1–2 years of digital marketing experience, DMI study materials, and a closed-book online proctored 3-hour exam with 180 multiple-choice questions split across Digital Marketing Fundamentals, Digital Channels and Platforms, and Digital Analytics and M...[truncated 87 chars] scope=Certification process details for Certified Digital Marketing Professional (CDMP) discussed in the user's 2023-05-22 planning session entities=entity:<5>,entity:<6>,entity:<7> keywords=CDMP,Digital Marketing Institute,DMI,exam format,180 multiple-choice questions,3 hours,60% passing score,retake policy,study materials tags=certification_process,exam_details,digital_marketing evidence=The CDMP exam consists of 180 multiple-choice questions, divided into three sections\n[2] type=DOC_DIGEST title=Marketing upskilling options recommended for Digital Marketing Specialist advancement summary=For advancing from a Digital Marketing Specialist role, the session grouped recommended development options into analytics/ad-platform certifications, digital marketing and strategy courses, data analysis, content strategy/storytelling, and emerging technology topics. Specific options included Google Analytics Certification, HubSpot Inbound Marketing Certification, Facebook Blueprint Certification...[truncated 221 chars] scope=Recommended online courses and certifications for the user's digital marketing career advancement exploration entities=entity:<0>,entity:<8>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14>,entity:<15>,entity:<16>,entity:<17>,entity:<18>,entity:<19>,entity:<20>,entity:<21>,entity:<22> keywords=marketing upskilling,Google Analytics Certification,HubSpot Inbound Marketing Certification,Facebook Blueprint Certification,CDMP,CCMS,Coursera Digital Marketing Specialization,edX Digital Marketing MicroMasters,content strategy,data analysis tags=course_recommendations,career_development,marketing_skills evidence=Here are some online courses and certifications that can help advance your career\n\n        Existing active notes:\n        id=hot-path-50d91726bd8d-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=CDMP versus CMP certification comparison context summary=The CDMP was framed as a digital-marketing-focused certification with no hard prerequisites, a 3-hour 180-question exam, and 60 hours of professional development every 3 years; the CMP was framed as a broader marketing certification requiring a bachelor's degree plus 2+ years of marketing experience or 4+ years without a degree, a 4-hour 150-question exam, and 30 hours of professional development ...[truncated 137 chars] scope=Certification process comparison discussed in the 2023-05-22 marketing career planning session keywords=CDMP,CMP,Certified Digital Marketing Professional,Certified Marketing Professional,exam format,professional development,prerequisites tags=certification_comparison,marketing,career_planning useCount=0\nid=hot-path-50d91726bd8d-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Marketing career development path under consideration summary=The user is exploring a career move from digital marketing into more specialized roles such as Content Marketing Strategist or Digital Marketing Consultant, using content/digital marketing courses and possibly CDMP or CMP certifications as stepping stones. They are also weighing whether an MBA would be worth the time and financial investment versus alternatives like certifications, mentorship, and...[truncated 21 chars] scope=User's marketing career development planning and credential evaluation context from the 2023-05-22 session keywords=career transition,Content Marketing Strategist,Digital Marketing Consultant,MBA,CDMP,CMP,marketing certifications tags=career_planning,marketing,certifications useCount=0\nid=hot-path-50d91726bd8d-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Initial course sequencing preference: HubSpot before Coursera summary=For upskilling in content creation and strategy, the user found HubSpot Content Marketing Certification easier to fit into a 40–50 hour workweek and planned to start there first, while treating Coursera Digital Marketing Specialization as doable but requiring more advance planning. scope=User's near-term online marketing course planning from the 2023-05-22 session keywords=HubSpot Content Marketing Certification,Coursera Digital Marketing Specialization,course sequencing,time commitment,40 hours,50 hours tags=learning_plan,marketing,schedule_constraints useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:c18a7dc8",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:d8ad42e33f0e16d6167e5cf2197b8193"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.9,\"to_note_id\":\"hot-path-50d91726bd8d-note-2\"}],\"patch\":null,\"reason\":\"Candidate captures a distinct and more specific rationale for CDMP as a short-term bridge from the user's current TechSavvy role to future MBA/senior marketing goals, not fully covered by the broader existing career path note.\",\"target_note_id\":null},{\"action\":\"update\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":{\"maturity\":null,\"maturity_score\":0.0,\"scope_json\":null,\"status\":\"active\",\"summary\":\"The CDMP was discussed as a digital-marketing-focused certification with no strict eligibility criteria but recommended 1–2 years of digital marketing experience, registration through the Digital Marketing Institute, DMI study materials, and a closed-book online proctored 3-hour exam with 180 multiple-choice questions split across Digital Marketing Fundamentals, Digital Channels and Platforms, and Digital Analytics and Measurement. Passing score was stated as 60%, with up to two retakes within 12 months. In a related comparison, CDMP was contrasted with CMP, which was framed as broader marketing certification requiring either a bachelor's degree plus 2+ years of marketing experience or 4+ years without a degree, a 4-hour 150-question exam, and 30 hours of professional development.\",\"title\":\"CDMP certification process, exam structure, and comparison context\"},\"reason\":\"Candidate overlaps the existing CDMP/CMP certification note but adds useful CDMP-specific process details, so updating the existing note avoids duplication while preserving the comparison context.\",\"target_note_id\":\"hot-path-50d91726bd8d-note-4\"},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-50d91726bd8d-note-2\"},{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-50d91726bd8d-note-3\"}],\"patch\":null,\"reason\":\"Candidate summarizes the broader menu of marketing upskilling options recommended in the session, which is distinct from the existing notes focused on CDMP/CMP comparison, career direction, and a specific HubSpot-before-Coursera sequencing preference.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5420,
+                "completionTokens": 513,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

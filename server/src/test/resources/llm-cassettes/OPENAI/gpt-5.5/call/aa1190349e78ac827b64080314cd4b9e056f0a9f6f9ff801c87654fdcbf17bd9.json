@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "aa1190349e78ac827b64080314cd4b9e056f0a9f6f9ff801c87654fdcbf17bd9",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned participating in a sports event two weeks ago. What was the event?\n\n                                Question date:\n                                2023/07/01 (Sat) 06:58\n\n                                Noisy expected-answer label:\n                                The company's annual charity soccer tournament.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_e061b84g\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-60ffb88f25fa-claim-7 [ACTIVE] attended_event family=attended_event: The user planned to participate in the company's annual charity soccer tournament on 2023-06-17.; scope=User's dated participation plan for the company annual charity soccer tournament discussed in the 2023-06-17 session.; context=\"The user was seeking injury prevention, recovery, hydration, electrolyte, and mental-focus advice for the tournament.\"; evidence=DIRECT source=external:provided-text:5de76a3ba7d567ad822e5a8702fd01ef quote=\"I will participate in the company's annual charity soccer tournament today\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:5de76a3ba7d567ad822e5a8702fd01ef [external_record ref=longmemeval:gpt4_e061b84g:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/06/17 (Sat) 09:18\nTranscript:\nuser: I'm looking for some tips on injury prevention and recovery strategies for soccer players. I will participate in the company's annual charity soccer tournament today, and I want to make sure I'm taking care of myself.\nassistant: Great attitude! As a recreational soccer player, it's fantastic that you're thinking about injury prevention and recovery strategies. Here are some valuable tips to help you minimize the risk of injury and optimize your performance during the charity tournament:\n\n**Injury Prevention Strategies:**...\n...2. **Hydrate and fuel**: Drink plenty of water or sports drinks to stay hydrated. Fuel your body with a balanced meal or snack 1-2 hours before playing, including complex carbs, protein, and healthy fats....\n...3. **Replenish fluids and electrolytes**: Drink sports drinks or coconut water to replenish lost electrolytes and fluids....\n...By following these injury prevention and recovery strategies, you'll be well-prepared to enjoy the charity tournament while minimizing the risk of injury. Have fun, stay safe, and good luck!\nuser: What are some exercises I can do to improve my soccer skills, specifically my shooting and dribbling?...\n...2. **Target Practice**: Set up small targets, such as cones or small goals, and practice shooting from different distances and angles. Focus on precision and control....\n...2. **Figure-Eight Drill**: Set up two cones in a figure-eight pattern. Dribble around the cones, alternating feet and focusing on ball control and speed....\n...* Jogging laps around the field...\n...* Target practice (10 minutes)...\n...user: I'm also interested in learning more about the nutrition aspect of injury prevention and recovery. What are some foods that can help with muscle recovery and inflammation?\nassistant: Nutrition plays a critical role in injury prevention and recovery. A well-balanced diet can help reduce muscle soreness, inflammation, and oxidative stress, while also supporting muscle growth and repair. Here are some foods that can help with muscle recovery and inflammation:...\n...1. **Water**: Adequate hydration is essential for muscle recovery and injury prevention.\n2. **Electrolyte-Rich Drinks**: Sports drinks like coconut water, Gatorade, or Powerade can help replenish electrolytes lost during exercise....\n...user: I'm interested in learning more about the importance of hydration for athletes. Can you explain how dehydration affects athletic performance and how I can ensure I'm properly hydrated during the charity soccer tournament?...\n...5. **Electrolyte Balance**: Include electrolyte-rich drinks or snacks, like sports drinks, bananas, or dates, to replenish lost electrolytes....\n...user: What about electrolytes? I've heard they're important for hydration, but I'm not sure how to incorporate them into my hydration plan....\n...1. **Electrolyte-Rich Drinks**: Consume electrolyte-rich drinks like sports drinks (e.g., Gatorade, Powerade), coconut water, or fruit juices (e.g., orange, grapefruit) during and after exercise....\n...user: I'm looking for some advice on how to stay focused and motivated during the charity soccer tournament. Can you provide some tips on how to maintain my mental toughness and stay in the right mindset?...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_e061b84g",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned participating in a sports event two weeks ago. What was the event?\n\n                                Question date:\n                                2023/07/01 (Sat) 06:58\n\n                                Noisy expected-answer label:\n                                The company's annual charity soccer tournament.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_e061b84g\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-60ffb88f25fa-claim-7 [ACTIVE] attended_event family=attended_event: The user planned to participate in the company's annual charity soccer tournament on 2023-06-17.; scope=User's dated participation plan for the company annual charity soccer tournament discussed in the 2023-06-17 session.; context=\"The user was seeking injury prevention, recovery, hydration, electrolyte, and mental-focus advice for the tournament.\"; evidence=DIRECT source=external:provided-text:5de76a3ba7d567ad822e5a8702fd01ef quote=\"I will participate in the company's annual charity soccer tournament today\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:5de76a3ba7d567ad822e5a8702fd01ef [external_record ref=longmemeval:gpt4_e061b84g:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/06/17 (Sat) 09:18\nTranscript:\nuser: I'm looking for some tips on injury prevention and recovery strategies for soccer players. I will participate in the company's annual charity soccer tournament today, and I want to make sure I'm taking care of myself.\nassistant: Great attitude! As a recreational soccer player, it's fantastic that you're thinking about injury prevention and recovery strategies. Here are some valuable tips to help you minimize the risk of injury and optimize your performance during the charity tournament:\n\n**Injury Prevention Strategies:**...\n...2. **Hydrate and fuel**: Drink plenty of water or sports drinks to stay hydrated. Fuel your body with a balanced meal or snack 1-2 hours before playing, including complex carbs, protein, and healthy fats....\n...3. **Replenish fluids and electrolytes**: Drink sports drinks or coconut water to replenish lost electrolytes and fluids....\n...By following these injury prevention and recovery strategies, you'll be well-prepared to enjoy the charity tournament while minimizing the risk of injury. Have fun, stay safe, and good luck!\nuser: What are some exercises I can do to improve my soccer skills, specifically my shooting and dribbling?...\n...2. **Target Practice**: Set up small targets, such as cones or small goals, and practice shooting from different distances and angles. Focus on precision and control....\n...2. **Figure-Eight Drill**: Set up two cones in a figure-eight pattern. Dribble around the cones, alternating feet and focusing on ball control and speed....\n...* Jogging laps around the field...\n...* Target practice (10 minutes)...\n...user: I'm also interested in learning more about the nutrition aspect of injury prevention and recovery. What are some foods that can help with muscle recovery and inflammation?\nassistant: Nutrition plays a critical role in injury prevention and recovery. A well-balanced diet can help reduce muscle soreness, inflammation, and oxidative stress, while also supporting muscle growth and repair. Here are some foods that can help with muscle recovery and inflammation:...\n...1. **Water**: Adequate hydration is essential for muscle recovery and injury prevention.\n2. **Electrolyte-Rich Drinks**: Sports drinks like coconut water, Gatorade, or Powerade can help replenish electrolytes lost during exercise....\n...user: I'm interested in learning more about the importance of hydration for athletes. Can you explain how dehydration affects athletic performance and how I can ensure I'm properly hydrated during the charity soccer tournament?...\n...5. **Electrolyte Balance**: Include electrolyte-rich drinks or snacks, like sports drinks, bananas, or dates, to replenish lost electrolytes....\n...user: What about electrolytes? I've heard they're important for hydration, but I'm not sure how to incorporate them into my hydration plan....\n...1. **Electrolyte-Rich Drinks**: Consume electrolyte-rich drinks like sports drinks (e.g., Gatorade, Powerade), coconut water, or fruit juices (e.g., orange, grapefruit) during and after exercise....\n...user: I'm looking for some advice on how to stay focused and motivated during the charity soccer tournament. Can you provide some tips on how to maintain my mental toughness and stay in the right mindset?...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_e061b84g",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The event was the company's annual charity soccer tournament.\",\"reason\":\"The retrieved claim and transcript state that on 2023-06-17 the user planned to participate in the company's annual charity soccer tournament.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1773,
+                "completionTokens": 100,
+                "thinkingTokens": 35,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
