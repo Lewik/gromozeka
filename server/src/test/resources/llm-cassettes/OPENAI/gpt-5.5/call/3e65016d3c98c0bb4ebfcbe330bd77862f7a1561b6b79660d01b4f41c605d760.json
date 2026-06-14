@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "3e65016d3c98c0bb4ebfcbe330bd77862f7a1561b6b79660d01b4f41c605d760",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned an investment for a competition four weeks ago? What did I buy?\n\n                                Question date:\n                                2023/04/01 (Sat) 23:09\n\n                                Noisy expected-answer label:\n                                I got my own set of sculpting tools.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6e984302\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-056a7bad5273-claim-10 [ACTIVE] includes family=includes: The user's sculpting tools include a modeling tool set.; scope=Composition of the user's sculpting tool set mentioned on 2023-03-04.; context=\"The user described their sculpting tool set as including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"including a modeling tool set, a wire cutter, and a sculpting mat\"\n- claim hot-path-056a7bad5273-claim-12 [ACTIVE] includes family=includes: The user's sculpting tools include a sculpting mat.; scope=Composition of the user's sculpting tool set mentioned on 2023-03-04.; context=\"The user described their sculpting tool set as including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"including a modeling tool set, a wire cutter, and a sculpting mat\"\n- claim hot-path-056a7bad5273-claim-11 [ACTIVE] includes family=includes: The user's sculpting tools include a wire cutter.; scope=Composition of the user's sculpting tool set mentioned on 2023-03-04.; context=\"The user described their sculpting tool set as including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"including a modeling tool set, a wire cutter, and a sculpting mat\"\n- claim hot-path-056a7bad5273-claim-9 [ACTIVE] owns family=owns: The user owns a set of sculpting tools.; scope=User-owned sculpture tools as of the 2023-03-04 imported chat session.; context=\"On 2023-03-04, the user said they got their own set of sculpting tools, including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"I actually got my own set of sculpting tools\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:49ef89e774fc161a173bc99d08ff3197 [external_record ref=longmemeval:6e984302:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/04 (Sat) 17:44\nTranscript:\nuser: I'm thinking of entering a local art competition with a sculpture category, and I'm looking for some inspiration on eco-friendly materials and techniques I can use. I've been experimenting with polymer clay and resin, but I'd love to explore other options....\n...Remember to always follow safety guidelines when working with new materials and techniques. Good luck with your art competition, and I hope these ideas inspire you to create a stunning, eco-friendly sculpture!...\n...2. **Wire wrapping:** Wrap wire around the natural materials and the structure to secure them in place.\n3. **Vine wrapping:** Use thin vines or flexible branches to wrap around the structure and attach the natural materials....\n...3. **Coiling:** Coil natural materials like vines or thin branches around the structure to attach them securely....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Modeling tool set; Product named Modeling tool set.\n- entity entity:<1> [PRODUCT]: Sculpting mat; Product named Sculpting mat.\n- entity entity:<2> [PRODUCT]: Sculpting tools; Product named Sculpting tools.\n- entity entity:<3> [PRODUCT]: Wire cutter; Product named Wire cutter.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6e984302",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I mentioned an investment for a competition four weeks ago? What did I buy?\n\n                                Question date:\n                                2023/04/01 (Sat) 23:09\n\n                                Noisy expected-answer label:\n                                I got my own set of sculpting tools.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6e984302\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-056a7bad5273-claim-10 [ACTIVE] includes family=includes: The user's sculpting tools include a modeling tool set.; scope=Composition of the user's sculpting tool set mentioned on 2023-03-04.; context=\"The user described their sculpting tool set as including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"including a modeling tool set, a wire cutter, and a sculpting mat\"\n- claim hot-path-056a7bad5273-claim-12 [ACTIVE] includes family=includes: The user's sculpting tools include a sculpting mat.; scope=Composition of the user's sculpting tool set mentioned on 2023-03-04.; context=\"The user described their sculpting tool set as including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"including a modeling tool set, a wire cutter, and a sculpting mat\"\n- claim hot-path-056a7bad5273-claim-11 [ACTIVE] includes family=includes: The user's sculpting tools include a wire cutter.; scope=Composition of the user's sculpting tool set mentioned on 2023-03-04.; context=\"The user described their sculpting tool set as including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"including a modeling tool set, a wire cutter, and a sculpting mat\"\n- claim hot-path-056a7bad5273-claim-9 [ACTIVE] owns family=owns: The user owns a set of sculpting tools.; scope=User-owned sculpture tools as of the 2023-03-04 imported chat session.; context=\"On 2023-03-04, the user said they got their own set of sculpting tools, including a modeling tool set, a wire cutter, and a sculpting mat.\"; evidence=DIRECT source=external:provided-text:49ef89e774fc161a173bc99d08ff3197 quote=\"I actually got my own set of sculpting tools\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:49ef89e774fc161a173bc99d08ff3197 [external_record ref=longmemeval:6e984302:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/04 (Sat) 17:44\nTranscript:\nuser: I'm thinking of entering a local art competition with a sculpture category, and I'm looking for some inspiration on eco-friendly materials and techniques I can use. I've been experimenting with polymer clay and resin, but I'd love to explore other options....\n...Remember to always follow safety guidelines when working with new materials and techniques. Good luck with your art competition, and I hope these ideas inspire you to create a stunning, eco-friendly sculpture!...\n...2. **Wire wrapping:** Wrap wire around the natural materials and the structure to secure them in place.\n3. **Vine wrapping:** Use thin vines or flexible branches to wrap around the structure and attach the natural materials....\n...3. **Coiling:** Coil natural materials like vines or thin branches around the structure to attach them securely....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Modeling tool set; Product named Modeling tool set.\n- entity entity:<1> [PRODUCT]: Sculpting mat; Product named Sculpting mat.\n- entity entity:<2> [PRODUCT]: Sculpting tools; Product named Sculpting tools.\n- entity entity:<3> [PRODUCT]: Wire cutter; Product named Wire cutter.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6e984302",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You bought your own set of sculpting tools, including a modeling tool set, wire cutter, and sculpting mat.\",\"reason\":\"The retrieved 2023-03-04 memory says the user got their own set of sculpting tools for the art competition context.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1788,
+                "completionTokens": 140,
+                "thinkingTokens": 62,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
