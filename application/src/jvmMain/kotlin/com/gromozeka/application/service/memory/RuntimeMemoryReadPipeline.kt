@@ -763,6 +763,7 @@ object RuntimeMemoryPromptComposer {
             If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.
             ${historicalMemoryInstruction.orEmpty()}
             If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.
+            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.
             If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.
             If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
             If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.

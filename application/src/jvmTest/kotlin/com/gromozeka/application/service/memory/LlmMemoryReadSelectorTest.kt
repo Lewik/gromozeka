@@ -275,6 +275,53 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
+    fun promptKeepsSourceDateCandidatesForNamedDateQuestions() = runBlocking {
+        val claims = listOf(
+            claim(
+                id = "claim-explicit-wrong-date",
+                normalizedText = "The user flew American Airlines on 2023-02-10.",
+                predicate = "attended_event",
+            ),
+            claim(
+                id = "claim-source-date-target",
+                normalizedText = "Session date: 2023/02/14. The user was still recovering from an American Airlines flight from LAX to JFK.",
+                predicate = "attended_event",
+            ),
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-explicit-wrong-date"))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest(
+                    """
+                    LongMemEval recall target.
+                    Current date: 2023/03/02 (Thu) 21:56
+                    Question: What was the airline that I flied with on Valentine's day?
+                    """.trimIndent()
+                ),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                ),
+                candidateHits = claims.mapIndexed { index, claim ->
+                    MemoryStore.SearchHit.ClaimHit(claim, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(claims = claims),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(prompt.contains("For named-date or relative-date questions"), prompt)
+        assertTrue(prompt.contains("source/session date matches the target"), prompt)
+        assertTrue(prompt.contains("Do not infer that an unrelated explicit date satisfies a named date"), prompt)
+    }
+
+    @Test
     fun promptRequiresAllOperandsForDerivedDurationAnswers() = runBlocking {
         val claims = listOf(
             claim(

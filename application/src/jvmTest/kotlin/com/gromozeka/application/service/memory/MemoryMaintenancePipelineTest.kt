@@ -4208,6 +4208,8 @@ class MemoryMaintenancePipelineTest {
 
         assertTrue(prompt.contains("If the user asks for first/second/latest/earliest/ordering"))
         assertTrue(prompt.contains("compare explicit dates in retrieved memory before answering"))
+        assertTrue(prompt.contains("If the user asks about a named or relative date"))
+        assertTrue(prompt.contains("compare that target date with both event dates and source/session dates"))
     }
 }
 

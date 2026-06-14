@@ -307,6 +307,8 @@ class LlmMemoryReadSelector(
         - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.
         - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.
         - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.
+        - For named-date or relative-date questions, compare the target date with candidate event dates and source/session dates. Keep candidates or sources whose source/session date matches the target even when the typed claim lacks valid_from; do not replace them with a different explicit event date unless the candidate text proves it is the same target date.
+        - Do not infer that an unrelated explicit date satisfies a named date such as Valentine's Day, birthday, holiday, or anniversary. If date evidence conflicts, select enough candidates to expose the conflict.
         - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.
         - When candidates disagree about a current/usual value, schedule, time, preference, or constraint, select enough candidates to expose the conflict and prefer the newer relevant active typed memory or its supporting source evidence.
         - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.
