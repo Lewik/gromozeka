@@ -126,6 +126,9 @@ class LlmMemoryEntityMaintenancePlanner(
         Rules:
         - Be conservative. Merge only when entities clearly name the same real-world or system referent.
         - A same-name group across entity types may indicate a prior misclassification. Merge it only when the referent is clearly identical; otherwise use keep_separate.
+        - For current-user identity groups, merge USER and PERSON only when aliases, preferred_name claims, or profile/claim evidence establish that the named person is the current user.
+        - When a current-user USER entity and a named PERSON are clearly the same current user, keep the USER entity as winner and preserve exact personal names as alias_texts.
+        - A shared first name alone is not enough to merge people. Keep separate unless the first-name/full-name bridge is backed by current-user alias/preferred_name or matching profile facts.
         - Compatible technical types such as technology, product, concept, service, and environment may still be the same referent; choose the most concrete, best-supported entity as winner.
         - Do not merge merely related concepts, components, files, projects, or implementation steps.
         - Do not merge a project entity with a component/service/concept entity.

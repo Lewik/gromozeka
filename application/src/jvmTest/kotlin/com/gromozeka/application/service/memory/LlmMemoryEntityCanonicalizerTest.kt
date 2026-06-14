@@ -6,9 +6,11 @@ import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
+import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizationOp
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -112,6 +115,180 @@ class LlmMemoryEntityCanonicalizerTest {
         )
 
         assertEquals(candidateId, ops.single().entityId)
+    }
+
+    @Test
+    fun createNewLinksSafeSameSurfaceExistingCandidate() = runBlocking {
+        val candidateId = MemoryEntity.Id("entity:0000000000000001")
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "Mira",
+                      "action": "create_new",
+                      "entity_id": null,
+                      "new_entity": {
+                        "entity_type": "person",
+                        "canonical_name": "Mira",
+                        "summary": "Person named Mira."
+                      },
+                      "confidence": 0.8,
+                      "reason": "Reusable person mention."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = request("Mira owns the deployment checklist."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("Mira")),
+            retrievedHits = listOf(MemoryStore.SearchHit.EntityHit(entity(candidateId, "Mira"), score = 1.0)),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.LINK_EXISTING, op.action)
+        assertEquals(candidateId, op.entityId)
+        assertEquals(null, op.newEntity)
+    }
+
+    @Test
+    fun selfIdentityPersonMentionCreatesStableUserAlias() = runBlocking {
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "Lev Lewik",
+                      "action": "create_new",
+                      "entity_id": null,
+                      "new_entity": {
+                        "entity_type": "person",
+                        "canonical_name": "Lev Lewik",
+                        "summary": "Person named Lev Lewik."
+                      },
+                      "confidence": 0.9,
+                      "reason": "The user stated a personal name."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = request("My name is Lev Lewik, and I prefer Kotlin."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("Lev Lewik")),
+            retrievedHits = emptyList(),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.CREATE_NEW, op.action)
+        assertEquals(MemoryEntity.Type.USER, op.newEntity?.entityType)
+        assertEquals("User", op.newEntity?.canonicalName)
+        assertEquals("Lev Lewik", op.aliasText)
+    }
+
+    @Test
+    fun preferredNameCandidateRedirectsNamedPersonToExistingUser() = runBlocking {
+        val user = entity(
+            id = MemoryEntity.Id("entity:0000000000000002"),
+            name = "User",
+            type = MemoryEntity.Type.USER,
+        )
+        val preferredNameClaim = claim(
+            id = "claim-preferred-name",
+            subjectEntityId = user.id,
+            predicate = "preferred_name",
+            objectValue = JsonPrimitive("Lev"),
+            normalizedText = "The user's preferred name is Lev.",
+        )
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "Lev",
+                      "action": "create_new",
+                      "entity_id": null,
+                      "new_entity": {
+                        "entity_type": "person",
+                        "canonical_name": "Lev",
+                        "summary": "Person named Lev."
+                      },
+                      "confidence": 0.8,
+                      "reason": "Named person mention."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = documentRequest("Lev prefers concise direct engineering discussion."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("Lev")),
+            retrievedHits = listOf(
+                MemoryStore.SearchHit.EntityHit(user, score = 1.0),
+                MemoryStore.SearchHit.ClaimHit(preferredNameClaim, score = 1.0),
+            ),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.ADD_ALIAS, op.action)
+        assertEquals(user.id, op.entityId)
+        assertEquals(null, op.newEntity)
+        assertEquals("Lev", op.aliasText)
+    }
+
+    @Test
+    fun thirdPersonPersonMentionWithoutUserIdentitySignalStaysPerson() = runBlocking {
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "Lev",
+                      "action": "create_new",
+                      "entity_id": null,
+                      "new_entity": {
+                        "entity_type": "person",
+                        "canonical_name": "Lev",
+                        "summary": "Person named Lev."
+                      },
+                      "confidence": 0.8,
+                      "reason": "Named person mention."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = documentRequest("Lev owns a separate deployment checklist."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("Lev")),
+            retrievedHits = emptyList(),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.CREATE_NEW, op.action)
+        assertEquals(MemoryEntity.Type.PERSON, op.newEntity?.entityType)
+        assertEquals("Lev", op.newEntity?.canonicalName)
     }
 
     @Test
@@ -410,6 +587,29 @@ class LlmMemoryEntityCanonicalizerTest {
                 normalizedName = name.lowercase(),
                 aliases = aliases,
                 attributes = JsonObject(emptyMap()),
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                createdAt = NOW,
+                updatedAt = NOW,
+            )
+
+        fun claim(
+            id: String,
+            subjectEntityId: MemoryEntity.Id,
+            predicate: String,
+            objectValue: JsonPrimitive,
+            normalizedText: String,
+        ): MemoryClaim =
+            MemoryClaim(
+                id = MemoryClaim.Id(id),
+                namespace = TEST_NAMESPACE,
+                subjectEntityId = subjectEntityId,
+                predicate = predicate,
+                objectValue = objectValue,
+                normalizedText = normalizedText,
+                scope = MemoryScope.Global("Test user identity"),
+                confidence = 0.9,
+                importance = 8,
                 firstSeenAt = NOW,
                 lastSeenAt = NOW,
                 createdAt = NOW,

@@ -62,6 +62,57 @@ import kotlinx.serialization.json.JsonPrimitive
 class MemoryMaintenancePipelineTest {
 
     @Test
+    fun materializerAppliesAddAliasToExistingEntity() {
+        val user = entity(
+            id = MemoryEntity.Id("entity-current-user"),
+            entityType = MemoryEntity.Type.USER,
+            canonicalName = "User",
+            normalizedName = "user",
+        )
+        val source = source("alias-source", "Call me Lev.")
+
+        val batch = DefaultDirectStructuredMemoryWriteMaterializer(
+            idFactory = SequentialMemoryIdFactory("alias-patch"),
+        ).materialize(
+            DirectStructuredMemoryWriteMaterialization(
+                request = DirectStructuredMemoryWriteRequest(TEST_NAMESPACE, source),
+                routeDecision = MemoryRouteDecision(
+                    decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                    memoryTypes = setOf(MemorySemanticType.CLAIM),
+                    reason = "Alias patch test.",
+                ),
+                retrievalPlan = MemoryWriteRetrievalPlan(),
+                retrievedHits = listOf(MemoryStore.SearchHit.EntityHit(user, score = 1.0)),
+                entityOps = listOf(
+                    MemoryEntityCanonicalizationOp(
+                        mention = "Lev",
+                        action = MemoryEntityCanonicalizationOp.Action.ADD_ALIAS,
+                        entityId = user.id,
+                        aliasText = "Lev",
+                        confidence = 0.95,
+                        reason = "The user provided a preferred name alias.",
+                    )
+                ),
+                noteCandidates = emptyList(),
+                rawNoteOps = emptyList(),
+                noteOps = emptyList(),
+                claimCandidates = emptyList(),
+                rawClaimOps = emptyList(),
+                claimOps = emptyList(),
+                rawActionItemOps = emptyList(),
+                actionItemOps = emptyList(),
+                predicateCatalog = emptyList(),
+                startedAt = EARLIER,
+                completedAt = NOW,
+            )
+        )
+
+        val updatedUser = batch.entities.single()
+        assertEquals(user.id, updatedUser.id)
+        assertTrue(updatedUser.aliases.any { it.text == "Lev" && it.sourceId == source.id })
+    }
+
+    @Test
     fun noopQuestionSourcesBecomeAuditOnlyAndDoNotRecall() = runBlocking {
         val questionSource = source(
             "booknest-question-source",
@@ -1416,6 +1467,123 @@ class MemoryMaintenancePipelineTest {
         assertEquals(MemoryEntity.Status.ACTIVE, updatedUser.status)
         assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(person.id.value).status)
         assertEquals(setOf(MemoryEntity.Type.USER, MemoryEntity.Type.PERSON), updatedUser.observedTypes)
+    }
+
+    @Test
+    fun entityMaintenanceGroupsCurrentUserWithNamedPersonThroughPreferredName() = runBlocking {
+        val user = entity(
+            id = MemoryEntity.Id("entity-current-user"),
+            entityType = MemoryEntity.Type.USER,
+            canonicalName = "User",
+            normalizedName = "user",
+            aliases = listOf(alias("Lev Lewik")),
+        )
+        val fullNamePerson = entity(
+            id = MemoryEntity.Id("entity-lev-lewik-person"),
+            entityType = MemoryEntity.Type.PERSON,
+            canonicalName = "Lev Lewik",
+            normalizedName = "lev lewik",
+        )
+        val firstNamePerson = entity(
+            id = MemoryEntity.Id("entity-lev-person"),
+            entityType = MemoryEntity.Type.PERSON,
+            canonicalName = "Lev",
+            normalizedName = "lev",
+        )
+        val preferredName = claim(
+            id = "claim-user-preferred-name",
+            subjectEntityId = user.id,
+            predicate = "preferred_name",
+            objectValue = JsonPrimitive("Lev"),
+            normalizedText = "The user's preferred name is Lev.",
+        )
+        val skill = claim(
+            id = "claim-lev-kotlin",
+            subjectEntityId = fullNamePerson.id,
+            predicate = "works_with",
+            objectValue = JsonPrimitive("Kotlin"),
+            normalizedText = "Lev Lewik works with Kotlin.",
+        )
+        val taskContext = claim(
+            id = "claim-lev-memory",
+            subjectEntityId = firstNamePerson.id,
+            predicate = "responsible_for",
+            objectValue = JsonPrimitive("memory pipeline repair"),
+            normalizedText = "Lev is responsible for memory pipeline repair.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(user, fullNamePerson, firstNamePerson),
+                claims = listOf(preferredName, skill, taskContext),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.MERGE,
+                            winnerEntityId = user.id.value,
+                            loserEntityIds = listOf(fullNamePerson.id.value, firstNamePerson.id.value),
+                            aliasTexts = listOf("Lev Lewik", "Lev"),
+                            reason = "The named PERSON entities are aliases of the current USER profile.",
+                        )
+                    ),
+                    summary = "Merged current user identity split.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedUser = snapshot.entityById(user.id.value)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertTrue(result.candidateGroups.single().reason.contains("current user"))
+        assertEquals(MemoryEntity.Status.ACTIVE, updatedUser.status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(fullNamePerson.id.value).status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(firstNamePerson.id.value).status)
+        assertEquals(user.id, snapshot.claimById(skill.id.value).subjectEntityId)
+        assertEquals(user.id, snapshot.claimById(taskContext.id.value).subjectEntityId)
+        assertTrue(updatedUser.aliases.any { it.text == "Lev Lewik" })
+        assertTrue(updatedUser.aliases.any { it.text == "Lev" })
+        assertEquals(setOf(MemoryEntity.Type.USER, MemoryEntity.Type.PERSON), updatedUser.observedTypes)
+    }
+
+    @Test
+    fun entityMaintenanceDoesNotGroupCurrentUserWithWeakFirstNameOnly() = runBlocking {
+        val user = entity(
+            id = MemoryEntity.Id("entity-current-user"),
+            entityType = MemoryEntity.Type.USER,
+            canonicalName = "User",
+            normalizedName = "user",
+            aliases = listOf(alias("Lev Lewik")),
+        )
+        val otherLev = entity(
+            id = MemoryEntity.Id("entity-other-lev"),
+            entityType = MemoryEntity.Type.PERSON,
+            canonicalName = "Lev",
+            normalizedName = "lev",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(user, otherLev),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(MemoryEntityMaintenancePlan(summary = "No action.")),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        assertEquals(0, result.candidateGroups.size)
     }
 
     @Test
@@ -4418,6 +4586,7 @@ private fun entity(
     canonicalName: String = "Lewik",
     normalizedName: String = "lewik",
     summary: String? = null,
+    aliases: List<MemoryEntity.Alias> = emptyList(),
 ): MemoryEntity =
     MemoryEntity(
         id = id,
@@ -4426,10 +4595,19 @@ private fun entity(
         canonicalName = canonicalName,
         normalizedName = normalizedName,
         summary = summary,
+        aliases = aliases,
         firstSeenAt = EARLIER,
         lastSeenAt = EARLIER,
         createdAt = EARLIER,
         updatedAt = EARLIER,
+    )
+
+private fun alias(text: String): MemoryEntity.Alias =
+    MemoryEntity.Alias(
+        text = text,
+        normalizedText = text.lowercase(),
+        confidence = 1.0,
+        createdAt = EARLIER,
     )
 
 private fun profile(

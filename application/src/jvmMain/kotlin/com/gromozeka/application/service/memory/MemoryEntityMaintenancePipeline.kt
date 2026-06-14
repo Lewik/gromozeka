@@ -21,6 +21,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
@@ -546,6 +547,10 @@ private fun MemoryNamespaceSnapshot.detectEntityMaintenanceCandidateGroups(): Li
             }
         }
 
+    detectCurrentUserIdentityLinks(activeEntities).forEach { candidate ->
+        link(candidate.user, candidate.person, candidate.reason)
+    }
+
     activeEntities.forEachIndexed { index, first ->
         activeEntities.drop(index + 1)
             .filter { it.entityType.isEntityMergeCompatibleWith(first.entityType) }
@@ -704,6 +709,108 @@ private fun MemoryEntity.nearDuplicateEntityReason(other: MemoryEntity): String?
     }
 
     return null
+}
+
+private data class CurrentUserIdentityLink(
+    val user: MemoryEntity,
+    val person: MemoryEntity,
+    val reason: String,
+)
+
+private data class CurrentUserIdentityName(
+    val normalized: String,
+    val explicitForUser: Boolean,
+)
+
+private fun MemoryNamespaceSnapshot.detectCurrentUserIdentityLinks(
+    activeEntities: List<MemoryEntity>,
+): List<CurrentUserIdentityLink> {
+    val users = activeEntities.filter { it.entityType == MemoryEntity.Type.USER }
+    val people = activeEntities.filter { it.entityType == MemoryEntity.Type.PERSON }
+    if (users.isEmpty() || people.isEmpty()) return emptyList()
+
+    val preferredNamesBySubject = activePreferredNamesBySubject()
+
+    return buildList {
+        users.forEach { user ->
+            val userNames = user.currentUserIdentityNames(preferredNamesBySubject[user.id].orEmpty())
+            if (userNames.isEmpty()) return@forEach
+
+            people.forEach { person ->
+                val personNames = person.personIdentityNames(preferredNamesBySubject[person.id].orEmpty())
+                val reason = userNames.currentUserIdentityLinkReason(personNames) ?: return@forEach
+                add(CurrentUserIdentityLink(user = user, person = person, reason = reason))
+            }
+        }
+    }
+}
+
+private fun MemoryNamespaceSnapshot.activePreferredNamesBySubject(): Map<MemoryEntity.Id, List<String>> =
+    claims
+        .filter { it.status == MemoryClaim.Status.ACTIVE }
+        .filter { it.predicate == "preferred_name" }
+        .mapNotNull { claim ->
+            (claim.objectValue as? JsonPrimitive)
+                ?.contentOrNull
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?.let { claim.subjectEntityId to it }
+        }
+        .groupBy({ it.first }, { it.second })
+
+private fun MemoryEntity.currentUserIdentityNames(
+    preferredNames: List<String>,
+): List<CurrentUserIdentityName> =
+    (aliases.map { it.text } + aliases.map { it.normalizedText } + preferredNames)
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .filter { it.normalizeEntityMaintenanceText() !in CURRENT_USER_GENERIC_IDENTITY_NAMES }
+        .distinctBy { it.normalizeEntityMaintenanceText() }
+        .map { text ->
+            CurrentUserIdentityName(
+                normalized = text.normalizeEntityMaintenanceText(),
+                explicitForUser = true,
+            )
+        }
+
+private fun MemoryEntity.personIdentityNames(
+    preferredNames: List<String>,
+): List<CurrentUserIdentityName> =
+    (listOf(canonicalName, normalizedName) + aliases.map { it.text } + aliases.map { it.normalizedText } + preferredNames)
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.normalizeEntityMaintenanceText() }
+        .map { text ->
+            CurrentUserIdentityName(
+                normalized = text.normalizeEntityMaintenanceText(),
+                explicitForUser = false,
+            )
+        }
+
+private fun List<CurrentUserIdentityName>.currentUserIdentityLinkReason(
+    personNames: List<CurrentUserIdentityName>,
+): String? {
+    if (isEmpty() || personNames.isEmpty()) return null
+
+    if (any { userName -> personNames.any { personName -> userName.normalized == personName.normalized } }) {
+        return "current user alias or preferred_name exactly matches named PERSON"
+    }
+
+    if (any { userName -> personNames.any { personName -> userName.isFirstNameFullNamePairWith(personName) } }) {
+        return "current user alias or preferred_name matches named PERSON by first-name/full-name bridge"
+    }
+
+    return null
+}
+
+private fun CurrentUserIdentityName.isFirstNameFullNamePairWith(
+    other: CurrentUserIdentityName,
+): Boolean {
+    val firstTokens = normalized.split(" ").filter { it.isNotBlank() }
+    val secondTokens = other.normalized.split(" ").filter { it.isNotBlank() }
+    if (firstTokens.size == 1 && explicitForUser && secondTokens.size > 1 && firstTokens.single() == secondTokens.first()) return true
+    if (secondTokens.size == 1 && other.explicitForUser && firstTokens.size > 1 && secondTokens.single() == firstTokens.first()) return true
+    return false
 }
 
 private fun MemoryEntity.entityMaintenanceCompactKeys(): Set<String> =
@@ -881,4 +988,12 @@ private val ENTITY_MAINTENANCE_STOP_WORDS = setOf(
     "of",
     "for",
     "to",
+)
+
+private val CURRENT_USER_GENERIC_IDENTITY_NAMES = setOf(
+    "user",
+    "the user",
+    "i",
+    "me",
+    "myself",
 )

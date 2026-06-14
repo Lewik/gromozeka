@@ -1702,7 +1702,9 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
     private fun DirectStructuredMemoryWriteMaterialization.existingReferencedEntityPatches(
         referencedEntityIds: Set<MemoryEntity.Id>,
     ): List<MemoryEntity> {
-        if (referencedEntityIds.isEmpty()) return emptyList()
+        val aliasPatchesByEntityId = entityAliasPatchesByEntityId()
+        val patchEntityIds = referencedEntityIds + aliasPatchesByEntityId.keys
+        if (patchEntityIds.isEmpty()) return emptyList()
 
         val createdEntityIds = entityOps
             .filter { it.action == MemoryEntityCanonicalizationOp.Action.CREATE_NEW }
@@ -1710,15 +1712,53 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         return retrievedHits
             .filterIsInstance<MemoryStore.SearchHit.EntityHit>()
             .map { it.entity }
-            .filter { it.id in referencedEntityIds && it.id !in createdEntityIds }
+            .filter { it.id in patchEntityIds && it.id !in createdEntityIds }
             .distinctBy { it.id }
             .map { entity ->
                 entity.copy(
                     summary = entity.identityOnlySummary(),
+                    aliases = entity.aliases.plusAliasPatches(aliasPatchesByEntityId[entity.id].orEmpty()),
                     lastSeenAt = request.source.observedAt,
                     updatedAt = completedAt,
                 )
             }
+    }
+
+    private fun DirectStructuredMemoryWriteMaterialization.entityAliasPatchesByEntityId(): Map<MemoryEntity.Id, List<EntityAliasPatch>> =
+        entityOps
+            .filter { it.action == MemoryEntityCanonicalizationOp.Action.ADD_ALIAS }
+            .mapNotNull { op ->
+                val entityId = op.entityId ?: return@mapNotNull null
+                val aliasText = (op.aliasText ?: op.mention).trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                entityId to EntityAliasPatch(
+                    text = aliasText,
+                    sourceId = request.source.id,
+                    confidence = op.confidence,
+                    createdAt = completedAt,
+                )
+            }
+            .groupBy({ it.first }, { it.second })
+
+    private fun List<MemoryEntity.Alias>.plusAliasPatches(
+        patches: List<EntityAliasPatch>,
+    ): List<MemoryEntity.Alias> {
+        if (patches.isEmpty()) return this
+        val existing = mapTo(mutableSetOf()) { it.normalizedText }
+        val added = patches
+            .mapNotNull { patch ->
+                val normalized = patch.text.normalizeMemoryText()
+                if (normalized.isBlank() || !existing.add(normalized)) {
+                    return@mapNotNull null
+                }
+                MemoryEntity.Alias(
+                    text = patch.text,
+                    normalizedText = normalized,
+                    sourceId = patch.sourceId,
+                    confidence = patch.confidence,
+                    createdAt = patch.createdAt,
+                )
+            }
+        return this + added
     }
 
     private fun MemoryNoteReconciliationOp.toNotes(
@@ -2075,6 +2115,13 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         )
     }
 }
+
+private data class EntityAliasPatch(
+    val text: String,
+    val sourceId: MemorySource.Id,
+    val confidence: Double,
+    val createdAt: Instant,
+)
 
 private fun DirectStructuredMemoryWriteMaterialization.toRunOutput(
     entities: List<MemoryEntity>,
