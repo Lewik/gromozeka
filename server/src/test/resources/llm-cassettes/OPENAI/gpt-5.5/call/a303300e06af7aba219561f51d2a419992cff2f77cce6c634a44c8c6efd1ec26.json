@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "a303300e06af7aba219561f51d2a419992cff2f77cce6c634a44c8c6efd1ec26",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What percentage of leadership positions do women hold in the my company?\n\n                                Question date:\n                                2023/05/25 (Thu) 13:59\n\n                                Noisy expected-answer label:\n                                20%\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:099778bb\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d44cf192b92d-claim-5 [ACTIVE] current_metric_value family=current_metric_value: Women occupy 20 leadership positions in the user's company.; scope=Leadership positions in the user's company as stated in the 2023-05-24 session.; context=\"The user stated this while discussing the company's diversity and inclusion report and gender equality.\"; evidence=DIRECT source=external:provided-text:b082f2500e0c96b4d801c7044eccad03 quote=\"women occupy 20 of the leadership positions in our company\"\n- claim hot-path-a07560bbdb3f-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user's company leadership team has a total of 100 leadership positions across the company.; scope=User's company leadership team; context=\"The user was assessing the company's organizational and leadership structure and wanted to compare it with industry benchmarks.\"; evidence=DIRECT source=external:provided-text:19db9e80c4a8e31aae5b67b02f2d340d quote=\"we have a total of 100 leadership positions across the company\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:19db9e80c4a8e31aae5b67b02f2d340d [external_record ref=longmemeval:099778bb:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 20:20\nTranscript:\n...Session date: 2023/05/21 (Sun) 20:20...\n...Regarding the number of leadership positions, 100 sounds like a significant number. However, without knowing the size of your company, it's difficult to determine if that's a typical or unusual number. You may want to consider factors such as the company's size, industry, and organizational complexity to put that number into context....\n...1. **Mercer's Global Leadership Practices Survey**: Mercer conducts a biennial survey that provides benchmarks on leadership practices, including the number of leadership positions, across various industries and geographies.\n2. **Korn Ferry's Global Leadership Forecast**: Korn Ferry's report offers insights into leadership trends, including the number of leadership positions, and provides benchmarks for different industries and regions....\n...1. **Mercer's Global Leadership Practices Survey**: Their report includes data on diversity and inclusion in leadership, including the representation of women, minorities, and other underrepresented groups in leadership positions....\n...5. **Catalyst**: Catalyst is a non-profit organization that focuses on accelerating progress for women through workplace inclusion. They provide research and data on women's representation in leadership positions, as well as strategies for improving gender diversity and inclusion.\n6. **McKinsey's Women in the Workplace Report**: This annual report, conducted in partnership with LeanIn.Org, provides data on women's representation in leadership positions, as well as strategies for improving gender diversity and inclusion....\n...user: That's really helpful. I'll definitely check out some of those resources. I'm particularly interested in learning more about the representation of underrepresented groups in leadership positions. Do you think any of these resources would provide data on the average percentage of leadership positions held by women in companies of our size and industry?\nassistant: Many of the resources I mentioned earlier provide data on the representation of women in leadership positions, including the average percentage of leadership positions held by women in companies of a certain size and industry.\n\nHere are a few specific resources that may provide the data you're looking for:\n\n1. **Catalyst's Pyramid Reports**: Catalyst publishes annual reports on women in leadership positions, including data on the representation of women in executive and senior-level positions, as well as the average percentage of women in leadership positions by industry and company size.\n2. **McKinsey's Women in the Workplace Report**: This report provides data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n3. **Deloitte's Global Survey of Women in the Workplace**: Deloitte's report provides data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n4. **Korn Ferry's Global Leadership Forecast**: Korn Ferry's report includes data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n5. **Bloomberg's Gender-Equality Index**: Bloomberg's index provides data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n\nThese resources may provide data on the average percentage of leadership positions held by women in companies of your size and industry, which can be useful for benchmarking your company's performance....\n...2. **Use diverse interview panels**: Ensure that interview panels for leadership positions include diverse candidates, including women, people of color, and individuals from underrepre\n[truncated 17 chars]\n- source external:provided-text:b082f2500e0c96b4d801c7044eccad03 [external_record ref=longmemeval:099778bb:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 12:21\nTranscript:\n...Session date: 2023/05/24 (Wed) 12:21...\n...3. **HR Department**: Reach out to your HR department directly and ask about their diversity and inclusion policies, procedures, and resources. They can provide you with information on company-wide initiatives, training programs, and diversity metrics....\n...5. **Diversity and Inclusion Reports**: Many companies publish annual diversity and inclusion reports that provide insights into their diversity metrics, initiatives, and goals. These reports can be found on the company website or through a search online.\n\nTo get a more comprehensive understanding of your company's diversity metrics, you may want to ask some additional questions, such as:\n\n* What percentage of leadership positions do women hold overall?\n* How does this number compare to industry benchmarks or national averages?\n* What are the company's goals and strategies for increasing diversity in leadership positions?...\n...user: Wow, that's a lot of resources. I'll definitely check them out. I'm particularly interested in the diversity and inclusion reports. Do you think they'd have data on the demographics of our company's workforce, like the gender ratio? I recently attended a workshop on gender equality and was impressed to learn that women occupy 20 of the leadership positions in our company....\n...2. **Leadership demographics**: Demographic data on leadership positions, including the number of women, people of color, and other underrepresented groups in senior roles.\n3. **Diversity metrics**: Statistics on diversity metrics such as gender ratio, racial and ethnic diversity, and age distribution....\n...5. **Goals and targets**: The company's diversity and inclusion goals, targets, and strategies for achieving them....\n...* Are the diversity metrics improving over time?...\n...Keep in mind that some companies may not publicly disclose their diversity and inclusion reports, or may only share them with employees. If you're unable to find the report online, you can try reaching out to your HR department or diversity and inclusion team to request a copy or ask questions about the company's diversity metrics....\n...2. **ERG membership**: The number of employees participating in each ERG, as well as the percentage of employees who are members of one or more ERGs....\n...2. **Diversity and inclusion metrics**: Breakdowns of employee responses to specific questions related to diversity and inclusion, such as:...\n...4. **Net Promoter Score (NPS) for diversity and inclusion**: A measure of employee sentiment on diversity and inclusion, calculated by subtracting the percentage of detractors from the percentage of promoters....\n...1. **Training participation rates**: The percentage of employees who have participated in diversity and inclusion training programs, including unconscious bias training, allyship workshops, and other programs....\n...user: I'm curious to see if the report would also discuss the company's strategy for increasing diversity in hiring, such as blind hiring practices or diversity-focused recruitment initiatives. Would it cover data on the diversity of new hires, like the percentage of women or underrepresented groups in recent hiring cohorts?...\n...* Percentage of women and underrepresented groups in recent hiring cohorts\n\t* Diversity metrics for different business units or departments\n\t* Comparison of diversity metrics across different hiring channels (e.g., referrals, job boards, etc.)\n4. **Hiring pipeline metrics**: Data on the diversity of the hiring pipeline, including:\n\t* Percentage of diverse candidates at each stage of the hiring process (e.g., application, interview, offer)...\n...* How do the diversity metrics for new hires compare to industry benchmarks or national averages?...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: User's company leadership team; Organization named User's company leadership team.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "099778bb",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What percentage of leadership positions do women hold in the my company?\n\n                                Question date:\n                                2023/05/25 (Thu) 13:59\n\n                                Noisy expected-answer label:\n                                20%\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:099778bb\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d44cf192b92d-claim-5 [ACTIVE] current_metric_value family=current_metric_value: Women occupy 20 leadership positions in the user's company.; scope=Leadership positions in the user's company as stated in the 2023-05-24 session.; context=\"The user stated this while discussing the company's diversity and inclusion report and gender equality.\"; evidence=DIRECT source=external:provided-text:b082f2500e0c96b4d801c7044eccad03 quote=\"women occupy 20 of the leadership positions in our company\"\n- claim hot-path-a07560bbdb3f-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user's company leadership team has a total of 100 leadership positions across the company.; scope=User's company leadership team; context=\"The user was assessing the company's organizational and leadership structure and wanted to compare it with industry benchmarks.\"; evidence=DIRECT source=external:provided-text:19db9e80c4a8e31aae5b67b02f2d340d quote=\"we have a total of 100 leadership positions across the company\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:19db9e80c4a8e31aae5b67b02f2d340d [external_record ref=longmemeval:099778bb:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 20:20\nTranscript:\n...Session date: 2023/05/21 (Sun) 20:20...\n...Regarding the number of leadership positions, 100 sounds like a significant number. However, without knowing the size of your company, it's difficult to determine if that's a typical or unusual number. You may want to consider factors such as the company's size, industry, and organizational complexity to put that number into context....\n...1. **Mercer's Global Leadership Practices Survey**: Mercer conducts a biennial survey that provides benchmarks on leadership practices, including the number of leadership positions, across various industries and geographies.\n2. **Korn Ferry's Global Leadership Forecast**: Korn Ferry's report offers insights into leadership trends, including the number of leadership positions, and provides benchmarks for different industries and regions....\n...1. **Mercer's Global Leadership Practices Survey**: Their report includes data on diversity and inclusion in leadership, including the representation of women, minorities, and other underrepresented groups in leadership positions....\n...5. **Catalyst**: Catalyst is a non-profit organization that focuses on accelerating progress for women through workplace inclusion. They provide research and data on women's representation in leadership positions, as well as strategies for improving gender diversity and inclusion.\n6. **McKinsey's Women in the Workplace Report**: This annual report, conducted in partnership with LeanIn.Org, provides data on women's representation in leadership positions, as well as strategies for improving gender diversity and inclusion....\n...user: That's really helpful. I'll definitely check out some of those resources. I'm particularly interested in learning more about the representation of underrepresented groups in leadership positions. Do you think any of these resources would provide data on the average percentage of leadership positions held by women in companies of our size and industry?\nassistant: Many of the resources I mentioned earlier provide data on the representation of women in leadership positions, including the average percentage of leadership positions held by women in companies of a certain size and industry.\n\nHere are a few specific resources that may provide the data you're looking for:\n\n1. **Catalyst's Pyramid Reports**: Catalyst publishes annual reports on women in leadership positions, including data on the representation of women in executive and senior-level positions, as well as the average percentage of women in leadership positions by industry and company size.\n2. **McKinsey's Women in the Workplace Report**: This report provides data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n3. **Deloitte's Global Survey of Women in the Workplace**: Deloitte's report provides data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n4. **Korn Ferry's Global Leadership Forecast**: Korn Ferry's report includes data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n5. **Bloomberg's Gender-Equality Index**: Bloomberg's index provides data on the representation of women in leadership positions, including the average percentage of women in leadership positions by industry and company size.\n\nThese resources may provide data on the average percentage of leadership positions held by women in companies of your size and industry, which can be useful for benchmarking your company's performance....\n...2. **Use diverse interview panels**: Ensure that interview panels for leadership positions include diverse candidates, including women, people of color, and individuals from underrepre\n[truncated 17 chars]\n- source external:provided-text:b082f2500e0c96b4d801c7044eccad03 [external_record ref=longmemeval:099778bb:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 12:21\nTranscript:\n...Session date: 2023/05/24 (Wed) 12:21...\n...3. **HR Department**: Reach out to your HR department directly and ask about their diversity and inclusion policies, procedures, and resources. They can provide you with information on company-wide initiatives, training programs, and diversity metrics....\n...5. **Diversity and Inclusion Reports**: Many companies publish annual diversity and inclusion reports that provide insights into their diversity metrics, initiatives, and goals. These reports can be found on the company website or through a search online.\n\nTo get a more comprehensive understanding of your company's diversity metrics, you may want to ask some additional questions, such as:\n\n* What percentage of leadership positions do women hold overall?\n* How does this number compare to industry benchmarks or national averages?\n* What are the company's goals and strategies for increasing diversity in leadership positions?...\n...user: Wow, that's a lot of resources. I'll definitely check them out. I'm particularly interested in the diversity and inclusion reports. Do you think they'd have data on the demographics of our company's workforce, like the gender ratio? I recently attended a workshop on gender equality and was impressed to learn that women occupy 20 of the leadership positions in our company....\n...2. **Leadership demographics**: Demographic data on leadership positions, including the number of women, people of color, and other underrepresented groups in senior roles.\n3. **Diversity metrics**: Statistics on diversity metrics such as gender ratio, racial and ethnic diversity, and age distribution....\n...5. **Goals and targets**: The company's diversity and inclusion goals, targets, and strategies for achieving them....\n...* Are the diversity metrics improving over time?...\n...Keep in mind that some companies may not publicly disclose their diversity and inclusion reports, or may only share them with employees. If you're unable to find the report online, you can try reaching out to your HR department or diversity and inclusion team to request a copy or ask questions about the company's diversity metrics....\n...2. **ERG membership**: The number of employees participating in each ERG, as well as the percentage of employees who are members of one or more ERGs....\n...2. **Diversity and inclusion metrics**: Breakdowns of employee responses to specific questions related to diversity and inclusion, such as:...\n...4. **Net Promoter Score (NPS) for diversity and inclusion**: A measure of employee sentiment on diversity and inclusion, calculated by subtracting the percentage of detractors from the percentage of promoters....\n...1. **Training participation rates**: The percentage of employees who have participated in diversity and inclusion training programs, including unconscious bias training, allyship workshops, and other programs....\n...user: I'm curious to see if the report would also discuss the company's strategy for increasing diversity in hiring, such as blind hiring practices or diversity-focused recruitment initiatives. Would it cover data on the diversity of new hires, like the percentage of women or underrepresented groups in recent hiring cohorts?...\n...* Percentage of women and underrepresented groups in recent hiring cohorts\n\t* Diversity metrics for different business units or departments\n\t* Comparison of diversity metrics across different hiring channels (e.g., referrals, job boards, etc.)\n4. **Hiring pipeline metrics**: Data on the diversity of the hiring pipeline, including:\n\t* Percentage of diverse candidates at each stage of the hiring process (e.g., application, interview, offer)...\n...* How do the diversity metrics for new hires compare to industry benchmarks or national averages?...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: User's company leadership team; Organization named User's company leadership team.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "099778bb",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Women hold 20% of leadership positions in the user's company.\",\"reason\":\"The memory states women occupy 20 leadership positions and the company has 100 total leadership positions, which yields 20%.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2689,
+                "completionTokens": 100,
+                "thinkingTokens": 35,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
