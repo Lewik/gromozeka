@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "3ab4b18ec489dd85acdc16fcbbd19db2bfcdb518a01adaba66f6578ac48e918c",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I meet Emma?\n\n                                Question date:\n                                2023/04/20 (Thu) 09:29\n\n                                Noisy expected-answer label:\n                                9 days ago. 10 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_468eb063\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-7d7c8d63aab2-claim-9 [ACTIVE] attended_event family=attended_event: The user had lunch with Emma, a freelance writer, on 2023-04-11.; scope=User's social or professional meetings from the 2023-04-11 imported chat session.; context=\"The user said the lunch catch-up occurred today in a session dated 2023-04-11.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I catch up with Emma, a freelance writer, over lunch today\"\n- claim hot-path-7d7c8d63aab2-claim-10 [ACTIVE] works_on_project family=works_on_project: Emma is a potential collaborator on the user's sustainable living and eco-friendly products project.; scope=Emma's association with the user's project from the 2023-04-11 imported chat session.; context=\"The user described Emma as a freelance writer and potential collaborator for the project they were working on; later turns clarify the project domain as sustainable living and eco-friendly products.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"she's now a potential collaborator for a project I'm working on\"\n- claim hot-path-7d7c8d63aab2-claim-17 [ACTIVE] has_goal family=has_goal: The user wants to learn how to target Instagram ads to people interested in sustainable living and eco-friendly products using interests and behaviors.; scope=User's reusable learning interests around Instagram ad targeting for their project domain from the 2023-04-11 imported chat session.; context=\"The user asked this after saying Emma had success with targeting specific interests and behaviors.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Can you show me how to target my ads to people who are interested in sustainable living and eco-friendly products?\"\n- claim hot-path-7d7c8d63aab2-claim-15 [ACTIVE] has_goal family=has_goal: The user wants to learn more about Instagram ads and how to set up an Instagram ad campaign.; scope=User's reusable learning interests around Instagram advertising from the 2023-04-11 imported chat session.; context=\"The user became interested in Instagram ads after Emma said she had seen great results with them.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I'm also interested in learning more about Instagram ads, since Emma mentioned she's seen some great results with them. Can you show me some tutorials on how to set up an Instagram ad campaign?\"\n- claim hot-path-7d7c8d63aab2-claim-16 [ACTIVE] has_experience_with family=has_experience_with: Emma has seen great results with Instagram ads.; scope=Emma's advertising experience as reported by the user in the 2023-04-11 imported chat session.; context=\"The user cited Emma's experience as a reason for wanting to learn about Instagram ads.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Emma mentioned she's seen some great results with them\"\n- claim hot-path-7d7c8d63aab2-claim-18 [ACTIVE] has_goal family=has_goal: The user wants to learn how to use Instagram automatic targeting to reach people likely to be interested in their sustainable living and eco-friendly products.; scope=User's reusable learning interests around Instagram automatic targeting for their project domain from the 2023-04-11 imported chat session.; context=\"The user asked about Instagram's automatic targeting feature after learning about Instagram targeting options.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Can you show me how to use it to reach people who are likely to be interested in my sustainable living and eco-friendly products?\"\n- claim hot-path-7d7c8d63aab2-claim-14 [ACTIVE] has_goal family=has_goal: The user wants to learn how to use Facebook Audience Insights to gather information about their target audience.; scope=User's reusable learning interests around Facebook ad targeting from the 2023-04-11 imported chat session.; context=\"The user asked for a demonstration of Facebook Audience Insights in the Facebook ads learning thread.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I'd like to know more about Facebook's Audience Insights tool, can you show me how to use it to gather information about my target audience?\"\n- claim hot-path-7d7c8d63aab2-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to learn more about Facebook ads, including how to set up a campaign and target the right audience.; scope=User's reusable learning interests around social media advertising from the 2023-04-11 imported chat session.; context=\"The user asked for tutorials on Facebook ads in the 2023-04-11 imported chat session.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I'm actually interested in learning more about Facebook ads, can you show me some tutorials on how to set up a campaign and target the right audience?\"\n\n            Retrieved notes:\n            - note hot-path-7d7c8d63aab2-note-6 [CONTEXT/ACTIVE]: Emma as Potential Project Collaborator Influencing Instagram Ads Exploration; Emma, described as a freelance writer and potential collaborator on the user's project, influenced the user's interest in Instagram ads because she reportedly had seen strong results with them, especially targeting interests and behaviors.; scope=Context about Emma's role in the user's project and advertising exploration; evidence=SUMMARIZED source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Emma, a freelance writer, over lunch today and she's now a potential collaborator for a project I'm working on.\"\n\n            Retrieved evidence:\n            - source external:provided-text:f8625d29b2b440a3b16392d7f98e507b [external_record ref=longmemeval:gpt4_468eb063:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/11 (Tue) 06:06\nTranscript:\nuser: I'm looking for some tips on social media advertising. I just attended a digital marketing workshop last week and the speaker, Rachel Lee, mentioned some interesting strategies. I was wondering if you could recommend some online resources or tutorials on the topic. By the way, I catch up with Emma, a freelance writer, over lunch today and she's now a potential collaborator for a project I'm working on....\n...As for your project, it's great that you've connected with Emma, the freelance writer. Collaborations can lead to exciting opportunities!\n\nFeel free to ask me any specific questions about social media advertising, and I'll do my best to help.\nuser: I'm actually interested in learning more about Facebook ads, can you show me some tutorials on how to set up a campaign and target the right audience?...\n...3. **AdEspresso's Facebook Targeting Tutorial**: AdEspresso's tutorial provides advanced targeting strategies, including how to use lookalike audiences, interest targeting, and behavioral targeting....\n...2. **Know your target audience**: Use Facebook's Audience Insights tool and custom audiences to target the right people....\n...I hope these resources help you get started with Facebook ads and targeting the right audience! If you have any specific questions or need further guidance, feel free to ask.\nuser: I'd like to know more about Facebook's Audience Insights tool, can you show me how to use it to gather information about my target audience?...\n...1. **Identify target audience characteristics**: Use demographics, interests, and behaviors to create targeted ad groups....\n...3. **Regularly update your insights**: Refresh your insights regularly to ensure you're targeting the most up-to-date audience information....\n...By following these steps and using Facebook's Audience Insights tool, you'll gain a deeper understanding of your target audience and create more effective ad campaigns. If you have any questions or need further guidance, feel free to ask!\nuser: I'm also interested in learning more about Instagram ads, since Emma mentioned she's seen some great results with them. Can you show me some tutorials on how to set up an Instagram ad campaign?...\n...I hope these resources help you get started with Instagram ads! If you have any questions or need further guidance, feel free to ask.\nuser: I'd like to know more about Instagram's targeting options, especially since Emma mentioned she's had success with targeting specific interests and behaviors. Can you show me how to target my ads to people who are interested in sustainable living and eco-friendly products?...\n...By using these targeting options, you can reach people who are interested in sustainable living and eco-friendly products, increasing the likelihood of converting them into customers. If you have any questions or need further guidance, feel free to ask!\nuser: I'd like to know more about Instagram's automatic targeting feature. Can you show me how to use it to reach people who are likely to be interested in my sustainable living and eco-friendly products?...\n...3. **Demographics**: Instagram uses demographic data, such as age, gender, and location, to target users who are likely to be interested in your products....\n...By using Instagram's automatic targeting feature, you can reach people who are likely to be interested in your sustainable living and eco-friendly products, even if they don't explicitly express interest in those topics. This can help you increase brand awareness, drive website traffic, and generate sales. If you have any questions or need further guidance, feel free to ask!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Instagram ads; Concept named Instagram ads.\n- entity entity:<1> [PERSON]: Emma; Person named Emma.\n- entity entity:<2> [PROJECT]: User's sustainable living and eco-friendly products project; Project named User's sustainable living and eco-friendly products project.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_468eb063",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I meet Emma?\n\n                                Question date:\n                                2023/04/20 (Thu) 09:29\n\n                                Noisy expected-answer label:\n                                9 days ago. 10 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_468eb063\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-7d7c8d63aab2-claim-9 [ACTIVE] attended_event family=attended_event: The user had lunch with Emma, a freelance writer, on 2023-04-11.; scope=User's social or professional meetings from the 2023-04-11 imported chat session.; context=\"The user said the lunch catch-up occurred today in a session dated 2023-04-11.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I catch up with Emma, a freelance writer, over lunch today\"\n- claim hot-path-7d7c8d63aab2-claim-10 [ACTIVE] works_on_project family=works_on_project: Emma is a potential collaborator on the user's sustainable living and eco-friendly products project.; scope=Emma's association with the user's project from the 2023-04-11 imported chat session.; context=\"The user described Emma as a freelance writer and potential collaborator for the project they were working on; later turns clarify the project domain as sustainable living and eco-friendly products.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"she's now a potential collaborator for a project I'm working on\"\n- claim hot-path-7d7c8d63aab2-claim-17 [ACTIVE] has_goal family=has_goal: The user wants to learn how to target Instagram ads to people interested in sustainable living and eco-friendly products using interests and behaviors.; scope=User's reusable learning interests around Instagram ad targeting for their project domain from the 2023-04-11 imported chat session.; context=\"The user asked this after saying Emma had success with targeting specific interests and behaviors.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Can you show me how to target my ads to people who are interested in sustainable living and eco-friendly products?\"\n- claim hot-path-7d7c8d63aab2-claim-15 [ACTIVE] has_goal family=has_goal: The user wants to learn more about Instagram ads and how to set up an Instagram ad campaign.; scope=User's reusable learning interests around Instagram advertising from the 2023-04-11 imported chat session.; context=\"The user became interested in Instagram ads after Emma said she had seen great results with them.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I'm also interested in learning more about Instagram ads, since Emma mentioned she's seen some great results with them. Can you show me some tutorials on how to set up an Instagram ad campaign?\"\n- claim hot-path-7d7c8d63aab2-claim-16 [ACTIVE] has_experience_with family=has_experience_with: Emma has seen great results with Instagram ads.; scope=Emma's advertising experience as reported by the user in the 2023-04-11 imported chat session.; context=\"The user cited Emma's experience as a reason for wanting to learn about Instagram ads.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Emma mentioned she's seen some great results with them\"\n- claim hot-path-7d7c8d63aab2-claim-18 [ACTIVE] has_goal family=has_goal: The user wants to learn how to use Instagram automatic targeting to reach people likely to be interested in their sustainable living and eco-friendly products.; scope=User's reusable learning interests around Instagram automatic targeting for their project domain from the 2023-04-11 imported chat session.; context=\"The user asked about Instagram's automatic targeting feature after learning about Instagram targeting options.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Can you show me how to use it to reach people who are likely to be interested in my sustainable living and eco-friendly products?\"\n- claim hot-path-7d7c8d63aab2-claim-14 [ACTIVE] has_goal family=has_goal: The user wants to learn how to use Facebook Audience Insights to gather information about their target audience.; scope=User's reusable learning interests around Facebook ad targeting from the 2023-04-11 imported chat session.; context=\"The user asked for a demonstration of Facebook Audience Insights in the Facebook ads learning thread.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I'd like to know more about Facebook's Audience Insights tool, can you show me how to use it to gather information about my target audience?\"\n- claim hot-path-7d7c8d63aab2-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to learn more about Facebook ads, including how to set up a campaign and target the right audience.; scope=User's reusable learning interests around social media advertising from the 2023-04-11 imported chat session.; context=\"The user asked for tutorials on Facebook ads in the 2023-04-11 imported chat session.\"; evidence=DIRECT source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"I'm actually interested in learning more about Facebook ads, can you show me some tutorials on how to set up a campaign and target the right audience?\"\n\n            Retrieved notes:\n            - note hot-path-7d7c8d63aab2-note-6 [CONTEXT/ACTIVE]: Emma as Potential Project Collaborator Influencing Instagram Ads Exploration; Emma, described as a freelance writer and potential collaborator on the user's project, influenced the user's interest in Instagram ads because she reportedly had seen strong results with them, especially targeting interests and behaviors.; scope=Context about Emma's role in the user's project and advertising exploration; evidence=SUMMARIZED source=external:provided-text:f8625d29b2b440a3b16392d7f98e507b quote=\"Emma, a freelance writer, over lunch today and she's now a potential collaborator for a project I'm working on.\"\n\n            Retrieved evidence:\n            - source external:provided-text:f8625d29b2b440a3b16392d7f98e507b [external_record ref=longmemeval:gpt4_468eb063:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/11 (Tue) 06:06\nTranscript:\nuser: I'm looking for some tips on social media advertising. I just attended a digital marketing workshop last week and the speaker, Rachel Lee, mentioned some interesting strategies. I was wondering if you could recommend some online resources or tutorials on the topic. By the way, I catch up with Emma, a freelance writer, over lunch today and she's now a potential collaborator for a project I'm working on....\n...As for your project, it's great that you've connected with Emma, the freelance writer. Collaborations can lead to exciting opportunities!\n\nFeel free to ask me any specific questions about social media advertising, and I'll do my best to help.\nuser: I'm actually interested in learning more about Facebook ads, can you show me some tutorials on how to set up a campaign and target the right audience?...\n...3. **AdEspresso's Facebook Targeting Tutorial**: AdEspresso's tutorial provides advanced targeting strategies, including how to use lookalike audiences, interest targeting, and behavioral targeting....\n...2. **Know your target audience**: Use Facebook's Audience Insights tool and custom audiences to target the right people....\n...I hope these resources help you get started with Facebook ads and targeting the right audience! If you have any specific questions or need further guidance, feel free to ask.\nuser: I'd like to know more about Facebook's Audience Insights tool, can you show me how to use it to gather information about my target audience?...\n...1. **Identify target audience characteristics**: Use demographics, interests, and behaviors to create targeted ad groups....\n...3. **Regularly update your insights**: Refresh your insights regularly to ensure you're targeting the most up-to-date audience information....\n...By following these steps and using Facebook's Audience Insights tool, you'll gain a deeper understanding of your target audience and create more effective ad campaigns. If you have any questions or need further guidance, feel free to ask!\nuser: I'm also interested in learning more about Instagram ads, since Emma mentioned she's seen some great results with them. Can you show me some tutorials on how to set up an Instagram ad campaign?...\n...I hope these resources help you get started with Instagram ads! If you have any questions or need further guidance, feel free to ask.\nuser: I'd like to know more about Instagram's targeting options, especially since Emma mentioned she's had success with targeting specific interests and behaviors. Can you show me how to target my ads to people who are interested in sustainable living and eco-friendly products?...\n...By using these targeting options, you can reach people who are interested in sustainable living and eco-friendly products, increasing the likelihood of converting them into customers. If you have any questions or need further guidance, feel free to ask!\nuser: I'd like to know more about Instagram's automatic targeting feature. Can you show me how to use it to reach people who are likely to be interested in my sustainable living and eco-friendly products?...\n...3. **Demographics**: Instagram uses demographic data, such as age, gender, and location, to target users who are likely to be interested in your products....\n...By using Instagram's automatic targeting feature, you can reach people who are likely to be interested in your sustainable living and eco-friendly products, even if they don't explicitly express interest in those topics. This can help you increase brand awareness, drive website traffic, and generate sales. If you have any questions or need further guidance, feel free to ask!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Instagram ads; Concept named Instagram ads.\n- entity entity:<1> [PERSON]: Emma; Person named Emma.\n- entity entity:<2> [PROJECT]: User's sustainable living and eco-friendly products project; Project named User's sustainable living and eco-friendly products project.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_468eb063",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You met Emma 9 days ago (on 2023-04-11).\",\"reason\":\"The memory states the user had lunch with Emma on 2023-04-11, which is 9 days before the 2023-04-20 question date.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3114,
+                "completionTokens": 137,
+                "thinkingTokens": 57,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

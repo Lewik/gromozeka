@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "95d7d80d372b8c294c3e5ab112ad7b6cdd1c5633b81aa0d3252d362012237270",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_d6585ce8\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/08 (Sat) 17:21\nTranscript:\nuser: I'm trying to find some new music to listen to. I've been to a lot of great concerts lately, like the Billie Eilish show in Philly. But in between those big events, I've also really enjoyed some smaller local music nights, like a jazz night at a local bar today, enjoying live music in a more intimate setting. Do you have any recommendations for new artists or albums I might like?\nassistant: What a fantastic music-filled life you're living! I'd be happy to help you discover some new tunes. Based on your eclectic taste in concerts and music nights, I'll suggest a mix of artists and albums that might resonate with you. Keep in mind that these are just starting points, and you can always explore further based on your preferences.\n\n**Pop/Electronic**\n\n1. **Tove Lo** - If you enjoyed Billie Eilish's edgy pop, you might like Tove Lo's dark, atmospheric sound. Try her album \"Sunshine Kitty\".\n2. **Shura** - This British singer-songwriter blends indie pop with electronic elements. Check out her album \"forevher\".\n3. **MØ** - A Danish electropop artist with a similar vibe to Billie Eilish. Give her album \"Forever Neverland\" a spin.\n\n**Rock/Indie**\n\n1. **The 1975** - If you enjoyed Queen's theatricality, you might appreciate The 1975's blend of rock, pop, and electronica. Try their album \"A Brief Inquiry into Online Relationships\".\n2. **Arlo Parks** - A British indie-rock artist with a poetic, introspective style. Check out her album \"Collapsed in Sunbeams\".\n3. **Yungblud** - A high-energy, genre-bending artist who combines rock, punk, and electronic elements. Give his album \"Weird!\" a listen.\n\n**Jazz/Folk**\n\n1. **Samara Joy** - A young, talented jazz singer with a soulful voice. Her album \"Samara Joy\" is a great introduction to her style.\n2. **Cécile McLorin Salvant** - A Grammy-winning jazz vocalist known for her interpretive skills and eclectic repertoire. Try her album \"The Window\".\n3. **Lucy Dacus** - A folk-rock artist with a introspective, poetic approach. Check out her album \"Home Video\".\n\n**Miscellaneous**\n\n1. **Tameca Jones** - A soulful, genre-bending artist who blends R&B, rock, and electronic elements. Try her album \"Leave It Alone\".\n2. **Rex Orange County** - A British singer-songwriter who combines indie rock, pop, and electronic elements. Check out his album \"Pony\".\n3. **Vagabon** - A Cameroonian-American indie-electronic artist with a unique, atmospheric sound. Give her album \"Vagabon\" a listen.\n\nExplore these recommendations and see what resonates with you. You can also try music streaming platforms like Spotify, Apple Music, or Tidal, which often feature playlists and radio stations curated around specific genres or moods. Happy listening!\nuser: I'll definitely check out these recommendations! I'm especially interested in the jazz section since I had such a great time at the jazz night at the local bar today. Do you know of any good jazz clubs or live music venues in my area that I might want to check out?\nassistant: I'm glad you're excited about the jazz recommendations! Unfortunately, I'm a large language model, I don't have access to your location, so I can't provide specific recommendations for jazz clubs or live music venues in your area. However, I can suggest a few ways to find great jazz spots near you:\n\n1. **Online Search**: Simply type \"jazz clubs near me\" or \"live music venues near me\" in your favorite search engine, and it should give you a list of options in your area.\n2. **Google Maps**: Use Google Maps to search for \"jazz clubs\" or \"live music venues\" in your city or neighborhood. You can also filter the results by rating, distance, and hours of operation.\n3. **Local Music Blogs or Websites**: Look for local music blogs, websites, or publications that cover the jazz scene in your area. They often feature reviews, interviews, and event listings for jazz clubs and live music venues.\n4. **Social Media**: Follow local jazz musicians, music promoters, or music enthusiasts on social media platforms like Facebook, Instagram, or Twitter. They often post about upcoming shows, events, and new venues.\n5. **Ask Around**: Ask your friends, colleagues, or acquaintances who share your interest in jazz about their favorite jazz spots. Word of mouth is a great way to discover hidden gems!\n6. **Jazz Organizations or Associations**: Look for local jazz organizations, associations, or societies in your area. They often provide information on jazz events, clubs, and venues.\n\nSome popular jazz clubs and live music venues in major cities that might serve as inspiration:\n\n* Blue Note Jazz Club (New York City)\n* The Village Vanguard (New York City)\n* The Jazz Standard (New York City)\n* The Green Mill (Chicago)\n* The Velvet Note (Atlanta)\n* The Blue Whale (Los Angeles)\n* SFJAZZ (San Francisco)\n\nRemember to always check the schedule, cover charges, and dress code (if any) before heading out to a jazz club or live music venue. Enjoy exploring the jazz scene in your area!\nuser: That's really helpful! I'll definitely try out those methods to find some great jazz spots near me. By the way, do you know of any popular jazz festivals or events that happen around this time of the year? I'd love to check out some outdoor jazz events if possible.\nassistant: You're in luck! Summer is a great time for outdoor jazz festivals and events. While I don't have real-time information, I can give you some popular jazz festivals and events that usually take place around this time of the year:\n\n**June to August:**\n\n1. **Montreal International Jazz Festival** (Montreal, Canada): One of the largest and most renowned jazz festivals in the world, featuring over 3,000 artists from around the globe. ( Late June to Early July)\n2. **Newport Jazz Festival** (Newport, RI, USA): A historic festival that has been running for over 60 years, featuring a mix of traditional and modern jazz. (Early August)\n3. **Detroit Jazz Festival** (Detroit, MI, USA): A free, four-day festival featuring a diverse lineup of jazz musicians. (Labor Day Weekend)\n4. **Charlie Parker Jazz Festival** (New York City, USA): A free, outdoor festival celebrating the legacy of Charlie Parker, featuring performances in Tompkins Square Park and Marcus Garvey Park. (Late August)\n5. **San Francisco Jazz Festival** (San Francisco, CA, USA): A month-long festival featuring a range of jazz performances, from traditional to contemporary. (June to July)\n\n**Regional and Local Events:**\n\n1. **Jazz in the Park** (Various Cities, USA): A summer concert series featuring local and national jazz musicians, often held in parks and other outdoor venues.\n2. **Jazz on the Green** (Various Cities, USA): A summer concert series featuring jazz performances in outdoor settings, such as parks, gardens, or plazas.\n3. **Summer Jazz Series** (Various Cities, USA): Many cities offer summer jazz series, featuring outdoor concerts and performances in parks, gardens, or other public spaces.\n\nThese are just a few examples, and there are many more festivals and events happening around the world. I recommend searching online for \"jazz festivals near me\" or \"outdoor jazz events [your city/state]\" to find events in your area.\n\nRemember to check the dates, lineups, and ticket information (if applicable) for each event before attending. Enjoy the outdoor jazz experience!\nuser: I'll definitely search for jazz festivals and events in my area. I'm excited to check out some outdoor jazz concerts this summer. By the way, I've been thinking about learning to play the saxophone. Do you think it's a good instrument for a beginner, and are there any online resources you'd recommend for learning?\nassistant: Learning to play the saxophone is an excellent idea! The saxophone is a wonderful instrument, and with dedication and practice, you can become a skilled player. As a beginner, you'll face some challenges, but with the right resources and mindset, you'll be making sweet music in no time.\n\n**Is the saxophone a good instrument for a beginner?**\n\nThe saxophone can be a bit challenging for beginners, especially when it comes to developing proper breath control, embouchure (the position and shape of your lips, facial muscles, and teeth on the mouthpiece), and finger dexterity. However, with consistent practice and patience, you can overcome these initial hurdles.\n\nHere are some pros and cons to consider:\n\nPros:\n\n* The saxophone is a versatile instrument, suitable for various genres, from jazz and blues to rock and pop.\n* It's a great instrument for improvisation and expression.\n* The saxophone has a relatively limited range compared to other woodwind instruments, making it easier to learn and memorize notes.\n\nCons:\n\n* Developing proper breath control and embouchure can take time and effort.\n* The saxophone requires a certain level of physical endurance, as you'll need to hold the instrument and maintain a good posture.\n* The fingerings can be complex, especially for beginners.\n\n**Online resources for learning saxophone:**\n\nThere are many online resources available to help you learn saxophone. Here are some popular ones:\n\n1. **YouTube Channels:**\n\t* **Sax Lessons 365**: Offers a wide range of lessons, from beginner to advanced, covering various styles and techniques.\n\t* **Saxophone Lessons To Go**: Provides beginner-friendly lessons, with a focus on jazz and improvisation.\n\t* **The Saxophonist**: Covers various aspects of saxophone playing, including technique, theory, and improvisation.\n2. **Online Lessons and Courses:**\n\t* **Saxophone Lessons Online**: Offers private and group lessons, as well as courses and workshops, taught by experienced instructors.\n\t* **ArtistWorks**: Provides online lessons and courses taught by renowned saxophonists, including Eric Marienthal and Randy Brecker.\n\t* **TrueFire**: Offers a range of saxophone courses and lessons, covering various styles and techniques.\n3. **Apps and Software:**\n\t* **Freshumi**: A saxophone learning app that provides interactive lessons, exercises, and songs to learn.\n\t* **Saxophone Fingering Chart**: A helpful app for learning and referencing saxophone fingerings.\n\t* **Transcribe!**: A software that allows you to slow down and loop sections of songs to help you learn and transcribe solos.\n4. **Websites and Forums:**\n\t* **Saxontheweb**: A comprehensive online community and resource for saxophonists, featuring lessons, articles, and forums.\n\t* **Saxophone Forum**: A dedicated forum for saxophonists, where you can ask questions, share tips, and learn from others.\n\nRemember that while online resources are helpful, they shouldn't replace practice and dedication. Find a good teacher, set achievable goals, and enjoy the process of learning this amazing instrument!\nuser: I'm really excited to start learning the saxophone! I think I'll start with some online lessons and YouTube tutorials to get a feel for the instrument. Do you think it's important to invest in a good quality saxophone, even as a beginner? And are there any specific brands or models that you would recommend for a beginner?\nassistant: Congratulations on taking the first step towards learning the saxophone!\n\n**Investing in a good quality saxophone:**\n\nAs a beginner, it's essential to invest in a good quality saxophone that suits your needs and budget. A well-made instrument can make a significant difference in your learning experience and overall sound. Here's why:\n\n1. **Tone and playability:** A good quality saxophone will produce a better tone, making it more enjoyable to play and listen to. It will also be more responsive and easier to play, allowing you to focus on developing your skills.\n2. **Durability and maintenance:** A well-made saxophone will require less maintenance and be more durable, saving you time and money in the long run.\n3. **Inspiration and motivation:** Playing a good quality saxophone can inspire you to practice more and enjoy the learning process, which is crucial for progress and motivation.\n\n**Recommendations for beginners:**\n\nAs a beginner, you don't need to invest in a top-of-the-line saxophone, but you should aim for a good quality instrument that fits your budget. Here are some recommendations:\n\n1. **Student-level saxophones:** Look for saxophones specifically designed for students or beginners. These instruments are often more affordable and offer good quality at a lower price point.\n2. **Brands:** Some popular brands for beginners include:\n\t* **Yamaha:** Known for their consistent quality and durability, Yamaha offers a range of student-level saxophones.\n\t* **Jupiter:** Jupiter saxophones are popular among students and professionals alike, offering good quality and value for money.\n\t* **Conn-Selmer:** Conn-Selmer is a well-established brand that offers a range of saxophones, including student-level models.\n3. **Models:** Some specific models to consider:\n\t* **Yamaha YAS-26:** A popular student-level alto saxophone known for its good tone and playability.\n\t* **Jupiter JAS1100:** A well-regarded student-level alto saxophone that offers good quality at an affordable price.\n\t* **Conn-Selmer AS711:** A student-level alto saxophone that's known for its durability and ease of playability.\n\n**Renting or buying:**\n\nIf you're not sure about committing to a purchase, consider renting a saxophone from a music store or online retailer. This can be a great way to try out the instrument and see if it's right for you before investing in a purchase.\n\n**Additional costs:**\n\nRemember to factor in additional costs, such as:\n\n* Mouthpiece: You may want to invest in a good quality mouthpiece that suits your playing style.\n* Reed: You'll need to purchase reeds regularly, as they wear out over time.\n* Case: A good quality case will protect your saxophone and make it easier to transport.\n* Maintenance: You may need to budget for occasional maintenance and repairs.\n\nI hope this helps you get started on your saxophone journey!\nuser: I'll definitely consider investing in a good quality saxophone and factor in the additional costs. I'll also look into renting or buying options to see what works best for me. Thanks for the recommendations and advice! By the way, do you think it's important to find a good teacher or instructor to guide me in my learning process?\nassistant: **Finding a good teacher or instructor:**\n\nAbsolutely! Working with a good teacher or instructor can make a huge difference in your learning process. Here's why:\n\n1. **Personalized guidance:** A teacher can provide personalized guidance, correcting any bad habits or techniques that may develop early on.\n2. **Customized lessons:** A teacher can tailor lessons to your learning style, goals, and progress, helping you improve faster and more efficiently.\n3. **Accountability and motivation:** Regular lessons can help you stay motivated and accountable, ensuring you practice consistently and make progress.\n4. **Instant feedback:** A teacher can provide instant feedback on your playing, helping you identify areas for improvement and correct mistakes.\n5. **Expanding your knowledge:** A good teacher can introduce you to new techniques, styles, and genres, broadening your musical knowledge and appreciation.\n\n**Types of teachers or instructors:**\n\nYou can consider the following options:\n\n1. **Private lessons:** One-on-one lessons with a teacher who can provide personalized attention and guidance.\n2. **Group lessons:** Group lessons can be a cost-effective option, allowing you to learn with others and benefit from peer feedback.\n3. **Online lessons:** Online lessons can be a convenient option, especially if you have a busy schedule or prefer learning from home.\n\n**Finding a teacher:**\n\nTo find a good teacher, you can:\n\n1. **Ask for referrals:** Ask friends, family, or fellow musicians for recommendations.\n2. **Online search:** Search online for teachers in your area, using platforms like Lessons.com, TakeLessons, or Thumbtack.\n3. **Music stores:** Visit local music stores or schools and ask about their teaching staff and lesson programs.\n4. **Professional organizations:** Look for professional organizations, such as the National Association of Teachers of Singing (NATS) or the Music Teachers National Association (MTNA), which can connect you with qualified teachers.\n\n**What to look for in a teacher:**\n\nWhen selecting a teacher, consider the following:\n\n1. **Qualifications:** Look for teachers with formal education and training in music, as well as experience teaching saxophone.\n2. **Teaching style:** Ensure the teacher's style aligns with your learning style and goals.\n3. **Communication:** Choose a teacher who communicates effectively, providing clear instructions and feedback.\n4. **Patience and encouragement:** A good teacher should be patient and encouraging, helping you build confidence and stay motivated.\n\nRemember, finding the right teacher is an important investment in your learning process. Take your time, and don't be afraid to try out a few teachers before committing to one.\n\n        Candidate notes:\n        [0] type=PLAN title=Saxophone beginner-learning plan and resource path summary=The user is excited to start learning the saxophone and intends to begin with online lessons and YouTube tutorials, while also considering a teacher for personalized feedback, accountability, and technique correction. scope=User's saxophone-learning approach from the 2023-04-08 music and instrument discussion entities=entity:<0>,entity:<1> keywords=saxophone,online lessons,YouTube tutorials,teacher,beginner instrument,practice tags=music_learning,saxophone,beginner_plan evidence=I think I'll start with some online lessons and YouTube tutorials to get a feel for the instrument.\n[1] type=CONTEXT title=Beginner saxophone buying and rental considerations summary=For starting saxophone, the reusable guidance was to prioritize a good-quality student-level alto saxophone, consider renting before buying, and budget for accessories and maintenance such as mouthpiece, reeds, case, and repairs. Recommended beginner brands/models included Yamaha, Jupiter, Conn-Selmer, Yamaha YAS-26, Jupiter JAS1100, and Conn-Selmer AS711. scope=Beginner saxophone purchase/rental guidance discussed for the user's saxophone-learning plans on 2023-04-08 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7> keywords=saxophone,student-level saxophone,Yamaha,Jupiter,Conn-Selmer,Yamaha YAS-26,Jupiter JAS1100,Conn-Selmer AS711,renting,mouthpiece,reeds tags=saxophone,instrument_purchase,beginner_gear evidence=I'll definitely consider investing in a good quality saxophone and factor in the additional costs. I'll also look into renting or buying options\n[2] type=CONTEXT title=Outdoor jazz discovery interest after local jazz night summary=After enjoying an intimate jazz night at a local bar, the user became especially interested in jazz recommendations, finding jazz clubs or live music venues nearby, and checking out outdoor jazz concerts or festivals during the summer. scope=User's jazz and outdoor live-music discovery context from the 2023-04-08 session entities=entity:<0>,entity:<8> keywords=jazz night,local bar,jazz clubs,live music venues,outdoor jazz,jazz festivals,summer concerts tags=music_discovery,jazz,live_music,outdoor_events evidence=I'm especially interested in the jazz section since I had such a great time at the jazz night at the local bar today.\n\n        Existing active notes:\n        id=hot-path-228218eb1d80-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Music discovery through festivals and low-key local events summary=The user’s music discovery pattern combines larger indie experiences, such as a Brooklyn music festival with friends, with interest in lower-key local events like free outdoor park concerts and jazz nights at local bars. Recommendations should emphasize new indie or psychedelic indie-rock artists, strong live performers, and practical ways to discover artists in intimate local settings. scope=User's reusable music discovery and live-event recommendation context from the 2023-04-01 session keywords=indie music,psychedelic indie-rock,local music events,Brooklyn music festival,free outdoor concert series,jazz night,live music discovery tags=music_discovery,live_music,indie,local_events useCount=0\nid=hot-path-27c439f6643c-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Billie Eilish concert memorabilia framing plan summary=The user planned to frame a ticket stub from the 2023-03-18 Billie Eilish concert at Wells Fargo Center in Philadelphia together with a selfie of the user and the user's sister taken in front of the venue before the show, capturing their excitement and anticipation. scope=User's Billie Eilish concert memorabilia and photo display plan from the 2023-03-18 Wells Fargo Center concert keywords=Billie Eilish,concert ticket stub,Wells Fargo Center,Philadelphia,sister,selfie,framing,memorabilia tags=concert_memorabilia,framing_plan,personal_memory useCount=0\nid=hot-path-228218eb1d80-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Glass Animals as live-performance anchor for psychedelic indie-rock recommendations summary=After seeing Glass Animals live at the Brooklyn music festival and finding them amazing, the user wanted more of their music plus similar psychedelic indie-rock bands, especially artists known for strong live performances. Future recommendations in this space should use Glass Animals and energetic/immersive live shows as anchors. scope=User's psychedelic indie-rock and live-performance recommendation context from the 2023-04-01 Brooklyn festival discussion keywords=Glass Animals,psychedelic indie-rock,live performances,Brooklyn music festival,similar bands,strong live presence tags=music_recommendations,psychedelic_indie_rock,live_music useCount=0\nid=hot-path-27c439f6643c-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Photo printing options chosen for concert frame summary=For printing the photo to accompany the Billie Eilish concert ticket stub, the user leaned toward Shutterfly or Snapfish because they seemed to have good reviews and a broad range of printing options. scope=User's intended photo printing services for the Billie Eilish concert frame project keywords=Shutterfly,Snapfish,photo printing,concert frame,Billie Eilish tags=photo_printing,printing_plan,concert_memorabilia useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_d6585ce8",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:3172add823e64f1d19713ece4051344a"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_d6585ce8\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/08 (Sat) 17:21\nTranscript:\nuser: I'm trying to find some new music to listen to. I've been to a lot of great concerts lately, like the Billie Eilish show in Philly. But in between those big events, I've also really enjoyed some smaller local music nights, like a jazz night at a local bar today, enjoying live music in a more intimate setting. Do you have any recommendations for new artists or albums I might like?\nassistant: What a fantastic music-filled life you're living! I'd be happy to help you discover some new tunes. Based on your eclectic taste in concerts and music nights, I'll suggest a mix of artists and albums that might resonate with you. Keep in mind that these are just starting points, and you can always explore further based on your preferences.\n\n**Pop/Electronic**\n\n1. **Tove Lo** - If you enjoyed Billie Eilish's edgy pop, you might like Tove Lo's dark, atmospheric sound. Try her album \"Sunshine Kitty\".\n2. **Shura** - This British singer-songwriter blends indie pop with electronic elements. Check out her album \"forevher\".\n3. **MØ** - A Danish electropop artist with a similar vibe to Billie Eilish. Give her album \"Forever Neverland\" a spin.\n\n**Rock/Indie**\n\n1. **The 1975** - If you enjoyed Queen's theatricality, you might appreciate The 1975's blend of rock, pop, and electronica. Try their album \"A Brief Inquiry into Online Relationships\".\n2. **Arlo Parks** - A British indie-rock artist with a poetic, introspective style. Check out her album \"Collapsed in Sunbeams\".\n3. **Yungblud** - A high-energy, genre-bending artist who combines rock, punk, and electronic elements. Give his album \"Weird!\" a listen.\n\n**Jazz/Folk**\n\n1. **Samara Joy** - A young, talented jazz singer with a soulful voice. Her album \"Samara Joy\" is a great introduction to her style.\n2. **Cécile McLorin Salvant** - A Grammy-winning jazz vocalist known for her interpretive skills and eclectic repertoire. Try her album \"The Window\".\n3. **Lucy Dacus** - A folk-rock artist with a introspective, poetic approach. Check out her album \"Home Video\".\n\n**Miscellaneous**\n\n1. **Tameca Jones** - A soulful, genre-bending artist who blends R&B, rock, and electronic elements. Try her album \"Leave It Alone\".\n2. **Rex Orange County** - A British singer-songwriter who combines indie rock, pop, and electronic elements. Check out his album \"Pony\".\n3. **Vagabon** - A Cameroonian-American indie-electronic artist with a unique, atmospheric sound. Give her album \"Vagabon\" a listen.\n\nExplore these recommendations and see what resonates with you. You can also try music streaming platforms like Spotify, Apple Music, or Tidal, which often feature playlists and radio stations curated around specific genres or moods. Happy listening!\nuser: I'll definitely check out these recommendations! I'm especially interested in the jazz section since I had such a great time at the jazz night at the local bar today. Do you know of any good jazz clubs or live music venues in my area that I might want to check out?\nassistant: I'm glad you're excited about the jazz recommendations! Unfortunately, I'm a large language model, I don't have access to your location, so I can't provide specific recommendations for jazz clubs or live music venues in your area. However, I can suggest a few ways to find great jazz spots near you:\n\n1. **Online Search**: Simply type \"jazz clubs near me\" or \"live music venues near me\" in your favorite search engine, and it should give you a list of options in your area.\n2. **Google Maps**: Use Google Maps to search for \"jazz clubs\" or \"live music venues\" in your city or neighborhood. You can also filter the results by rating, distance, and hours of operation.\n3. **Local Music Blogs or Websites**: Look for local music blogs, websites, or publications that cover the jazz scene in your area. They often feature reviews, interviews, and event listings for jazz clubs and live music venues.\n4. **Social Media**: Follow local jazz musicians, music promoters, or music enthusiasts on social media platforms like Facebook, Instagram, or Twitter. They often post about upcoming shows, events, and new venues.\n5. **Ask Around**: Ask your friends, colleagues, or acquaintances who share your interest in jazz about their favorite jazz spots. Word of mouth is a great way to discover hidden gems!\n6. **Jazz Organizations or Associations**: Look for local jazz organizations, associations, or societies in your area. They often provide information on jazz events, clubs, and venues.\n\nSome popular jazz clubs and live music venues in major cities that might serve as inspiration:\n\n* Blue Note Jazz Club (New York City)\n* The Village Vanguard (New York City)\n* The Jazz Standard (New York City)\n* The Green Mill (Chicago)\n* The Velvet Note (Atlanta)\n* The Blue Whale (Los Angeles)\n* SFJAZZ (San Francisco)\n\nRemember to always check the schedule, cover charges, and dress code (if any) before heading out to a jazz club or live music venue. Enjoy exploring the jazz scene in your area!\nuser: That's really helpful! I'll definitely try out those methods to find some great jazz spots near me. By the way, do you know of any popular jazz festivals or events that happen around this time of the year? I'd love to check out some outdoor jazz events if possible.\nassistant: You're in luck! Summer is a great time for outdoor jazz festivals and events. While I don't have real-time information, I can give you some popular jazz festivals and events that usually take place around this time of the year:\n\n**June to August:**\n\n1. **Montreal International Jazz Festival** (Montreal, Canada): One of the largest and most renowned jazz festivals in the world, featuring over 3,000 artists from around the globe. ( Late June to Early July)\n2. **Newport Jazz Festival** (Newport, RI, USA): A historic festival that has been running for over 60 years, featuring a mix of traditional and modern jazz. (Early August)\n3. **Detroit Jazz Festival** (Detroit, MI, USA): A free, four-day festival featuring a diverse lineup of jazz musicians. (Labor Day Weekend)\n4. **Charlie Parker Jazz Festival** (New York City, USA): A free, outdoor festival celebrating the legacy of Charlie Parker, featuring performances in Tompkins Square Park and Marcus Garvey Park. (Late August)\n5. **San Francisco Jazz Festival** (San Francisco, CA, USA): A month-long festival featuring a range of jazz performances, from traditional to contemporary. (June to July)\n\n**Regional and Local Events:**\n\n1. **Jazz in the Park** (Various Cities, USA): A summer concert series featuring local and national jazz musicians, often held in parks and other outdoor venues.\n2. **Jazz on the Green** (Various Cities, USA): A summer concert series featuring jazz performances in outdoor settings, such as parks, gardens, or plazas.\n3. **Summer Jazz Series** (Various Cities, USA): Many cities offer summer jazz series, featuring outdoor concerts and performances in parks, gardens, or other public spaces.\n\nThese are just a few examples, and there are many more festivals and events happening around the world. I recommend searching online for \"jazz festivals near me\" or \"outdoor jazz events [your city/state]\" to find events in your area.\n\nRemember to check the dates, lineups, and ticket information (if applicable) for each event before attending. Enjoy the outdoor jazz experience!\nuser: I'll definitely search for jazz festivals and events in my area. I'm excited to check out some outdoor jazz concerts this summer. By the way, I've been thinking about learning to play the saxophone. Do you think it's a good instrument for a beginner, and are there any online resources you'd recommend for learning?\nassistant: Learning to play the saxophone is an excellent idea! The saxophone is a wonderful instrument, and with dedication and practice, you can become a skilled player. As a beginner, you'll face some challenges, but with the right resources and mindset, you'll be making sweet music in no time.\n\n**Is the saxophone a good instrument for a beginner?**\n\nThe saxophone can be a bit challenging for beginners, especially when it comes to developing proper breath control, embouchure (the position and shape of your lips, facial muscles, and teeth on the mouthpiece), and finger dexterity. However, with consistent practice and patience, you can overcome these initial hurdles.\n\nHere are some pros and cons to consider:\n\nPros:\n\n* The saxophone is a versatile instrument, suitable for various genres, from jazz and blues to rock and pop.\n* It's a great instrument for improvisation and expression.\n* The saxophone has a relatively limited range compared to other woodwind instruments, making it easier to learn and memorize notes.\n\nCons:\n\n* Developing proper breath control and embouchure can take time and effort.\n* The saxophone requires a certain level of physical endurance, as you'll need to hold the instrument and maintain a good posture.\n* The fingerings can be complex, especially for beginners.\n\n**Online resources for learning saxophone:**\n\nThere are many online resources available to help you learn saxophone. Here are some popular ones:\n\n1. **YouTube Channels:**\n\t* **Sax Lessons 365**: Offers a wide range of lessons, from beginner to advanced, covering various styles and techniques.\n\t* **Saxophone Lessons To Go**: Provides beginner-friendly lessons, with a focus on jazz and improvisation.\n\t* **The Saxophonist**: Covers various aspects of saxophone playing, including technique, theory, and improvisation.\n2. **Online Lessons and Courses:**\n\t* **Saxophone Lessons Online**: Offers private and group lessons, as well as courses and workshops, taught by experienced instructors.\n\t* **ArtistWorks**: Provides online lessons and courses taught by renowned saxophonists, including Eric Marienthal and Randy Brecker.\n\t* **TrueFire**: Offers a range of saxophone courses and lessons, covering various styles and techniques.\n3. **Apps and Software:**\n\t* **Freshumi**: A saxophone learning app that provides interactive lessons, exercises, and songs to learn.\n\t* **Saxophone Fingering Chart**: A helpful app for learning and referencing saxophone fingerings.\n\t* **Transcribe!**: A software that allows you to slow down and loop sections of songs to help you learn and transcribe solos.\n4. **Websites and Forums:**\n\t* **Saxontheweb**: A comprehensive online community and resource for saxophonists, featuring lessons, articles, and forums.\n\t* **Saxophone Forum**: A dedicated forum for saxophonists, where you can ask questions, share tips, and learn from others.\n\nRemember that while online resources are helpful, they shouldn't replace practice and dedication. Find a good teacher, set achievable goals, and enjoy the process of learning this amazing instrument!\nuser: I'm really excited to start learning the saxophone! I think I'll start with some online lessons and YouTube tutorials to get a feel for the instrument. Do you think it's important to invest in a good quality saxophone, even as a beginner? And are there any specific brands or models that you would recommend for a beginner?\nassistant: Congratulations on taking the first step towards learning the saxophone!\n\n**Investing in a good quality saxophone:**\n\nAs a beginner, it's essential to invest in a good quality saxophone that suits your needs and budget. A well-made instrument can make a significant difference in your learning experience and overall sound. Here's why:\n\n1. **Tone and playability:** A good quality saxophone will produce a better tone, making it more enjoyable to play and listen to. It will also be more responsive and easier to play, allowing you to focus on developing your skills.\n2. **Durability and maintenance:** A well-made saxophone will require less maintenance and be more durable, saving you time and money in the long run.\n3. **Inspiration and motivation:** Playing a good quality saxophone can inspire you to practice more and enjoy the learning process, which is crucial for progress and motivation.\n\n**Recommendations for beginners:**\n\nAs a beginner, you don't need to invest in a top-of-the-line saxophone, but you should aim for a good quality instrument that fits your budget. Here are some recommendations:\n\n1. **Student-level saxophones:** Look for saxophones specifically designed for students or beginners. These instruments are often more affordable and offer good quality at a lower price point.\n2. **Brands:** Some popular brands for beginners include:\n\t* **Yamaha:** Known for their consistent quality and durability, Yamaha offers a range of student-level saxophones.\n\t* **Jupiter:** Jupiter saxophones are popular among students and professionals alike, offering good quality and value for money.\n\t* **Conn-Selmer:** Conn-Selmer is a well-established brand that offers a range of saxophones, including student-level models.\n3. **Models:** Some specific models to consider:\n\t* **Yamaha YAS-26:** A popular student-level alto saxophone known for its good tone and playability.\n\t* **Jupiter JAS1100:** A well-regarded student-level alto saxophone that offers good quality at an affordable price.\n\t* **Conn-Selmer AS711:** A student-level alto saxophone that's known for its durability and ease of playability.\n\n**Renting or buying:**\n\nIf you're not sure about committing to a purchase, consider renting a saxophone from a music store or online retailer. This can be a great way to try out the instrument and see if it's right for you before investing in a purchase.\n\n**Additional costs:**\n\nRemember to factor in additional costs, such as:\n\n* Mouthpiece: You may want to invest in a good quality mouthpiece that suits your playing style.\n* Reed: You'll need to purchase reeds regularly, as they wear out over time.\n* Case: A good quality case will protect your saxophone and make it easier to transport.\n* Maintenance: You may need to budget for occasional maintenance and repairs.\n\nI hope this helps you get started on your saxophone journey!\nuser: I'll definitely consider investing in a good quality saxophone and factor in the additional costs. I'll also look into renting or buying options to see what works best for me. Thanks for the recommendations and advice! By the way, do you think it's important to find a good teacher or instructor to guide me in my learning process?\nassistant: **Finding a good teacher or instructor:**\n\nAbsolutely! Working with a good teacher or instructor can make a huge difference in your learning process. Here's why:\n\n1. **Personalized guidance:** A teacher can provide personalized guidance, correcting any bad habits or techniques that may develop early on.\n2. **Customized lessons:** A teacher can tailor lessons to your learning style, goals, and progress, helping you improve faster and more efficiently.\n3. **Accountability and motivation:** Regular lessons can help you stay motivated and accountable, ensuring you practice consistently and make progress.\n4. **Instant feedback:** A teacher can provide instant feedback on your playing, helping you identify areas for improvement and correct mistakes.\n5. **Expanding your knowledge:** A good teacher can introduce you to new techniques, styles, and genres, broadening your musical knowledge and appreciation.\n\n**Types of teachers or instructors:**\n\nYou can consider the following options:\n\n1. **Private lessons:** One-on-one lessons with a teacher who can provide personalized attention and guidance.\n2. **Group lessons:** Group lessons can be a cost-effective option, allowing you to learn with others and benefit from peer feedback.\n3. **Online lessons:** Online lessons can be a convenient option, especially if you have a busy schedule or prefer learning from home.\n\n**Finding a teacher:**\n\nTo find a good teacher, you can:\n\n1. **Ask for referrals:** Ask friends, family, or fellow musicians for recommendations.\n2. **Online search:** Search online for teachers in your area, using platforms like Lessons.com, TakeLessons, or Thumbtack.\n3. **Music stores:** Visit local music stores or schools and ask about their teaching staff and lesson programs.\n4. **Professional organizations:** Look for professional organizations, such as the National Association of Teachers of Singing (NATS) or the Music Teachers National Association (MTNA), which can connect you with qualified teachers.\n\n**What to look for in a teacher:**\n\nWhen selecting a teacher, consider the following:\n\n1. **Qualifications:** Look for teachers with formal education and training in music, as well as experience teaching saxophone.\n2. **Teaching style:** Ensure the teacher's style aligns with your learning style and goals.\n3. **Communication:** Choose a teacher who communicates effectively, providing clear instructions and feedback.\n4. **Patience and encouragement:** A good teacher should be patient and encouraging, helping you build confidence and stay motivated.\n\nRemember, finding the right teacher is an important investment in your learning process. Take your time, and don't be afraid to try out a few teachers before committing to one.\n\n        Candidate notes:\n        [0] type=PLAN title=Saxophone beginner-learning plan and resource path summary=The user is excited to start learning the saxophone and intends to begin with online lessons and YouTube tutorials, while also considering a teacher for personalized feedback, accountability, and technique correction. scope=User's saxophone-learning approach from the 2023-04-08 music and instrument discussion entities=entity:<0>,entity:<1> keywords=saxophone,online lessons,YouTube tutorials,teacher,beginner instrument,practice tags=music_learning,saxophone,beginner_plan evidence=I think I'll start with some online lessons and YouTube tutorials to get a feel for the instrument.\n[1] type=CONTEXT title=Beginner saxophone buying and rental considerations summary=For starting saxophone, the reusable guidance was to prioritize a good-quality student-level alto saxophone, consider renting before buying, and budget for accessories and maintenance such as mouthpiece, reeds, case, and repairs. Recommended beginner brands/models included Yamaha, Jupiter, Conn-Selmer, Yamaha YAS-26, Jupiter JAS1100, and Conn-Selmer AS711. scope=Beginner saxophone purchase/rental guidance discussed for the user's saxophone-learning plans on 2023-04-08 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7> keywords=saxophone,student-level saxophone,Yamaha,Jupiter,Conn-Selmer,Yamaha YAS-26,Jupiter JAS1100,Conn-Selmer AS711,renting,mouthpiece,reeds tags=saxophone,instrument_purchase,beginner_gear evidence=I'll definitely consider investing in a good quality saxophone and factor in the additional costs. I'll also look into renting or buying options\n[2] type=CONTEXT title=Outdoor jazz discovery interest after local jazz night summary=After enjoying an intimate jazz night at a local bar, the user became especially interested in jazz recommendations, finding jazz clubs or live music venues nearby, and checking out outdoor jazz concerts or festivals during the summer. scope=User's jazz and outdoor live-music discovery context from the 2023-04-08 session entities=entity:<0>,entity:<8> keywords=jazz night,local bar,jazz clubs,live music venues,outdoor jazz,jazz festivals,summer concerts tags=music_discovery,jazz,live_music,outdoor_events evidence=I'm especially interested in the jazz section since I had such a great time at the jazz night at the local bar today.\n\n        Existing active notes:\n        id=hot-path-228218eb1d80-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Music discovery through festivals and low-key local events summary=The user’s music discovery pattern combines larger indie experiences, such as a Brooklyn music festival with friends, with interest in lower-key local events like free outdoor park concerts and jazz nights at local bars. Recommendations should emphasize new indie or psychedelic indie-rock artists, strong live performers, and practical ways to discover artists in intimate local settings. scope=User's reusable music discovery and live-event recommendation context from the 2023-04-01 session keywords=indie music,psychedelic indie-rock,local music events,Brooklyn music festival,free outdoor concert series,jazz night,live music discovery tags=music_discovery,live_music,indie,local_events useCount=0\nid=hot-path-27c439f6643c-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Billie Eilish concert memorabilia framing plan summary=The user planned to frame a ticket stub from the 2023-03-18 Billie Eilish concert at Wells Fargo Center in Philadelphia together with a selfie of the user and the user's sister taken in front of the venue before the show, capturing their excitement and anticipation. scope=User's Billie Eilish concert memorabilia and photo display plan from the 2023-03-18 Wells Fargo Center concert keywords=Billie Eilish,concert ticket stub,Wells Fargo Center,Philadelphia,sister,selfie,framing,memorabilia tags=concert_memorabilia,framing_plan,personal_memory useCount=0\nid=hot-path-228218eb1d80-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Glass Animals as live-performance anchor for psychedelic indie-rock recommendations summary=After seeing Glass Animals live at the Brooklyn music festival and finding them amazing, the user wanted more of their music plus similar psychedelic indie-rock bands, especially artists known for strong live performances. Future recommendations in this space should use Glass Animals and energetic/immersive live shows as anchors. scope=User's psychedelic indie-rock and live-performance recommendation context from the 2023-04-01 Brooklyn festival discussion keywords=Glass Animals,psychedelic indie-rock,live performances,Brooklyn music festival,similar bands,strong live presence tags=music_recommendations,psychedelic_indie_rock,live_music useCount=0\nid=hot-path-27c439f6643c-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Photo printing options chosen for concert frame summary=For printing the photo to accompany the Billie Eilish concert ticket stub, the user leaned toward Shutterfly or Snapfish because they seemed to have good reviews and a broad range of printing options. scope=User's intended photo printing services for the Billie Eilish concert frame project keywords=Shutterfly,Snapfish,photo printing,concert frame,Billie Eilish tags=photo_printing,printing_plan,concert_memorabilia useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_d6585ce8",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:3172add823e64f1d19713ece4051344a"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"New reusable context about the user's saxophone-learning plan; no existing note covers instrument learning.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-228218eb1d80-note-2\"}],\"patch\":null,\"reason\":\"Distinct reusable guidance about saxophone purchase/rental considerations; related to music interests but not duplicated by existing notes.\",\"target_note_id\":null},{\"action\":\"supersede\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":{\"maturity\":\"fresh\",\"maturity_score\":0.35,\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"conversation\",\"text\":\"User's reusable music discovery and live-event recommendation context refined by 2023-04-08 jazz and outdoor event discussion\"},\"status\":\"active\",\"summary\":\"The user's music discovery pattern combines larger concerts or festival experiences with lower-key local events such as free outdoor park concerts and intimate jazz nights at local bars. The user is especially interested in jazz recommendations, nearby jazz clubs/live music venues, and outdoor jazz concerts or summer festivals, while also appreciating new indie or psychedelic indie-rock artists and strong live performers. Recommendations should emphasize practical ways to discover artists in intimate local settings and live-event contexts.\",\"title\":\"Music discovery through festivals, jazz nights, and local live events\"},\"reason\":\"Candidate refines the existing music discovery/local events note with stronger jazz and outdoor festival context rather than representing a separate semantic fragment.\",\"target_note_id\":\"hot-path-228218eb1d80-note-2\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5649,
+                "completionTokens": 364,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

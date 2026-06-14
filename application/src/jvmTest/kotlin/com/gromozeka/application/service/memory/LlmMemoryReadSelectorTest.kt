@@ -275,6 +275,58 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
+    fun promptRequiresAllOperandsForDerivedDurationAnswers() = runBlocking {
+        val claims = listOf(
+            claim(
+                id = "claim-company-tenure",
+                normalizedText = "The user had 3 years and 9 months of experience at their company as of 2023-05-22.",
+                predicate = "current_metric_value",
+            ),
+            claim(
+                id = "claim-promotion-offset",
+                normalizedText = "The user started as a Marketing Coordinator and worked up to Senior Marketing Specialist after 2 years and 4 months.",
+                predicate = "current_metric_value",
+            ),
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-company-tenure"))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest(
+                    """
+                    LongMemEval recall target.
+                    Current date: 2023/05/30 (Tue) 03:15
+                    Question: How long have I been working in my current role?
+                    """.trimIndent()
+                ),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                ),
+                candidateHits = claims.mapIndexed { index, claim ->
+                    MemoryStore.SearchHit.ClaimHit(claim, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(claims = claims),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(
+            prompt.contains("For derived duration answers, keep every operand needed for the calculation"),
+            prompt,
+        )
+        assertTrue(
+            prompt.contains("current role tenure may require both total company tenure and time before promotion"),
+            prompt,
+        )
+    }
+
+    @Test
     fun promptKeepsLaterPlansForCurrentStateQuestionsAtLaterTargetDate() = runBlocking {
         val claims = listOf(
             claim(

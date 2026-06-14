@@ -323,6 +323,55 @@ class LlmMemoryClaimExtractorTest {
         assertTrue(prompt.contains("Do not infer attendance merely because the user says another person's event"))
     }
 
+    @Test
+    fun promptRequiresCareerTenureAndProgressionClaims() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(listOf("""{"claims":[]}"""))
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        extractor.extract(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source(
+                    "I started as a Marketing Coordinator and worked my way up to Senior Marketing Specialist after 2 years and 4 months.",
+                ),
+            ),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target contains durable career progression memory.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("current_metric_value", "has_experience_with"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(entityOp("I", userEntityId, MemoryEntity.Type.USER)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        val prompt = runtime.requests.single().messages.joinToString("\n") { message ->
+            message.content.joinToString("\n") { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.UserMessage -> item.text
+                    is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                    else -> item.toString()
+                }
+            }
+        }
+        assertTrue(prompt.contains("Professional, educational, or membership tenure and progression"))
+        assertTrue(prompt.contains("started as X"))
+        assertTrue(prompt.contains("worked up to Y after 2 years and 4 months"))
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {

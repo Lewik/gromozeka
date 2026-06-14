@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "575ff93fa0e0d9d2d8f44e3ae8c5ee8536a64581ce314818c5e25e361d4c9d57",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:4adc0475\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 00:42\nTranscript:\nuser: I'm looking to find a new pair of running shoes. I've been doing a lot of running lately, especially with the 5K charity run I participated in last month. Do you have any recommendations for good running shoes for someone who's been doing 3 runs a week with increasing distances? By the way, I've also been playing indoor soccer with some colleagues from work, and I've had several goals in the league so far.\nassistant: Congratulations on your 5K charity run and your success in indoor soccer! That's awesome!\n\nNow, let's get you into a great pair of running shoes. Given your increasing mileage and frequency, I'll provide some recommendations that cater to your needs.\n\n**Key considerations for your new running shoes:**\n\n1. **Distance and frequency**: Since you're running 3 times a week with increasing distances, you'll want shoes that can handle the mileage and provide adequate support and cushioning.\n2. **Foot type and pronation**: If you have flat feet, high arches, or overpronate/supinate, you may need shoes with specific features to address these issues.\n3. **Running style**: Your running style, including your foot strike pattern and stride, can influence the type of shoe you need.\n4. **Comfort and fit**: A comfortable, secure fit is essential for enjoyable runs.\n\n**Recommended running shoe categories:**\n\nBased on your running frequency and distance, I suggest considering the following categories:\n\n1. **Neutral shoes**: Suitable for runners with neutral foot pronation (not too much or too little). These shoes offer a balance of cushioning and support.\n2. **Support shoes**: If you have flat feet or overpronate, support shoes can help correct your foot alignment and reduce the risk of injuries.\n3. **Trail shoes**: If you plan to mix up your runs with trail running, trail shoes provide more aggressive tread and protection from rough terrain.\n\n**Specific shoe models to consider:**\n\nHere are a few popular models across different categories:\n\n1. **Neutral shoes**:\n\t* Brooks Ghost: A popular choice for runners with neutral foot pronation, offering a smooth ride and comfortable fit.\n\t* Asics Gel-Kayano: A great option for runners who need a balance of cushioning and support.\n2. **Support shoes**:\n\t* Brooks Adrenaline GTS: Designed for runners with flat feet or overpronation, these shoes provide supportive features and a comfortable fit.\n\t* New Balance Fresh Foam: Offers a supportive ride with a comfortable, cushioned feel.\n3. **Trail shoes**:\n\t* Salomon Speedcross: A popular choice for trail runners, with aggressive tread and a comfortable fit.\n\t* Hoka One One Challenger: Provides a cushioned ride and a comfortable fit for trail running.\n\n**Additional tips:**\n\n1. **Visit a specialty running store**: Go to a store with knowledgeable staff who can analyze your foot pronation, gait, and running style to recommend the best shoes for you.\n2. **Try before you buy**: Try on several shoes to ensure a comfortable fit and feel.\n3. **Replace your shoes regularly**: Aim to replace your shoes every 300-500 miles or every 3-6 months to prevent wear and tear.\n\nI hope this helps you find the perfect pair of running shoes!\nuser: I think I'll try out the Brooks Ghost, I've heard great things about them. Do you have any tips on how to prevent shin splints, I've had some issues with them in the past, especially when I increased my running distance.\nassistant: The Brooks Ghost is an excellent choice! It's a popular model known for its smooth ride, comfortable fit, and supportive features.\n\n**Shin splints prevention tips:**\n\nShin splints can be a nagging issue for many runners. Here are some tips to help you prevent shin splints, especially when increasing your running distance:\n\n1. **Gradual progression**: Avoid sudden changes in your running routine, including distance, intensity, or frequency. Gradually increase your mileage by no more than 10% each week to allow your legs to adapt.\n2. **Proper footwear**: Wear shoes that fit well, provide adequate support, and are designed for your foot type and running style. The Brooks Ghost is a great choice, but make sure to try them on and break them in gradually.\n3. **Strengthen your ankles and feet**: Weak ankles and feet can contribute to shin splints. Incorporate exercises like ankle circles, toe curls, and calf raises into your strength training routine.\n4. **Run on softer surfaces**: Running on softer surfaces, such as trails or grass, can reduce the impact on your shins compared to running on hard roads or sidewalks.\n5. **Run with proper form**: Good running form can help reduce the stress on your shins. Focus on landing midfoot or forefoot instead of heel striking, and try to keep your posture upright and relaxed.\n6. **Stretch and foam roll**: Regular stretching and foam rolling can help reduce muscle tension in your lower legs, which can contribute to shin splints. Focus on your calves, Achilles tendon, and tibialis anterior muscle.\n7. **Orthotics or shoe inserts**: If you have flat feet or other foot issues, consider using orthotics or shoe inserts to help redistribute the impact and reduce stress on your shins.\n8. **Ice and compression**: If you do experience shin splints, apply ice to the affected area for 10-15 minutes after your run, and consider using compression sleeves or socks to reduce swelling.\n9. **Listen to your body**: If you experience any pain or discomfort in your shins, take rest days or modify your running routine to avoid exacerbating the issue.\n10. **Cross-train**: Incorporating low-impact cross-training activities, such as cycling or swimming, can help reduce the repetitive stress on your shins.\n\n**Additional tips:**\n\n* Avoid running on consecutive days, especially if you're new to running or increasing your distance.\n* Run on a treadmill or indoor track if possible, as these surfaces can be easier on your shins than outdoor roads.\n* Consider using a running gait analysis or consulting with a running coach to identify and correct any biomechanical issues that may contribute to shin splints.\n\nBy following these tips, you can reduce your risk of developing shin splints and enjoy your runs with the Brooks Ghost!\nuser: I've heard that strengthening your core can also help with running form and reduce the risk of shin splints. Do you have any exercises or tips for improving core strength, maybe something that can be done at home or in a short amount of time?\nassistant: Strengthening your core is a great way to improve your running form, reduce your risk of shin splints, and even boost your overall running efficiency!\n\n**Why core strength matters for runners:**\n\nYour core muscles, including your abs, obliques, and lower back, play a crucial role in maintaining good running form and reducing your risk of injury. A strong core helps:\n\n1. **Stabilize your body**: A strong core helps you maintain a stable posture, reducing the impact on your joints and shins.\n2. **Improve your running form**: Good core strength enables you to maintain a more upright posture, which can help you land midfoot or forefoot instead of heel striking.\n3. **Generate power and efficiency**: A strong core helps you generate more power and efficiency with each stride, reducing your energy expenditure and improving your overall running performance.\n\n**Quick and effective core exercises for runners:**\n\nYou don't need to spend hours in the gym to improve your core strength. Here are some quick and effective exercises you can do at home or in a short amount of time:\n\n1. **Plank**: Hold a plank position for 30-60 seconds, rest for 30 seconds, and repeat for 3-5 sets. This exercise targets your abs, obliques, and lower back.\n2. **Russian twists**: Lie on your back with your knees bent and feet flat on the floor. Twist your torso to left and right, touching your hands to the ground each time. Do 3 sets of 10-15 reps.\n3. **Leg raises**: Lie on your back with your arms extended overhead and legs straight. Lift your legs off the ground, keeping them straight, and hold for 1-2 seconds. Lower your legs back down without touching the floor, and repeat for 3 sets of 10-15 reps.\n4. **Bicycle crunches**: Lie on your back with your hands behind your head and legs lifted and bent at a 90-degree angle. Alternate bringing your knees towards your chest, as if pedaling a bicycle. Do 3 sets of 10-15 reps.\n5. **Bird dog**: Start on your hands and knees. Lift your right arm and left leg off the ground, holding for 1-2 seconds. Lower back down and repeat with the opposite arm and leg. Do 3 sets of 10-15 reps.\n\n**Tips for incorporating core exercises into your routine:**\n\n1. **Start small**: Begin with 2-3 exercises, 2-3 times a week, and gradually increase the frequency and intensity as you build strength.\n2. **Focus on proper form**: Engage your core muscles by drawing your belly button towards your spine and maintaining a stable posture.\n3. **Make it a habit**: Incorporate core exercises into your daily routine, such as right after your runs or during commercial breaks while watching TV.\n4. **Mix it up**: Vary your exercises and routines to avoid plateaus and prevent overuse injuries.\n\nBy incorporating these exercises into your routine, you'll be strengthening your core and improving your running form in no time!\nuser: That's really helpful, thanks! I'll definitely start incorporating those exercises into my routine. By the way, I've been playing indoor soccer with my colleagues from work and I've had two assists in the league so far. Do you have any tips on how to improve my passing game in soccer?\nassistant: That's great to hear! Congratulations on your assists, and I'm happy to help you improve your passing game in soccer!\n\n**Tips to improve your passing game in soccer:**\n\n1. **Master the basics**: Make sure you have a solid foundation in the fundamentals of passing, including proper ball control, footwork, and body positioning.\n2. **Practice with both feet**: Being able to pass with both feet will make you a more unpredictable player and allow you to pass more effectively in different situations.\n3. **Work on your weak foot**: Identify your weaker foot and practice passing with it regularly to improve your overall passing ability.\n4. **Use different types of passes**: Practice using different types of passes, such as short and long passes, driven passes, and chips, to improve your overall passing range.\n5. **Improve your vision**: Develop your ability to read the game and identify opportunities to make passes that split defenders or find open teammates.\n6. **Play with players who are better than you**: Playing with more experienced or skilled players can help you improve your passing game by forcing you to up your game and adapt to their level of play.\n7. **Watch and learn from others**: Watch professional soccer players and study their passing techniques, movements, and decision-making.\n8. **Focus on ball movement**: Instead of focusing solely on individual passing skills, practice moving the ball quickly and efficiently around the field to create scoring opportunities.\n9. **Play small-sided games**: Playing 3v3 or 4v4 games can help you improve your passing game by increasing the speed of play and requiring quicker decisions.\n10. **Get feedback from teammates and coaches**: Ask for feedback from your teammates and coaches to identify areas for improvement and work on those specific skills.\n\n**Additional tips for indoor soccer:**\n\n1. **Use the walls**: Indoor soccer fields often have walls that can be used to your advantage. Practice using the walls to your benefit by passing the ball off them to create scoring opportunities.\n2. **Play to the space**: In indoor soccer, there is less space to work with, so it's essential to play to the space and use your teammates to create opportunities.\n3. **Keep it simple**: Indoor soccer is a fast-paced game, and sometimes the simplest passes are the most effective. Focus on making quick, short passes to maintain possession and create scoring chances.\n\nBy following these tips, you'll be able to improve your passing game and become a more effective player on the indoor soccer field!\nuser: Thanks for the tips! I'll definitely work on my passing game and try to incorporate some of those exercises into my practice. By the way, do you have any recommendations for good stretching exercises for after my soccer games? I want to make sure I'm taking care of my muscles and preventing injuries.\nassistant: Stretching is a crucial part of any exercise routine, especially after a intense game like soccer! Proper stretching can help reduce muscle soreness, improve flexibility, and prevent injuries. Here are some essential stretches to focus on after your soccer games:\n\n**Essential stretches for soccer players:**\n\n1. **Hamstring stretch**: Stand with your feet shoulder-width apart, then bend forward at the hips and reach for your toes. Hold for 20-30 seconds and repeat 2-3 times.\n2. **Quad stretch**: Stand with one hand against a wall for balance and lift one leg behind you, keeping your knee straight. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n3. **Hip flexor stretch**: Kneel on all fours, then bring one knee forward and place your foot flat on the ground in front of the other knee. Lean forward, stretching the front of your hip. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n4. **Calf stretch**: Stand facing a wall with one hand on the wall for balance. Step one foot back about a foot, keeping your heel on the ground. Bend your front knee and lean forward, stretching your calf. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n5. **Groin stretch**: Sit on the floor with your legs straight out to the sides. Lean forward, reaching for your ankles, and hold for 20-30 seconds. Repeat 2-3 times.\n6. **IT band stretch**: Stand with your feet together, then cross one foot over the other. Bend your knee and lean towards the side you're stretching, keeping your back straight. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n7. **Lower back stretch**: Lie on your back with your knees bent and feet flat on the floor. Tilt your pelvis upwards and then back down again, repeating the motion for 10-15 repetitions.\n\n**Additional tips:**\n\n1. **Hold each stretch for 20-30 seconds**: This allows your muscles to relax and lengthen.\n2. **Don't bounce**: Avoid bouncing or jerking movements while stretching, as this can cause micro-tears in your muscles.\n3. **Focus on major muscle groups**: Target the major muscle groups used in soccer, such as your legs, hips, and lower back.\n4. **Stretch after your cool-down**: Stretch after your cool-down, when your muscles are warm and most receptive to stretching.\n5. **Make it a habit**: Incorporate stretching into your post-game routine to make it a habit and reduce the risk of injuries.\n\nBy incorporating these stretches into your post-game routine, you'll be able to reduce muscle soreness, improve your flexibility, and prevent injuries. Remember to listen to your body and adjust your stretching routine as needed.\nuser: I think I'll try to incorporate some of these stretches into my routine, especially after my soccer games. It's always good to take care of my muscles and prevent injuries. By the way, do you have any recommendations for good ways to track my fitness progress and stay motivated? I've been using a fitness app to track my workouts and progress, but I'm always looking for new ways to stay motivated and engaged.\nassistant: Tracking your fitness progress and staying motivated are crucial to achieving your goals! I'm happy to help you with that.\n\n**Fitness tracking methods:**\n\n1. **Wearable fitness trackers**: Consider using a wearable device like a fitness watch or fitness tracker that can track your daily activity, sleep, and heart rate.\n2. **Mobile apps**: There are many fitness apps available that allow you to track your workouts, monitor your progress, and set goals. Some popular options include MyFitnessPal, Strava, and Nike Training Club.\n3. **Spreadsheets or journals**: Keep a spreadsheet or journal to track your workouts, including the exercises, sets, reps, and weight used. This can help you see your progress over time and identify areas for improvement.\n4. **Progress photos**: Take progress photos at regular intervals to visualize your changes in body composition and muscle tone.\n5. **Workout buddies or accountability partners**: Having a workout buddy or accountability partner can help motivate you to stay on track and provide support when you need it.\n\n**Motivation tips:**\n\n1. **Set specific, achievable goals**: Setting specific goals can help you stay motivated and focused. Break down larger goals into smaller, manageable objectives.\n2. **Celebrate small victories**: Celebrate your small victories along the way to stay motivated and encouraged.\n3. **Find an exercise you enjoy**: Engage in physical activities that you enjoy, making it more likely that you'll stick to your routine.\n4. **Reward yourself**: Reward yourself for reaching milestones or completing challenging workouts.\n5. **Mix it up**: Vary your workout routine to avoid plateaus and prevent boredom.\n6. **Get professional guidance**: Consider working with a personal trainer or fitness coach to help you develop a customized workout plan and provide ongoing support.\n7. **Track your progress**: Regularly track your progress to see how far you've come and stay motivated to continue.\n8. **Make it a habit**: Incorporate fitness into your daily routine, making it a habit that you enjoy and look forward to.\n\n**Additional tips:**\n\n1. **Be patient**: Fitness progress takes time, so be patient and don't get discouraged by setbacks or plateaus.\n2. **Stay consistent**: Consistency is key to achieving your fitness goals. Aim to exercise regularly, even if it's just a few times a week.\n3. **Listen to your body**: Rest and recovery are essential to your fitness progress. Listen to your body and take rest days when needed.\n\nBy incorporating these methods and tips into your fitness routine, you'll be able to track your progress, stay motivated, and achieve your fitness goals!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Running injury prevention routine for increasing mileage summary=When the user is increasing running distance, the reusable prevention approach for shin splints is gradual mileage progression, supportive footwear such as Brooks Ghost if it fits, ankle/foot strengthening, softer running surfaces, good running form, stretching/foam rolling, rest/modification when pain appears, and low-impact cross-training. scope=Applies to the user's running routine and shin-splints prevention when increasing mileage. entities=entity:<0>,entity:<1>,entity:<2> keywords=shin splints,running distance,Brooks Ghost,gradual progression,cross-training tags=running,injury_prevention,shin_splints evidence=I've had some issues with them in the past, especially when I increased my running distance.\n[1] type=PLAN title=Short home core routine to support running form summary=For improving running form and reducing shin-splints risk, the suggested home-friendly core routine centers on planks, Russian twists, leg raises, bicycle crunches, and bird dogs, starting with 2–3 exercises 2–3 times per week and emphasizing proper form and habit-building. scope=Applies to the user's at-home core strengthening plan for running form and injury prevention. entities=entity:<0>,entity:<3> keywords=core strength,running form,home exercises,plank,bird dog,shin splints tags=running,core_strength,home_workout,injury_prevention evidence=maybe something that can be done at home or in a short amount of time\n[2] type=DIRECTION title=Indoor soccer passing improvement focus summary=For the user's indoor soccer passing development, the reusable practice direction is to master fundamentals, practice passing with both feet and especially the weak foot, vary pass types, improve vision and quick ball movement, use small-sided games, seek feedback, and adapt to indoor play by using walls, playing to space, and keeping passes simple. scope=Applies to the user's indoor soccer passing-game improvement work. entities=entity:<0>,entity:<4> keywords=indoor soccer,passing game,weak foot,small-sided games,walls,assists tags=soccer,indoor_soccer,skill_development evidence=I've had two assists in the league so far. Do you have any tips on how to improve my passing game in soccer?\n[3] type=PLAN title=Post-soccer stretching routine for injury prevention summary=After soccer games, the recommended recovery routine targets hamstrings, quads, hip flexors, calves, groin, IT band, and lower back, with each stretch held 20–30 seconds after a cool-down, avoiding bouncing, and focusing on major soccer muscle groups to reduce soreness and injury risk. scope=Applies to the user's post-game soccer stretching and injury-prevention routine. entities=entity:<0>,entity:<5> keywords=post-game stretching,soccer recovery,hamstring stretch,hip flexor,injury prevention tags=soccer,stretching,recovery,injury_prevention evidence=especially after my soccer games. It's always good to take care of my muscles and prevent injuries.\n[4] type=CONTEXT title=Fitness tracking and motivation strategy summary=The user's fitness tracking and motivation strategy can build on their existing fitness app by adding wearables, apps such as MyFitnessPal, Strava, or Nike Training Club, spreadsheets/journals, progress photos, and accountability partners, while using specific achievable goals, small-victory celebrations, enjoyable activities, rewards, routine variation, professional guidance, consistency, patienc...[truncated 17 chars] scope=Applies to recommendations for the user's fitness progress tracking and motivation systems. entities=entity:<0>,entity:<6> keywords=fitness app,progress tracking,motivation,wearable,Strava,accountability tags=fitness_tracking,motivation,habit_building evidence=I've been using a fitness app to track my workouts and progress, but I'm always looking for new ways to stay motivated and engaged.\n\n        Existing active notes:\n        id=hot-path-ec1d687c382a-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Sports nutrition approach for user's soccer, tennis, and endurance activities summary=For the user's sports activities, the recurring nutrition approach is to use complex carbohydrates before exercise, hydrate with water or electrolyte drinks during activity, and consume a mix of carbohydrates, protein, and healthy fats within 30–60 minutes after exercise for recovery. The advice repeatedly emphasizes individualized experimentation with foods, portions, brands, and flavors based on...[truncated 49 chars] scope=Applies to nutrition planning for the user's soccer, tennis, and endurance activities discussed in LongMemEval 4adc0475 session 1. keywords=sports nutrition,soccer,tennis,5K,hydration,recovery,carbohydrates,protein,electrolytes tags=nutrition,sports,recovery,hydration useCount=0\nid=hot-path-ec1d687c382a-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Criteria for choosing sports drinks and sports bars summary=When considering sports drinks and sports bars for soccer and tennis, the user's relevant criteria include hydration and electrolyte balance for drinks, and convenience plus high protein, low sugar, and good taste for bars. Product suggestions should be filtered through label-reading, serving-size awareness, low sugar/minimal additives, and experimentation with brands/flavors. scope=Applies to future recommendations about sports drinks and sports bars for the user's soccer and tennis games. keywords=sports drinks,sports bars,electrolyte balance,hydration,high protein,low sugar,taste,label reading tags=product_criteria,nutrition,sports_drinks,sports_bars useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:4adc0475",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:36a56982052f1c7dc918d4760cefb6c2"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:4adc0475\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 00:42\nTranscript:\nuser: I'm looking to find a new pair of running shoes. I've been doing a lot of running lately, especially with the 5K charity run I participated in last month. Do you have any recommendations for good running shoes for someone who's been doing 3 runs a week with increasing distances? By the way, I've also been playing indoor soccer with some colleagues from work, and I've had several goals in the league so far.\nassistant: Congratulations on your 5K charity run and your success in indoor soccer! That's awesome!\n\nNow, let's get you into a great pair of running shoes. Given your increasing mileage and frequency, I'll provide some recommendations that cater to your needs.\n\n**Key considerations for your new running shoes:**\n\n1. **Distance and frequency**: Since you're running 3 times a week with increasing distances, you'll want shoes that can handle the mileage and provide adequate support and cushioning.\n2. **Foot type and pronation**: If you have flat feet, high arches, or overpronate/supinate, you may need shoes with specific features to address these issues.\n3. **Running style**: Your running style, including your foot strike pattern and stride, can influence the type of shoe you need.\n4. **Comfort and fit**: A comfortable, secure fit is essential for enjoyable runs.\n\n**Recommended running shoe categories:**\n\nBased on your running frequency and distance, I suggest considering the following categories:\n\n1. **Neutral shoes**: Suitable for runners with neutral foot pronation (not too much or too little). These shoes offer a balance of cushioning and support.\n2. **Support shoes**: If you have flat feet or overpronate, support shoes can help correct your foot alignment and reduce the risk of injuries.\n3. **Trail shoes**: If you plan to mix up your runs with trail running, trail shoes provide more aggressive tread and protection from rough terrain.\n\n**Specific shoe models to consider:**\n\nHere are a few popular models across different categories:\n\n1. **Neutral shoes**:\n\t* Brooks Ghost: A popular choice for runners with neutral foot pronation, offering a smooth ride and comfortable fit.\n\t* Asics Gel-Kayano: A great option for runners who need a balance of cushioning and support.\n2. **Support shoes**:\n\t* Brooks Adrenaline GTS: Designed for runners with flat feet or overpronation, these shoes provide supportive features and a comfortable fit.\n\t* New Balance Fresh Foam: Offers a supportive ride with a comfortable, cushioned feel.\n3. **Trail shoes**:\n\t* Salomon Speedcross: A popular choice for trail runners, with aggressive tread and a comfortable fit.\n\t* Hoka One One Challenger: Provides a cushioned ride and a comfortable fit for trail running.\n\n**Additional tips:**\n\n1. **Visit a specialty running store**: Go to a store with knowledgeable staff who can analyze your foot pronation, gait, and running style to recommend the best shoes for you.\n2. **Try before you buy**: Try on several shoes to ensure a comfortable fit and feel.\n3. **Replace your shoes regularly**: Aim to replace your shoes every 300-500 miles or every 3-6 months to prevent wear and tear.\n\nI hope this helps you find the perfect pair of running shoes!\nuser: I think I'll try out the Brooks Ghost, I've heard great things about them. Do you have any tips on how to prevent shin splints, I've had some issues with them in the past, especially when I increased my running distance.\nassistant: The Brooks Ghost is an excellent choice! It's a popular model known for its smooth ride, comfortable fit, and supportive features.\n\n**Shin splints prevention tips:**\n\nShin splints can be a nagging issue for many runners. Here are some tips to help you prevent shin splints, especially when increasing your running distance:\n\n1. **Gradual progression**: Avoid sudden changes in your running routine, including distance, intensity, or frequency. Gradually increase your mileage by no more than 10% each week to allow your legs to adapt.\n2. **Proper footwear**: Wear shoes that fit well, provide adequate support, and are designed for your foot type and running style. The Brooks Ghost is a great choice, but make sure to try them on and break them in gradually.\n3. **Strengthen your ankles and feet**: Weak ankles and feet can contribute to shin splints. Incorporate exercises like ankle circles, toe curls, and calf raises into your strength training routine.\n4. **Run on softer surfaces**: Running on softer surfaces, such as trails or grass, can reduce the impact on your shins compared to running on hard roads or sidewalks.\n5. **Run with proper form**: Good running form can help reduce the stress on your shins. Focus on landing midfoot or forefoot instead of heel striking, and try to keep your posture upright and relaxed.\n6. **Stretch and foam roll**: Regular stretching and foam rolling can help reduce muscle tension in your lower legs, which can contribute to shin splints. Focus on your calves, Achilles tendon, and tibialis anterior muscle.\n7. **Orthotics or shoe inserts**: If you have flat feet or other foot issues, consider using orthotics or shoe inserts to help redistribute the impact and reduce stress on your shins.\n8. **Ice and compression**: If you do experience shin splints, apply ice to the affected area for 10-15 minutes after your run, and consider using compression sleeves or socks to reduce swelling.\n9. **Listen to your body**: If you experience any pain or discomfort in your shins, take rest days or modify your running routine to avoid exacerbating the issue.\n10. **Cross-train**: Incorporating low-impact cross-training activities, such as cycling or swimming, can help reduce the repetitive stress on your shins.\n\n**Additional tips:**\n\n* Avoid running on consecutive days, especially if you're new to running or increasing your distance.\n* Run on a treadmill or indoor track if possible, as these surfaces can be easier on your shins than outdoor roads.\n* Consider using a running gait analysis or consulting with a running coach to identify and correct any biomechanical issues that may contribute to shin splints.\n\nBy following these tips, you can reduce your risk of developing shin splints and enjoy your runs with the Brooks Ghost!\nuser: I've heard that strengthening your core can also help with running form and reduce the risk of shin splints. Do you have any exercises or tips for improving core strength, maybe something that can be done at home or in a short amount of time?\nassistant: Strengthening your core is a great way to improve your running form, reduce your risk of shin splints, and even boost your overall running efficiency!\n\n**Why core strength matters for runners:**\n\nYour core muscles, including your abs, obliques, and lower back, play a crucial role in maintaining good running form and reducing your risk of injury. A strong core helps:\n\n1. **Stabilize your body**: A strong core helps you maintain a stable posture, reducing the impact on your joints and shins.\n2. **Improve your running form**: Good core strength enables you to maintain a more upright posture, which can help you land midfoot or forefoot instead of heel striking.\n3. **Generate power and efficiency**: A strong core helps you generate more power and efficiency with each stride, reducing your energy expenditure and improving your overall running performance.\n\n**Quick and effective core exercises for runners:**\n\nYou don't need to spend hours in the gym to improve your core strength. Here are some quick and effective exercises you can do at home or in a short amount of time:\n\n1. **Plank**: Hold a plank position for 30-60 seconds, rest for 30 seconds, and repeat for 3-5 sets. This exercise targets your abs, obliques, and lower back.\n2. **Russian twists**: Lie on your back with your knees bent and feet flat on the floor. Twist your torso to left and right, touching your hands to the ground each time. Do 3 sets of 10-15 reps.\n3. **Leg raises**: Lie on your back with your arms extended overhead and legs straight. Lift your legs off the ground, keeping them straight, and hold for 1-2 seconds. Lower your legs back down without touching the floor, and repeat for 3 sets of 10-15 reps.\n4. **Bicycle crunches**: Lie on your back with your hands behind your head and legs lifted and bent at a 90-degree angle. Alternate bringing your knees towards your chest, as if pedaling a bicycle. Do 3 sets of 10-15 reps.\n5. **Bird dog**: Start on your hands and knees. Lift your right arm and left leg off the ground, holding for 1-2 seconds. Lower back down and repeat with the opposite arm and leg. Do 3 sets of 10-15 reps.\n\n**Tips for incorporating core exercises into your routine:**\n\n1. **Start small**: Begin with 2-3 exercises, 2-3 times a week, and gradually increase the frequency and intensity as you build strength.\n2. **Focus on proper form**: Engage your core muscles by drawing your belly button towards your spine and maintaining a stable posture.\n3. **Make it a habit**: Incorporate core exercises into your daily routine, such as right after your runs or during commercial breaks while watching TV.\n4. **Mix it up**: Vary your exercises and routines to avoid plateaus and prevent overuse injuries.\n\nBy incorporating these exercises into your routine, you'll be strengthening your core and improving your running form in no time!\nuser: That's really helpful, thanks! I'll definitely start incorporating those exercises into my routine. By the way, I've been playing indoor soccer with my colleagues from work and I've had two assists in the league so far. Do you have any tips on how to improve my passing game in soccer?\nassistant: That's great to hear! Congratulations on your assists, and I'm happy to help you improve your passing game in soccer!\n\n**Tips to improve your passing game in soccer:**\n\n1. **Master the basics**: Make sure you have a solid foundation in the fundamentals of passing, including proper ball control, footwork, and body positioning.\n2. **Practice with both feet**: Being able to pass with both feet will make you a more unpredictable player and allow you to pass more effectively in different situations.\n3. **Work on your weak foot**: Identify your weaker foot and practice passing with it regularly to improve your overall passing ability.\n4. **Use different types of passes**: Practice using different types of passes, such as short and long passes, driven passes, and chips, to improve your overall passing range.\n5. **Improve your vision**: Develop your ability to read the game and identify opportunities to make passes that split defenders or find open teammates.\n6. **Play with players who are better than you**: Playing with more experienced or skilled players can help you improve your passing game by forcing you to up your game and adapt to their level of play.\n7. **Watch and learn from others**: Watch professional soccer players and study their passing techniques, movements, and decision-making.\n8. **Focus on ball movement**: Instead of focusing solely on individual passing skills, practice moving the ball quickly and efficiently around the field to create scoring opportunities.\n9. **Play small-sided games**: Playing 3v3 or 4v4 games can help you improve your passing game by increasing the speed of play and requiring quicker decisions.\n10. **Get feedback from teammates and coaches**: Ask for feedback from your teammates and coaches to identify areas for improvement and work on those specific skills.\n\n**Additional tips for indoor soccer:**\n\n1. **Use the walls**: Indoor soccer fields often have walls that can be used to your advantage. Practice using the walls to your benefit by passing the ball off them to create scoring opportunities.\n2. **Play to the space**: In indoor soccer, there is less space to work with, so it's essential to play to the space and use your teammates to create opportunities.\n3. **Keep it simple**: Indoor soccer is a fast-paced game, and sometimes the simplest passes are the most effective. Focus on making quick, short passes to maintain possession and create scoring chances.\n\nBy following these tips, you'll be able to improve your passing game and become a more effective player on the indoor soccer field!\nuser: Thanks for the tips! I'll definitely work on my passing game and try to incorporate some of those exercises into my practice. By the way, do you have any recommendations for good stretching exercises for after my soccer games? I want to make sure I'm taking care of my muscles and preventing injuries.\nassistant: Stretching is a crucial part of any exercise routine, especially after a intense game like soccer! Proper stretching can help reduce muscle soreness, improve flexibility, and prevent injuries. Here are some essential stretches to focus on after your soccer games:\n\n**Essential stretches for soccer players:**\n\n1. **Hamstring stretch**: Stand with your feet shoulder-width apart, then bend forward at the hips and reach for your toes. Hold for 20-30 seconds and repeat 2-3 times.\n2. **Quad stretch**: Stand with one hand against a wall for balance and lift one leg behind you, keeping your knee straight. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n3. **Hip flexor stretch**: Kneel on all fours, then bring one knee forward and place your foot flat on the ground in front of the other knee. Lean forward, stretching the front of your hip. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n4. **Calf stretch**: Stand facing a wall with one hand on the wall for balance. Step one foot back about a foot, keeping your heel on the ground. Bend your front knee and lean forward, stretching your calf. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n5. **Groin stretch**: Sit on the floor with your legs straight out to the sides. Lean forward, reaching for your ankles, and hold for 20-30 seconds. Repeat 2-3 times.\n6. **IT band stretch**: Stand with your feet together, then cross one foot over the other. Bend your knee and lean towards the side you're stretching, keeping your back straight. Hold for 20-30 seconds and repeat 2-3 times on each leg.\n7. **Lower back stretch**: Lie on your back with your knees bent and feet flat on the floor. Tilt your pelvis upwards and then back down again, repeating the motion for 10-15 repetitions.\n\n**Additional tips:**\n\n1. **Hold each stretch for 20-30 seconds**: This allows your muscles to relax and lengthen.\n2. **Don't bounce**: Avoid bouncing or jerking movements while stretching, as this can cause micro-tears in your muscles.\n3. **Focus on major muscle groups**: Target the major muscle groups used in soccer, such as your legs, hips, and lower back.\n4. **Stretch after your cool-down**: Stretch after your cool-down, when your muscles are warm and most receptive to stretching.\n5. **Make it a habit**: Incorporate stretching into your post-game routine to make it a habit and reduce the risk of injuries.\n\nBy incorporating these stretches into your post-game routine, you'll be able to reduce muscle soreness, improve your flexibility, and prevent injuries. Remember to listen to your body and adjust your stretching routine as needed.\nuser: I think I'll try to incorporate some of these stretches into my routine, especially after my soccer games. It's always good to take care of my muscles and prevent injuries. By the way, do you have any recommendations for good ways to track my fitness progress and stay motivated? I've been using a fitness app to track my workouts and progress, but I'm always looking for new ways to stay motivated and engaged.\nassistant: Tracking your fitness progress and staying motivated are crucial to achieving your goals! I'm happy to help you with that.\n\n**Fitness tracking methods:**\n\n1. **Wearable fitness trackers**: Consider using a wearable device like a fitness watch or fitness tracker that can track your daily activity, sleep, and heart rate.\n2. **Mobile apps**: There are many fitness apps available that allow you to track your workouts, monitor your progress, and set goals. Some popular options include MyFitnessPal, Strava, and Nike Training Club.\n3. **Spreadsheets or journals**: Keep a spreadsheet or journal to track your workouts, including the exercises, sets, reps, and weight used. This can help you see your progress over time and identify areas for improvement.\n4. **Progress photos**: Take progress photos at regular intervals to visualize your changes in body composition and muscle tone.\n5. **Workout buddies or accountability partners**: Having a workout buddy or accountability partner can help motivate you to stay on track and provide support when you need it.\n\n**Motivation tips:**\n\n1. **Set specific, achievable goals**: Setting specific goals can help you stay motivated and focused. Break down larger goals into smaller, manageable objectives.\n2. **Celebrate small victories**: Celebrate your small victories along the way to stay motivated and encouraged.\n3. **Find an exercise you enjoy**: Engage in physical activities that you enjoy, making it more likely that you'll stick to your routine.\n4. **Reward yourself**: Reward yourself for reaching milestones or completing challenging workouts.\n5. **Mix it up**: Vary your workout routine to avoid plateaus and prevent boredom.\n6. **Get professional guidance**: Consider working with a personal trainer or fitness coach to help you develop a customized workout plan and provide ongoing support.\n7. **Track your progress**: Regularly track your progress to see how far you've come and stay motivated to continue.\n8. **Make it a habit**: Incorporate fitness into your daily routine, making it a habit that you enjoy and look forward to.\n\n**Additional tips:**\n\n1. **Be patient**: Fitness progress takes time, so be patient and don't get discouraged by setbacks or plateaus.\n2. **Stay consistent**: Consistency is key to achieving your fitness goals. Aim to exercise regularly, even if it's just a few times a week.\n3. **Listen to your body**: Rest and recovery are essential to your fitness progress. Listen to your body and take rest days when needed.\n\nBy incorporating these methods and tips into your fitness routine, you'll be able to track your progress, stay motivated, and achieve your fitness goals!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Running injury prevention routine for increasing mileage summary=When the user is increasing running distance, the reusable prevention approach for shin splints is gradual mileage progression, supportive footwear such as Brooks Ghost if it fits, ankle/foot strengthening, softer running surfaces, good running form, stretching/foam rolling, rest/modification when pain appears, and low-impact cross-training. scope=Applies to the user's running routine and shin-splints prevention when increasing mileage. entities=entity:<0>,entity:<1>,entity:<2> keywords=shin splints,running distance,Brooks Ghost,gradual progression,cross-training tags=running,injury_prevention,shin_splints evidence=I've had some issues with them in the past, especially when I increased my running distance.\n[1] type=PLAN title=Short home core routine to support running form summary=For improving running form and reducing shin-splints risk, the suggested home-friendly core routine centers on planks, Russian twists, leg raises, bicycle crunches, and bird dogs, starting with 2–3 exercises 2–3 times per week and emphasizing proper form and habit-building. scope=Applies to the user's at-home core strengthening plan for running form and injury prevention. entities=entity:<0>,entity:<3> keywords=core strength,running form,home exercises,plank,bird dog,shin splints tags=running,core_strength,home_workout,injury_prevention evidence=maybe something that can be done at home or in a short amount of time\n[2] type=DIRECTION title=Indoor soccer passing improvement focus summary=For the user's indoor soccer passing development, the reusable practice direction is to master fundamentals, practice passing with both feet and especially the weak foot, vary pass types, improve vision and quick ball movement, use small-sided games, seek feedback, and adapt to indoor play by using walls, playing to space, and keeping passes simple. scope=Applies to the user's indoor soccer passing-game improvement work. entities=entity:<0>,entity:<4> keywords=indoor soccer,passing game,weak foot,small-sided games,walls,assists tags=soccer,indoor_soccer,skill_development evidence=I've had two assists in the league so far. Do you have any tips on how to improve my passing game in soccer?\n[3] type=PLAN title=Post-soccer stretching routine for injury prevention summary=After soccer games, the recommended recovery routine targets hamstrings, quads, hip flexors, calves, groin, IT band, and lower back, with each stretch held 20–30 seconds after a cool-down, avoiding bouncing, and focusing on major soccer muscle groups to reduce soreness and injury risk. scope=Applies to the user's post-game soccer stretching and injury-prevention routine. entities=entity:<0>,entity:<5> keywords=post-game stretching,soccer recovery,hamstring stretch,hip flexor,injury prevention tags=soccer,stretching,recovery,injury_prevention evidence=especially after my soccer games. It's always good to take care of my muscles and prevent injuries.\n[4] type=CONTEXT title=Fitness tracking and motivation strategy summary=The user's fitness tracking and motivation strategy can build on their existing fitness app by adding wearables, apps such as MyFitnessPal, Strava, or Nike Training Club, spreadsheets/journals, progress photos, and accountability partners, while using specific achievable goals, small-victory celebrations, enjoyable activities, rewards, routine variation, professional guidance, consistency, patienc...[truncated 17 chars] scope=Applies to recommendations for the user's fitness progress tracking and motivation systems. entities=entity:<0>,entity:<6> keywords=fitness app,progress tracking,motivation,wearable,Strava,accountability tags=fitness_tracking,motivation,habit_building evidence=I've been using a fitness app to track my workouts and progress, but I'm always looking for new ways to stay motivated and engaged.\n\n        Existing active notes:\n        id=hot-path-ec1d687c382a-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Sports nutrition approach for user's soccer, tennis, and endurance activities summary=For the user's sports activities, the recurring nutrition approach is to use complex carbohydrates before exercise, hydrate with water or electrolyte drinks during activity, and consume a mix of carbohydrates, protein, and healthy fats within 30–60 minutes after exercise for recovery. The advice repeatedly emphasizes individualized experimentation with foods, portions, brands, and flavors based on...[truncated 49 chars] scope=Applies to nutrition planning for the user's soccer, tennis, and endurance activities discussed in LongMemEval 4adc0475 session 1. keywords=sports nutrition,soccer,tennis,5K,hydration,recovery,carbohydrates,protein,electrolytes tags=nutrition,sports,recovery,hydration useCount=0\nid=hot-path-ec1d687c382a-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Criteria for choosing sports drinks and sports bars summary=When considering sports drinks and sports bars for soccer and tennis, the user's relevant criteria include hydration and electrolyte balance for drinks, and convenience plus high protein, low sugar, and good taste for bars. Product suggestions should be filtered through label-reading, serving-size awareness, low sugar/minimal additives, and experimentation with brands/flavors. scope=Applies to future recommendations about sports drinks and sports bars for the user's soccer and tennis games. keywords=sports drinks,sports bars,electrolyte balance,hydration,high protein,low sugar,taste,label reading tags=product_criteria,nutrition,sports_drinks,sports_bars useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:4adc0475",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:36a56982052f1c7dc918d4760cefb6c2"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct reusable context about the user's running mileage increase and shin-splints prevention; not covered by existing nutrition notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.4,\"to_note_id\":\"hot-path-ec1d687c382a-note-2\"}],\"patch\":null,\"reason\":\"Distinct at-home core-strength plan for running form and injury prevention; only loosely related to existing sports recovery/nutrition context.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct reusable direction for improving indoor soccer passing skills; existing notes only cover sports nutrition/product criteria.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-ec1d687c382a-note-2\"}],\"patch\":null,\"reason\":\"Distinct post-soccer stretching and injury-prevention routine; related to recovery but not duplicative of the existing nutrition recovery note.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":4,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct strategy for fitness progress tracking and motivation; not represented in existing active notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5938,
+                "completionTokens": 322,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
