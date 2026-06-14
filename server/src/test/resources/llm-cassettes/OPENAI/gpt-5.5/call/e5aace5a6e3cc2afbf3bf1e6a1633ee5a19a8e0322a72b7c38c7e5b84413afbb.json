@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "e5aace5a6e3cc2afbf3bf1e6a1633ee5a19a8e0322a72b7c38c7e5b84413afbb",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_1916e0ea\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/02/28 (Tue) 11:34\nTranscript:\nuser: I'm planning to make some new recipes this week and I need some inspiration. Can you suggest some healthy dinner ideas that incorporate chicken breasts and ground beef? By the way, I just did an online grocery order from Instacart and had it delivered to my doorstep, and spent around $60 today.\nassistant: Instacart is so convenient, isn't it? Congrats on getting your groceries delivered!\n\nNow, let's get to those healthy dinner ideas featuring chicken breasts and ground beef. Here are some delicious and nutritious options:\n\n**Chicken Breast Recipes**\n\n1. **Grilled Chicken Fajitas**: Marinate chicken breasts in lime juice, olive oil, and spices, then grill with bell peppers and onions. Serve with whole wheat tortillas, avocado, and salsa.\n2. **Chicken and Quinoa Bowl**: Roast chicken breasts with lemon and herbs, then serve over quinoa with roasted vegetables like broccoli, carrots, and Brussels sprouts.\n3. **Chicken and Spinach Stuffed Bell Peppers**: Fill bell peppers with a mixture of cooked chicken, spinach, feta cheese, and brown rice, and bake until tender.\n4. **Lemon Garlic Chicken with Roasted Asparagus**: Marinate chicken breasts in lemon juice, garlic, and olive oil, then roast with asparagus and serve with quinoa or brown rice.\n\n**Ground Beef Recipes**\n\n1. **Spaghetti Bolognese with a Twist**: Use lean ground beef and add veggies like mushrooms, bell peppers, and onions to the sauce. Serve with whole wheat spaghetti and a side of steamed broccoli.\n2. **Tacos with Ground Beef and Avocado Salsa**: Season ground beef with cumin and chili powder, then serve in tacos with avocado salsa, lettuce, and whole wheat tortillas.\n3. **Stuffed Bell Peppers with Ground Beef and Rice**: Fill bell peppers with a mixture of cooked ground beef, cooked rice, and black beans, and bake until tender.\n4. **Korean-Style Ground Beef and Vegetable Stir-Fry**: Cook ground beef with Gochujang sauce, then stir-fry with a variety of vegetables like broccoli, carrots, and bell peppers. Serve with brown rice or cauliflower rice.\n\n**Combination Recipes**\n\n1. **Chicken and Beef Fajita Casserole**: A hearty casserole featuring both chicken breasts and ground beef, with sautéed onions and bell peppers, served with whole wheat tortillas.\n2. **Beef and Chicken Meatball Subs**: Mix ground beef and chicken breast to make meatballs, then serve on whole wheat sub rolls with marinara sauce and melted mozzarella cheese.\n\nThese recipes should give you a great starting point for planning your meals this week. Enjoy exploring these healthy dinner ideas, and happy cooking!\nuser: I like the sound of the Chicken and Quinoa Bowl and the Korean-Style Ground Beef and Vegetable Stir-Fry. Can you give me some suggestions for sides that would go well with these dishes?\nassistant: Excellent choices! Both dishes are flavorful and nutritious, and adding some well-paired sides can elevate the meal even further. Here are some side dish suggestions for each recipe:\n\n**Chicken and Quinoa Bowl**\n\n1. **Roasted Carrots with Lemon and Thyme**: A simple and tasty side that complements the herby flavors of the chicken and quinoa. Simply toss carrot sticks with olive oil, lemon juice, thyme, salt, and pepper, and roast in the oven until tender and caramelized.\n2. **Steamed Green Beans with Garlic and Lemon**: Quickly steam green beans until tender, then toss with minced garlic, lemon juice, and a pinch of salt. This side adds a burst of freshness to the dish.\n3. **Sauteed Spinach with Garlic and Cherry Tomatoes**: Wilt fresh spinach with minced garlic and halved cherry tomatoes in a little olive oil. This side adds a nutrient-dense and flavorful boost to the meal.\n4. **Cucumber and Feta Salad**: A light and refreshing side that pairs nicely with the warm quinoa bowl. Simply combine diced cucumber, crumbled feta cheese, and a drizzle of olive oil and lemon juice.\n\n**Korean-Style Ground Beef and Vegetable Stir-Fry**\n\n1. **Kimchi Slaw**: A spicy and sour slaw made with kimchi, shredded cabbage, and a drizzle of rice vinegar. This side adds a bold and fermented flavor to the dish.\n2. **Steamed Edamame**: Boil or steam edamame until tender, then season with salt and a squeeze of lemon juice. This side provides a protein-rich and fiber-rich contrast to the savory stir-fry.\n3. **Pickled Ginger**: Thinly slice fresh ginger and soak it in a mixture of vinegar, sugar, and salt for at least 30 minutes. This side adds a tangy and refreshing contrast to the rich flavors of the stir-fry.\n4. **Cucumber and Mint Salad**: A simple and cooling side that helps balance the spiciness of the stir-fry. Combine diced cucumber, chopped fresh mint, and a drizzle of rice vinegar and sesame oil.\n\nFeel free to pick one or two sides to serve with each dish, depending on your preferences and dietary needs. Enjoy your meals!\nuser: I'm also thinking of making some changes to my grocery shopping routine. Do you have any suggestions on how I can optimize my grocery lists and reduce food waste?\nassistant: Optimizing your grocery lists and reducing food waste are excellent goals! Here are some suggestions to help you achieve them:\n\n**1. Plan your meals and make a grocery list:**\nBefore you shop, plan out your meals for the week. This will help you create a focused grocery list and avoid buying unnecessary items. You can use a meal planning app, a physical planner, or even a note-taking app on your phone.\n\n**2. Shop your pantry and fridge first:**\nTake stock of what you already have at home to avoid duplicating purchases and reduce waste. This will also help you use up older ingredients before they expire.\n\n**3. Organize your list by store sections:**\nGroup your grocery list by store sections (e.g., produce, meat, dairy, canned goods, etc.). This will help you navigate the store more efficiently and reduce impulse buys.\n\n**4. Buy in bulk and stock up:**\nPurchase non-perishable items in bulk if you use them regularly. This can help reduce packaging waste and save you money. Just be sure to store items properly to maintain their freshness.\n\n**5. Shop for imperfect produce:**\nConsider buying \"ugly\" or \"imperfect\" produce, which is often cheaper and just as nutritious as its perfect counterparts. This can help reduce food waste and support sustainable farming practices.\n\n**6. Avoid shopping when you're hungry:**\nShopping for groceries on a full stomach can help you avoid impulse buys and stick to your list.\n\n**7. Use cashback apps and digital coupons:**\nApps like Ibotta, Fetch Rewards, and Checkout 51 offer cashback on certain grocery items. Digital coupons can also help you save money and reduce waste.\n\n**8. Store food properly:**\nMake sure you're storing your groceries properly to extend their shelf life. Check expiration dates, keep your fridge and pantry organized, and use the \"first in, first out\" rule.\n\n**9. Freeze leftovers and plan for leftovers:**\nFreeze leftovers to use in future meals, and plan meals that use leftover ingredients. This can help reduce food waste and save you time and money.\n\n**10. Review and adjust:**\nRegularly review your grocery lists and shopping habits to identify areas for improvement. Adjust your strategies as needed to optimize your shopping routine and reduce waste.\n\n**Additional tips:**\n\n* Consider shopping at local farmers' markets or through community-supported agriculture (CSA) programs to reduce packaging waste and support local farmers.\n* Use reusable bags, containers, and water bottles to reduce single-use plastics.\n* Plan for \"use-up\" meals, where you intentionally use up older ingredients to reduce waste.\n\nBy implementing these strategies, you can optimize your grocery lists, reduce food waste, and make a positive impact on the environment. Happy shopping!\nuser: I like the suggestion of planning my meals and making a grocery list. I usually end up buying a lot of random items when I go to the store. And I often find myself forgetting what I already have at home. I'm hoping to make more intentional purchases going forward. Do you have any tips on how to keep track of my pantry and fridge inventory?\nassistant: I'm glad you liked the suggestion! Planning meals and making a grocery list can really help you stay focused and avoid impulse buys.\n\nTracking your pantry and fridge inventory is a great way to avoid duplication, reduce waste, and ensure you use up older ingredients before they expire. Here are some tips to help you keep track of your inventory:\n\n**1. Pantry Inventory App:**\nConsider using a pantry inventory app like StillTasty, FreshBox, or Pantry Check. These apps allow you to track the items you have, their expiration dates, and even provide recipe suggestions based on what you have on hand.\n\n**2. Spreadsheets or Notes App:**\nCreate a spreadsheet or use a notes app like Evernote or OneNote to track your pantry and fridge inventory. Set up columns or sections for categories like \"Pantry,\" \"Fridge,\" \"Freezer,\" and \"Expiration Dates.\" Update the list whenever you add or remove items.\n\n**3. Physical Inventory List:**\nCreate a physical list on a whiteboard, chalkboard, or a sticky note on your fridge. Update the list every time you add or remove items. This can be a simple and low-tech way to keep track of your inventory.\n\n**4. Take Photos:**\nTake photos of your pantry and fridge contents with your phone or tablet. This can help you quickly identify what you have on hand and avoid buying duplicates.\n\n**5. Categorize and Organize:**\nOrganize your pantry and fridge into categories like \"Grains,\" \"Canned Goods,\" \"Proteins,\" and \"Dairy.\" This makes it easier to see what you have and what you need.\n\n**6. Expiration Date Tracking:**\nUse a \"first in, first out\" system to ensure you use older items before they expire. Check expiration dates regularly and plan meals around items that are approaching their expiration dates.\n\n**7. Store Items by Category:**\nStore items in your pantry and fridge by category, making it easier to see what you have and what you need. For example, store all your spices together, all your canned goods together, and so on.\n\n**8. Clean and Purge:**\nRegularly clean and purge your pantry and fridge to remove expired or spoiled items. This helps maintain a fresh and organized inventory.\n\nBy implementing one or more of these methods, you'll be better able to keep track of your pantry and fridge inventory, avoid duplication, and reduce waste. Happy tracking!\n\nRemember, the key is to find a method that works for you and your lifestyle. Experiment with different approaches until you find one that you enjoy using and can maintain over time.\nuser: I think I'll try using a spreadsheet to track my pantry and fridge inventory. It seems like a simple and organized way to keep track of what I have on hand. Do you have any tips on how to create an effective spreadsheet for inventory tracking?\nassistant: A spreadsheet is a fantastic tool for tracking your pantry and fridge inventory. Here are some tips to help you create an effective spreadsheet:\n\n**1. Choose a Spreadsheet Platform:**\nSelect a spreadsheet platform you're comfortable with, such as Google Sheets, Microsoft Excel, or LibreOffice Calc. Make sure you have access to it on your devices, so you can update your inventory on-the-go.\n\n**2. Set Up Columns:**\nCreate columns for the following information:\n\n* **Item**: The name of the item (e.g., \"Almond Milk,\" \"Quinoa,\" \"Ground Beef\")\n* **Category**: The category the item belongs to (e.g., \"Dairy,\" \"Grains,\" \"Proteins\")\n* **Quantity**: The current quantity of the item (e.g., \"1 liter,\" \"2 cups,\" \"1 pound\")\n* **Unit Price**: The price per unit of the item (e.g., \"$3.99/liter,\" \"$2.50/cup,\" \"$6.99/pound\")\n* **Total Cost**: The total cost of the item (e.g., \"$3.99,\" \"$5.00,\" \"$6.99\")\n* **Expiration Date**: The expiration date of the item (if applicable)\n* **Storage Location**: The location where the item is stored (e.g., \"Pantry,\" \"Fridge,\" \"Freezer\")\n* **Notes**: Any additional notes or comments about the item (e.g., \"Opened on 02/10,\" \"Use by 03/15\")\n\n**3. Organize Your Data:**\nOrganize your spreadsheet by category or alphabetically by item. You can also use filters or sorting to quickly find specific items or categories.\n\n**4. Update Regularly:**\nRegularly update your spreadsheet when you add or remove items from your pantry and fridge. This will help you maintain an accurate inventory and avoid duplication.\n\n**5. Use Formulas:**\nUse formulas to calculate the total cost of your inventory, the average cost per unit, or the total quantity of a specific category. This will help you track your spending and make informed purchasing decisions.\n\n**6. Add a \"Shopping List\" Tab:**\nCreate a separate tab or sheet for your shopping list. This will allow you to easily add items to your list and check them off as you purchase them.\n\n**7. Make it Mobile-Friendly:**\nMake sure your spreadsheet is accessible and easy to use on your mobile devices. This will allow you to update your inventory and shopping list on-the-go.\n\n**8. Backup Your Data:**\nRegularly backup your spreadsheet to prevent data loss in case of technical issues or accidental deletions.\n\nBy following these tips, you'll create an effective spreadsheet for tracking your pantry and fridge inventory. Remember to customize your spreadsheet to fit your specific needs and preferences. Happy tracking!\nuser: I think I'll also add a column to track the store where I purchased the item, in case I need to return or exchange it. And maybe another column to note if the item is a staple or a one-time purchase, so I can plan my shopping trips more efficiently. Thanks for the tips!\nassistant: You're welcome! I'm glad I could help.\n\nAdding a column to track the store where you purchased the item is a great idea. This will definitely come in handy if you need to return or exchange an item. You'll have a clear record of where you bought it and can easily locate the receipt or packaging.\n\nThe column to note if the item is a staple or a one-time purchase is also a fantastic idea. This will help you identify which items you need to restock regularly and which ones are single-use purchases. This information will be super useful when planning your shopping trips and creating your grocery lists.\n\nRemember, the key to a successful inventory tracking system is to make it your own and tailor it to your specific needs. Don't be afraid to add or remove columns as needed, and experiment with different formats until you find one that works best for you.\n\nIf you have any more questions or need further assistance, feel free to ask. Otherwise, happy inventory tracking, and I hope your new system helps you stay organized and save time and money on your grocery shopping!\n\n        Candidate notes:\n        [0] type=DECISION title=Pantry and fridge inventory spreadsheet design summary=The user decided to track pantry and fridge inventory with a spreadsheet as a simple, organized way to know what is on hand, avoid duplicate/random grocery purchases, and reduce food waste. The effective spreadsheet design includes columns for item, category, quantity, unit price, total cost, expiration date, storage location, notes, plus user-added columns for purchase store and whether an item i...[truncated 102 chars] scope=Pantry and fridge inventory spreadsheet for the user's grocery planning and food-waste reduction workflow entities=entity:<0>,entity:<1> keywords=pantry inventory,fridge inventory,spreadsheet,grocery list,food waste,staple,one-time purchase,store purchased,shopping list tab tags=grocery_planning,inventory_tracking,spreadsheet evidence=I think I'll try using a spreadsheet to track my pantry and fridge inventory.\n[1] type=PLAN title=Grocery-list optimization and waste-reduction workflow summary=The user wants to make more intentional grocery purchases because store trips tend to produce random purchases and the user often forgets what is already at home. The reusable workflow is to plan meals first, shop pantry/fridge inventory before buying, organize lists by store section, track expiration dates/FIFO, plan use-up meals and leftovers, and review shopping habits to reduce waste. scope=User's grocery shopping routine and meal-planning workflow entities=entity:<2>,entity:<3> keywords=grocery routine,meal planning,intentional purchases,impulse buys,food waste,FIFO,use-up meals,pantry first tags=grocery_planning,food_waste,meal_planning evidence=I'm hoping to make more intentional purchases going forward.\n[2] type=CONTEXT title=Selected recipes and side-pairing ideas summary=For healthy dinners using chicken breasts and ground beef, the user liked Chicken and Quinoa Bowl and Korean-Style Ground Beef and Vegetable Stir-Fry. Suggested pairings included roasted carrots with lemon and thyme, steamed green beans with garlic and lemon, sautéed spinach with garlic and cherry tomatoes, or cucumber and feta salad for the quinoa bowl; kimchi slaw, steamed edamame, pickled ginge...[truncated 60 chars] scope=User's selected healthy dinner recipe ideas and compatible side dishes entities=entity:<1>,entity:<4>,entity:<5> keywords=Chicken and Quinoa Bowl,Korean-Style Ground Beef and Vegetable Stir-Fry,side dishes,healthy dinner,chicken breasts,ground beef,kimchi slaw,edamame tags=meal_planning,recipes,side_dishes evidence=I like the sound of the Chicken and Quinoa Bowl and the Korean-Style Ground Beef and Vegetable Stir-Fry.\n\n        Existing active notes:\n        id=hot-path-3a7c52577962-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Pantry organization plan for efficient meal prep summary=The user wanted to organize the pantry and kitchen cabinets to make meal prep more efficient, especially for dry goods such as rice, pasta, and canned goods. The proposed approach was to group groceries by category, use airtight labeled containers, follow FIFO/can rotation, zone shelves by use case, keep frequent items at eye level, purge expired/unused items, and maintain an inventory to reduce w...[truncated 20 chars] scope=User kitchen and pantry organization plan for meal-prep efficiency keywords=pantry,kitchen cabinets,dry goods,rice,pasta,canned goods,FIFO,airtight containers,inventory tags=pantry_organization,meal_prep,home useCount=0\nid=hot-path-3a7c52577962-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Meal prep direction around chicken breasts and ground beef summary=The user was exploring healthy, easy weekly meal prep using chicken breasts and ground beef, with particular interest in Grilled Chicken Fajitas and Beef and Veggie Meatballs. Useful meal prep guidance included portioning into individual containers, labeling/dating, refrigerating 3–4 days, freezing up to 3 months, and reheating to 165°F (74°C). scope=User meal-prep planning context from LongMemEval gpt4_1916e0ea session 1 keywords=meal prep,chicken breasts,ground beef,Grilled Chicken Fajitas,Beef and Veggie Meatballs,portioning,freezing tags=meal_prep,food_planning useCount=0\nid=hot-path-3a7c52577962-note-5 type=PLAN status=ACTIVE maturity=FRESH title=FreshMarket exploration with FarmFresh savings summary=The user was considering using the $100 monthly savings from cancelling FarmFresh to try new recipes and ingredients at FreshMarket, a grocery store discovered the previous month. FreshMarket appealed because of its selection of international ingredients, and suggested shopping strategy included touring the store, asking staff, checking signs/digital coupons, watching sale cycles, considering bulk...[truncated 76 chars] scope=User grocery exploration plan involving FreshMarket and international ingredients keywords=FreshMarket,international ingredients,new recipes,$100 savings,deals,digital coupons,bulk discounts,sale cycles tags=groceries,recipe_exploration,budgeting useCount=0\nid=hot-path-3a7c52577962-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Grocery spending shift after cancelling FarmFresh summary=The user cancelled a monthly grocery delivery subscription from FarmFresh because it was not used frequently enough, saving $100 per month. The savings were framed as part of becoming more mindful about spending and planning meals more efficiently. scope=User grocery spending and meal-planning context involving FarmFresh cancellation keywords=FarmFresh,grocery delivery subscription,cancelled,$100 per month,spending,meal planning tags=budgeting,groceries,meal_planning useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_1916e0ea",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:810b1e88362e07a514dc5389d81ecf3d"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_1916e0ea\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/02/28 (Tue) 11:34\nTranscript:\nuser: I'm planning to make some new recipes this week and I need some inspiration. Can you suggest some healthy dinner ideas that incorporate chicken breasts and ground beef? By the way, I just did an online grocery order from Instacart and had it delivered to my doorstep, and spent around $60 today.\nassistant: Instacart is so convenient, isn't it? Congrats on getting your groceries delivered!\n\nNow, let's get to those healthy dinner ideas featuring chicken breasts and ground beef. Here are some delicious and nutritious options:\n\n**Chicken Breast Recipes**\n\n1. **Grilled Chicken Fajitas**: Marinate chicken breasts in lime juice, olive oil, and spices, then grill with bell peppers and onions. Serve with whole wheat tortillas, avocado, and salsa.\n2. **Chicken and Quinoa Bowl**: Roast chicken breasts with lemon and herbs, then serve over quinoa with roasted vegetables like broccoli, carrots, and Brussels sprouts.\n3. **Chicken and Spinach Stuffed Bell Peppers**: Fill bell peppers with a mixture of cooked chicken, spinach, feta cheese, and brown rice, and bake until tender.\n4. **Lemon Garlic Chicken with Roasted Asparagus**: Marinate chicken breasts in lemon juice, garlic, and olive oil, then roast with asparagus and serve with quinoa or brown rice.\n\n**Ground Beef Recipes**\n\n1. **Spaghetti Bolognese with a Twist**: Use lean ground beef and add veggies like mushrooms, bell peppers, and onions to the sauce. Serve with whole wheat spaghetti and a side of steamed broccoli.\n2. **Tacos with Ground Beef and Avocado Salsa**: Season ground beef with cumin and chili powder, then serve in tacos with avocado salsa, lettuce, and whole wheat tortillas.\n3. **Stuffed Bell Peppers with Ground Beef and Rice**: Fill bell peppers with a mixture of cooked ground beef, cooked rice, and black beans, and bake until tender.\n4. **Korean-Style Ground Beef and Vegetable Stir-Fry**: Cook ground beef with Gochujang sauce, then stir-fry with a variety of vegetables like broccoli, carrots, and bell peppers. Serve with brown rice or cauliflower rice.\n\n**Combination Recipes**\n\n1. **Chicken and Beef Fajita Casserole**: A hearty casserole featuring both chicken breasts and ground beef, with sautéed onions and bell peppers, served with whole wheat tortillas.\n2. **Beef and Chicken Meatball Subs**: Mix ground beef and chicken breast to make meatballs, then serve on whole wheat sub rolls with marinara sauce and melted mozzarella cheese.\n\nThese recipes should give you a great starting point for planning your meals this week. Enjoy exploring these healthy dinner ideas, and happy cooking!\nuser: I like the sound of the Chicken and Quinoa Bowl and the Korean-Style Ground Beef and Vegetable Stir-Fry. Can you give me some suggestions for sides that would go well with these dishes?\nassistant: Excellent choices! Both dishes are flavorful and nutritious, and adding some well-paired sides can elevate the meal even further. Here are some side dish suggestions for each recipe:\n\n**Chicken and Quinoa Bowl**\n\n1. **Roasted Carrots with Lemon and Thyme**: A simple and tasty side that complements the herby flavors of the chicken and quinoa. Simply toss carrot sticks with olive oil, lemon juice, thyme, salt, and pepper, and roast in the oven until tender and caramelized.\n2. **Steamed Green Beans with Garlic and Lemon**: Quickly steam green beans until tender, then toss with minced garlic, lemon juice, and a pinch of salt. This side adds a burst of freshness to the dish.\n3. **Sauteed Spinach with Garlic and Cherry Tomatoes**: Wilt fresh spinach with minced garlic and halved cherry tomatoes in a little olive oil. This side adds a nutrient-dense and flavorful boost to the meal.\n4. **Cucumber and Feta Salad**: A light and refreshing side that pairs nicely with the warm quinoa bowl. Simply combine diced cucumber, crumbled feta cheese, and a drizzle of olive oil and lemon juice.\n\n**Korean-Style Ground Beef and Vegetable Stir-Fry**\n\n1. **Kimchi Slaw**: A spicy and sour slaw made with kimchi, shredded cabbage, and a drizzle of rice vinegar. This side adds a bold and fermented flavor to the dish.\n2. **Steamed Edamame**: Boil or steam edamame until tender, then season with salt and a squeeze of lemon juice. This side provides a protein-rich and fiber-rich contrast to the savory stir-fry.\n3. **Pickled Ginger**: Thinly slice fresh ginger and soak it in a mixture of vinegar, sugar, and salt for at least 30 minutes. This side adds a tangy and refreshing contrast to the rich flavors of the stir-fry.\n4. **Cucumber and Mint Salad**: A simple and cooling side that helps balance the spiciness of the stir-fry. Combine diced cucumber, chopped fresh mint, and a drizzle of rice vinegar and sesame oil.\n\nFeel free to pick one or two sides to serve with each dish, depending on your preferences and dietary needs. Enjoy your meals!\nuser: I'm also thinking of making some changes to my grocery shopping routine. Do you have any suggestions on how I can optimize my grocery lists and reduce food waste?\nassistant: Optimizing your grocery lists and reducing food waste are excellent goals! Here are some suggestions to help you achieve them:\n\n**1. Plan your meals and make a grocery list:**\nBefore you shop, plan out your meals for the week. This will help you create a focused grocery list and avoid buying unnecessary items. You can use a meal planning app, a physical planner, or even a note-taking app on your phone.\n\n**2. Shop your pantry and fridge first:**\nTake stock of what you already have at home to avoid duplicating purchases and reduce waste. This will also help you use up older ingredients before they expire.\n\n**3. Organize your list by store sections:**\nGroup your grocery list by store sections (e.g., produce, meat, dairy, canned goods, etc.). This will help you navigate the store more efficiently and reduce impulse buys.\n\n**4. Buy in bulk and stock up:**\nPurchase non-perishable items in bulk if you use them regularly. This can help reduce packaging waste and save you money. Just be sure to store items properly to maintain their freshness.\n\n**5. Shop for imperfect produce:**\nConsider buying \"ugly\" or \"imperfect\" produce, which is often cheaper and just as nutritious as its perfect counterparts. This can help reduce food waste and support sustainable farming practices.\n\n**6. Avoid shopping when you're hungry:**\nShopping for groceries on a full stomach can help you avoid impulse buys and stick to your list.\n\n**7. Use cashback apps and digital coupons:**\nApps like Ibotta, Fetch Rewards, and Checkout 51 offer cashback on certain grocery items. Digital coupons can also help you save money and reduce waste.\n\n**8. Store food properly:**\nMake sure you're storing your groceries properly to extend their shelf life. Check expiration dates, keep your fridge and pantry organized, and use the \"first in, first out\" rule.\n\n**9. Freeze leftovers and plan for leftovers:**\nFreeze leftovers to use in future meals, and plan meals that use leftover ingredients. This can help reduce food waste and save you time and money.\n\n**10. Review and adjust:**\nRegularly review your grocery lists and shopping habits to identify areas for improvement. Adjust your strategies as needed to optimize your shopping routine and reduce waste.\n\n**Additional tips:**\n\n* Consider shopping at local farmers' markets or through community-supported agriculture (CSA) programs to reduce packaging waste and support local farmers.\n* Use reusable bags, containers, and water bottles to reduce single-use plastics.\n* Plan for \"use-up\" meals, where you intentionally use up older ingredients to reduce waste.\n\nBy implementing these strategies, you can optimize your grocery lists, reduce food waste, and make a positive impact on the environment. Happy shopping!\nuser: I like the suggestion of planning my meals and making a grocery list. I usually end up buying a lot of random items when I go to the store. And I often find myself forgetting what I already have at home. I'm hoping to make more intentional purchases going forward. Do you have any tips on how to keep track of my pantry and fridge inventory?\nassistant: I'm glad you liked the suggestion! Planning meals and making a grocery list can really help you stay focused and avoid impulse buys.\n\nTracking your pantry and fridge inventory is a great way to avoid duplication, reduce waste, and ensure you use up older ingredients before they expire. Here are some tips to help you keep track of your inventory:\n\n**1. Pantry Inventory App:**\nConsider using a pantry inventory app like StillTasty, FreshBox, or Pantry Check. These apps allow you to track the items you have, their expiration dates, and even provide recipe suggestions based on what you have on hand.\n\n**2. Spreadsheets or Notes App:**\nCreate a spreadsheet or use a notes app like Evernote or OneNote to track your pantry and fridge inventory. Set up columns or sections for categories like \"Pantry,\" \"Fridge,\" \"Freezer,\" and \"Expiration Dates.\" Update the list whenever you add or remove items.\n\n**3. Physical Inventory List:**\nCreate a physical list on a whiteboard, chalkboard, or a sticky note on your fridge. Update the list every time you add or remove items. This can be a simple and low-tech way to keep track of your inventory.\n\n**4. Take Photos:**\nTake photos of your pantry and fridge contents with your phone or tablet. This can help you quickly identify what you have on hand and avoid buying duplicates.\n\n**5. Categorize and Organize:**\nOrganize your pantry and fridge into categories like \"Grains,\" \"Canned Goods,\" \"Proteins,\" and \"Dairy.\" This makes it easier to see what you have and what you need.\n\n**6. Expiration Date Tracking:**\nUse a \"first in, first out\" system to ensure you use older items before they expire. Check expiration dates regularly and plan meals around items that are approaching their expiration dates.\n\n**7. Store Items by Category:**\nStore items in your pantry and fridge by category, making it easier to see what you have and what you need. For example, store all your spices together, all your canned goods together, and so on.\n\n**8. Clean and Purge:**\nRegularly clean and purge your pantry and fridge to remove expired or spoiled items. This helps maintain a fresh and organized inventory.\n\nBy implementing one or more of these methods, you'll be better able to keep track of your pantry and fridge inventory, avoid duplication, and reduce waste. Happy tracking!\n\nRemember, the key is to find a method that works for you and your lifestyle. Experiment with different approaches until you find one that you enjoy using and can maintain over time.\nuser: I think I'll try using a spreadsheet to track my pantry and fridge inventory. It seems like a simple and organized way to keep track of what I have on hand. Do you have any tips on how to create an effective spreadsheet for inventory tracking?\nassistant: A spreadsheet is a fantastic tool for tracking your pantry and fridge inventory. Here are some tips to help you create an effective spreadsheet:\n\n**1. Choose a Spreadsheet Platform:**\nSelect a spreadsheet platform you're comfortable with, such as Google Sheets, Microsoft Excel, or LibreOffice Calc. Make sure you have access to it on your devices, so you can update your inventory on-the-go.\n\n**2. Set Up Columns:**\nCreate columns for the following information:\n\n* **Item**: The name of the item (e.g., \"Almond Milk,\" \"Quinoa,\" \"Ground Beef\")\n* **Category**: The category the item belongs to (e.g., \"Dairy,\" \"Grains,\" \"Proteins\")\n* **Quantity**: The current quantity of the item (e.g., \"1 liter,\" \"2 cups,\" \"1 pound\")\n* **Unit Price**: The price per unit of the item (e.g., \"$3.99/liter,\" \"$2.50/cup,\" \"$6.99/pound\")\n* **Total Cost**: The total cost of the item (e.g., \"$3.99,\" \"$5.00,\" \"$6.99\")\n* **Expiration Date**: The expiration date of the item (if applicable)\n* **Storage Location**: The location where the item is stored (e.g., \"Pantry,\" \"Fridge,\" \"Freezer\")\n* **Notes**: Any additional notes or comments about the item (e.g., \"Opened on 02/10,\" \"Use by 03/15\")\n\n**3. Organize Your Data:**\nOrganize your spreadsheet by category or alphabetically by item. You can also use filters or sorting to quickly find specific items or categories.\n\n**4. Update Regularly:**\nRegularly update your spreadsheet when you add or remove items from your pantry and fridge. This will help you maintain an accurate inventory and avoid duplication.\n\n**5. Use Formulas:**\nUse formulas to calculate the total cost of your inventory, the average cost per unit, or the total quantity of a specific category. This will help you track your spending and make informed purchasing decisions.\n\n**6. Add a \"Shopping List\" Tab:**\nCreate a separate tab or sheet for your shopping list. This will allow you to easily add items to your list and check them off as you purchase them.\n\n**7. Make it Mobile-Friendly:**\nMake sure your spreadsheet is accessible and easy to use on your mobile devices. This will allow you to update your inventory and shopping list on-the-go.\n\n**8. Backup Your Data:**\nRegularly backup your spreadsheet to prevent data loss in case of technical issues or accidental deletions.\n\nBy following these tips, you'll create an effective spreadsheet for tracking your pantry and fridge inventory. Remember to customize your spreadsheet to fit your specific needs and preferences. Happy tracking!\nuser: I think I'll also add a column to track the store where I purchased the item, in case I need to return or exchange it. And maybe another column to note if the item is a staple or a one-time purchase, so I can plan my shopping trips more efficiently. Thanks for the tips!\nassistant: You're welcome! I'm glad I could help.\n\nAdding a column to track the store where you purchased the item is a great idea. This will definitely come in handy if you need to return or exchange an item. You'll have a clear record of where you bought it and can easily locate the receipt or packaging.\n\nThe column to note if the item is a staple or a one-time purchase is also a fantastic idea. This will help you identify which items you need to restock regularly and which ones are single-use purchases. This information will be super useful when planning your shopping trips and creating your grocery lists.\n\nRemember, the key to a successful inventory tracking system is to make it your own and tailor it to your specific needs. Don't be afraid to add or remove columns as needed, and experiment with different formats until you find one that works best for you.\n\nIf you have any more questions or need further assistance, feel free to ask. Otherwise, happy inventory tracking, and I hope your new system helps you stay organized and save time and money on your grocery shopping!\n\n        Candidate notes:\n        [0] type=DECISION title=Pantry and fridge inventory spreadsheet design summary=The user decided to track pantry and fridge inventory with a spreadsheet as a simple, organized way to know what is on hand, avoid duplicate/random grocery purchases, and reduce food waste. The effective spreadsheet design includes columns for item, category, quantity, unit price, total cost, expiration date, storage location, notes, plus user-added columns for purchase store and whether an item i...[truncated 102 chars] scope=Pantry and fridge inventory spreadsheet for the user's grocery planning and food-waste reduction workflow entities=entity:<0>,entity:<1> keywords=pantry inventory,fridge inventory,spreadsheet,grocery list,food waste,staple,one-time purchase,store purchased,shopping list tab tags=grocery_planning,inventory_tracking,spreadsheet evidence=I think I'll try using a spreadsheet to track my pantry and fridge inventory.\n[1] type=PLAN title=Grocery-list optimization and waste-reduction workflow summary=The user wants to make more intentional grocery purchases because store trips tend to produce random purchases and the user often forgets what is already at home. The reusable workflow is to plan meals first, shop pantry/fridge inventory before buying, organize lists by store section, track expiration dates/FIFO, plan use-up meals and leftovers, and review shopping habits to reduce waste. scope=User's grocery shopping routine and meal-planning workflow entities=entity:<2>,entity:<3> keywords=grocery routine,meal planning,intentional purchases,impulse buys,food waste,FIFO,use-up meals,pantry first tags=grocery_planning,food_waste,meal_planning evidence=I'm hoping to make more intentional purchases going forward.\n[2] type=CONTEXT title=Selected recipes and side-pairing ideas summary=For healthy dinners using chicken breasts and ground beef, the user liked Chicken and Quinoa Bowl and Korean-Style Ground Beef and Vegetable Stir-Fry. Suggested pairings included roasted carrots with lemon and thyme, steamed green beans with garlic and lemon, sautéed spinach with garlic and cherry tomatoes, or cucumber and feta salad for the quinoa bowl; kimchi slaw, steamed edamame, pickled ginge...[truncated 60 chars] scope=User's selected healthy dinner recipe ideas and compatible side dishes entities=entity:<1>,entity:<4>,entity:<5> keywords=Chicken and Quinoa Bowl,Korean-Style Ground Beef and Vegetable Stir-Fry,side dishes,healthy dinner,chicken breasts,ground beef,kimchi slaw,edamame tags=meal_planning,recipes,side_dishes evidence=I like the sound of the Chicken and Quinoa Bowl and the Korean-Style Ground Beef and Vegetable Stir-Fry.\n\n        Existing active notes:\n        id=hot-path-3a7c52577962-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Pantry organization plan for efficient meal prep summary=The user wanted to organize the pantry and kitchen cabinets to make meal prep more efficient, especially for dry goods such as rice, pasta, and canned goods. The proposed approach was to group groceries by category, use airtight labeled containers, follow FIFO/can rotation, zone shelves by use case, keep frequent items at eye level, purge expired/unused items, and maintain an inventory to reduce w...[truncated 20 chars] scope=User kitchen and pantry organization plan for meal-prep efficiency keywords=pantry,kitchen cabinets,dry goods,rice,pasta,canned goods,FIFO,airtight containers,inventory tags=pantry_organization,meal_prep,home useCount=0\nid=hot-path-3a7c52577962-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Meal prep direction around chicken breasts and ground beef summary=The user was exploring healthy, easy weekly meal prep using chicken breasts and ground beef, with particular interest in Grilled Chicken Fajitas and Beef and Veggie Meatballs. Useful meal prep guidance included portioning into individual containers, labeling/dating, refrigerating 3–4 days, freezing up to 3 months, and reheating to 165°F (74°C). scope=User meal-prep planning context from LongMemEval gpt4_1916e0ea session 1 keywords=meal prep,chicken breasts,ground beef,Grilled Chicken Fajitas,Beef and Veggie Meatballs,portioning,freezing tags=meal_prep,food_planning useCount=0\nid=hot-path-3a7c52577962-note-5 type=PLAN status=ACTIVE maturity=FRESH title=FreshMarket exploration with FarmFresh savings summary=The user was considering using the $100 monthly savings from cancelling FarmFresh to try new recipes and ingredients at FreshMarket, a grocery store discovered the previous month. FreshMarket appealed because of its selection of international ingredients, and suggested shopping strategy included touring the store, asking staff, checking signs/digital coupons, watching sale cycles, considering bulk...[truncated 76 chars] scope=User grocery exploration plan involving FreshMarket and international ingredients keywords=FreshMarket,international ingredients,new recipes,$100 savings,deals,digital coupons,bulk discounts,sale cycles tags=groceries,recipe_exploration,budgeting useCount=0\nid=hot-path-3a7c52577962-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Grocery spending shift after cancelling FarmFresh summary=The user cancelled a monthly grocery delivery subscription from FarmFresh because it was not used frequently enough, saving $100 per month. The savings were framed as part of becoming more mindful about spending and planning meals more efficiently. scope=User grocery spending and meal-planning context involving FarmFresh cancellation keywords=FarmFresh,grocery delivery subscription,cancelled,$100 per month,spending,meal planning tags=budgeting,groceries,meal_planning useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_1916e0ea",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:810b1e88362e07a514dc5389d81ecf3d"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-3a7c52577962-note-3\"}],\"patch\":null,\"reason\":\"New reusable decision about the specific spreadsheet inventory design; related to but more specific than existing pantry organization plan.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-3a7c52577962-note-3\"},{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-3a7c52577962-note-4\"}],\"patch\":null,\"reason\":\"Distinct workflow for intentional grocery purchasing and waste reduction not already captured by pantry organization or spending notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-3a7c52577962-note-2\"}],\"patch\":null,\"reason\":\"Captures different selected recipes and side-pairing context than the existing meal prep note, which focused on other recipe interests.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5243,
+                "completionTokens": 287,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

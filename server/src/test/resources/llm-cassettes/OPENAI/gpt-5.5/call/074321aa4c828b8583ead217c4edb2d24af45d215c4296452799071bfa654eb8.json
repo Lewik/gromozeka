@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "074321aa4c828b8583ead217c4edb2d24af45d215c4296452799071bfa654eb8",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I buy a smoker?\n\n                                Question date:\n                                2023/03/25 (Sat) 21:28\n\n                                Noisy expected-answer label:\n                                10 days ago. 11 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_8279ba02\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-fdf32fb5b032-claim-13 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated apple-forward hickory/apple pellet blend recommendation was 30% hickory pellets and 70% apple wood pellets.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"30% Hickory Pellets: 70% Apple Wood Pellets\"\n- claim hot-path-fdf32fb5b032-claim-12 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated balanced hickory/apple pellet blend recommendation was 50% hickory pellets and 50% apple wood pellets.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"50% Hickory Pellets: 50% Apple Wood Pellets\"\n- claim hot-path-fdf32fb5b032-claim-11 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated hickory-heavy hickory/apple pellet blend recommendation was 70% hickory pellets and 30% apple wood pellets.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"70% Hickory Pellets: 30% Apple Wood Pellets\"\n- claim hot-path-fdf32fb5b032-claim-14 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated hickory/apple pellet blending tip was to start with 20–30% hickory pellets and adjust to taste because hickory can overpower meat.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"Start with a smaller amount of hickory pellets (20-30%) and adjust to taste. Hickory can overpower the flavor of the meat if used in excess.\"\n- claim hot-path-fdf32fb5b032-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has experience making BBQ sauce from scratch.; scope=User cooking and BBQ interests; context=\"In a past chat about BBQ sauce recipes, the user said they had been experimenting with making their own BBQ sauce from scratch and wanted to improve.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I've been experimenting with making my own from scratch\"\n- claim hot-path-fdf32fb5b032-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to improve their homemade BBQ sauces.; scope=User BBQ sauce experimentation; context=\"In a past chat, the user asked for new BBQ sauce recipes and said they were always looking to improve their from-scratch sauces.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I'm always looking to improve\"\n- claim hot-path-fdf32fb5b032-claim-10 [ACTIVE] has_goal family=has_goal: The user planned to try a mix of hickory and apple wood pellets for their next smoke.; scope=User's next BBQ smoking plan as of 2023-03-15; context=\"In a past BBQ smoking chat, the user asked for recommended ratios for a hickory and apple wood pellet mix that pairs with pork and beef.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I'm thinking of trying out a mix of hickory and apple wood pellets for my next smoke\"\n- claim hot-path-fdf32fb5b032-claim-6 [ACTIVE] owns family=owns: The user owns a smoker.; scope=User cooking equipment; context=\"In a past BBQ chat, the user said they had just gotten a smoker and was excited to experiment with woods and meats.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I just got a smoker today\"\n\n            Retrieved notes:\n            - note hot-path-fdf32fb5b032-note-2 [CONTEXT/ACTIVE]: Hickory and apple wood pellet blend ratios for pork and beef; For a hickory/apple pellet blend in the user's smoker, suggested starting ratios are 70% hickory / 30% apple for stronger traditional smoke, 50/50 for balanced smoke, or 30% hickory / 70% apple for a milder apple-forward profile. Hickory can overpower meat, so starting with 20–30% hickory and adjusting to taste is a cautious approach.; scope=Guidance for using a hickory and apple wood pellet blend when smoking pork or beef.; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"Start with a smaller amount of hickory pellets (20-30%) and adjust to taste. Hickory can overpower the flavor of the meat if used in excess.\"\n- note hot-path-fdf32fb5b032-note-3 [CONTEXT/ACTIVE]: BBQ smoking wood form trade-offs: chips, chunks, pellets, and logs; Smoking wood forms differ by burn behavior and use case: chips give a quick burst of smoke for short or late-stage smoking, chunks provide sustained smoke for longer cooks, and pellets are convenient, efficient, consistent, and space-saving with a milder-to-moderate smoke profile suited to medium-to-long low-and-slow cooks.; scope=General reusable guidance for selecting wood form for the user's smoker.; evidence=SUMMARIZED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"Wood pellets offer a convenient, efficient, and cost-effective way to add smoke flavor to your meats.\"\n\n            Retrieved evidence:\n            - source external:provided-text:1814ed3b007b89b0fffb7898351533ab [external_record ref=longmemeval:gpt4_8279ba02:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/15 (Wed) 10:44...\n...user: I just got a smoker today and I'm excited to experiment with different types of wood and meats. I'm thinking of trying out a mix of hickory and apple wood, I've heard they pair well with pork and beef. What are some recommended meat and wood pairings that I should try out?\nassistant: Congratulations on your smoker! Hickory and apple wood is a fantastic combination for pork and beef. Here are some recommended meat and wood pairings you might want to try:...\n...* Oak Wood: Oak wood is a versatile choice that pairs well with a variety of beef cuts, including steaks, roasts, and ribs. It adds a smoky, slightly sweet flavor that enhances the natural flavor of the beef....\n...* Wood chips are perfect for smaller smokers or for adding flavor to meats that don't require a long smoke time....\n...* Wood chunks are perfect for larger smokers or for meats that require a longer smoke time, like brisket or pork shoulders....\n...* Add the wood chips or chunks to your smoker, either directly on the coals or in a smoker box....\n...Remember to always follow the manufacturer's instructions for your specific smoker, and adjust the amount of wood chips or chunks based on your personal taste preferences. Happy smoking!...\n...* **Convenience:** Wood pellets are easy to use and require minimal effort. Simply add them to your smoker or grill, and they'll start producing smoke....\n...* **Space-Saving:** Wood pellets take up less storage space than logs, chips, or chunks, making them ideal for small smokers or grillers.\n* **Cost-Effective:** Wood pellets can be more cost-effective than logs or chunks, especially for frequent smokers....\n...* Use a pellet smoker or a pellet tube to contain the pellets and direct the smoke....\n...user: I've been considering trying out wood pellets for my smoker, especially since I've heard they're more efficient and produce a consistent smoke flavor. Can you recommend some good brands or types of wood pellets that are suitable for smoking meats?\nassistant: Wood pellets are a fantastic option for smoking meats, and there are many great brands and types to choose from. Here are some popular and highly-recommended wood pellet brands and types for smoking:...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: BBQ sauce; Concept named BBQ sauce.\n- entity entity:<1> [CONCEPT]: Hickory and apple wood pellet blend; Concept named Hickory and apple wood pellet blend.\n- entity entity:<2> [PRODUCT]: Apple wood pellets; Product named Apple wood pellets.\n- entity entity:<3> [PRODUCT]: Hickory pellets; Product named Hickory pellets.\n- entity entity:<4> [PRODUCT]: User's smoker; Product named User's smoker.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_8279ba02",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I buy a smoker?\n\n                                Question date:\n                                2023/03/25 (Sat) 21:28\n\n                                Noisy expected-answer label:\n                                10 days ago. 11 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_8279ba02\n            Answer mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-fdf32fb5b032-claim-13 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated apple-forward hickory/apple pellet blend recommendation was 30% hickory pellets and 70% apple wood pellets.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"30% Hickory Pellets: 70% Apple Wood Pellets\"\n- claim hot-path-fdf32fb5b032-claim-12 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated balanced hickory/apple pellet blend recommendation was 50% hickory pellets and 50% apple wood pellets.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"50% Hickory Pellets: 50% Apple Wood Pellets\"\n- claim hot-path-fdf32fb5b032-claim-11 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated hickory-heavy hickory/apple pellet blend recommendation was 70% hickory pellets and 30% apple wood pellets.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"70% Hickory Pellets: 30% Apple Wood Pellets\"\n- claim hot-path-fdf32fb5b032-claim-14 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The generated hickory/apple pellet blending tip was to start with 20–30% hickory pellets and adjust to taste because hickory can overpower meat.; scope=Imported LongMemEval BBQ smoking conversation from 2023-03-15; context=\"Assistant-generated ratio guidance for the user's hickory and apple wood pellet blend for smoking pork and beef.\"; evidence=IMPORTED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"Start with a smaller amount of hickory pellets (20-30%) and adjust to taste. Hickory can overpower the flavor of the meat if used in excess.\"\n- claim hot-path-fdf32fb5b032-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has experience making BBQ sauce from scratch.; scope=User cooking and BBQ interests; context=\"In a past chat about BBQ sauce recipes, the user said they had been experimenting with making their own BBQ sauce from scratch and wanted to improve.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I've been experimenting with making my own from scratch\"\n- claim hot-path-fdf32fb5b032-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to improve their homemade BBQ sauces.; scope=User BBQ sauce experimentation; context=\"In a past chat, the user asked for new BBQ sauce recipes and said they were always looking to improve their from-scratch sauces.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I'm always looking to improve\"\n- claim hot-path-fdf32fb5b032-claim-10 [ACTIVE] has_goal family=has_goal: The user planned to try a mix of hickory and apple wood pellets for their next smoke.; scope=User's next BBQ smoking plan as of 2023-03-15; context=\"In a past BBQ smoking chat, the user asked for recommended ratios for a hickory and apple wood pellet mix that pairs with pork and beef.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I'm thinking of trying out a mix of hickory and apple wood pellets for my next smoke\"\n- claim hot-path-fdf32fb5b032-claim-6 [ACTIVE] owns family=owns: The user owns a smoker.; scope=User cooking equipment; context=\"In a past BBQ chat, the user said they had just gotten a smoker and was excited to experiment with woods and meats.\"; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"I just got a smoker today\"\n\n            Retrieved notes:\n            - note hot-path-fdf32fb5b032-note-2 [CONTEXT/ACTIVE]: Hickory and apple wood pellet blend ratios for pork and beef; For a hickory/apple pellet blend in the user's smoker, suggested starting ratios are 70% hickory / 30% apple for stronger traditional smoke, 50/50 for balanced smoke, or 30% hickory / 70% apple for a milder apple-forward profile. Hickory can overpower meat, so starting with 20–30% hickory and adjusting to taste is a cautious approach.; scope=Guidance for using a hickory and apple wood pellet blend when smoking pork or beef.; evidence=DIRECT source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"Start with a smaller amount of hickory pellets (20-30%) and adjust to taste. Hickory can overpower the flavor of the meat if used in excess.\"\n- note hot-path-fdf32fb5b032-note-3 [CONTEXT/ACTIVE]: BBQ smoking wood form trade-offs: chips, chunks, pellets, and logs; Smoking wood forms differ by burn behavior and use case: chips give a quick burst of smoke for short or late-stage smoking, chunks provide sustained smoke for longer cooks, and pellets are convenient, efficient, consistent, and space-saving with a milder-to-moderate smoke profile suited to medium-to-long low-and-slow cooks.; scope=General reusable guidance for selecting wood form for the user's smoker.; evidence=SUMMARIZED source=external:provided-text:1814ed3b007b89b0fffb7898351533ab quote=\"Wood pellets offer a convenient, efficient, and cost-effective way to add smoke flavor to your meats.\"\n\n            Retrieved evidence:\n            - source external:provided-text:1814ed3b007b89b0fffb7898351533ab [external_record ref=longmemeval:gpt4_8279ba02:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/15 (Wed) 10:44...\n...user: I just got a smoker today and I'm excited to experiment with different types of wood and meats. I'm thinking of trying out a mix of hickory and apple wood, I've heard they pair well with pork and beef. What are some recommended meat and wood pairings that I should try out?\nassistant: Congratulations on your smoker! Hickory and apple wood is a fantastic combination for pork and beef. Here are some recommended meat and wood pairings you might want to try:...\n...* Oak Wood: Oak wood is a versatile choice that pairs well with a variety of beef cuts, including steaks, roasts, and ribs. It adds a smoky, slightly sweet flavor that enhances the natural flavor of the beef....\n...* Wood chips are perfect for smaller smokers or for adding flavor to meats that don't require a long smoke time....\n...* Wood chunks are perfect for larger smokers or for meats that require a longer smoke time, like brisket or pork shoulders....\n...* Add the wood chips or chunks to your smoker, either directly on the coals or in a smoker box....\n...Remember to always follow the manufacturer's instructions for your specific smoker, and adjust the amount of wood chips or chunks based on your personal taste preferences. Happy smoking!...\n...* **Convenience:** Wood pellets are easy to use and require minimal effort. Simply add them to your smoker or grill, and they'll start producing smoke....\n...* **Space-Saving:** Wood pellets take up less storage space than logs, chips, or chunks, making them ideal for small smokers or grillers.\n* **Cost-Effective:** Wood pellets can be more cost-effective than logs or chunks, especially for frequent smokers....\n...* Use a pellet smoker or a pellet tube to contain the pellets and direct the smoke....\n...user: I've been considering trying out wood pellets for my smoker, especially since I've heard they're more efficient and produce a consistent smoke flavor. Can you recommend some good brands or types of wood pellets that are suitable for smoking meats?\nassistant: Wood pellets are a fantastic option for smoking meats, and there are many great brands and types to choose from. Here are some popular and highly-recommended wood pellet brands and types for smoking:...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: BBQ sauce; Concept named BBQ sauce.\n- entity entity:<1> [CONCEPT]: Hickory and apple wood pellet blend; Concept named Hickory and apple wood pellet blend.\n- entity entity:<2> [PRODUCT]: Apple wood pellets; Product named Apple wood pellets.\n- entity entity:<3> [PRODUCT]: Hickory pellets; Product named Hickory pellets.\n- entity entity:<4> [PRODUCT]: User's smoker; Product named User's smoker.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_8279ba02",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You got/bought the smoker 10 days ago (on 2023/03/15); counting inclusively, 11 days is also possible.\",\"reason\":\"The retrieved chat is dated 2023/03/15 and says the user 'just got a smoker today,' which is 10 days before 2023/03/25.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2955,
+                "completionTokens": 173,
+                "thinkingTokens": 78,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

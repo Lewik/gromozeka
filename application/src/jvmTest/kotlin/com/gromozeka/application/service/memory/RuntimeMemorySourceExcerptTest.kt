@@ -131,6 +131,31 @@ class RuntimeMemorySourceExcerptTest {
     }
 
     @Test
+    fun keepsTemporalHeaderWhenExcerptUsesRelativeDate() {
+        val targetSentence =
+            "user: I just redeemed $12 cashback for a $10 Amazon gift card from Ibotta today, so I'm feeling pretty good about my savings so far!"
+        val source = """
+            LongMemEval past chat session.
+            Session date: 2023/04/10 (Mon) 17:40
+            Transcript:
+            user: ${"Target weekly sales and promotions. ".repeat(90)}
+            assistant: ${"Shopping advice and digital coupons. ".repeat(90)}
+            $targetSentence
+            assistant: Congratulations on redeeming your Ibotta cashback for an Amazon gift card!
+            ${"Later coupon advice. ".repeat(100)}
+        """.trimIndent()
+
+        val excerpt = RuntimeMemorySourceExcerpt.queryFocused(
+            text = source,
+            query = "Ibotta redeemed $12 cashback $10 Amazon gift card today order event date",
+            maxChars = 1_400,
+        )
+
+        assertTrue(excerpt.contains("Session date: 2023/04/10 (Mon) 17:40"), excerpt)
+        assertTrue(excerpt.contains(targetSentence), excerpt)
+    }
+
+    @Test
     fun doesNotExpandSingleLineMatchesBackToDocumentStart() {
         val source = "${"early unrelated text ".repeat(250)}target answer lives near the matched phrase and should survive excerpting ${"late unrelated text ".repeat(250)}"
 

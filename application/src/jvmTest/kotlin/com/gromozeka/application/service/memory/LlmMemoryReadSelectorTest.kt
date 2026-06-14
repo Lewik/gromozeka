@@ -275,6 +275,58 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
+    fun promptKeepsLaterPlansForCurrentStateQuestionsAtLaterTargetDate() = runBlocking {
+        val claims = listOf(
+            claim(
+                id = "claim-current-location",
+                normalizedText = "The user's old sneakers are stored under the user's bed.",
+                predicate = "current_location",
+            ),
+            claim(
+                id = "claim-later-storage-plan",
+                normalizedText = "The user plans to store the old sneakers in a shoe rack after organizing the closet this weekend.",
+                predicate = "has_goal",
+            ),
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-current-location"))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest(
+                    """
+                    LongMemEval recall target.
+                    Current date: 2023/06/07 (Wed) 04:15
+                    Question: Where do I currently keep my old sneakers?
+                    """.trimIndent()
+                ),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                ),
+                candidateHits = claims.mapIndexed { index, claim ->
+                    MemoryStore.SearchHit.ClaimHit(claim, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(claims = claims),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(
+            prompt.contains("keep later dated plans, intentions, or scheduled changes"),
+            prompt,
+        )
+        assertTrue(
+            prompt.contains("Select them together with any older current-state candidate"),
+            prompt,
+        )
+    }
+
+    @Test
     fun rendersClaimQualifiersForSelector() = runBlocking {
         val claim = claim(
             id = "claim-rachel",

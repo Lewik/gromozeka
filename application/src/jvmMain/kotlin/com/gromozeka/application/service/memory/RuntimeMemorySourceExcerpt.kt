@@ -57,8 +57,13 @@ internal object RuntimeMemorySourceExcerpt {
 
         if (merged.isEmpty()) return source.truncateForExcerpt(maxChars)
 
+        val sourceHeader = source.leadingTemporalHeader(firstWindowStart = merged.first().start)
         return buildString {
             append(MATCHING_EXCERPTS_HEADER)
+            if (sourceHeader.isNotBlank()) {
+                append('\n')
+                append(sourceHeader)
+            }
             merged.forEach { window ->
                 append('\n')
                 append(window.render(source))
@@ -214,6 +219,30 @@ internal object RuntimeMemorySourceExcerpt {
         return if (lineBreak < 0) length else lineBreak
     }
 
+    private fun String.leadingTemporalHeader(firstWindowStart: Int): String {
+        if (firstWindowStart <= 0) return ""
+        val lines = lineSequence().take(MAX_HEADER_LINES).toList()
+        if (lines.none { it.hasTemporalHeaderMarker() }) return ""
+
+        val transcriptIndex = lines.indexOfFirst { it.trim().equals("Transcript:", ignoreCase = true) }
+        val blankIndex = lines.indexOfFirst { it.isBlank() }
+        val endExclusive = when {
+            transcriptIndex >= 0 -> transcriptIndex + 1
+            blankIndex > 0 -> blankIndex
+            else -> lines.size
+        }
+        return lines
+            .take(endExclusive.coerceAtMost(MAX_HEADER_LINES))
+            .joinToString("\n")
+            .trim()
+            .take(MAX_HEADER_CHARS)
+    }
+
+    private fun String.hasTemporalHeaderMarker(): Boolean {
+        val normalized = trim().lowercase()
+        return TEMPORAL_HEADER_MARKERS.any { marker -> marker in normalized }
+    }
+
     private fun String.truncateForExcerpt(maxChars: Int): String {
         val trimmed = trim()
         if (trimmed.length <= maxChars) return trimmed
@@ -234,6 +263,19 @@ internal object RuntimeMemorySourceExcerpt {
     private const val MIN_USEFUL_WINDOW_CHARS = 300
     private const val MATCHING_EXCERPTS_HEADER = "...[matching excerpts]..."
     private const val SELECTED_WINDOW_SEPARATOR = "\n"
+    private const val MAX_HEADER_LINES = 8
+    private const val MAX_HEADER_CHARS = 700
+    private val TEMPORAL_HEADER_MARKERS = listOf(
+        "session date:",
+        "document date:",
+        "source date:",
+        "current date:",
+        "observed date:",
+        "observed at:",
+        "created at:",
+        "timestamp:",
+        "date:",
+    )
     private val SHORT_STOPWORDS = setOf(
         "and",
         "are",

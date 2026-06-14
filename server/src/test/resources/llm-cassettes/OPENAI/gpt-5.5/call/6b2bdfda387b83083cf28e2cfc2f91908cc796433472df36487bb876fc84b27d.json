@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "6b2bdfda387b83083cf28e2cfc2f91908cc796433472df36487bb876fc84b27d",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Where do I currently keep my old sneakers?\n\n                                Question date:\n                                2023/06/07 (Wed) 04:15\n\n                                Noisy expected-answer label:\n                                in a shoe rack in my closet\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:07741c45\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d676cdd398ec-claim-6 [ACTIVE] has_goal family=has_goal: The user planned to store their old sneakers in a shoe rack because they were taking up space.; scope=Applies to the user's old sneaker storage plan from the 2023-05-26 imported session.; context=\"The user described old sneakers currently taking up space while planning closet organization.\"; evidence=IMPORTED source=external:provided-text:648eb9abe95fca78ff711596e561ea46 quote=\"storing my old sneakers in a shoe rack, they're currently taking up space\"\n- claim hot-path-bbdee5fe5414-claim-11 [ACTIVE] current_location family=current_location: The user's old sneakers were being stored under the user's bed.; scope=Location/status of the user's old sneakers as of the imported 2023-05-20 chat; context=\"The user said the old sneakers had been kept under the bed for storage and were starting to smell.\"; evidence=DIRECT source=external:provided-text:babdefd17e779e3fcf7d64aa3c351025 quote=\"I've been keeping them under my bed for storage\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:babdefd17e779e3fcf7d64aa3c351025 [external_record ref=longmemeval:07741c45:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 12:36...\n...user: I've heard of Teva and Merrell, they're great brands. I'll check out their latest collections. By the way, I need to take care of my old sneakers, I've been keeping them under my bed for storage, and they're starting to smell.\nassistant: Great choice! Teva and Merrell are both excellent brands for sandals.\n\nAnd oh no, sneaker storage can be a challenge! Keeping them under the bed can indeed cause them to smell, especially if they're made of materials that absorb moisture. Here are some tips to help you store and care for your old sneakers:\n\n1. **Air them out**: Take your sneakers out of storage and let them air out for a few hours. This will help remove any trapped moisture and reduce odors....\n...3. **Store them in a breathable bag**: Instead of storing them in a sealed plastic bag, use a breathable bag or a cloth bag with holes to allow air to circulate. You can also use a mesh bag or a sneaker storage bag with ventilation.\n4. **Keep them away from direct sunlight**: Direct sunlight can cause colors to fade and materials to degrade. Store your sneakers in a shaded area or use a UV-resistant storage bag.\n5. **Clean them before storage**: Give your sneakers a good cleaning before storing them. This will remove dirt and debris that can cause odors. Use a gentle cleaning product and a soft brush to clean the exterior, and let them air dry....\n...7. **Consider a shoe storage box**: If you have limited space, consider investing in a shoe storage box or a sneaker organizer. These can keep your shoes organized, protected, and ventilated.\n\nBy following these tips, you should be able to keep your sneakers fresh and odor-free. Happy storing!\nuser: I'll definitely take your tips into consideration. I need to get my old sneakers polished and conditioned, so I'll drop them off at the cobbler this weekend.\nassistant: That's a great idea! Taking your sneakers to a cobbler can work wonders in reviving them. A good cobbler can not only polish and condition your shoes but also repair any damage, replace worn-out parts, and give them a thorough cleaning....\n...By taking your sneakers to a cobbler, you'll be giving them the TLC they need to look their best and last longer. Enjoy the process, and I hope your sneakers come back looking brand new!\nuser: I'm also planning to donate my old dress shoes to the local charity thrift store this Saturday.\nassistant: That's a wonderful gesture! Donating your old dress shoes to a local charity thrift store is a great way to give back to the community and make a positive impact. Your donation can help:\n\n1. **Support those in need**: Your gently used dress shoes can provide dignity and confidence to individuals who may not have the means to purchase new shoes for job interviews, special occasions, or everyday wear.\n2. **Reduce waste**: By donating your shoes, you're keeping them out of landfills and reducing the environmental impact of waste....\n...Your kindness will make a difference in your community, and your dress shoes will find a new home where they'll be appreciated. Kudos to you for your generosity!...\n...3. **Identify shoes that need repair**: You might find shoes that need a good cleaning, polishing, or repair. This is a great opportunity to get them fixed or consider donating them to someone who can give them a new life....\n...* Can I replace them if I need them again in the future?...\n...* **Use dividers or separators**: Use dividers or separators to create clear sections within your closet. This will help keep each category of shoes separate and make it easier to find what you need....\n...* **Keep frequently worn shoes accessible**: Store your most frequently worn shoes in an easy-to-reach location, like at eye level or near the front of the closet....\n- source external:provided-text:648eb9abe95fca78ff711596e561ea46 [external_record ref=longmemeval:07741c45:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 13:05\nTranscript:\nuser: I'm thinking of buying a new pair of sandals with better quality straps. Can you recommend some good brands or stores that offer durable sandals? By the way, I need to organize my closet this weekend, and I'm looking forward to get rid of some of my old sneakers in a shoe rack in it, they're currently taking up space....\n...Now, about organizing your closet... Congratulations on taking the initiative to tidy up! Storing your old sneakers in a shoe rack is a great idea. Here are some tips to help you get started:...\n...2. **Categorize and group**: Organize your shoes by type (e.g., sneakers, sandals, boots) and group them together. This will make it easier to find what you need when you need it.\n3. **Use storage containers**: Consider using storage bins or baskets to store items like socks, accessories, or out-of-season shoes....\n...user: I'll definitely check out those brands and stores. Do you have any suggestions for a good cobbler to get my old sneakers polished and conditioned?\nassistant: A good cobbler can work wonders on your old sneakers!...\n...I hope this helps you find a great cobbler to give your old sneakers a new lease on life!\nuser: That's really helpful! I'll definitely check out those online review platforms and ask around for recommendations. By the way, do you have any tips on how to keep the sneakers clean and fresh while they're stored?...\n...3. **Store them in a well-ventilated area**: Fresh air is essential for keeping your sneakers fresh. Store them in a well-ventilated area of your closet or room, away from direct sunlight, which can cause fading or discoloration.\n4. **Use silica gel packets or odor absorbers**: Silica gel packets or odor absorbers can help absorb moisture and eliminate odors. You can place them near your sneakers or inside the shoe rack.\n5. **Keep them away from direct heat**: Direct heat can cause materials to degrade or become brittle. Avoid storing your sneakers near heaters, radiators, or direct sunlight.\n6. **Consider using shoe bags or boxes**: If you want to store your sneakers in a more protective environment, consider using shoe bags or boxes. These can help keep them dust-free and prevent scratches.\n7. **Check on them regularly**: Regularly check on your stored sneakers to ensure they're not developing any mold, mildew, or unpleasant odors. If you notice any issues, remove them from storage and let them air out....\n...2. **Recycling**: Some shoe companies offer recycling programs for old shoes. You can search online for \"shoe recycling near me\" to find a local drop-off location....\n...user: That's great to know! I'll make sure to call ahead and check their website before dropping off my dress shoes on Saturday. By the way, I've been meaning to ask, do you have any recommendations for a good jogging route near my place? I've been jogging around the same old route for months, and I'm looking for a change of scenery.\nassistant: I'm glad you're looking to mix up your jogging route! Unfortunately, as a digital AI assistant, I don't have access to your location or personal information, so I can't provide a specific jogging route near your place....\n...user: I'm thinking of getting a new pair of sandals with better quality straps. Can you recommend some good brands or stores that offer durable sandals? By the way, I need to organize my closet this weekend, and I'm looking forward to storing my old sneakers in a shoe rack, they're currently taking up space....\n...As for organizing your closet, I'm excited to hear that you're planning to store your old sneakers in a shoe rack! That's a great way to free up space and keep your shoes organized. Here are some additional tips to help you with your closet organization project:...\n...3. **Use storage containers**: Consider using storage bins or baskets to store items like socks, accessories, or out-of-season shoes....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: User's old sneakers; Product named User's old sneakers.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "07741c45",
+                "questionType": "knowledge-update"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Where do I currently keep my old sneakers?\n\n                                Question date:\n                                2023/06/07 (Wed) 04:15\n\n                                Noisy expected-answer label:\n                                in a shoe rack in my closet\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:07741c45\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d676cdd398ec-claim-6 [ACTIVE] has_goal family=has_goal: The user planned to store their old sneakers in a shoe rack because they were taking up space.; scope=Applies to the user's old sneaker storage plan from the 2023-05-26 imported session.; context=\"The user described old sneakers currently taking up space while planning closet organization.\"; evidence=IMPORTED source=external:provided-text:648eb9abe95fca78ff711596e561ea46 quote=\"storing my old sneakers in a shoe rack, they're currently taking up space\"\n- claim hot-path-bbdee5fe5414-claim-11 [ACTIVE] current_location family=current_location: The user's old sneakers were being stored under the user's bed.; scope=Location/status of the user's old sneakers as of the imported 2023-05-20 chat; context=\"The user said the old sneakers had been kept under the bed for storage and were starting to smell.\"; evidence=DIRECT source=external:provided-text:babdefd17e779e3fcf7d64aa3c351025 quote=\"I've been keeping them under my bed for storage\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:babdefd17e779e3fcf7d64aa3c351025 [external_record ref=longmemeval:07741c45:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 12:36...\n...user: I've heard of Teva and Merrell, they're great brands. I'll check out their latest collections. By the way, I need to take care of my old sneakers, I've been keeping them under my bed for storage, and they're starting to smell.\nassistant: Great choice! Teva and Merrell are both excellent brands for sandals.\n\nAnd oh no, sneaker storage can be a challenge! Keeping them under the bed can indeed cause them to smell, especially if they're made of materials that absorb moisture. Here are some tips to help you store and care for your old sneakers:\n\n1. **Air them out**: Take your sneakers out of storage and let them air out for a few hours. This will help remove any trapped moisture and reduce odors....\n...3. **Store them in a breathable bag**: Instead of storing them in a sealed plastic bag, use a breathable bag or a cloth bag with holes to allow air to circulate. You can also use a mesh bag or a sneaker storage bag with ventilation.\n4. **Keep them away from direct sunlight**: Direct sunlight can cause colors to fade and materials to degrade. Store your sneakers in a shaded area or use a UV-resistant storage bag.\n5. **Clean them before storage**: Give your sneakers a good cleaning before storing them. This will remove dirt and debris that can cause odors. Use a gentle cleaning product and a soft brush to clean the exterior, and let them air dry....\n...7. **Consider a shoe storage box**: If you have limited space, consider investing in a shoe storage box or a sneaker organizer. These can keep your shoes organized, protected, and ventilated.\n\nBy following these tips, you should be able to keep your sneakers fresh and odor-free. Happy storing!\nuser: I'll definitely take your tips into consideration. I need to get my old sneakers polished and conditioned, so I'll drop them off at the cobbler this weekend.\nassistant: That's a great idea! Taking your sneakers to a cobbler can work wonders in reviving them. A good cobbler can not only polish and condition your shoes but also repair any damage, replace worn-out parts, and give them a thorough cleaning....\n...By taking your sneakers to a cobbler, you'll be giving them the TLC they need to look their best and last longer. Enjoy the process, and I hope your sneakers come back looking brand new!\nuser: I'm also planning to donate my old dress shoes to the local charity thrift store this Saturday.\nassistant: That's a wonderful gesture! Donating your old dress shoes to a local charity thrift store is a great way to give back to the community and make a positive impact. Your donation can help:\n\n1. **Support those in need**: Your gently used dress shoes can provide dignity and confidence to individuals who may not have the means to purchase new shoes for job interviews, special occasions, or everyday wear.\n2. **Reduce waste**: By donating your shoes, you're keeping them out of landfills and reducing the environmental impact of waste....\n...Your kindness will make a difference in your community, and your dress shoes will find a new home where they'll be appreciated. Kudos to you for your generosity!...\n...3. **Identify shoes that need repair**: You might find shoes that need a good cleaning, polishing, or repair. This is a great opportunity to get them fixed or consider donating them to someone who can give them a new life....\n...* Can I replace them if I need them again in the future?...\n...* **Use dividers or separators**: Use dividers or separators to create clear sections within your closet. This will help keep each category of shoes separate and make it easier to find what you need....\n...* **Keep frequently worn shoes accessible**: Store your most frequently worn shoes in an easy-to-reach location, like at eye level or near the front of the closet....\n- source external:provided-text:648eb9abe95fca78ff711596e561ea46 [external_record ref=longmemeval:07741c45:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 13:05\nTranscript:\nuser: I'm thinking of buying a new pair of sandals with better quality straps. Can you recommend some good brands or stores that offer durable sandals? By the way, I need to organize my closet this weekend, and I'm looking forward to get rid of some of my old sneakers in a shoe rack in it, they're currently taking up space....\n...Now, about organizing your closet... Congratulations on taking the initiative to tidy up! Storing your old sneakers in a shoe rack is a great idea. Here are some tips to help you get started:...\n...2. **Categorize and group**: Organize your shoes by type (e.g., sneakers, sandals, boots) and group them together. This will make it easier to find what you need when you need it.\n3. **Use storage containers**: Consider using storage bins or baskets to store items like socks, accessories, or out-of-season shoes....\n...user: I'll definitely check out those brands and stores. Do you have any suggestions for a good cobbler to get my old sneakers polished and conditioned?\nassistant: A good cobbler can work wonders on your old sneakers!...\n...I hope this helps you find a great cobbler to give your old sneakers a new lease on life!\nuser: That's really helpful! I'll definitely check out those online review platforms and ask around for recommendations. By the way, do you have any tips on how to keep the sneakers clean and fresh while they're stored?...\n...3. **Store them in a well-ventilated area**: Fresh air is essential for keeping your sneakers fresh. Store them in a well-ventilated area of your closet or room, away from direct sunlight, which can cause fading or discoloration.\n4. **Use silica gel packets or odor absorbers**: Silica gel packets or odor absorbers can help absorb moisture and eliminate odors. You can place them near your sneakers or inside the shoe rack.\n5. **Keep them away from direct heat**: Direct heat can cause materials to degrade or become brittle. Avoid storing your sneakers near heaters, radiators, or direct sunlight.\n6. **Consider using shoe bags or boxes**: If you want to store your sneakers in a more protective environment, consider using shoe bags or boxes. These can help keep them dust-free and prevent scratches.\n7. **Check on them regularly**: Regularly check on your stored sneakers to ensure they're not developing any mold, mildew, or unpleasant odors. If you notice any issues, remove them from storage and let them air out....\n...2. **Recycling**: Some shoe companies offer recycling programs for old shoes. You can search online for \"shoe recycling near me\" to find a local drop-off location....\n...user: That's great to know! I'll make sure to call ahead and check their website before dropping off my dress shoes on Saturday. By the way, I've been meaning to ask, do you have any recommendations for a good jogging route near my place? I've been jogging around the same old route for months, and I'm looking for a change of scenery.\nassistant: I'm glad you're looking to mix up your jogging route! Unfortunately, as a digital AI assistant, I don't have access to your location or personal information, so I can't provide a specific jogging route near your place....\n...user: I'm thinking of getting a new pair of sandals with better quality straps. Can you recommend some good brands or stores that offer durable sandals? By the way, I need to organize my closet this weekend, and I'm looking forward to storing my old sneakers in a shoe rack, they're currently taking up space....\n...As for organizing your closet, I'm excited to hear that you're planning to store your old sneakers in a shoe rack! That's a great way to free up space and keep your shoes organized. Here are some additional tips to help you with your closet organization project:...\n...3. **Use storage containers**: Consider using storage bins or baskets to store items like socks, accessories, or out-of-season shoes....\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: User's old sneakers; Product named User's old sneakers.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "07741c45",
+                "questionType": "knowledge-update"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You planned to keep your old sneakers in a shoe rack in your closet.\",\"reason\":\"The later retrieved 2023-05-26 memory says you were organizing your closet and planned to store the old sneakers in a shoe rack there, which supports the expected location despite an older under-bed record.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2896,
+                "completionTokens": 600,
+                "thinkingTokens": 516,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
