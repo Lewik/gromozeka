@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "f0183f4b4ce349120fe30651fa5b0b115857a5e287a7d3877b7518907ff51621",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is the total time it takes I to get ready and commute to work?\n\n                                Question date:\n                                2023/05/27 (Sat) 13:44\n\n                                Noisy expected-answer label:\n                                an hour and a half\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:1192316e\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-14fa7178983f-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's morning routine takes about one hour to get ready.; scope=Applies to the user's recurring morning routine.; context=\"The user said getting ready includes meditation, workout, and breakfast.\"; evidence=DIRECT source=external:provided-text:6d98363e80cc51e9382caedcecdb60b3 quote=\"it takes me about an hour to get ready\"\n- claim hot-path-f783309d2120-claim-3 [ACTIVE] has_constraint family=has_constraint: The user's daily morning commute to work takes about 30 minutes.; scope=Applies to the user's morning commute context discussed in the imported past chat session.; context=\"The user asked for ways to make the most of the commute time.\"; evidence=DIRECT source=external:provided-text:0adc8fade14c69bcd60d8ae5f65e59d4 quote=\"My daily commute to work takes about 30 minutes\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:0adc8fade14c69bcd60d8ae5f65e59d4 [external_record ref=longmemeval:1192316e:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 08:07\nTranscript:\nuser: I'm looking for some advice on how to make the most of my morning commute. I was thinking of listening to audiobooks or podcasts, but I'm not sure what would be the most engaging. My daily commute to work takes about 30 minutes, so I want to make the most of that time.\nassistant: What a great question! Making the most of your morning commute can set a positive tone for the rest of the day. Both audiobooks and podcasts can be excellent choices, but it ultimately depends on your interests, learning style, and personal preferences. Here are some tips to help you decide:\n\n**Audiobooks:**\n\n1. **Immerse yourself in a story**: If you enjoy fiction, audiobooks can be a great way to escape into a story and forget about your commute....\n...user: I'll definitely check out some of these apps and platforms. I'm also curious, are there any features or settings that I can customize to make the listening experience more enjoyable, such as speeding up the playback or setting a sleep timer?...\n...**Sleep Timer:**\n\n* **Set a sleep timer**: Many apps allow you to set a timer to automatically stop playback after a certain period, ensuring you don't oversleep or get distracted....\n...* **Skip intros or outros**: Some apps allow you to skip introductory or concluding segments, getting straight to the main content....\n...user: That's really helpful! I think I'll play around with the playback speed and sleep timer features to see what works best for me. One thing I'm curious about is, do you have any tips for staying focused and alert during my morning commute, especially since I'm not a morning person?\nassistant: As a non-morning person, it can be challenging to stay focused and alert during your morning commute. Here are some tips to help you stay awake and engaged:\n\n**Morning Routine:**...\n...2. **Morning stretch or exercise**: Start with some light stretching or a short exercise routine to get your blood flowing and help you feel more alert.\n\n**Stay Hydrated:**\n\n1. **Drink water**: Bring a refillable water bottle with you and take sips throughout your commute to stay hydrated....\n...2. **Fresh air**: Take a few deep breaths of fresh air during your commute to help increase oxygen flow to your brain....\n...1. **Get some morning sunlight**: Exposure to natural light in the morning helps regulate your circadian rhythms, making it easier to stay alert during your commute....\n...By incorporating these tips into your morning routine, you can help stay focused and alert during your commute, even as a non-morning person. Remember to experiment and find what works best for you!\nuser: I'm thinking of trying out some of these tips to stay focused and alert during my morning commute. One thing that's been helping me so far is listening to audiobooks or podcasts that are engaging and interesting, like you mentioned. Speaking of which, do you have any recommendations for podcasts or audiobooks that are particularly good for a morning commute?\nassistant: I'm glad you're finding engaging content helpful for your morning commute. Here are some podcast and audiobook recommendations that are perfect for a morning commute:...\n...* \"Ready Player One\" by Ernest Cline (a sci-fi novel set in a virtual reality world)...\n...Remember, the key is to find content that resonates with you and keeps you engaged. Experiment with different genres and topics to find what works best for your morning commute!\nuser: I'll try out some of these podcasts and audiobooks to see what I enjoy. I'm particularly interested in self-help and personal development books, as I've been trying to improve my productivity and time management skills. Do you have any recommendations for apps or tools that can help me stay organized and focused throughout the day?...\n...2. **Pomodoro Timer**: A time management technique that involves working in focused 25-minute increments, with 5-minute breaks.\n[truncated 3 chars]\n- source external:provided-text:6d98363e80cc51e9382caedcecdb60b3 [external_record ref=longmemeval:1192316e:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 22:29\nTranscript:\nuser: I'm trying to optimize my morning routine to get the most out of my day. I wake up at 6:30 AM and it takes me about an hour to get ready, which includes a 20-minute meditation session, a 30-minute workout, and a quick breakfast. Can you suggest some high-energy breakfast options that I haven't tried yet?\nassistant: Optimizing your morning routine is a great way to set yourself up for success!...\n...3. **Green Smoothie Bowl**: Blend together spinach, frozen pineapple, banana, and almond milk, then top with sliced fruit, nuts, and seeds. The spinach will give you an iron boost, while the fruit and nuts provide natural energy....\n...These breakfast options are all quick, delicious, and packed with nutrients to help you power through your morning workout and meditation session. Experiment with different combinations to find your perfect energy-boosting breakfast!\nuser: I've tried oatmeal and it's been working well for me. I'm interested in trying the avocado toast with poached eggs and cherry tomatoes. Can you give me a recipe for it and tell me how long it takes to prepare?\nassistant: Avocado toast with poached eggs and cherry tomatoes is a nutrient-dense breakfast that's both delicious and filling. Here's a simple recipe to get you started:...\n...**Total preparation time: 10-12 minutes**\n\nTips to save time:...\n...* Keep cherry tomatoes halved and ready in the fridge for a quick addition to your toast.\n\nThis recipe should fit nicely into your morning routine, and the nutrients from the avocado, eggs, and cherry tomatoes will provide a great energy boost to start your day!\nuser: I'm curious, can you suggest some meditation apps or guided meditations that can help me make the most of my 20-minute meditation session?...\n...3. **Insight Timer**: A free app with a wide range of guided meditations, as well as a timer for tracking your personal practice. It's great for exploring different styles and teachers....\n...4. **Be consistent**: Aim to meditate at the same time every day to make it a habit....\n...user: Can you recommend any meditation sessions that are specifically designed for energy and focus? I'd like to try something that can help me feel more alert and prepared for my morning workout and busy day ahead....\n...5. **\"Focus and Clarity\" by Insight Timer**: A 20-minute meditation that uses a combination of breathwork, body scan, and visualization to help you cultivate focus, clarity, and mental energy.\n\n**Tips for Getting the Most Out of Your Energy-Boosting Meditation:**...\n...**Additional Tips for Your Morning Workout:**\n\n1. **Get moving slowly**: Start with some light stretching or yoga to get your blood flowing and warm up your muscles....\n...4. **Get some morning sunlight**: Exposure to natural light can help regulate your circadian rhythms and increase energy levels.\n5. **Make it a habit**: Consistency is key. Try to make meditation and exercise a regular part of your morning routine to help boost energy and focus....\n...user: I'm interested in trying the \"Morning Energy\" meditation by Headspace. Can you tell me a bit more about it? How does it differ from other meditation sessions, and what can I expect from it?...\n...1. **Specifically designed for morning meditation**: This session is tailored to help you wake up feeling refreshed and energized, making it an excellent addition to your morning routine....\n...5. **Increased energy and focus**: By the end of the session, you can expect to feel more alert, focused, and energized, ready to take on your morning workout and busy day ahead.\n\n**Tips for getting the most out of \"Morning Energy\"**...\n...user: I'll try the \"Morning Energy\" meditation by Headspace....\n...Remember, meditation is a practice, and it's okay if it takes some time to notice the benefits. Be consistent, and you'll start to notice the positive impact it can have on your daily life....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: User's morning routine; Concept named User's morning routine.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "1192316e",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is the total time it takes I to get ready and commute to work?\n\n                                Question date:\n                                2023/05/27 (Sat) 13:44\n\n                                Noisy expected-answer label:\n                                an hour and a half\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:1192316e\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-14fa7178983f-claim-7 [ACTIVE] current_metric_value family=current_metric_value: The user's morning routine takes about one hour to get ready.; scope=Applies to the user's recurring morning routine.; context=\"The user said getting ready includes meditation, workout, and breakfast.\"; evidence=DIRECT source=external:provided-text:6d98363e80cc51e9382caedcecdb60b3 quote=\"it takes me about an hour to get ready\"\n- claim hot-path-f783309d2120-claim-3 [ACTIVE] has_constraint family=has_constraint: The user's daily morning commute to work takes about 30 minutes.; scope=Applies to the user's morning commute context discussed in the imported past chat session.; context=\"The user asked for ways to make the most of the commute time.\"; evidence=DIRECT source=external:provided-text:0adc8fade14c69bcd60d8ae5f65e59d4 quote=\"My daily commute to work takes about 30 minutes\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:0adc8fade14c69bcd60d8ae5f65e59d4 [external_record ref=longmemeval:1192316e:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 08:07\nTranscript:\nuser: I'm looking for some advice on how to make the most of my morning commute. I was thinking of listening to audiobooks or podcasts, but I'm not sure what would be the most engaging. My daily commute to work takes about 30 minutes, so I want to make the most of that time.\nassistant: What a great question! Making the most of your morning commute can set a positive tone for the rest of the day. Both audiobooks and podcasts can be excellent choices, but it ultimately depends on your interests, learning style, and personal preferences. Here are some tips to help you decide:\n\n**Audiobooks:**\n\n1. **Immerse yourself in a story**: If you enjoy fiction, audiobooks can be a great way to escape into a story and forget about your commute....\n...user: I'll definitely check out some of these apps and platforms. I'm also curious, are there any features or settings that I can customize to make the listening experience more enjoyable, such as speeding up the playback or setting a sleep timer?...\n...**Sleep Timer:**\n\n* **Set a sleep timer**: Many apps allow you to set a timer to automatically stop playback after a certain period, ensuring you don't oversleep or get distracted....\n...* **Skip intros or outros**: Some apps allow you to skip introductory or concluding segments, getting straight to the main content....\n...user: That's really helpful! I think I'll play around with the playback speed and sleep timer features to see what works best for me. One thing I'm curious about is, do you have any tips for staying focused and alert during my morning commute, especially since I'm not a morning person?\nassistant: As a non-morning person, it can be challenging to stay focused and alert during your morning commute. Here are some tips to help you stay awake and engaged:\n\n**Morning Routine:**...\n...2. **Morning stretch or exercise**: Start with some light stretching or a short exercise routine to get your blood flowing and help you feel more alert.\n\n**Stay Hydrated:**\n\n1. **Drink water**: Bring a refillable water bottle with you and take sips throughout your commute to stay hydrated....\n...2. **Fresh air**: Take a few deep breaths of fresh air during your commute to help increase oxygen flow to your brain....\n...1. **Get some morning sunlight**: Exposure to natural light in the morning helps regulate your circadian rhythms, making it easier to stay alert during your commute....\n...By incorporating these tips into your morning routine, you can help stay focused and alert during your commute, even as a non-morning person. Remember to experiment and find what works best for you!\nuser: I'm thinking of trying out some of these tips to stay focused and alert during my morning commute. One thing that's been helping me so far is listening to audiobooks or podcasts that are engaging and interesting, like you mentioned. Speaking of which, do you have any recommendations for podcasts or audiobooks that are particularly good for a morning commute?\nassistant: I'm glad you're finding engaging content helpful for your morning commute. Here are some podcast and audiobook recommendations that are perfect for a morning commute:...\n...* \"Ready Player One\" by Ernest Cline (a sci-fi novel set in a virtual reality world)...\n...Remember, the key is to find content that resonates with you and keeps you engaged. Experiment with different genres and topics to find what works best for your morning commute!\nuser: I'll try out some of these podcasts and audiobooks to see what I enjoy. I'm particularly interested in self-help and personal development books, as I've been trying to improve my productivity and time management skills. Do you have any recommendations for apps or tools that can help me stay organized and focused throughout the day?...\n...2. **Pomodoro Timer**: A time management technique that involves working in focused 25-minute increments, with 5-minute breaks.\n[truncated 3 chars]\n- source external:provided-text:6d98363e80cc51e9382caedcecdb60b3 [external_record ref=longmemeval:1192316e:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 22:29\nTranscript:\nuser: I'm trying to optimize my morning routine to get the most out of my day. I wake up at 6:30 AM and it takes me about an hour to get ready, which includes a 20-minute meditation session, a 30-minute workout, and a quick breakfast. Can you suggest some high-energy breakfast options that I haven't tried yet?\nassistant: Optimizing your morning routine is a great way to set yourself up for success!...\n...3. **Green Smoothie Bowl**: Blend together spinach, frozen pineapple, banana, and almond milk, then top with sliced fruit, nuts, and seeds. The spinach will give you an iron boost, while the fruit and nuts provide natural energy....\n...These breakfast options are all quick, delicious, and packed with nutrients to help you power through your morning workout and meditation session. Experiment with different combinations to find your perfect energy-boosting breakfast!\nuser: I've tried oatmeal and it's been working well for me. I'm interested in trying the avocado toast with poached eggs and cherry tomatoes. Can you give me a recipe for it and tell me how long it takes to prepare?\nassistant: Avocado toast with poached eggs and cherry tomatoes is a nutrient-dense breakfast that's both delicious and filling. Here's a simple recipe to get you started:...\n...**Total preparation time: 10-12 minutes**\n\nTips to save time:...\n...* Keep cherry tomatoes halved and ready in the fridge for a quick addition to your toast.\n\nThis recipe should fit nicely into your morning routine, and the nutrients from the avocado, eggs, and cherry tomatoes will provide a great energy boost to start your day!\nuser: I'm curious, can you suggest some meditation apps or guided meditations that can help me make the most of my 20-minute meditation session?...\n...3. **Insight Timer**: A free app with a wide range of guided meditations, as well as a timer for tracking your personal practice. It's great for exploring different styles and teachers....\n...4. **Be consistent**: Aim to meditate at the same time every day to make it a habit....\n...user: Can you recommend any meditation sessions that are specifically designed for energy and focus? I'd like to try something that can help me feel more alert and prepared for my morning workout and busy day ahead....\n...5. **\"Focus and Clarity\" by Insight Timer**: A 20-minute meditation that uses a combination of breathwork, body scan, and visualization to help you cultivate focus, clarity, and mental energy.\n\n**Tips for Getting the Most Out of Your Energy-Boosting Meditation:**...\n...**Additional Tips for Your Morning Workout:**\n\n1. **Get moving slowly**: Start with some light stretching or yoga to get your blood flowing and warm up your muscles....\n...4. **Get some morning sunlight**: Exposure to natural light can help regulate your circadian rhythms and increase energy levels.\n5. **Make it a habit**: Consistency is key. Try to make meditation and exercise a regular part of your morning routine to help boost energy and focus....\n...user: I'm interested in trying the \"Morning Energy\" meditation by Headspace. Can you tell me a bit more about it? How does it differ from other meditation sessions, and what can I expect from it?...\n...1. **Specifically designed for morning meditation**: This session is tailored to help you wake up feeling refreshed and energized, making it an excellent addition to your morning routine....\n...5. **Increased energy and focus**: By the end of the session, you can expect to feel more alert, focused, and energized, ready to take on your morning workout and busy day ahead.\n\n**Tips for getting the most out of \"Morning Energy\"**...\n...user: I'll try the \"Morning Energy\" meditation by Headspace....\n...Remember, meditation is a practice, and it's okay if it takes some time to notice the benefits. Be consistent, and you'll start to notice the positive impact it can have on your daily life....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: User's morning routine; Concept named User's morning routine.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "1192316e",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"It takes about an hour and a half total: about 1 hour to get ready plus about 30 minutes to commute.\",\"reason\":\"The memory explicitly states the user takes about one hour to get ready and about 30 minutes to commute to work.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2893,
+                "completionTokens": 108,
+                "thinkingTokens": 33,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
