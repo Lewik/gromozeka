@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "4de4952710ef9b7ad2a3a1f8e58d04ec6f81e78760e3bf1e21a01e2e3aa9d8e8",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How old was I when Alex was born?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:46\n\n                                Noisy expected-answer label:\n                                11\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:a1cc6108\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e7aa2ef32f3d-claim-6 [ACTIVE] current_metric_value family=current_metric_value: Alex is 21 years old during the user's mentorship discussion.; scope=Alex's age as stated in the imported 2023-05-26 chat session.; context=\"The user described Alex as a young new intern and said he is just 21.\"; evidence=DIRECT source=external:provided-text:f3d102977d73e01861ef7e58ccd92b91 quote=\"he's just 21\"\n- claim hot-path-3e91ef6414be-claim-5 [ACTIVE] current_metric_value family=current_metric_value: The user was 32 years old as of April 2023.; scope=User age stated in the imported 2023-05-26 session.; context=\"Session date is 2023-05-26, and the user said they had just turned 32 last month during a career-change discussion.\"; evidence=DIRECT source=external:provided-text:059cc9d862969aee1159402a702e683e quote=\"I just turned 32 last month\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:059cc9d862969aee1159402a702e683e [external_record ref=longmemeval:a1cc6108:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:20\nTranscript:\nuser: I'm considering a career change and I'm not sure what path to take. I've been in my current field for a while, but I'm not sure if it's sustainable long-term. Can you help me explore some options that would be suitable for someone my age? By the way, I just turned 32 last month, so I'm still relatively young, but I want to make a move that will set me up for success in the next few decades.\nassistant: Happy belated birthday! Congratulations on taking the first step towards exploring new career options. 32 is a great age to make a career change, as you've gained valuable experience in your current field and still have plenty of time to build a new career....\n...9. **User Experience (UX) Design**: With the focus on user-centered design, UX designers are needed to create intuitive and user-friendly products....\n...* Update your LinkedIn profile and connect with professionals in these fields....\n...user: I'm really interested in Data Science and Analytics. I've always been good with numbers and I'm fascinated by how data can inform business decisions. I've also heard it's a high-paying field, which is important to me since I want to retire early....\n...5. **Constant learning**: The field is constantly evolving, with new tools, techniques, and technologies emerging regularly, which means you'll need to stay up-to-date with the latest developments....\n...5. **Communication and storytelling**: As a Data Scientist or Analyst, you'll need to effectively communicate insights and recommendations to stakeholders, so developing strong communication and storytelling skills is vital....\n...3. **Join online communities**: Participate in forums like Reddit's r/data science, r/MachineLearning, and Stack Overflow to network with professionals and stay updated on industry trends....\n...user: I think I'll start by taking some online courses to get a solid foundation in data science and analytics. I've heard that Python is a popular language used in data science, so I'll start with that. Do you know of any good resources for learning Python, especially for someone with a background in math? By the way, my grandma, who's 75, is really proud of me for taking the initiative to learn something new, and I'm glad I can show her that age is just a number....\n...* Join online communities, like Reddit's r/learnpython, to connect with other learners and get help when you need it....\n...1. **Current age**: You're 32, so we'll use that as our starting point....\n...4. **Retirement goals**: What kind of lifestyle do you envision in retirement? Do you want to travel, pursue hobbies, or simply enjoy time with family and friends?...\n...user: I'm happy to share the necessary information. My current income is around $80,000 per year, and I have about $50,000 saved up for retirement so far. In retirement, I'd like to travel, pursue hobbies, and spend time with family and friends, so I think I'll need around $60,000 per year to maintain a comfortable lifestyle. I'm hoping to get around 5% annual returns on my investments, and I'm assuming an inflation rate of 2.5% per year.\n\nAlso, I've been thinking about my current expenses and I realized that I can cut back on some unnecessary expenses to free up more money for savings. I'd like to aim to save at least 20% of my income each month towards retirement....\n...3. **Current age:** 32...\n...1. **Take advantage of employer matching:** If your employer offers a 401(k) or other retirement plan matching program, contribute enough to maximize the match. This is essentially free money that can help you reach your goal faster....\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: Alex; Person named Alex.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "a1cc6108",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How old was I when Alex was born?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:46\n\n                                Noisy expected-answer label:\n                                11\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:a1cc6108\n            Answer mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e7aa2ef32f3d-claim-6 [ACTIVE] current_metric_value family=current_metric_value: Alex is 21 years old during the user's mentorship discussion.; scope=Alex's age as stated in the imported 2023-05-26 chat session.; context=\"The user described Alex as a young new intern and said he is just 21.\"; evidence=DIRECT source=external:provided-text:f3d102977d73e01861ef7e58ccd92b91 quote=\"he's just 21\"\n- claim hot-path-3e91ef6414be-claim-5 [ACTIVE] current_metric_value family=current_metric_value: The user was 32 years old as of April 2023.; scope=User age stated in the imported 2023-05-26 session.; context=\"Session date is 2023-05-26, and the user said they had just turned 32 last month during a career-change discussion.\"; evidence=DIRECT source=external:provided-text:059cc9d862969aee1159402a702e683e quote=\"I just turned 32 last month\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:059cc9d862969aee1159402a702e683e [external_record ref=longmemeval:a1cc6108:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:20\nTranscript:\nuser: I'm considering a career change and I'm not sure what path to take. I've been in my current field for a while, but I'm not sure if it's sustainable long-term. Can you help me explore some options that would be suitable for someone my age? By the way, I just turned 32 last month, so I'm still relatively young, but I want to make a move that will set me up for success in the next few decades.\nassistant: Happy belated birthday! Congratulations on taking the first step towards exploring new career options. 32 is a great age to make a career change, as you've gained valuable experience in your current field and still have plenty of time to build a new career....\n...9. **User Experience (UX) Design**: With the focus on user-centered design, UX designers are needed to create intuitive and user-friendly products....\n...* Update your LinkedIn profile and connect with professionals in these fields....\n...user: I'm really interested in Data Science and Analytics. I've always been good with numbers and I'm fascinated by how data can inform business decisions. I've also heard it's a high-paying field, which is important to me since I want to retire early....\n...5. **Constant learning**: The field is constantly evolving, with new tools, techniques, and technologies emerging regularly, which means you'll need to stay up-to-date with the latest developments....\n...5. **Communication and storytelling**: As a Data Scientist or Analyst, you'll need to effectively communicate insights and recommendations to stakeholders, so developing strong communication and storytelling skills is vital....\n...3. **Join online communities**: Participate in forums like Reddit's r/data science, r/MachineLearning, and Stack Overflow to network with professionals and stay updated on industry trends....\n...user: I think I'll start by taking some online courses to get a solid foundation in data science and analytics. I've heard that Python is a popular language used in data science, so I'll start with that. Do you know of any good resources for learning Python, especially for someone with a background in math? By the way, my grandma, who's 75, is really proud of me for taking the initiative to learn something new, and I'm glad I can show her that age is just a number....\n...* Join online communities, like Reddit's r/learnpython, to connect with other learners and get help when you need it....\n...1. **Current age**: You're 32, so we'll use that as our starting point....\n...4. **Retirement goals**: What kind of lifestyle do you envision in retirement? Do you want to travel, pursue hobbies, or simply enjoy time with family and friends?...\n...user: I'm happy to share the necessary information. My current income is around $80,000 per year, and I have about $50,000 saved up for retirement so far. In retirement, I'd like to travel, pursue hobbies, and spend time with family and friends, so I think I'll need around $60,000 per year to maintain a comfortable lifestyle. I'm hoping to get around 5% annual returns on my investments, and I'm assuming an inflation rate of 2.5% per year.\n\nAlso, I've been thinking about my current expenses and I realized that I can cut back on some unnecessary expenses to free up more money for savings. I'd like to aim to save at least 20% of my income each month towards retirement....\n...3. **Current age:** 32...\n...1. **Take advantage of employer matching:** If your employer offers a 401(k) or other retirement plan matching program, contribute enough to maximize the match. This is essentially free money that can help you reach your goal faster....\n\n            Retrieved entities:\n            - entity entity:<0> [PERSON]: Alex; Person named Alex.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "a1cc6108",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"11\",\"reason\":\"The context states the user was 32 and Alex was 21 in the same 2023 session, so the age difference implies the user was about 11 when Alex was born.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1975,
+                "completionTokens": 198,
+                "thinkingTokens": 132,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
