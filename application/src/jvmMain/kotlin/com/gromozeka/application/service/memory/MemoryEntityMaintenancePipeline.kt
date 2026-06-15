@@ -14,6 +14,7 @@ import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import klog.KLoggers
 import kotlinx.datetime.Instant
@@ -730,10 +731,18 @@ private fun MemoryNamespaceSnapshot.detectCurrentUserIdentityLinks(
     if (users.isEmpty() || people.isEmpty()) return emptyList()
 
     val preferredNamesBySubject = activePreferredNamesBySubject()
+    val sourceBackedCurrentUserNames = sourceBackedCurrentUserIdentityNames(
+        people = people,
+        preferredNamesBySubject = preferredNamesBySubject,
+    )
 
     return buildList {
         users.forEach { user ->
-            val userNames = user.currentUserIdentityNames(preferredNamesBySubject[user.id].orEmpty())
+            val userNames = (
+                user.currentUserIdentityNames(preferredNamesBySubject[user.id].orEmpty()) +
+                    sourceBackedCurrentUserNames
+                )
+                .distinctBy { it.normalized }
             if (userNames.isEmpty()) return@forEach
 
             people.forEach { person ->
@@ -743,6 +752,60 @@ private fun MemoryNamespaceSnapshot.detectCurrentUserIdentityLinks(
             }
         }
     }
+}
+
+private fun MemoryNamespaceSnapshot.sourceBackedCurrentUserIdentityNames(
+    people: List<MemoryEntity>,
+    preferredNamesBySubject: Map<MemoryEntity.Id, List<String>>,
+): List<CurrentUserIdentityName> {
+    val peopleById = people.associateBy { it.id }
+    val sourcesById = sources.associateBy { it.id }
+    val names = claims
+        .filter { it.status == MemoryClaim.Status.ACTIVE }
+        .mapNotNull { claim ->
+            val person = peopleById[claim.subjectEntityId] ?: return@mapNotNull null
+            val personNames = person.personIdentityNames(preferredNamesBySubject[person.id].orEmpty())
+            if (personNames.isEmpty()) return@mapNotNull null
+            val hasSelfIdentityEvidence = claim.evidenceRefs.any { ref ->
+                sourcesById[ref.sourceId]?.containsSelfIdentityDeclaration(personNames) == true
+            }
+            personNames.takeIf { hasSelfIdentityEvidence }
+        }
+        .flatten()
+        .distinctBy { it.normalized }
+
+    if (names.isEmpty() || names.hasConflictingSelfIdentityNames()) {
+        return emptyList()
+    }
+
+    return names.map { it.copy(explicitForUser = true) }
+}
+
+private fun MemorySource.containsSelfIdentityDeclaration(
+    names: List<CurrentUserIdentityName>,
+): Boolean {
+    val normalizedText = contentText.normalizeEntityMaintenanceText()
+    if (normalizedText.isBlank()) return false
+
+    return names.any { name ->
+        listOf(
+            "my name is ${name.normalized}",
+            "i am ${name.normalized}",
+            "i m ${name.normalized}",
+            "call me ${name.normalized}",
+            "you can call me ${name.normalized}",
+            "i go by ${name.normalized}",
+            "my preferred name is ${name.normalized}",
+            "preferred name is ${name.normalized}",
+        ).any { marker -> marker in normalizedText }
+    }
+}
+
+private fun List<CurrentUserIdentityName>.hasConflictingSelfIdentityNames(): Boolean {
+    val firstTokens = map { it.normalized.split(" ").firstOrNull().orEmpty() }
+        .filter { it.isNotBlank() }
+        .distinct()
+    return firstTokens.size > 1
 }
 
 private fun MemoryNamespaceSnapshot.activePreferredNamesBySubject(): Map<MemoryEntity.Id, List<String>> =

@@ -1555,6 +1555,101 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun entityMaintenanceGroupsCurrentUserWhenIdentitySignalWasStoredOnNamedPerson() = runBlocking {
+        val selfIdentitySource = source(
+            id = "source-self-identity",
+            text = "My name is Lev Lewik, and my preferred name is Lev.",
+        )
+        val user = entity(
+            id = MemoryEntity.Id("entity-current-user"),
+            entityType = MemoryEntity.Type.USER,
+            canonicalName = "User",
+            normalizedName = "user",
+        )
+        val fullNamePerson = entity(
+            id = MemoryEntity.Id("entity-lev-lewik-person"),
+            entityType = MemoryEntity.Type.PERSON,
+            canonicalName = "Lev Lewik",
+            normalizedName = "lev lewik",
+        )
+        val firstNamePerson = entity(
+            id = MemoryEntity.Id("entity-lev-person"),
+            entityType = MemoryEntity.Type.PERSON,
+            canonicalName = "Lev",
+            normalizedName = "lev",
+        )
+        val preferredNameOnPerson = claim(
+            id = "claim-person-preferred-name",
+            sourceId = selfIdentitySource.id.value,
+            subjectEntityId = fullNamePerson.id,
+            predicate = "preferred_name",
+            objectValue = JsonPrimitive("Lev"),
+            normalizedText = "Lev Lewik's preferred name is Lev.",
+        )
+        val skill = claim(
+            id = "claim-lev-kotlin",
+            sourceId = selfIdentitySource.id.value,
+            subjectEntityId = fullNamePerson.id,
+            predicate = "works_with",
+            objectValue = JsonPrimitive("Kotlin"),
+            normalizedText = "Lev Lewik works with Kotlin.",
+        )
+        val taskContext = claim(
+            id = "claim-lev-memory",
+            sourceId = "source-task-context",
+            subjectEntityId = firstNamePerson.id,
+            predicate = "responsible_for",
+            objectValue = JsonPrimitive("memory pipeline repair"),
+            normalizedText = "Lev is responsible for memory pipeline repair.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(
+                    selfIdentitySource,
+                    source("source-task-context", "Lev is responsible for memory pipeline repair."),
+                ),
+                entities = listOf(user, fullNamePerson, firstNamePerson),
+                claims = listOf(preferredNameOnPerson, skill, taskContext),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.MERGE,
+                            winnerEntityId = user.id.value,
+                            loserEntityIds = listOf(fullNamePerson.id.value, firstNamePerson.id.value),
+                            aliasTexts = listOf("Lev Lewik", "Lev"),
+                            reason = "Self-identity evidence shows the named PERSON entities are the current user.",
+                        )
+                    ),
+                    summary = "Merged current user identity split.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedUser = snapshot.entityById(user.id.value)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertTrue(result.candidateGroups.single().reason.contains("current user"))
+        assertEquals(MemoryEntity.Status.ACTIVE, updatedUser.status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(fullNamePerson.id.value).status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(firstNamePerson.id.value).status)
+        assertEquals(user.id, snapshot.claimById(preferredNameOnPerson.id.value).subjectEntityId)
+        assertEquals(user.id, snapshot.claimById(skill.id.value).subjectEntityId)
+        assertEquals(user.id, snapshot.claimById(taskContext.id.value).subjectEntityId)
+        assertTrue(updatedUser.aliases.any { it.text == "Lev Lewik" })
+        assertTrue(updatedUser.aliases.any { it.text == "Lev" })
+    }
+
+    @Test
     fun entityMaintenanceDoesNotGroupCurrentUserWithWeakFirstNameOnly() = runBlocking {
         val user = entity(
             id = MemoryEntity.Id("entity-current-user"),
