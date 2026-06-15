@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "dcf253c0cacb8db1c3cfcb61a788f07f7a6f2182a8250c35f55664dea22113cf",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about natural remedies for dark circles under the eyes. You mentioned applying tomato juice mixed with lemon juice, how long did you say I should leave it on for?\n\n                                Question date:\n                                2023/05/28 (Sun) 19:59\n\n                                Noisy expected-answer label:\n                                10 minutes\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:47\nTranscript:\nuser: What are some natural remedies for treating dark circles under the eyes?\nassistant: 1. Cucumber - Place chilled cucumber slices on your eyes for 10-15 minutes to reduce swelling and soothe skin.\n\n2. Tea bags - Use cool tea bags on your eyes for 10-15 minutes to reduce inflammation and swelling.\n\n3. Tomato - Apply tomato juice mixed with lemon juice on your under-eye area and wash off after 10 minutes with cold water for lightening dark circles.\n\n4. Almond oil - Massage almond oil on the affected area regularly for moisturization and lightening the skin.\n\n5. Rose water - Dip a cotton ball in rosewater and place it on your eyes to soothe and hydrate the skin.\n\n6. Aloe vera - Apply fresh aloe vera gel under your eyes to reduce puffiness and lighten dark circles.\n\n7. Turmeric - Mix turmeric powder with pineapple juice and apply it on the affected area for about 10 minutes. Rinse it off with lukewarm water.\n\n8. Coconut oil - Massage coconut oil under your eyes before sleeping, and in the morning, wash it off with warm water for smooth and hydrated skin.\n\n9. Lemon juice - Apply a mixture of lemon juice and honey on the affected area for 15 minutes, then rinse with warm water for lightening dark circles.\n\n10. Mint leaves - Crush fresh mint leaves and apply them as a paste under your eyes for about 10 minutes. Wash it off with warm water.\nuser: I'm excited to try them out. Which one do you think will work the best?\nassistant: As an AI language model, I cannot provide medical advice. It varies from person to person, so it's best to try out a few methods and stick to the one that works best for you. However, make sure to consult with a doctor before trying any new remedies, especially if you have a pre-existing medical condition.\nuser: Yeah, that's a good point. I'll make sure to consult with my doctor before trying any of these remedies.\nassistant: Always prioritize your health and safety first, and it's important to consult with your doctor before trying any new remedies or treatments, even if they are natural remedies. Best of luck to you!\nuser: Yeah, I'll definitely book an appointment with my doctor next week. But I'm excited to try out some of these remedies in the meantime. Have you personally tried any of them?\nassistant: As an AI language model, I do not have a physical body to try these remedies. However, these natural remedies have been recommended by many people and they have been found to be effective in reducing the appearance of dark circles under the eyes for some. But as I mentioned earlier, it's always important to consult with your doctor before trying any new remedies or treatments, especially if you have any pre-existing conditions or allergies.\n                                ```\n\n                                Candidate answer:\n                                Leave the tomato juice mixed with lemon juice on the under-eye area for 10 minutes, then wash it off with cold water.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "3e321797",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about natural remedies for dark circles under the eyes. You mentioned applying tomato juice mixed with lemon juice, how long did you say I should leave it on for?\n\n                                Question date:\n                                2023/05/28 (Sun) 19:59\n\n                                Noisy expected-answer label:\n                                10 minutes\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:47\nTranscript:\nuser: What are some natural remedies for treating dark circles under the eyes?\nassistant: 1. Cucumber - Place chilled cucumber slices on your eyes for 10-15 minutes to reduce swelling and soothe skin.\n\n2. Tea bags - Use cool tea bags on your eyes for 10-15 minutes to reduce inflammation and swelling.\n\n3. Tomato - Apply tomato juice mixed with lemon juice on your under-eye area and wash off after 10 minutes with cold water for lightening dark circles.\n\n4. Almond oil - Massage almond oil on the affected area regularly for moisturization and lightening the skin.\n\n5. Rose water - Dip a cotton ball in rosewater and place it on your eyes to soothe and hydrate the skin.\n\n6. Aloe vera - Apply fresh aloe vera gel under your eyes to reduce puffiness and lighten dark circles.\n\n7. Turmeric - Mix turmeric powder with pineapple juice and apply it on the affected area for about 10 minutes. Rinse it off with lukewarm water.\n\n8. Coconut oil - Massage coconut oil under your eyes before sleeping, and in the morning, wash it off with warm water for smooth and hydrated skin.\n\n9. Lemon juice - Apply a mixture of lemon juice and honey on the affected area for 15 minutes, then rinse with warm water for lightening dark circles.\n\n10. Mint leaves - Crush fresh mint leaves and apply them as a paste under your eyes for about 10 minutes. Wash it off with warm water.\nuser: I'm excited to try them out. Which one do you think will work the best?\nassistant: As an AI language model, I cannot provide medical advice. It varies from person to person, so it's best to try out a few methods and stick to the one that works best for you. However, make sure to consult with a doctor before trying any new remedies, especially if you have a pre-existing medical condition.\nuser: Yeah, that's a good point. I'll make sure to consult with my doctor before trying any of these remedies.\nassistant: Always prioritize your health and safety first, and it's important to consult with your doctor before trying any new remedies or treatments, even if they are natural remedies. Best of luck to you!\nuser: Yeah, I'll definitely book an appointment with my doctor next week. But I'm excited to try out some of these remedies in the meantime. Have you personally tried any of them?\nassistant: As an AI language model, I do not have a physical body to try these remedies. However, these natural remedies have been recommended by many people and they have been found to be effective in reducing the appearance of dark circles under the eyes for some. But as I mentioned earlier, it's always important to consult with your doctor before trying any new remedies or treatments, especially if you have any pre-existing conditions or allergies.\n                                ```\n\n                                Candidate answer:\n                                Leave the tomato juice mixed with lemon juice on the under-eye area for 10 minutes, then wash it off with cold water.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "3e321797",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The candidate correctly states the evidence-backed duration of 10 minutes and includes the wash-off instruction.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1002,
+                "completionTokens": 40,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

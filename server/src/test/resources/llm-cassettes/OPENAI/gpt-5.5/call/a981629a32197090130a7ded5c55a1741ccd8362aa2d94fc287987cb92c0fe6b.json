@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "a981629a32197090130a7ded5c55a1741ccd8362aa2d94fc287987cb92c0fe6b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous conversation about political propaganda and humor, and I was wondering if you could remind me of that Soviet cartoon you mentioned that mocked Western culture?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:18\n\n                                Noisy expected-answer label:\n                                Nu, pogodi!\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 17:03\nTranscript:\nuser: Can you discuss any examples of political propaganda that relied heavily on humor or satire?\nassistant: Yes, there are several examples of political propaganda that used humor or satire to make a point or influence public opinion. \n\n1. The Daily Show with Jon Stewart: The Daily Show was a popular late-night show that used humor and satire to criticize political leaders, policies, and the media. It was known for its cynical tone and sarcastic commentary, and it became a popular platform for young people to get their news and political analysis.\n\n2. The Colbert Report: The Colbert Report was another popular political satire show that aired on Comedy Central. Hosted by Stephen Colbert, the show used humor and satire to parody conservative talk shows and politicians. It was known for its “truthiness” segment, where Colbert would defend his own truth against facts.\n\n3. Nazi propaganda: Nazi propaganda also relied heavily on humor and satire, especially in their anti-Semitic propaganda. They used cartoons, jokes, and satire to dehumanize Jews and create a sense of superiority among Germans. Some of the most infamous examples of Nazi propaganda include images of Jews with exaggerated features or as vermin to be exterminated.\n\n4. Soviet propaganda: Soviet propaganda also used humor and satire to criticize Western powers and promote Communist ideology. One example is the popular Soviet cartoon, “Nu, pogodi!” which mocked Western culture and portrayed the Soviet Union as superior.\n\n5. Political cartoons: Political cartoons have long been used as a form of political propaganda that relies on humor and satire. Whether it be caricatures of political leaders or images that criticize certain policies or events, political cartoons often use humor to make a serious point. Some famous political cartoonists include Thomas Nast, who famously criticized the corrupt Tammany Hall political machine in New York City, and Herblock, who was an outspoken critic of President Richard Nixon during the Watergate scandal.\nuser: I've always found political humor to be refreshing compared to the constant seriousness of politics. Do you think it's an effective way to get people engaged in political discourse?\nassistant: I do not have opinions or beliefs, but there is evidence to suggest that political humor can be an effective way to get people engaged in political discourse. humor and satire can be used to highlight important political issues and encourage critical thinking about political topics. it can attract a younger audience and make political discussions more accessible for people who may not normally engage in politics. political humor can also be a way to create a sense of community around shared beliefs and values. however, it's important to note that humor can also have negative effects, such as reinforcing stereotypes or encouraging apathy towards important issues. overall, it depends on how the humor is used and the context in which it is presented.\nuser: Do you have any specific examples of how political humor can reinforce stereotypes, and what can be done to prevent this negative impact?\nassistant: Yes, political humor can sometimes reinforce stereotypes by relying on offensive or insensitive depictions of certain groups. For example, a political joke that is based on a stereotype, such as a joke about women being bad drivers, can perpetuate harmful beliefs and diminish the experiences of those who have been subjected to these stereotypes. Here are some possible ways to prevent this negative impact:\n\n1. Use humor to challenge stereotypes: Instead of perpetuating stereotypes, humor and satire can be used to subvert them. Using humor to challenge these beliefs can help to break down stereotypes and create more understanding.\n\n2. Consider the context: Context is critical when it comes to political humor. Jokes that might be harmless in one context can be harmful or offensive in another. Understanding the context in which humor is being presented can help to prevent negative consequences.\n\n3. Be inclusive: When crafting political humor, it's essential to consider the experiences of different communities and ensure that jokes are not targeting or belittling any particular group. Being inclusive and respectful of different perspectives can help to prevent stereotypes from being reinforced.\n\n4. Listen to feedback: If people are offended by political humor or feel that it reinforces negative stereotypes, it's important to listen to their feedback and take steps to prevent similar situations from happening in the future. Engaging in dialogue and being open to criticism can help to prevent negative impacts.\nuser: Do you think political humor can ever cross a line and become offensive or inappropriate? Or is everything fair game in the name of satire?\nassistant: I do not have opinions or beliefs, but it is possible for political humor to cross a line and become offensive or inappropriate. while humor and satire can be effective tools to critique or expose important political issues, it's important to recognize that not everything is fair game. political humor should never be used as a cover for hate speech, discrimination, or intolerance. it's essential to be mindful of the impact that political humor can have on different communities and to ensure that it is not causing harm. for example, insensitive jokes that perpetuate stereotypes, identities, and beliefs can marginalize and offend people. additionally, humor that glorifies or promotes violence, extremism, or harassment is also not acceptable. therefore, it's critical to be thoughtful and responsible when using humor or satire for political commentary.\nuser: Have you ever seen a political comedy that you found to be offensive or inappropriate? If so, can you share an example?\nassistant: I do not have subjective experiences or judgements. however, there have been instances where political comedy has been criticized for crossing the line and being offensive or inappropriate. for instance, in 2018, comedian michelle wolf gave a controversial performance at the white house correspondents' association dinner. her jokes about various political figures and sensitive topics drew criticism from some viewers who felt that she had gone too far. some argued that her jokes were inappropriate and offensive, as they made fun of people's appearances or ridiculed serious political issues. the negative reaction to her performance sparked a larger debate about the role of political humor and whether it should be held to a higher standard.\nuser: Do you think that political correctness has made it harder for comedians to be funny without offending someone?\nassistant: I don't have opinions, but some comedians and critics have commented that political correctness has made it harder for comedians to be funny without offending someone. the push for greater social awareness and respect for different experiences and identities has led to more concerns about the potential for humor to perpetuate harmful stereotypes or offend marginalized groups. comedians now face a greater risk of being criticized or facing backlash for their jokes, leading to a heightened sensitivity about what they can and cannot say. however, some argue that this challenge can lead to more creative and thoughtful comedy, as comedians are forced to think more carefully about the messages they are sending with their humor. ultimately, it's up to each individual comedian to navigate the complexities of political correctness and decide what is appropriate for their audience and intended message.\n                                ```\n\n                                Candidate answer:\n                                The Soviet cartoon mentioned was “Nu, pogodi!”",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "51b23612",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous conversation about political propaganda and humor, and I was wondering if you could remind me of that Soviet cartoon you mentioned that mocked Western culture?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:18\n\n                                Noisy expected-answer label:\n                                Nu, pogodi!\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 17:03\nTranscript:\nuser: Can you discuss any examples of political propaganda that relied heavily on humor or satire?\nassistant: Yes, there are several examples of political propaganda that used humor or satire to make a point or influence public opinion. \n\n1. The Daily Show with Jon Stewart: The Daily Show was a popular late-night show that used humor and satire to criticize political leaders, policies, and the media. It was known for its cynical tone and sarcastic commentary, and it became a popular platform for young people to get their news and political analysis.\n\n2. The Colbert Report: The Colbert Report was another popular political satire show that aired on Comedy Central. Hosted by Stephen Colbert, the show used humor and satire to parody conservative talk shows and politicians. It was known for its “truthiness” segment, where Colbert would defend his own truth against facts.\n\n3. Nazi propaganda: Nazi propaganda also relied heavily on humor and satire, especially in their anti-Semitic propaganda. They used cartoons, jokes, and satire to dehumanize Jews and create a sense of superiority among Germans. Some of the most infamous examples of Nazi propaganda include images of Jews with exaggerated features or as vermin to be exterminated.\n\n4. Soviet propaganda: Soviet propaganda also used humor and satire to criticize Western powers and promote Communist ideology. One example is the popular Soviet cartoon, “Nu, pogodi!” which mocked Western culture and portrayed the Soviet Union as superior.\n\n5. Political cartoons: Political cartoons have long been used as a form of political propaganda that relies on humor and satire. Whether it be caricatures of political leaders or images that criticize certain policies or events, political cartoons often use humor to make a serious point. Some famous political cartoonists include Thomas Nast, who famously criticized the corrupt Tammany Hall political machine in New York City, and Herblock, who was an outspoken critic of President Richard Nixon during the Watergate scandal.\nuser: I've always found political humor to be refreshing compared to the constant seriousness of politics. Do you think it's an effective way to get people engaged in political discourse?\nassistant: I do not have opinions or beliefs, but there is evidence to suggest that political humor can be an effective way to get people engaged in political discourse. humor and satire can be used to highlight important political issues and encourage critical thinking about political topics. it can attract a younger audience and make political discussions more accessible for people who may not normally engage in politics. political humor can also be a way to create a sense of community around shared beliefs and values. however, it's important to note that humor can also have negative effects, such as reinforcing stereotypes or encouraging apathy towards important issues. overall, it depends on how the humor is used and the context in which it is presented.\nuser: Do you have any specific examples of how political humor can reinforce stereotypes, and what can be done to prevent this negative impact?\nassistant: Yes, political humor can sometimes reinforce stereotypes by relying on offensive or insensitive depictions of certain groups. For example, a political joke that is based on a stereotype, such as a joke about women being bad drivers, can perpetuate harmful beliefs and diminish the experiences of those who have been subjected to these stereotypes. Here are some possible ways to prevent this negative impact:\n\n1. Use humor to challenge stereotypes: Instead of perpetuating stereotypes, humor and satire can be used to subvert them. Using humor to challenge these beliefs can help to break down stereotypes and create more understanding.\n\n2. Consider the context: Context is critical when it comes to political humor. Jokes that might be harmless in one context can be harmful or offensive in another. Understanding the context in which humor is being presented can help to prevent negative consequences.\n\n3. Be inclusive: When crafting political humor, it's essential to consider the experiences of different communities and ensure that jokes are not targeting or belittling any particular group. Being inclusive and respectful of different perspectives can help to prevent stereotypes from being reinforced.\n\n4. Listen to feedback: If people are offended by political humor or feel that it reinforces negative stereotypes, it's important to listen to their feedback and take steps to prevent similar situations from happening in the future. Engaging in dialogue and being open to criticism can help to prevent negative impacts.\nuser: Do you think political humor can ever cross a line and become offensive or inappropriate? Or is everything fair game in the name of satire?\nassistant: I do not have opinions or beliefs, but it is possible for political humor to cross a line and become offensive or inappropriate. while humor and satire can be effective tools to critique or expose important political issues, it's important to recognize that not everything is fair game. political humor should never be used as a cover for hate speech, discrimination, or intolerance. it's essential to be mindful of the impact that political humor can have on different communities and to ensure that it is not causing harm. for example, insensitive jokes that perpetuate stereotypes, identities, and beliefs can marginalize and offend people. additionally, humor that glorifies or promotes violence, extremism, or harassment is also not acceptable. therefore, it's critical to be thoughtful and responsible when using humor or satire for political commentary.\nuser: Have you ever seen a political comedy that you found to be offensive or inappropriate? If so, can you share an example?\nassistant: I do not have subjective experiences or judgements. however, there have been instances where political comedy has been criticized for crossing the line and being offensive or inappropriate. for instance, in 2018, comedian michelle wolf gave a controversial performance at the white house correspondents' association dinner. her jokes about various political figures and sensitive topics drew criticism from some viewers who felt that she had gone too far. some argued that her jokes were inappropriate and offensive, as they made fun of people's appearances or ridiculed serious political issues. the negative reaction to her performance sparked a larger debate about the role of political humor and whether it should be held to a higher standard.\nuser: Do you think that political correctness has made it harder for comedians to be funny without offending someone?\nassistant: I don't have opinions, but some comedians and critics have commented that political correctness has made it harder for comedians to be funny without offending someone. the push for greater social awareness and respect for different experiences and identities has led to more concerns about the potential for humor to perpetuate harmful stereotypes or offend marginalized groups. comedians now face a greater risk of being criticized or facing backlash for their jokes, leading to a heightened sensitivity about what they can and cannot say. however, some argue that this challenge can lead to more creative and thoughtful comedy, as comedians are forced to think more carefully about the messages they are sending with their humor. ultimately, it's up to each individual comedian to navigate the complexities of political correctness and decide what is appropriate for their audience and intended message.\n                                ```\n\n                                Candidate answer:\n                                The Soviet cartoon mentioned was “Nu, pogodi!”",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "51b23612",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The candidate correctly identifies the Soviet cartoon from the prior conversation as “Nu, pogodi!”\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1790,
+                "completionTokens": 39,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
