@@ -127,6 +127,41 @@ class OpenAiSubscriptionRequestMapperTest {
     }
 
     @Test
+    fun forcesDefaultServiceTierForMemoryStages() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                options = AiRuntimeOptions(
+                    toolContext = mapOf("memoryNamespace" to "project:test"),
+                ),
+            ),
+            modelName = "gpt-5.5",
+            conversationKey = "test-conversation",
+        )
+
+        assertEquals("default", request.serviceTier)
+        assertEquals(
+            "default",
+            OpenAiSubscriptionResponsesWebSocketRequest.from(request).serviceTier,
+        )
+    }
+
+    @Test
+    fun leavesServiceTierUnsetForNormalRequests() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+            ),
+            modelName = "gpt-5.5",
+            conversationKey = "test-conversation",
+        )
+
+        assertNull(request.serviceTier)
+    }
+
+    @Test
     fun includesToolsWhenToolChoiceAllowsTools() {
         val request = mapper.toRequest(
             request = AiRuntimeRequest(

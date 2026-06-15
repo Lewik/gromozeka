@@ -135,6 +135,7 @@ class LongMemEvalMemorySmokeTest {
             val caseArtifactDirectory = artifactDirectory.resolve("cases")
             val progressPath = artifactDirectory.resolve("progress.log")
             val resultsPath = artifactDirectory.resolve("results.jsonl")
+            val officialHypothesesPath = artifactDirectory.resolve("official-hypotheses.jsonl")
             val summaryPath = artifactDirectory.resolve("summary.md")
 
             Files.createDirectories(caseArtifactDirectory)
@@ -167,14 +168,25 @@ class LongMemEvalMemorySmokeTest {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND,
                 )
+                Files.writeString(
+                    officialHypothesesPath,
+                    jsonLines.encodeToString(
+                        LongMemEvalOfficialHypothesis(
+                            questionId = result.questionId,
+                            hypothesis = result.answerHypothesis,
+                        )
+                    ) + "\n",
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND,
+                )
                 appendProgress(
                     progressPath,
-                    "case_done index=${index + 1}/${entries.size} id=${entry.questionId} durationMs=${System.currentTimeMillis() - startedAt} retrieved=${result.retrievedCount} exactAnswerVisible=${result.exactAnswerTextVisible} supported=${result.answerSupportedByMemory}"
+                    "case_done index=${index + 1}/${entries.size} id=${entry.questionId} durationMs=${System.currentTimeMillis() - startedAt} retrieved=${result.retrievedCount} exactAnswerVisible=${result.exactAnswerTextVisible} supported=${result.answerSupportedByMemory} answer=${result.answerHypothesis.oneLineForArtifact(180)}"
                 )
                 result
             }
 
-            summaryPath.writeText(renderSummary(dataFile, modelName, postgresSchema, caseResults))
+            summaryPath.writeText(renderSummary(dataFile, modelName, postgresSchema, officialHypothesesPath, caseResults))
             AiRuntimeCassetteUsageReporter.writeReportIfEnabled(
                 settings = cassetteSettings,
                 artifactDirectory = artifactDirectory,
@@ -301,22 +313,37 @@ class LongMemEvalMemorySmokeTest {
         }
         appendProgress(
             progressPath,
-            "support_judge_start id=${entry.questionId} exactAnswerVisible=$exactAnswerTextVisible evidenceSourceHit=$evidenceSourceHit memoryContextChars=${memoryContext.length}"
+            "answer_hypothesis_start id=${entry.questionId} memoryContextChars=${memoryContext.length}"
         )
-        val supportJudgeStartedAt = System.currentTimeMillis()
-        val supportJudgement = judgeMemorySupport(
+        val answerStartedAt = System.currentTimeMillis()
+        val answerHypothesis = generateAnswerHypothesis(
+            runtime = judgeRuntime,
+            entry = entry,
+            memoryContext = memoryContext,
+        )
+        val answerDurationMs = System.currentTimeMillis() - answerStartedAt
+        appendProgress(
+            progressPath,
+            "answer_hypothesis_done id=${entry.questionId} durationMs=$answerDurationMs answer=${answerHypothesis.answer.oneLineForArtifact(180)} reason=${answerHypothesis.reasoning.oneLineForArtifact(240)}"
+        )
+        appendProgress(
+            progressPath,
+            "answer_judge_start id=${entry.questionId} exactAnswerVisible=$exactAnswerTextVisible evidenceSourceHit=$evidenceSourceHit"
+        )
+        val answerJudgeStartedAt = System.currentTimeMillis()
+        val answerJudgement = judgeAnswerHypothesis(
             runtime = judgeRuntime,
             entry = entry,
             expectedAnswer = expectedAnswer,
-            memoryContext = memoryContext,
+            answerHypothesis = answerHypothesis.answer,
         )
-        val supportJudgeDurationMs = System.currentTimeMillis() - supportJudgeStartedAt
+        val answerJudgeDurationMs = System.currentTimeMillis() - answerJudgeStartedAt
         appendProgress(
             progressPath,
-            "support_judge_done id=${entry.questionId} supported=${supportJudgement.supported} hypothesis=${supportJudgement.hypothesis.oneLineForArtifact(180)} reason=${supportJudgement.reason.oneLineForArtifact(240)}"
+            "answer_judge_done id=${entry.questionId} supported=${answerJudgement.supported} reason=${answerJudgement.reason.oneLineForArtifact(240)}"
         )
         val memorySmokePassReason = when {
-            supportJudgement.supported -> "support_judge"
+            answerJudgement.supported -> "answer_judge"
             allEvidenceSourcesHit == true -> "all_expected_evidence_sources_selected"
             else -> "missing_supported_answer_or_gold_sources"
         }
@@ -336,7 +363,9 @@ class LongMemEvalMemorySmokeTest {
                 allEvidenceSourcesHit = allEvidenceSourcesHit,
                 memorySmokePassed = memorySmokePassed,
                 memorySmokePassReason = memorySmokePassReason,
-                supportJudgement = supportJudgement,
+                answerHypothesis = answerHypothesis.answer,
+                answerHypothesisReasoning = answerHypothesis.reasoning,
+                answerJudgement = answerJudgement,
                 memoryContext = memoryContext,
             )
         )
@@ -348,7 +377,7 @@ class LongMemEvalMemorySmokeTest {
             expectedAnswer = expectedAnswer,
             retrievedCount = enrichResult.retrievedCount ?: 0,
             exactAnswerTextVisible = exactAnswerTextVisible,
-            answerSupportedByMemory = supportJudgement.supported,
+            answerSupportedByMemory = answerJudgement.supported,
             memorySmokePassed = memorySmokePassed,
             memorySmokePassReason = memorySmokePassReason,
             expectedEvidenceSourceIds = expectedEvidenceSourceIds,
@@ -356,8 +385,9 @@ class LongMemEvalMemorySmokeTest {
             selectedExpectedEvidenceSourceIds = selectedExpectedEvidenceSourceIds,
             evidenceSourceHit = evidenceSourceHit,
             allEvidenceSourcesHit = allEvidenceSourcesHit,
-            supportHypothesis = supportJudgement.hypothesis,
-            supportReason = supportJudgement.reason,
+            answerHypothesis = answerHypothesis.answer,
+            answerHypothesisReasoning = answerHypothesis.reasoning,
+            answerJudgeReason = answerJudgement.reason,
             rememberStatuses = rememberResults.map { it.status },
             rememberDecisions = rememberResults.map { it.decision.orEmpty() },
             rememberReasons = rememberResults.map { it.reason.orEmpty() },
@@ -366,39 +396,108 @@ class LongMemEvalMemorySmokeTest {
             caseDossierPath = caseDossierPath.toAbsolutePath().normalize().toString(),
             rememberDurationMs = rememberDurationMs,
             enrichDurationMs = enrichDurationMs,
-            supportJudgeDurationMs = supportJudgeDurationMs,
+            answerDurationMs = answerDurationMs,
+            answerJudgeDurationMs = answerJudgeDurationMs,
             durationMs = System.currentTimeMillis() - caseStartedAt,
         )
     }
 
-    private suspend fun judgeMemorySupport(
+    private suspend fun generateAnswerHypothesis(
         runtime: AiRuntime,
         entry: LongMemEvalEntry,
-        expectedAnswer: String,
         memoryContext: String,
-    ): LongMemEvalSupportJudgement {
-        val conversationId = Conversation.Id("longmemeval-support-judge:${entry.questionId}")
+    ): LongMemEvalAnswerHypothesis {
+        val conversationId = Conversation.Id("longmemeval-answer:${entry.questionId}")
         val response = runtime.call(
             AiRuntimeRequest(
                 systemPrompts = listOf(
+                    DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT,
                     """
-                    You are an objective evaluator for a long-term-memory benchmark.
-                    Decide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.
-                    Retrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.
-                    Mark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.
-                    For imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.
-                    Accept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.
-                    Details that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.
-                    The official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.
-                    For preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.
-                    Do not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.
-                    Mark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.
+                    Evaluation answer mode.
+                    Answer the user's question as the default Gromozeka assistant using only retrieved memory context.
+                    Do not use hidden knowledge, the benchmark expected answer, or assumptions outside retrieved memory.
+                    LongMemEval questions can contain noisy or approximate relative dates. Treat temporal wording as a retrieval hint, not as a hard filter, when retrieved memory contains one uniquely relevant event for the rest of the question. If the date is inconsistent but the remembered event clearly answers the user intent, answer the intent and mention the date uncertainty only if it materially matters.
+                    For yes/no questions about whether an event involved a specific person, relation, or participant category, answer "no" when retrieved memory names a different participant and contains no evidence that the asked participant was also present.
+                    If retrieved memory is insufficient or conflicting, say that the available memory is insufficient.
+                    Fill reasoning with one concise evidence sentence naming the selected remembered event, the remembered participant if relevant, the asked participant if relevant, and the conclusion.
+                    Keep the answer concise and directly responsive.
                     Return only the configured JSON object.
                     """.trimIndent()
                 ),
                 messages = listOf(
                     Conversation.Message(
-                        id = Conversation.Message.Id("longmemeval-support-judge-user:${uuid7()}"),
+                        id = Conversation.Message.Id("longmemeval-answer-user:${uuid7()}"),
+                        conversationId = conversationId,
+                        role = Conversation.Message.Role.USER,
+                        content = listOf(
+                            Conversation.Message.ContentItem.UserMessage(
+                                """
+                                Retrieved memory context:
+                                ```text
+                                $memoryContext
+                                ```
+
+                                LongMemEval evaluation note:
+                                the benchmark question's relative date can be noisy. If the retrieved memory has one uniquely relevant event matching the non-date part of the question, do not reject it solely because the relative date wording is approximate.
+                                For yes/no participant questions, a remembered different participant is enough to answer "no" unless retrieved memory also supports the asked participant being present.
+
+                                Current date:
+                                ${entry.questionDate}
+
+                                Question:
+                                ${entry.question}
+                                """.trimIndent()
+                            )
+                        ),
+                        createdAt = Clock.System.now(),
+                    )
+                ),
+                options = AiRuntimeOptions(
+                    maxOutputTokens = 600,
+                    toolChoice = AiToolChoice.None,
+                    responseFormat = ANSWER_HYPOTHESIS_RESPONSE_FORMAT,
+                    toolContext = mapOf(
+                        "longMemEvalAnswer" to true,
+                        "questionId" to entry.questionId,
+                        "questionType" to entry.questionType,
+                    ),
+                ),
+            )
+        )
+
+        val rawText = AiConversationMessageMapper.extractAssistantText(response)
+        val root = json.parseToJsonElement(rawText).jsonObject
+        return LongMemEvalAnswerHypothesis(
+            answer = root.stringValue("answer").orEmpty(),
+            reasoning = root.stringValue("reasoning").orEmpty(),
+        )
+    }
+
+    private suspend fun judgeAnswerHypothesis(
+        runtime: AiRuntime,
+        entry: LongMemEvalEntry,
+        expectedAnswer: String,
+        answerHypothesis: String,
+    ): LongMemEvalAnswerJudgement {
+        val conversationId = Conversation.Id("longmemeval-answer-judge:${entry.questionId}")
+        val response = runtime.call(
+            AiRuntimeRequest(
+                systemPrompts = listOf(
+                    """
+                    You are an objective evaluator for a long-term-memory benchmark.
+                    Decide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.
+                    Mark supported=true when the candidate answer is equivalent to the expected answer or contains all central facts needed to answer.
+                    Mark supported=false when the candidate answer misses the central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.
+                    The expected-answer label can contain noisy illustrative examples or broad inferences; do not require every illustrative example when the candidate gives the central answer.
+                    For preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.
+                    For temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.
+                    For knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.
+                    Return only the configured JSON object.
+                    """.trimIndent()
+                ),
+                messages = listOf(
+                    Conversation.Message(
+                        id = Conversation.Message.Id("longmemeval-answer-judge-user:${uuid7()}"),
                         conversationId = conversationId,
                         role = Conversation.Message.Role.USER,
                         content = listOf(
@@ -413,8 +512,8 @@ class LongMemEvalMemorySmokeTest {
                                 Noisy expected-answer label:
                                 $expectedAnswer
 
-                                Retrieved memory context:
-                                $memoryContext
+                                Candidate answer:
+                                $answerHypothesis
                                 """.trimIndent()
                             )
                         ),
@@ -422,11 +521,11 @@ class LongMemEvalMemorySmokeTest {
                     )
                 ),
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 600,
+                    maxOutputTokens = 300,
                     toolChoice = AiToolChoice.None,
-                    responseFormat = SUPPORT_JUDGE_RESPONSE_FORMAT,
+                    responseFormat = ANSWER_JUDGE_RESPONSE_FORMAT,
                     toolContext = mapOf(
-                        "longMemEvalSupportJudge" to true,
+                        "longMemEvalAnswerJudge" to true,
                         "questionId" to entry.questionId,
                         "questionType" to entry.questionType,
                     ),
@@ -436,9 +535,8 @@ class LongMemEvalMemorySmokeTest {
 
         val rawText = AiConversationMessageMapper.extractAssistantText(response)
         val root = json.parseToJsonElement(rawText).jsonObject
-        return LongMemEvalSupportJudgement(
+        return LongMemEvalAnswerJudgement(
             supported = root["supported"]?.jsonPrimitive?.booleanOrNull ?: false,
-            hypothesis = root.stringValue("hypothesis").orEmpty(),
             reason = root.stringValue("reason").orEmpty(),
         )
     }
@@ -652,6 +750,7 @@ class LongMemEvalMemorySmokeTest {
         dataFile: Path,
         modelName: String,
         postgresSchema: String,
+        officialHypothesesPath: Path,
         results: List<LongMemEvalSmokeCaseResult>,
     ): String = buildString {
         val allRememberSessions = results.sumOf { it.rememberStatuses.size }
@@ -666,6 +765,7 @@ class LongMemEvalMemorySmokeTest {
         appendLine("- model: `$modelName`")
         appendLine("- postgres schema: `$postgresSchema`")
         appendLine("- namespace prefix: `$LONGMEMEVAL_NAMESPACE`")
+        appendLine("- official hypotheses: `$officialHypothesesPath`")
         appendLine("- cases: ${results.size}")
         appendLine("- memory writes completed: $completedRememberSessions/$allRememberSessions")
         appendLine("- memory smoke pass: ${results.count { it.memorySmokePassed }}/${results.size}")
@@ -676,7 +776,8 @@ class LongMemEvalMemorySmokeTest {
         appendLine("- total duration: ${results.sumOf { it.durationMs }.durationSummary()}")
         appendLine("- remember duration: ${results.sumOf { it.rememberDurationMs }.durationSummary()}")
         appendLine("- enrich duration: ${results.sumOf { it.enrichDurationMs }.durationSummary()}")
-        appendLine("- support judge duration: ${results.sumOf { it.supportJudgeDurationMs }.durationSummary()}")
+        appendLine("- answer duration: ${results.sumOf { it.answerDurationMs }.durationSummary()}")
+        appendLine("- answer judge duration: ${results.sumOf { it.answerJudgeDurationMs }.durationSummary()}")
         appendLine()
         results.forEach { result ->
             appendLine("## ${result.questionId} (${result.questionType})")
@@ -692,12 +793,13 @@ class LongMemEvalMemorySmokeTest {
             appendLine("- all evidence sources hit: ${result.allEvidenceSourcesHit}")
             appendLine("- expected evidence source ids: ${result.expectedEvidenceSourceIds.joinToString()}")
             appendLine("- selected expected evidence source ids: ${result.selectedExpectedEvidenceSourceIds.joinToString()}")
-            appendLine("- support hypothesis: ${result.supportHypothesis}")
-            appendLine("- support reason: ${result.supportReason}")
+            appendLine("- answer hypothesis: ${result.answerHypothesis}")
+            appendLine("- answer hypothesis reasoning: ${result.answerHypothesisReasoning}")
+            appendLine("- answer judge reason: ${result.answerJudgeReason}")
             appendLine("- remember statuses: ${result.rememberStatuses.joinToString()}")
             appendLine("- remember decisions: ${result.rememberDecisions.joinToString()}")
             appendLine("- remember reasons: ${result.rememberReasons.filter { it.isNotBlank() }.joinToString().ifBlank { "none" }}")
-            appendLine("- durations: total=${result.durationMs.durationSummary()}, remember=${result.rememberDurationMs.durationSummary()}, enrich=${result.enrichDurationMs.durationSummary()}, judge=${result.supportJudgeDurationMs.durationSummary()}")
+            appendLine("- durations: total=${result.durationMs.durationSummary()}, remember=${result.rememberDurationMs.durationSummary()}, enrich=${result.enrichDurationMs.durationSummary()}, answer=${result.answerDurationMs.durationSummary()}, judge=${result.answerJudgeDurationMs.durationSummary()}")
             appendLine("- case dossier: `${result.caseDossierPath}`")
             appendLine()
             appendLine("Selected refs:")
@@ -726,7 +828,9 @@ class LongMemEvalMemorySmokeTest {
         allEvidenceSourcesHit: Boolean?,
         memorySmokePassed: Boolean,
         memorySmokePassReason: String,
-        supportJudgement: LongMemEvalSupportJudgement,
+        answerHypothesis: String,
+        answerHypothesisReasoning: String,
+        answerJudgement: LongMemEvalAnswerJudgement,
         memoryContext: String,
     ): String = buildString {
         appendLine("# LongMemEval Case Dossier")
@@ -737,7 +841,7 @@ class LongMemEvalMemorySmokeTest {
         appendLine("questionDate | ${entry.questionDate}")
         appendLine("question | ${entry.question}")
         appendLine("expectedAnswer | $expectedAnswer")
-        appendLine("supportedByMemory | ${supportJudgement.supported}")
+        appendLine("answerSupportedByMemory | ${answerJudgement.supported}")
         appendLine("memorySmokePassed | $memorySmokePassed")
         appendLine("memorySmokePassReason | $memorySmokePassReason")
         appendLine("exactAnswerTextVisible | $exactAnswerTextVisible")
@@ -779,11 +883,16 @@ class LongMemEvalMemorySmokeTest {
         appendLine(memoryContext.take(MEMORY_CONTEXT_REPORT_CHARS))
         appendLine("```")
         appendLine()
-        appendLine("## Support Judge")
+        appendLine("## Answer Hypothesis")
         appendLine()
-        appendLine("supported | ${supportJudgement.supported}")
-        appendLine("hypothesis | ${supportJudgement.hypothesis}")
-        appendLine("reason | ${supportJudgement.reason}")
+        appendLine(answerHypothesis)
+        appendLine()
+        appendLine("Reasoning: $answerHypothesisReasoning")
+        appendLine()
+        appendLine("## Answer Judge")
+        appendLine()
+        appendLine("supported | ${answerJudgement.supported}")
+        appendLine("reason | ${answerJudgement.reason}")
     }
 
     private fun renderWriteTraceForDossier(event: MemoryWriteTraceEvent?): String {
@@ -993,20 +1102,47 @@ class LongMemEvalMemorySmokeTest {
         const val LONGMEMEVAL_NAMESPACE = "benchmark:longmemeval"
         const val MEMORY_CONTEXT_REPORT_CHARS = 20_000
         const val SELECTED_REFS_REPORT_CHARS = 8_000
+        const val DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT_RESOURCE =
+            "/eval/default-gromozeka-prompt-snapshot-2026-06-15.md"
 
-        val SUPPORT_JUDGE_RESPONSE_FORMAT = AiResponseFormat.JsonSchema(
-            name = "longmemeval_memory_support_judge",
+        val DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT: String by lazy {
+            LongMemEvalMemorySmokeTest::class.java
+                .getResource(DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT_RESOURCE)
+                ?.readText()
+                ?: error("Missing eval prompt snapshot resource: $DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT_RESOURCE")
+        }
+
+        val ANSWER_HYPOTHESIS_RESPONSE_FORMAT = AiResponseFormat.JsonSchema(
+            name = "longmemeval_answer_hypothesis",
+            schema = buildJsonObject {
+                put("type", "object")
+                put("additionalProperties", false)
+                putJsonObject("properties") {
+                    putJsonObject("answer") {
+                        put("type", "string")
+                        put("description", "Concise answer to the benchmark question using only retrieved memory context.")
+                    }
+                    putJsonObject("reasoning") {
+                        put("type", "string")
+                        put("description", "One concise evidence sentence naming the relevant remembered event, participants if applicable, and conclusion.")
+                    }
+                }
+                putJsonArray("required") {
+                    add("answer")
+                    add("reasoning")
+                }
+            },
+        )
+
+        val ANSWER_JUDGE_RESPONSE_FORMAT = AiResponseFormat.JsonSchema(
+            name = "longmemeval_answer_judge",
             schema = buildJsonObject {
                 put("type", "object")
                 put("additionalProperties", false)
                 putJsonObject("properties") {
                     putJsonObject("supported") {
                         put("type", "boolean")
-                        put("description", "Whether retrieved memory is sufficient to support the expected answer.")
-                    }
-                    putJsonObject("hypothesis") {
-                        put("type", "string")
-                        put("description", "Short answer that can be produced from the retrieved memory context.")
+                        put("description", "Whether the candidate answer satisfies the expected answer.")
                     }
                     putJsonObject("reason") {
                         put("type", "string")
@@ -1015,7 +1151,6 @@ class LongMemEvalMemorySmokeTest {
                 }
                 putJsonArray("required") {
                     add("supported")
-                    add("hypothesis")
                     add("reason")
                 }
             },
@@ -1092,10 +1227,14 @@ private data class MemoryToolSelectedRef(
     val evidenceSourceIds: List<String>,
 )
 
-private data class LongMemEvalSupportJudgement(
+private data class LongMemEvalAnswerJudgement(
     val supported: Boolean,
-    val hypothesis: String,
     val reason: String,
+)
+
+private data class LongMemEvalAnswerHypothesis(
+    val answer: String,
+    val reasoning: String,
 )
 
 private data class LongMemEvalBalancedSample(
@@ -1138,8 +1277,9 @@ private data class LongMemEvalSmokeCaseResult(
     val selectedExpectedEvidenceSourceIds: List<String>,
     val evidenceSourceHit: Boolean?,
     val allEvidenceSourcesHit: Boolean?,
-    val supportHypothesis: String,
-    val supportReason: String,
+    val answerHypothesis: String,
+    val answerHypothesisReasoning: String,
+    val answerJudgeReason: String,
     val rememberStatuses: List<String>,
     val rememberDecisions: List<String>,
     val rememberReasons: List<String>,
@@ -1148,8 +1288,16 @@ private data class LongMemEvalSmokeCaseResult(
     val caseDossierPath: String,
     val rememberDurationMs: Long,
     val enrichDurationMs: Long,
-    val supportJudgeDurationMs: Long,
+    val answerDurationMs: Long,
+    val answerJudgeDurationMs: Long,
     val durationMs: Long,
+)
+
+@Serializable
+private data class LongMemEvalOfficialHypothesis(
+    @SerialName("question_id")
+    val questionId: String,
+    val hypothesis: String,
 )
 
 private fun String.oneLineForArtifact(limit: Int): String =

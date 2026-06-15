@@ -60,4 +60,27 @@ Artifacts are written to:
 server/build/test-artifacts/longmemeval/LongMemEvalMemorySmokeTest/
 ```
 
-The test reports semantic support through an LLM judge and also tracks whether selected memory refs point back to expected LongMemEval evidence source ids.
+Key artifacts:
+
+```text
+results.jsonl              # Gromozeka memory smoke details per case
+official-hypotheses.jsonl  # LongMemEval-compatible {question_id, hypothesis}
+summary.md                 # Human-readable run summary
+cases/*.md                 # Per-case dossiers with write/read traces
+```
+
+The test first ingests LongMemEval sessions, then calls `memory_enrich_context`,
+then generates a concise default-Gromozeka answer hypothesis from retrieved
+memory without seeing the expected answer. A separate internal judge compares
+that hypothesis with the expected answer for development feedback. The
+`official-hypotheses.jsonl` file is the one to pass to LongMemEval's external
+`evaluate_qa.py gpt-4o ...` scorer.
+
+The default-Gromozeka prompt used for hypothesis generation is pinned in:
+
+```text
+server/src/test/resources/eval/default-gromozeka-prompt-snapshot-2026-06-15.md
+```
+
+Do not update that snapshot as a side effect of normal prompt edits. Update it
+only when intentionally changing the benchmark baseline.

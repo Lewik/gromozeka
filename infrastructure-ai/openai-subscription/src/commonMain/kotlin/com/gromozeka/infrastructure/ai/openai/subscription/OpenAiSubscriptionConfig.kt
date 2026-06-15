@@ -71,6 +71,8 @@ data class OpenAiSubscriptionResponsesRequest(
     val include: List<String> = listOf("reasoning.encrypted_content"),
     val text: JsonObject? = null,
     val reasoning: JsonObject? = null,
+    @SerialName("service_tier")
+    val serviceTier: String? = null,
     @SerialName("prompt_cache_key")
     val promptCacheKey: String? = null,
 )
@@ -95,6 +97,8 @@ data class OpenAiSubscriptionResponsesWebSocketRequest(
     val include: List<String> = listOf("reasoning.encrypted_content"),
     val text: JsonObject? = null,
     val reasoning: JsonObject? = null,
+    @SerialName("service_tier")
+    val serviceTier: String? = null,
     @SerialName("prompt_cache_key")
     val promptCacheKey: String? = null,
 ) {
@@ -114,6 +118,7 @@ data class OpenAiSubscriptionResponsesWebSocketRequest(
                 include = request.include,
                 text = request.text,
                 reasoning = request.reasoning,
+                serviceTier = request.serviceTier,
                 promptCacheKey = request.promptCacheKey,
             )
         }

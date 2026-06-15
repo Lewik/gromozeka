@@ -64,6 +64,7 @@ class OpenAiSubscriptionRequestMapper {
             toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { effectiveTools.isNotEmpty() },
             text = buildTextConfig(request.options.responseFormat),
             reasoning = buildReasoning(request.options.reasoning),
+            serviceTier = buildServiceTier(request),
             promptCacheKey = conversationKey,
         )
 
@@ -290,6 +291,10 @@ class OpenAiSubscriptionRequestMapper {
             put("effort", effort)
             put("summary", "detailed")
         }
+    }
+
+    private fun buildServiceTier(request: AiRuntimeRequest): String? {
+        return if (request.options.toolContext.containsKey("memoryNamespace")) "default" else null
     }
 
     private fun AiToolChoice.toToolChoiceJson(): JsonElement? {
