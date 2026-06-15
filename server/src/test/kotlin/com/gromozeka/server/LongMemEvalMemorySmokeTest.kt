@@ -344,6 +344,7 @@ class LongMemEvalMemorySmokeTest {
             runtime = judgeRuntime,
             entry = entry,
             expectedAnswer = expectedAnswer,
+            goldEvidence = entry.renderGoldEvidenceForJudge(),
             answerHypothesis = answerHypothesis.answer,
         )
         val answerJudgeDurationMs = System.currentTimeMillis() - answerJudgeStartedAt
@@ -575,6 +576,7 @@ class LongMemEvalMemorySmokeTest {
         runtime: AiRuntime,
         entry: LongMemEvalEntry,
         expectedAnswer: String,
+        goldEvidence: String,
         answerHypothesis: String,
     ): LongMemEvalAnswerJudgement {
         val conversationId = Conversation.Id("longmemeval-answer-judge:${entry.questionId}")
@@ -584,9 +586,11 @@ class LongMemEvalMemorySmokeTest {
                     """
                     You are an objective evaluator for a long-term-memory benchmark.
                     Decide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.
-                    Mark supported=true when the candidate answer is equivalent to the expected answer or contains all central facts needed to answer.
-                    Mark supported=false when the candidate answer misses the central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.
-                    The expected-answer label can contain noisy illustrative examples or broad inferences; do not require every illustrative example when the candidate gives the central answer.
+                    The expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.
+                    Use the gold evidence only to decide which expected-answer details are actually evidence-backed.
+                    Mark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.
+                    Mark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.
+                    Do not require expected-answer details that are absent from the gold evidence.
                     For preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.
                     For temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.
                     For knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.
@@ -609,6 +613,11 @@ class LongMemEvalMemorySmokeTest {
 
                                 Noisy expected-answer label:
                                 $expectedAnswer
+
+                                Gold evidence:
+                                ```text
+                                $goldEvidence
+                                ```
 
                                 Candidate answer:
                                 $answerHypothesis
@@ -638,6 +647,14 @@ class LongMemEvalMemorySmokeTest {
             reason = root.stringValue("reason").orEmpty(),
         )
     }
+
+    private fun LongMemEvalEntry.renderGoldEvidenceForJudge(): String =
+        haystackSessions
+            .mapIndexed { index, session ->
+                renderSession(session, haystackDates.getOrNull(index))
+            }
+            .joinToString("\n\n---\n\n")
+            .truncateForJudgeEvidence(MAX_JUDGE_GOLD_EVIDENCE_CHARS)
 
     private fun renderSession(
         session: List<LongMemEvalTurn>,
@@ -1320,6 +1337,7 @@ class LongMemEvalMemorySmokeTest {
         const val LONGMEMEVAL_NAMESPACE = "benchmark:longmemeval"
         const val MEMORY_CONTEXT_REPORT_CHARS = 20_000
         const val SELECTED_REFS_REPORT_CHARS = 8_000
+        const val MAX_JUDGE_GOLD_EVIDENCE_CHARS = 35_000
         const val DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT_RESOURCE =
             "/eval/default-gromozeka-prompt-snapshot-2026-06-15.md"
 
@@ -1534,6 +1552,10 @@ private fun String.oneLineForArtifact(limit: Int): String =
     replace(Regex("\\s+"), " ")
         .trim()
         .let { if (it.length <= limit) it else it.take(limit - 3) + "..." }
+
+private fun String.truncateForJudgeEvidence(limit: Int): String =
+    trim()
+        .let { if (it.length <= limit) it else it.take(limit) + "\n[truncated ${it.length - limit} chars]" }
 
 private fun Long.durationSummary(): String =
     if (this < 1_000) {
