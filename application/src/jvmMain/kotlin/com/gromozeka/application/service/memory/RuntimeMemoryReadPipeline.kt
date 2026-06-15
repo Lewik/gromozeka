@@ -761,9 +761,11 @@ object RuntimeMemoryPromptComposer {
             Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.
             Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.
             If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.
+            If selected typed memory is incomplete for an exact requested detail, use selected source evidence as fallback evidence; extract only explicit source facts and say memory is insufficient when the source still does not contain the detail.
             ${historicalMemoryInstruction.orEmpty()}
             If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.
             If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.
+            For date-scoped questions, a candidate whose event or source date matches the requested period is stronger than an ACTIVE typed fact from outside the period.
             If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.
             If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
             If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.
