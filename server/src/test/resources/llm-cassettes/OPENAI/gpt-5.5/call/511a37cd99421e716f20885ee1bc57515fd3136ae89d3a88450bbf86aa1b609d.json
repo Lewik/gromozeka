@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "511a37cd99421e716f20885ee1bc57515fd3136ae89d3a88450bbf86aa1b609d",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:7024f17c\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 07:11\nTranscript:\nuser: I've been trying to get more organized with my time, so I was wondering if you could suggest some apps or tools to help me plan out my daily tasks and stay on top of my schedule? By the way, I used to practice yoga three times a week, each time for 2 hours, but I've been slacking off for this month and I'm trying to get back into it.\nassistant: Getting organized and back on track with your yoga practice - excellent goals! I'd be happy to help you with some app and tool recommendations to boost your productivity and help you stay committed to your daily tasks and yoga routine.\n\n**Task Management Apps:**\n\n1. ** Todoist**: A popular and highly-rated app for task management. Create and prioritize tasks, set reminders, and track your progress.\n2. **Trello**: A visual tool that uses boards, lists, and cards to organize tasks and projects. Great for breaking down larger tasks into smaller, manageable chunks.\n3. **Any.do**: A simple and intuitive app for creating to-do lists, setting reminders, and collaborating with others.\n4. **Wunderlist**: A user-friendly app for creating and managing to-do lists, with features like reminders, due dates, and collaboration.\n\n**Scheduling and Calendar Apps:**\n\n1. **Google Calendar** (or Apple Calendar): Integrate your tasks and events with your calendar to ensure you have a clear overview of your day.\n2. **Fantastical** (iOS only): A calendar app that integrates with your tasks and reminders, offering a clean and intuitive interface.\n3. **Microsoft To Do** (formerly Wunderlist): A task management app that integrates with your Outlook calendar.\n\n**Yoga and Habit Tracking Apps:**\n\n1. **Down Dog**: A yoga app that offers various yoga classes, meditation sessions, and a habit tracker to help you stay consistent.\n2. **Yoga Studio**: A comprehensive yoga app with classes, custom sequences, and a schedule feature to help you plan your practice.\n3. **Habitica**: A habit-tracking app that gamifies your daily tasks and activities, including exercise and yoga practice.\n4. **Strides**: A goal-setting app that helps you track progress toward your objectives, including fitness and wellness goals like yoga practice.\n\n**Additional Tips:**\n\n1. **Set realistic goals**: Start with achievable goals, like practicing yoga twice a week, and gradually increase frequency as you build momentum.\n2. **Schedule yoga sessions**: Treat your yoga practice as non-negotiable appointments and schedule them in your calendar.\n3. **Create a morning routine**: Begin your day with a consistent routine that sets a positive tone, including yoga practice, meditation, or journaling.\n4. **Review and adjust**: Regularly review your progress, adjust your schedule as needed, and celebrate your successes.\n\nRemember, the key to staying organized and consistent is to find a system that works for you and stick to it. Experiment with different apps and tools until you find the ones that fit your style and preferences. Good luck, and happy practicing!\nuser: I think I'll try out Todoist and Down Dog to start with. Do you have any tips on how to prioritize my tasks and make sure I'm focusing on the most important ones first? And also, do you have any yoga classes or routines that you would recommend for a beginner like me who's trying to get back into it?\nassistant: Todoist and Down Dog are both excellent tools to help you get organized and back into your yoga practice.\n\n**Prioritizing Tasks with Todoist:**\n\n1. **Use the Eisenhower Matrix**: Label your tasks as Urgent-Important, Important-Not Urgent, Urgent-Not Important, or Not Urgent-Not Important. Focus on the first quadrant (Urgent-Important) first.\n2. **Set task priority levels**: Use Todoist's priority levels (P1, P2, P3, or P4) to categorize tasks based on their importance and deadlines.\n3. **Break down large tasks**: Divide complex tasks into smaller, manageable chunks, and prioritize each step accordingly.\n4. **Focus on one task at a time**: Use the Pomodoro Technique: work on a single task for 25 minutes, take a 5-minute break, and repeat.\n5. **Review and adjust daily**: Regularly review your task list, adjust priorities as needed, and plan your day accordingly.\n\n**Yoga Recommendations for Beginners:**\n\n1. **Start with Hatha or Vinyasa Flow**: These styles focus on basic postures, breathing, and movement, making them perfect for beginners.\n2. **Begin with short classes**: Start with 20-30 minute classes, 2-3 times a week, and gradually increase duration and frequency.\n3. **Focus on foundational postures**: Master basic postures like Mountain Pose, Downward-Facing Dog, Cobra, and Child's Pose before moving to more advanced ones.\n4. **Practice gentle and restorative yoga**: Incorporate gentle and restorative yoga classes to help your body adjust and recover.\n\n**Recommended Down Dog Classes for Beginners:**\n\n1. **\"Foundations of Yoga\"**: A 4-class series that covers the basics of yoga, including breathing, alignment, and fundamental postures.\n2. **\"Gentle Yoga\"**: A 20-minute class focused on gentle stretches, relaxation, and breathing techniques.\n3. **\"Vinyasa Flow for Beginners\"**: A 30-minute class that introduces you to the basics of Vinyasa Flow, including sun salutations and basic postures.\n\n**Additional Tips for Getting Back into Yoga:**\n\n1. **Listen to your body**: Honor your body's limitations and take regular breaks to avoid injury or burnout.\n2. **Find a yoga buddy**: Practice with a friend or family member to stay motivated and accountable.\n3. **Celebrate small victories**: Acknowledge and celebrate your progress, no matter how small, to stay motivated and encouraged.\n\nRemember, the key to success is consistency and patience. Start with small, achievable goals, and gradually build up your practice. Good luck, and enjoy your journey back into yoga!\nuser: I think I'll start with the \"Foundations of Yoga\" series on Down Dog. How can I make sure I stick to my yoga practice and make it a habit?\nassistant: The \"Foundations of Yoga\" series is a great starting point.\n\n**Tips to Help You Stick to Your Yoga Practice and Make it a Habit:**\n\n1. **Schedule it in**: Treat your yoga practice as a non-negotiable appointment and schedule it in your calendar.\n2. **Create a dedicated space**: Designate a quiet, comfortable, and distraction-free space for your yoga practice.\n3. **Develop a pre-practice routine**: Establish a consistent pre-practice routine, such as lighting a candle, playing soothing music, or sipping herbal tea, to signal to your mind and body that it's time to practice.\n4. **Start small and be consistent**: Begin with short practices (20-30 minutes) and commit to practicing at the same time every day or week.\n5. **Track your progress**: Use Down Dog's tracking feature or a habit-tracking app to monitor your progress and stay motivated.\n6. **Find accountability**: Practice with a friend, family member, or online yoga community to stay motivated and accountable.\n7. **Reward yourself**: Celebrate small milestones, like completing a certain number of practices, with non-yoga related rewards, like a relaxing bath or a favorite meal.\n8. **Be kind to yourself**: Remember that it's okay to miss a practice occasionally. Don't get discouraged, and instead, focus on getting back on track as soon as possible.\n9. **Mix it up**: Vary your practice to avoid boredom and prevent plateaus. Try different styles, classes, or focus on specific areas like flexibility or strength.\n10. **Make it a ritual**: Incorporate elements that make your practice feel special, such as lighting incense, using a specific mat, or practicing at sunrise or sunset.\n\n**Additional Tips to Help You Stay Motivated:**\n\n1. **Remind yourself why you started**: Reflect on why you wanted to start practicing yoga in the first place, and let that motivation carry you through challenging days.\n2. **Focus on how you feel**: Instead of focusing on the physical aspects of yoga, focus on how it makes you feel – more calm, centered, and energized.\n3. **Celebrate the journey**: Acknowledge and celebrate the small victories, like increased flexibility or improved sleep, to stay motivated and encouraged.\n\nBy incorporating these tips into your daily routine, you'll be more likely to make yoga a sustainable and enjoyable habit. Remember, consistency is key, and even a short practice is better than none at all. Good luck, and enjoy your yoga journey!\nuser: I think I'll try to schedule my yoga practice for Monday, Wednesday, and Friday mornings at 7:00 am. Do you think it's a good idea to set reminders for my yoga practice, and if so, how can I do that?\nassistant: Scheduling your yoga practice for Monday, Wednesday, and Friday mornings at 7:00 am is a great start!\n\n**Setting Reminders for Your Yoga Practice:**\n\nYes, setting reminders can be a great way to stay on track and ensure you don't forget about your yoga practice. Here are a few ways to set reminders:\n\n1. **Phone Reminders**: Set reminders on your phone using the built-in Reminders app (for iOS) or Google Keep (for Android). You can set recurring reminders for every Monday, Wednesday, and Friday at 6:50 am (10 minutes before your practice) to give yourself time to get ready.\n2. **Calendar Events**: Create recurring events on your calendar (Google Calendar, Apple Calendar, or any other calendar app) for your yoga practice. Set the event to repeat every Monday, Wednesday, and Friday at 7:00 am, and add a reminder 10-15 minutes before the event.\n3. **Down Dog App**: If you're using the Down Dog app, you can set reminders for your yoga practice within the app. Go to the \"Settings\" tab, then \"Reminders,\" and set your preferred reminder time and frequency.\n4. **Alarm Clock**: Set an alarm clock for 6:50 am on the days you plan to practice yoga. This will ensure you wake up on time and have enough time to get ready.\n5. **Habit-Tracking Apps**: If you're using a habit-tracking app like Habitica, HabitBull, or Loop Habit Tracker, you can set reminders for your yoga practice and track your progress.\n\n**Tips for Effective Reminders:**\n\n1. **Set reminders at the right time**: Set reminders 10-15 minutes before your practice to give yourself time to get ready and prepare.\n2. **Make reminders specific**: Instead of a generic \"Yoga\" reminder, try something like \"7:00 am Yoga Practice - Monday\" to make it more specific and relevant.\n3. **Use a consistent tone**: Choose a consistent tone or phrase for your reminders to make them more recognizable and effective.\n4. **Don't overdo it**: Avoid setting too many reminders, as this can become overwhelming and annoying. Stick to one or two reminders per practice.\n\nBy setting reminders, you'll be more likely to stick to your yoga practice and make it a consistent habit. Good luck, and enjoy your morning yoga sessions!\nuser: I think I'll set reminders on my phone and calendar to ensure I don't forget about my yoga practice. What are some tips for creating a conducive yoga space at home?\nassistant: Setting reminders on your phone and calendar will help you stay on track with your yoga practice.\n\n**Creating a Conducive Yoga Space at Home:**\n\nHaving a dedicated yoga space at home can help you establish a consistent practice and make it feel more enjoyable. Here are some tips to create a conducive yoga space:\n\n1. **Dedicate a specific area**: Choose a quiet, peaceful spot in your home where you can practice yoga without distractions or interruptions.\n2. **Clear the space**: Remove any clutter, furniture, or obstacles that might hinder your practice. You want a clear and open space to move around.\n3. **Good lighting**: Ensure the space has good natural light or invest in a few soft, warm lamps to create a calming ambiance.\n4. **Comfortable flooring**: Invest in a good-quality yoga mat and consider adding a non-slip floor mat or a rug to provide extra grip and comfort.\n5. **Minimal decor**: Keep the decor minimal and calming. Add a few plants, a calming artwork, or a peaceful statue to create a serene atmosphere.\n6. **Temperature control**: Ensure the space is at a comfortable temperature. You might want to invest in a space heater or a fan to maintain a consistent temperature.\n7. **Sound system**: Consider adding a sound system or a portable speaker to play calming music or nature sounds during your practice.\n8. **Storage**: Keep your yoga props, blocks, straps, and blankets organized and within reach. You can use a storage basket, shelf, or a prop rack to keep everything tidy.\n9. **Ventilation**: Ensure good ventilation in the space to prevent stuffiness and promote airflow.\n10. **Make it technology-free**: Consider making your yoga space a technology-free zone to minimize distractions and promote mindfulness.\n\n**Additional Tips:**\n\n1. **Invest in a yoga wall**: If you have the space, consider investing in a yoga wall or a pull-up bar to help with inversions and other poses.\n2. **Use aromatherapy**: Use essential oils or scented candles to create a calming and relaxing atmosphere.\n3. **Keep it clean**: Regularly clean and sanitize your yoga space to prevent the buildup of germs and bacteria.\n4. **Make it personal**: Add personal touches like photos, inspirational quotes, or meaningful objects to make the space feel more personal and motivating.\n\nBy creating a conducive yoga space at home, you'll be more likely to practice regularly and enjoy the benefits of yoga. Happy practicing!\nuser: I think I'll try to create a peaceful and calming atmosphere in my yoga space by adding some plants and a few calming decorations. I'll also make sure to keep the space clean and organized, and invest in a good quality yoga mat.\nassistant: That sounds like a great plan!\n\n**Adding Plants:**\n\nPlants can greatly contribute to a peaceful and calming atmosphere in your yoga space. They not only purify the air but also create a sense of serenity and connection to nature. Some low-maintenance plants that thrive in indoor conditions include:\n\n1. Snake Plant (Sansevieria Trifasciata)\n2. Spider Plant (Chlorophytum comosum)\n3. Pothos (Epipremnum aureum)\n4. Dracaena (Dracaena spp.)\n5. Peace Lily (Spathiphyllum wallisii)\n\n**Calming Decorations:**\n\nAdding calming decorations can help create a peaceful ambiance in your yoga space. Consider adding:\n\n1. Candles or essential oil diffusers with calming scents like lavender or chamomile\n2. Soft, calming colors like beige, blue, or green on walls or furniture\n3. A water feature, like a small fountain or waterfall\n4. A Buddha statue or other calming figurines\n5. Inspirational quotes or calming artwork\n\n**Good Quality Yoga Mat:**\n\nInvesting in a good quality yoga mat is essential for a comfortable and safe practice. Look for a mat that provides:\n\n1. Good grip and traction\n2. Adequate cushioning and support\n3. Eco-friendly and non-toxic materials\n4. A comfortable texture and feel\n\nSome popular yoga mat brands include:\n\n1. Manduka\n2. Lululemon\n3. Gaiam\n4. Jade Yoga\n5. Hugger Mugger\n\nBy creating a peaceful and calming atmosphere in your yoga space, you'll be more likely to enjoy your practice and feel motivated to continue. Remember to keep your space clean and organized, and don't hesitate to experiment with different decorations and plants until you find a setup that works for you. Happy practicing!\n\n        Candidate notes:\n        [0] type=PLAN title=Yoga practice habit setup with Down Dog and reminders summary=The user is rebuilding a yoga habit by choosing the \"Foundations of Yoga\" series on Down Dog, scheduling practice for Monday, Wednesday, and Friday mornings at 7:00 am, and planning to use both phone and calendar reminders to avoid forgetting sessions. scope=User's yoga habit setup and scheduling plan from LongMemEval 7024f17c session 2 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=yoga habit,Down Dog,Foundations of Yoga,Monday Wednesday Friday,7:00 am,phone reminders,calendar reminders tags=yoga,habit_plan,schedule,reminders evidence=I'll set reminders on my phone and calendar to ensure I don't forget about my yoga practice\n[1] type=DIRECTION title=User's home yoga space direction summary=The user plans to make a home yoga space peaceful and calming by adding plants and calming decorations, keeping it clean and organized, and investing in a good-quality yoga mat. scope=User's intended setup for a home yoga practice space entities=entity:<0>,entity:<5>,entity:<6> keywords=home yoga space,plants,calming decorations,clean and organized,good quality yoga mat tags=yoga,home_space,environment_setup evidence=I'll also make sure to keep the space clean and organized, and invest in a good quality yoga mat.\n[2] type=CONTEXT title=Organization app starting stack summary=For getting more organized with daily tasks and schedule, the user chose to start with Todoist for task management and Down Dog for supporting the yoga routine. scope=User's selected initial app/tool stack for organization and yoga support entities=entity:<0>,entity:<7>,entity:<1> keywords=Todoist,Down Dog,daily tasks,schedule,organization,yoga routine tags=productivity,tools,yoga evidence=I think I'll try out Todoist and Down Dog to start with.\n\n        Existing active notes:\n        id=hot-path-1d9893de0eab-note-2 type=PLAN status=ACTIVE maturity=FRESH title=User's yoga restart plan and motivation approach summary=The user is getting back into yoga and wants to start gently with one or two sessions per week. They intend to use realistic goals and possibly a yoga buddy for motivation while focusing on breath and listening to their body in class. scope=User's health and yoga practice planning context from LongMemEval 7024f17c session 1 keywords=yoga restart,one or two sessions,realistic goals,yoga buddy,breath,listen to body tags=health_routine,yoga,motivation useCount=0\nid=hot-path-1d9893de0eab-note-6 type=LESSON status=ACTIVE maturity=FRESH title=Yoga mat and props care procedure summary=Yoga mat and prop care guidance discussed for the user: wipe down after each use, use gentle yoga-mat cleaner or a 1:1 water and white vinegar mix, avoid harsh chemicals, dry thoroughly, store in a cool dry place, and deep clean the mat every 1–2 months while checking the care label. scope=Reusable care procedure for the user's yoga mat and yoga props keywords=yoga mat care,yoga props care,white vinegar,gentle cleaner,deep clean,avoid harsh chemicals tags=yoga,equipment_care,cleaning useCount=0\nid=hot-path-1d9893de0eab-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Yoga class preparation and gear preferences summary=The user plans to wear comfortable clothing and bring a water bottle and towel to yoga class. Related preparation guidance included arriving 10–15 minutes early, practicing barefoot, using a yoga mat and props when needed, and minimizing distractions from electronics. scope=User's yoga class preparation context and accepted gear suggestions keywords=comfortable clothing,water bottle,towel,yoga mat,props,arrive early tags=yoga,class_prep,gear useCount=0\nid=hot-path-1d9893de0eab-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=User needs quick healthy lunches around lunch-break workouts summary=The user is looking for healthy lunch ideas that are quick to prepare and do not consume much of their lunch break because they are trying to fit in a workout at lunch. They showed interest in trying salad ideas. scope=User's meal-planning context for lunch-break workouts keywords=quick healthy lunch,salads,lunch break workout,fast easy meals tags=meal_planning,fitness,lunch useCount=0\nid=hot-path-1d9893de0eab-note-4 type=DIRECTION status=ACTIVE maturity=FRESH title=Beginner-friendly yoga class selection criteria summary=For the user's return to yoga, suitable classes should be beginner-friendly, comfortable, and supportive; recommended search criteria included labels like \"Beginner's Yoga,\" \"Yoga for Beginners,\" or \"Intro to Yoga,\" plus Hatha or Vinyasa Flow, small class sizes, and experienced instructors. scope=Guidance context for helping the user choose yoga studios or classes keywords=beginner-friendly yoga,Yoga for Beginners,Intro to Yoga,Hatha,Vinyasa Flow,small class sizes tags=yoga,class_selection,beginner useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:7024f17c",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:743df887d911e0aaf4c0d1017e66af20"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:7024f17c\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 07:11\nTranscript:\nuser: I've been trying to get more organized with my time, so I was wondering if you could suggest some apps or tools to help me plan out my daily tasks and stay on top of my schedule? By the way, I used to practice yoga three times a week, each time for 2 hours, but I've been slacking off for this month and I'm trying to get back into it.\nassistant: Getting organized and back on track with your yoga practice - excellent goals! I'd be happy to help you with some app and tool recommendations to boost your productivity and help you stay committed to your daily tasks and yoga routine.\n\n**Task Management Apps:**\n\n1. ** Todoist**: A popular and highly-rated app for task management. Create and prioritize tasks, set reminders, and track your progress.\n2. **Trello**: A visual tool that uses boards, lists, and cards to organize tasks and projects. Great for breaking down larger tasks into smaller, manageable chunks.\n3. **Any.do**: A simple and intuitive app for creating to-do lists, setting reminders, and collaborating with others.\n4. **Wunderlist**: A user-friendly app for creating and managing to-do lists, with features like reminders, due dates, and collaboration.\n\n**Scheduling and Calendar Apps:**\n\n1. **Google Calendar** (or Apple Calendar): Integrate your tasks and events with your calendar to ensure you have a clear overview of your day.\n2. **Fantastical** (iOS only): A calendar app that integrates with your tasks and reminders, offering a clean and intuitive interface.\n3. **Microsoft To Do** (formerly Wunderlist): A task management app that integrates with your Outlook calendar.\n\n**Yoga and Habit Tracking Apps:**\n\n1. **Down Dog**: A yoga app that offers various yoga classes, meditation sessions, and a habit tracker to help you stay consistent.\n2. **Yoga Studio**: A comprehensive yoga app with classes, custom sequences, and a schedule feature to help you plan your practice.\n3. **Habitica**: A habit-tracking app that gamifies your daily tasks and activities, including exercise and yoga practice.\n4. **Strides**: A goal-setting app that helps you track progress toward your objectives, including fitness and wellness goals like yoga practice.\n\n**Additional Tips:**\n\n1. **Set realistic goals**: Start with achievable goals, like practicing yoga twice a week, and gradually increase frequency as you build momentum.\n2. **Schedule yoga sessions**: Treat your yoga practice as non-negotiable appointments and schedule them in your calendar.\n3. **Create a morning routine**: Begin your day with a consistent routine that sets a positive tone, including yoga practice, meditation, or journaling.\n4. **Review and adjust**: Regularly review your progress, adjust your schedule as needed, and celebrate your successes.\n\nRemember, the key to staying organized and consistent is to find a system that works for you and stick to it. Experiment with different apps and tools until you find the ones that fit your style and preferences. Good luck, and happy practicing!\nuser: I think I'll try out Todoist and Down Dog to start with. Do you have any tips on how to prioritize my tasks and make sure I'm focusing on the most important ones first? And also, do you have any yoga classes or routines that you would recommend for a beginner like me who's trying to get back into it?\nassistant: Todoist and Down Dog are both excellent tools to help you get organized and back into your yoga practice.\n\n**Prioritizing Tasks with Todoist:**\n\n1. **Use the Eisenhower Matrix**: Label your tasks as Urgent-Important, Important-Not Urgent, Urgent-Not Important, or Not Urgent-Not Important. Focus on the first quadrant (Urgent-Important) first.\n2. **Set task priority levels**: Use Todoist's priority levels (P1, P2, P3, or P4) to categorize tasks based on their importance and deadlines.\n3. **Break down large tasks**: Divide complex tasks into smaller, manageable chunks, and prioritize each step accordingly.\n4. **Focus on one task at a time**: Use the Pomodoro Technique: work on a single task for 25 minutes, take a 5-minute break, and repeat.\n5. **Review and adjust daily**: Regularly review your task list, adjust priorities as needed, and plan your day accordingly.\n\n**Yoga Recommendations for Beginners:**\n\n1. **Start with Hatha or Vinyasa Flow**: These styles focus on basic postures, breathing, and movement, making them perfect for beginners.\n2. **Begin with short classes**: Start with 20-30 minute classes, 2-3 times a week, and gradually increase duration and frequency.\n3. **Focus on foundational postures**: Master basic postures like Mountain Pose, Downward-Facing Dog, Cobra, and Child's Pose before moving to more advanced ones.\n4. **Practice gentle and restorative yoga**: Incorporate gentle and restorative yoga classes to help your body adjust and recover.\n\n**Recommended Down Dog Classes for Beginners:**\n\n1. **\"Foundations of Yoga\"**: A 4-class series that covers the basics of yoga, including breathing, alignment, and fundamental postures.\n2. **\"Gentle Yoga\"**: A 20-minute class focused on gentle stretches, relaxation, and breathing techniques.\n3. **\"Vinyasa Flow for Beginners\"**: A 30-minute class that introduces you to the basics of Vinyasa Flow, including sun salutations and basic postures.\n\n**Additional Tips for Getting Back into Yoga:**\n\n1. **Listen to your body**: Honor your body's limitations and take regular breaks to avoid injury or burnout.\n2. **Find a yoga buddy**: Practice with a friend or family member to stay motivated and accountable.\n3. **Celebrate small victories**: Acknowledge and celebrate your progress, no matter how small, to stay motivated and encouraged.\n\nRemember, the key to success is consistency and patience. Start with small, achievable goals, and gradually build up your practice. Good luck, and enjoy your journey back into yoga!\nuser: I think I'll start with the \"Foundations of Yoga\" series on Down Dog. How can I make sure I stick to my yoga practice and make it a habit?\nassistant: The \"Foundations of Yoga\" series is a great starting point.\n\n**Tips to Help You Stick to Your Yoga Practice and Make it a Habit:**\n\n1. **Schedule it in**: Treat your yoga practice as a non-negotiable appointment and schedule it in your calendar.\n2. **Create a dedicated space**: Designate a quiet, comfortable, and distraction-free space for your yoga practice.\n3. **Develop a pre-practice routine**: Establish a consistent pre-practice routine, such as lighting a candle, playing soothing music, or sipping herbal tea, to signal to your mind and body that it's time to practice.\n4. **Start small and be consistent**: Begin with short practices (20-30 minutes) and commit to practicing at the same time every day or week.\n5. **Track your progress**: Use Down Dog's tracking feature or a habit-tracking app to monitor your progress and stay motivated.\n6. **Find accountability**: Practice with a friend, family member, or online yoga community to stay motivated and accountable.\n7. **Reward yourself**: Celebrate small milestones, like completing a certain number of practices, with non-yoga related rewards, like a relaxing bath or a favorite meal.\n8. **Be kind to yourself**: Remember that it's okay to miss a practice occasionally. Don't get discouraged, and instead, focus on getting back on track as soon as possible.\n9. **Mix it up**: Vary your practice to avoid boredom and prevent plateaus. Try different styles, classes, or focus on specific areas like flexibility or strength.\n10. **Make it a ritual**: Incorporate elements that make your practice feel special, such as lighting incense, using a specific mat, or practicing at sunrise or sunset.\n\n**Additional Tips to Help You Stay Motivated:**\n\n1. **Remind yourself why you started**: Reflect on why you wanted to start practicing yoga in the first place, and let that motivation carry you through challenging days.\n2. **Focus on how you feel**: Instead of focusing on the physical aspects of yoga, focus on how it makes you feel – more calm, centered, and energized.\n3. **Celebrate the journey**: Acknowledge and celebrate the small victories, like increased flexibility or improved sleep, to stay motivated and encouraged.\n\nBy incorporating these tips into your daily routine, you'll be more likely to make yoga a sustainable and enjoyable habit. Remember, consistency is key, and even a short practice is better than none at all. Good luck, and enjoy your yoga journey!\nuser: I think I'll try to schedule my yoga practice for Monday, Wednesday, and Friday mornings at 7:00 am. Do you think it's a good idea to set reminders for my yoga practice, and if so, how can I do that?\nassistant: Scheduling your yoga practice for Monday, Wednesday, and Friday mornings at 7:00 am is a great start!\n\n**Setting Reminders for Your Yoga Practice:**\n\nYes, setting reminders can be a great way to stay on track and ensure you don't forget about your yoga practice. Here are a few ways to set reminders:\n\n1. **Phone Reminders**: Set reminders on your phone using the built-in Reminders app (for iOS) or Google Keep (for Android). You can set recurring reminders for every Monday, Wednesday, and Friday at 6:50 am (10 minutes before your practice) to give yourself time to get ready.\n2. **Calendar Events**: Create recurring events on your calendar (Google Calendar, Apple Calendar, or any other calendar app) for your yoga practice. Set the event to repeat every Monday, Wednesday, and Friday at 7:00 am, and add a reminder 10-15 minutes before the event.\n3. **Down Dog App**: If you're using the Down Dog app, you can set reminders for your yoga practice within the app. Go to the \"Settings\" tab, then \"Reminders,\" and set your preferred reminder time and frequency.\n4. **Alarm Clock**: Set an alarm clock for 6:50 am on the days you plan to practice yoga. This will ensure you wake up on time and have enough time to get ready.\n5. **Habit-Tracking Apps**: If you're using a habit-tracking app like Habitica, HabitBull, or Loop Habit Tracker, you can set reminders for your yoga practice and track your progress.\n\n**Tips for Effective Reminders:**\n\n1. **Set reminders at the right time**: Set reminders 10-15 minutes before your practice to give yourself time to get ready and prepare.\n2. **Make reminders specific**: Instead of a generic \"Yoga\" reminder, try something like \"7:00 am Yoga Practice - Monday\" to make it more specific and relevant.\n3. **Use a consistent tone**: Choose a consistent tone or phrase for your reminders to make them more recognizable and effective.\n4. **Don't overdo it**: Avoid setting too many reminders, as this can become overwhelming and annoying. Stick to one or two reminders per practice.\n\nBy setting reminders, you'll be more likely to stick to your yoga practice and make it a consistent habit. Good luck, and enjoy your morning yoga sessions!\nuser: I think I'll set reminders on my phone and calendar to ensure I don't forget about my yoga practice. What are some tips for creating a conducive yoga space at home?\nassistant: Setting reminders on your phone and calendar will help you stay on track with your yoga practice.\n\n**Creating a Conducive Yoga Space at Home:**\n\nHaving a dedicated yoga space at home can help you establish a consistent practice and make it feel more enjoyable. Here are some tips to create a conducive yoga space:\n\n1. **Dedicate a specific area**: Choose a quiet, peaceful spot in your home where you can practice yoga without distractions or interruptions.\n2. **Clear the space**: Remove any clutter, furniture, or obstacles that might hinder your practice. You want a clear and open space to move around.\n3. **Good lighting**: Ensure the space has good natural light or invest in a few soft, warm lamps to create a calming ambiance.\n4. **Comfortable flooring**: Invest in a good-quality yoga mat and consider adding a non-slip floor mat or a rug to provide extra grip and comfort.\n5. **Minimal decor**: Keep the decor minimal and calming. Add a few plants, a calming artwork, or a peaceful statue to create a serene atmosphere.\n6. **Temperature control**: Ensure the space is at a comfortable temperature. You might want to invest in a space heater or a fan to maintain a consistent temperature.\n7. **Sound system**: Consider adding a sound system or a portable speaker to play calming music or nature sounds during your practice.\n8. **Storage**: Keep your yoga props, blocks, straps, and blankets organized and within reach. You can use a storage basket, shelf, or a prop rack to keep everything tidy.\n9. **Ventilation**: Ensure good ventilation in the space to prevent stuffiness and promote airflow.\n10. **Make it technology-free**: Consider making your yoga space a technology-free zone to minimize distractions and promote mindfulness.\n\n**Additional Tips:**\n\n1. **Invest in a yoga wall**: If you have the space, consider investing in a yoga wall or a pull-up bar to help with inversions and other poses.\n2. **Use aromatherapy**: Use essential oils or scented candles to create a calming and relaxing atmosphere.\n3. **Keep it clean**: Regularly clean and sanitize your yoga space to prevent the buildup of germs and bacteria.\n4. **Make it personal**: Add personal touches like photos, inspirational quotes, or meaningful objects to make the space feel more personal and motivating.\n\nBy creating a conducive yoga space at home, you'll be more likely to practice regularly and enjoy the benefits of yoga. Happy practicing!\nuser: I think I'll try to create a peaceful and calming atmosphere in my yoga space by adding some plants and a few calming decorations. I'll also make sure to keep the space clean and organized, and invest in a good quality yoga mat.\nassistant: That sounds like a great plan!\n\n**Adding Plants:**\n\nPlants can greatly contribute to a peaceful and calming atmosphere in your yoga space. They not only purify the air but also create a sense of serenity and connection to nature. Some low-maintenance plants that thrive in indoor conditions include:\n\n1. Snake Plant (Sansevieria Trifasciata)\n2. Spider Plant (Chlorophytum comosum)\n3. Pothos (Epipremnum aureum)\n4. Dracaena (Dracaena spp.)\n5. Peace Lily (Spathiphyllum wallisii)\n\n**Calming Decorations:**\n\nAdding calming decorations can help create a peaceful ambiance in your yoga space. Consider adding:\n\n1. Candles or essential oil diffusers with calming scents like lavender or chamomile\n2. Soft, calming colors like beige, blue, or green on walls or furniture\n3. A water feature, like a small fountain or waterfall\n4. A Buddha statue or other calming figurines\n5. Inspirational quotes or calming artwork\n\n**Good Quality Yoga Mat:**\n\nInvesting in a good quality yoga mat is essential for a comfortable and safe practice. Look for a mat that provides:\n\n1. Good grip and traction\n2. Adequate cushioning and support\n3. Eco-friendly and non-toxic materials\n4. A comfortable texture and feel\n\nSome popular yoga mat brands include:\n\n1. Manduka\n2. Lululemon\n3. Gaiam\n4. Jade Yoga\n5. Hugger Mugger\n\nBy creating a peaceful and calming atmosphere in your yoga space, you'll be more likely to enjoy your practice and feel motivated to continue. Remember to keep your space clean and organized, and don't hesitate to experiment with different decorations and plants until you find a setup that works for you. Happy practicing!\n\n        Candidate notes:\n        [0] type=PLAN title=Yoga practice habit setup with Down Dog and reminders summary=The user is rebuilding a yoga habit by choosing the \"Foundations of Yoga\" series on Down Dog, scheduling practice for Monday, Wednesday, and Friday mornings at 7:00 am, and planning to use both phone and calendar reminders to avoid forgetting sessions. scope=User's yoga habit setup and scheduling plan from LongMemEval 7024f17c session 2 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=yoga habit,Down Dog,Foundations of Yoga,Monday Wednesday Friday,7:00 am,phone reminders,calendar reminders tags=yoga,habit_plan,schedule,reminders evidence=I'll set reminders on my phone and calendar to ensure I don't forget about my yoga practice\n[1] type=DIRECTION title=User's home yoga space direction summary=The user plans to make a home yoga space peaceful and calming by adding plants and calming decorations, keeping it clean and organized, and investing in a good-quality yoga mat. scope=User's intended setup for a home yoga practice space entities=entity:<0>,entity:<5>,entity:<6> keywords=home yoga space,plants,calming decorations,clean and organized,good quality yoga mat tags=yoga,home_space,environment_setup evidence=I'll also make sure to keep the space clean and organized, and invest in a good quality yoga mat.\n[2] type=CONTEXT title=Organization app starting stack summary=For getting more organized with daily tasks and schedule, the user chose to start with Todoist for task management and Down Dog for supporting the yoga routine. scope=User's selected initial app/tool stack for organization and yoga support entities=entity:<0>,entity:<7>,entity:<1> keywords=Todoist,Down Dog,daily tasks,schedule,organization,yoga routine tags=productivity,tools,yoga evidence=I think I'll try out Todoist and Down Dog to start with.\n\n        Existing active notes:\n        id=hot-path-1d9893de0eab-note-2 type=PLAN status=ACTIVE maturity=FRESH title=User's yoga restart plan and motivation approach summary=The user is getting back into yoga and wants to start gently with one or two sessions per week. They intend to use realistic goals and possibly a yoga buddy for motivation while focusing on breath and listening to their body in class. scope=User's health and yoga practice planning context from LongMemEval 7024f17c session 1 keywords=yoga restart,one or two sessions,realistic goals,yoga buddy,breath,listen to body tags=health_routine,yoga,motivation useCount=0\nid=hot-path-1d9893de0eab-note-6 type=LESSON status=ACTIVE maturity=FRESH title=Yoga mat and props care procedure summary=Yoga mat and prop care guidance discussed for the user: wipe down after each use, use gentle yoga-mat cleaner or a 1:1 water and white vinegar mix, avoid harsh chemicals, dry thoroughly, store in a cool dry place, and deep clean the mat every 1–2 months while checking the care label. scope=Reusable care procedure for the user's yoga mat and yoga props keywords=yoga mat care,yoga props care,white vinegar,gentle cleaner,deep clean,avoid harsh chemicals tags=yoga,equipment_care,cleaning useCount=0\nid=hot-path-1d9893de0eab-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Yoga class preparation and gear preferences summary=The user plans to wear comfortable clothing and bring a water bottle and towel to yoga class. Related preparation guidance included arriving 10–15 minutes early, practicing barefoot, using a yoga mat and props when needed, and minimizing distractions from electronics. scope=User's yoga class preparation context and accepted gear suggestions keywords=comfortable clothing,water bottle,towel,yoga mat,props,arrive early tags=yoga,class_prep,gear useCount=0\nid=hot-path-1d9893de0eab-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=User needs quick healthy lunches around lunch-break workouts summary=The user is looking for healthy lunch ideas that are quick to prepare and do not consume much of their lunch break because they are trying to fit in a workout at lunch. They showed interest in trying salad ideas. scope=User's meal-planning context for lunch-break workouts keywords=quick healthy lunch,salads,lunch break workout,fast easy meals tags=meal_planning,fitness,lunch useCount=0\nid=hot-path-1d9893de0eab-note-4 type=DIRECTION status=ACTIVE maturity=FRESH title=Beginner-friendly yoga class selection criteria summary=For the user's return to yoga, suitable classes should be beginner-friendly, comfortable, and supportive; recommended search criteria included labels like \"Beginner's Yoga,\" \"Yoga for Beginners,\" or \"Intro to Yoga,\" plus Hatha or Vinyasa Flow, small class sizes, and experienced instructors. scope=Guidance context for helping the user choose yoga studios or classes keywords=beginner-friendly yoga,Yoga for Beginners,Intro to Yoga,Hatha,Vinyasa Flow,small class sizes tags=yoga,class_selection,beginner useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:7024f17c",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:743df887d911e0aaf4c0d1017e66af20"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"supersede\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Candidate gives a more current and specific yoga restart plan, replacing the earlier tentative one-or-two-sessions plan with Down Dog Foundations, M/W/F 7am schedule, and reminders.\",\"target_note_id\":\"hot-path-1d9893de0eab-note-2\"},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-1d9893de0eab-note-5\"},{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-1d9893de0eab-note-6\"}],\"patch\":null,\"reason\":\"Distinct reusable context about the user's intended home yoga environment setup, not covered by class prep or mat-care notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct reusable context about the user's chosen organization/yoga app stack; existing notes only cover yoga plans and class/equipment context.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7662,
+                "completionTokens": 259,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
