@@ -383,9 +383,11 @@ private fun List<MemoryEntityCanonicalizationOp>.normalizeCurrentUserPersonOps(
     request: DirectStructuredMemoryWriteRequest,
     retrievedHits: List<MemoryStore.SearchHit>,
 ): List<MemoryEntityCanonicalizationOp> {
-    val currentUser = retrievedHits
+    val candidateEntities = retrievedHits
         .filterIsInstance<MemoryStore.SearchHit.EntityHit>()
         .map { it.entity }
+    val candidateEntitiesById = candidateEntities.associateBy { it.id }
+    val currentUser = candidateEntities
         .firstOrNull { it.entityType == MemoryEntity.Type.USER && it.status == MemoryEntity.Status.ACTIVE }
 
     val stableUserEntity = MemoryEntityCanonicalizationOp.NewEntity(
@@ -397,12 +399,15 @@ private fun List<MemoryEntityCanonicalizationOp>.normalizeCurrentUserPersonOps(
     val userIdentityNames = retrievedHits.currentUserIdentityNames(currentUser)
 
     return map { op ->
-        val newEntity = op.newEntity
-        if (op.action != MemoryEntityCanonicalizationOp.Action.CREATE_NEW || newEntity?.entityType != MemoryEntity.Type.PERSON) {
+        val newPerson = op.newEntity?.takeIf { it.entityType == MemoryEntity.Type.PERSON }
+        val existingPerson = op.entityId
+            ?.let(candidateEntitiesById::get)
+            ?.takeIf { it.entityType == MemoryEntity.Type.PERSON && it.status == MemoryEntity.Status.ACTIVE }
+        if (newPerson == null && existingPerson == null) {
             return@map op
         }
 
-        val personNames = op.identitySurfaceTexts()
+        val personNames = op.identitySurfaceTexts() + existingPerson.identitySurfaceTextsOrEmpty()
         val hasExplicitUserIdentity = userIdentityNames.any { userName ->
             personNames.any { personName -> userName.normalizeCanonicalMemoryText() == personName.normalizeCanonicalMemoryText() }
         }
@@ -416,17 +421,19 @@ private fun List<MemoryEntityCanonicalizationOp>.normalizeCurrentUserPersonOps(
                 action = MemoryEntityCanonicalizationOp.Action.ADD_ALIAS,
                 entityId = currentUser.id,
                 newEntity = null,
-                aliasText = op.aliasText ?: newEntity.canonicalName,
+                aliasText = op.aliasText ?: newPerson?.canonicalName ?: existingPerson?.canonicalName ?: op.mention,
                 reason = op.reason.ifBlank { "Named person mention is supported as the current user's identity alias." },
             )
-        } else {
+        } else if (newPerson != null || hasSourceSelfIdentity) {
             op.copy(
                 action = MemoryEntityCanonicalizationOp.Action.CREATE_NEW,
                 entityId = stableUserId,
                 newEntity = stableUserEntity,
-                aliasText = op.aliasText ?: newEntity.canonicalName,
+                aliasText = op.aliasText ?: newPerson?.canonicalName ?: existingPerson?.canonicalName ?: op.mention,
                 reason = op.reason.ifBlank { "Self-identity mention creates the stable namespace user with the personal name as alias." },
             )
+        } else {
+            op
         }
     }
 }
@@ -577,6 +584,9 @@ private fun MemoryEntity.identitySurfaceTexts(): Set<String> =
         .map { it.trim() }
         .filter { it.isNotBlank() }
         .toSet()
+
+private fun MemoryEntity?.identitySurfaceTextsOrEmpty(): Set<String> =
+    this?.identitySurfaceTexts().orEmpty()
 
 private fun MemorySource.containsSelfIdentityDeclaration(names: Set<String>): Boolean {
     val normalizedText = contentText.normalizeCanonicalMemoryText()

@@ -253,6 +253,100 @@ class LlmMemoryEntityCanonicalizerTest {
     }
 
     @Test
+    fun existingNamedPersonCandidateMatchingUserIdentityRedirectsToUser() = runBlocking {
+        val user = entity(
+            id = MemoryEntity.Id("entity:0000000000000002"),
+            name = "User",
+            type = MemoryEntity.Type.USER,
+            aliases = listOf(alias("Lev Lewik")),
+        )
+        val existingPerson = entity(
+            id = MemoryEntity.Id("entity:0000000000000003"),
+            name = "Lev Lewik",
+            type = MemoryEntity.Type.PERSON,
+        )
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "Lev Lewik",
+                      "action": "link_existing",
+                      "entity_id": "entity:0000000000000003",
+                      "confidence": 0.8,
+                      "reason": "The named person candidate matches the mention."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = documentRequest("Lev Lewik prefers concise direct engineering discussion."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("Lev Lewik")),
+            retrievedHits = listOf(
+                MemoryStore.SearchHit.EntityHit(user, score = 1.0),
+                MemoryStore.SearchHit.EntityHit(existingPerson, score = 1.0),
+            ),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.ADD_ALIAS, op.action)
+        assertEquals(user.id, op.entityId)
+        assertEquals(null, op.newEntity)
+        assertEquals("Lev Lewik", op.aliasText)
+    }
+
+    @Test
+    fun firstNamePersonWithoutExplicitShortUserAliasStaysPerson() = runBlocking {
+        val user = entity(
+            id = MemoryEntity.Id("entity:0000000000000002"),
+            name = "User",
+            type = MemoryEntity.Type.USER,
+            aliases = listOf(alias("Lev Lewik")),
+        )
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "Lev",
+                      "action": "create_new",
+                      "entity_id": null,
+                      "new_entity": {
+                        "entity_type": "person",
+                        "canonical_name": "Lev",
+                        "summary": "Person named Lev."
+                      },
+                      "confidence": 0.8,
+                      "reason": "Named person mention."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = documentRequest("Lev owns a separate deployment checklist."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("Lev")),
+            retrievedHits = listOf(MemoryStore.SearchHit.EntityHit(user, score = 1.0)),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.CREATE_NEW, op.action)
+        assertEquals(MemoryEntity.Type.PERSON, op.newEntity?.entityType)
+        assertEquals("Lev", op.newEntity?.canonicalName)
+    }
+
+    @Test
     fun thirdPersonPersonMentionWithoutUserIdentitySignalStaysPerson() = runBlocking {
         val canonicalizer = LlmMemoryEntityCanonicalizer(
             runtime = FixedJsonRuntime(
@@ -591,6 +685,13 @@ class LlmMemoryEntityCanonicalizerTest {
                 lastSeenAt = NOW,
                 createdAt = NOW,
                 updatedAt = NOW,
+            )
+
+        fun alias(text: String): MemoryEntity.Alias =
+            MemoryEntity.Alias(
+                text = text,
+                normalizedText = text.lowercase(),
+                createdAt = NOW,
             )
 
         fun claim(

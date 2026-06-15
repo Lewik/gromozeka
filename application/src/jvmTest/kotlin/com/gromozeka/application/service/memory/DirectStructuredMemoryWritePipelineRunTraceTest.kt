@@ -19,6 +19,9 @@ import com.gromozeka.domain.model.memory.MemoryActionItemUpdater
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
 import com.gromozeka.domain.model.memory.MemoryWriteRouter
+import com.gromozeka.domain.model.memory.MemoryEntity
+import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizer
+import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
@@ -136,6 +139,71 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
     }
 
     @Test
+    fun documentIngestRetrievesStableUserEntityCandidate() = runBlocking {
+        val store = InMemoryMemoryStore()
+        val user = MemoryEntity(
+            id = MemoryEntity.Id("entity:user"),
+            namespace = NAMESPACE,
+            entityType = MemoryEntity.Type.USER,
+            canonicalName = "User",
+            normalizedName = "user",
+            aliases = listOf(
+                MemoryEntity.Alias(
+                    text = "Lev Lewik",
+                    normalizedText = "lev lewik",
+                    createdAt = NOW,
+                )
+            ),
+            firstSeenAt = NOW,
+            lastSeenAt = NOW,
+            createdAt = NOW,
+            updatedAt = NOW,
+        )
+        store.apply(MemoryUpdateBatch(entities = listOf(user)))
+        val canonicalizer = RecordingMemoryEntityCanonicalizer()
+
+        documentBypassPipeline(
+            store = store,
+            entityCanonicalizer = canonicalizer,
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = NAMESPACE,
+                source = MemorySource.ExternalRecord(
+                    id = MemorySource.Id("external:document-section:user-profile"),
+                    namespace = NAMESPACE,
+                    recordRef = "profile.md#section:1",
+                    authorLabel = "document section",
+                    contentText = """
+                        Document title: Profile
+                        Document source: profile.md
+                        Document section: Skills
+
+                        Lev Lewik prefers Kotlin and backend architecture work.
+                    """.trimIndent(),
+                    contentPayload = buildJsonObject {
+                        put("memoryToolOrigin", "provided_document_section")
+                        put("sourceKind", "document")
+                        put("title", "Profile")
+                        put("sourceRef", "profile.md")
+                        put("heading", "Skills")
+                        put("documentType", "markdown")
+                    },
+                    contentHash = "document-user-profile-hash",
+                    observedAt = NOW,
+                    createdAt = NOW,
+                    retentionClass = MemorySource.RetentionClass.IMPORTED,
+                ),
+            )
+        )
+
+        assertTrue(
+            canonicalizer.retrievedHits
+                .filterIsInstance<MemoryStore.SearchHit.EntityHit>()
+                .any { it.entity.id == user.id },
+        )
+    }
+
+    @Test
     fun forcedMemorySourceOverridesRouterNoop() = runBlocking {
         val result = noopRouterPipeline().write(
             DirectStructuredMemoryWriteRequest(
@@ -220,15 +288,17 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
         )
 
     private fun documentBypassPipeline(
+        store: MemoryStore = InMemoryMemoryStore(),
+        entityCanonicalizer: MemoryEntityCanonicalizer = FixedMemoryEntityCanonicalizer(),
         noteConstructor: MemoryNoteConstructor = FixedMemoryNoteConstructor(),
         claimExtractor: MemoryClaimExtractor = FixedMemoryClaimExtractor(),
         actionItemUpdater: MemoryActionItemUpdater = FixedMemoryActionItemUpdater(),
     ): DirectStructuredMemoryWritePipeline =
         DirectStructuredMemoryWritePipeline(
-            store = InMemoryMemoryStore(),
+            store = store,
             router = ThrowingMemoryWriteRouter,
             retrievalPlanner = ThrowingMemoryWriteRetrievalPlanner,
-            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            entityCanonicalizer = entityCanonicalizer,
             noteConstructor = noteConstructor,
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = claimExtractor,
@@ -309,6 +379,20 @@ private class BranchStartProbe(
             allStarted.complete(Unit)
         }
         allStarted.await()
+    }
+}
+
+private class RecordingMemoryEntityCanonicalizer : MemoryEntityCanonicalizer {
+    var retrievedHits: List<MemoryStore.SearchHit> = emptyList()
+        private set
+
+    override suspend fun canonicalize(
+        request: DirectStructuredMemoryWriteRequest,
+        retrievalPlan: MemoryWriteRetrievalPlan,
+        retrievedHits: List<MemoryStore.SearchHit>,
+    ): List<MemoryEntityCanonicalizationOp> {
+        this.retrievedHits = retrievedHits
+        return emptyList()
     }
 }
 

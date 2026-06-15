@@ -2364,7 +2364,7 @@ private fun String.stableWriteEntityCandidateSortText(): String =
         .trim()
 
 private fun MemorySource.requiresStableUserEntity(): Boolean =
-    this is MemorySource.ChatTurn && speakerRole == MemorySource.ActorRole.USER
+    (this is MemorySource.ChatTurn && speakerRole == MemorySource.ActorRole.USER) || isDocumentIngestSource()
 
 private fun DirectStructuredMemoryWriteMaterialization.summary(
     notes: List<MemoryNote>,
