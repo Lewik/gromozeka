@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "dd8886beb957bcce8d1b3d7f6e84aa54a5fe0f62340d5cbbecc753570ede685c",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:2a1811e2\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/26 (Sun) 10:07\nTranscript:\nuser: I'm looking for some information on Hindu festivals. I just attended the Holi celebration at my local temple on February 26th and had a blast throwing colors and learning about its significance. Can you tell me more about the origins of Holi and its cultural importance in India?\nassistant: What a wonderful experience! Holi is indeed a vibrant and joyful festival celebrated with great enthusiasm in India and abroad. I'd be happy to share more about its origins, cultural significance, and importance in India.\n\n**Origins of Holi:**\n\nHoli, also known as the Festival of Colors, has its roots in Hindu mythology. There are several legends associated with its origins, but the most popular one is the story of Hiranyakashyap, a demon king who ruled the earth with cruelty and arrogance. He had a son named Prahlad, who was a devout follower of Lord Vishnu. Hiranyakashyap's sister, Holika, was granted a boon by the gods that she would not be harmed by fire. However, when she tried to burn Prahlad alive, she was consumed by the flames, while Prahlad was saved by Vishnu's intervention.\n\nThe festival of Holi is celebrated to commemorate the victory of good over evil, and the devotion of Prahlad towards Lord Vishnu. The burning of Holika's effigy, known as Holika Dahan, takes place on the eve of Holi, symbolizing the destruction of evil forces.\n\n**Cultural Significance:**\n\nHoli is an important festival in Hinduism, marking the arrival of spring and the victory of good over evil. It's a time to:\n\n1. **Celebrate the end of winter**: Holi marks the end of the cold winter season and the beginning of spring, symbolizing new life and growth.\n2. **Overcome evil**: The festival celebrates the triumph of good over evil, reminding people to stand against injustice and negativity.\n3. **Rejuvenate relationships**: Holi is a time to repair and strengthen relationships, as people come together to play with colors, share sweets, and forgive past mistakes.\n4. **Welcome the colors of spring**: The vibrant colors used during Holi represent the colors of spring, symbolizing the beauty and diversity of nature.\n\n**Cultural Practices:**\n\nIn India, Holi is celebrated with great fervor and enthusiasm. Some common practices include:\n\n1. **Holika Dahan**: The burning of Holika's effigy on the eve of Holi, symbolizing the destruction of evil forces.\n2. **Color Play** (Rangwali Holi): Throwing colors, known as gulal or abir, at each other to mark the festivities.\n3. **Sweets and Drinks**: Sharing traditional sweets like gujiyas, mathris, and thandai, a cold drink made with milk, nuts, and spices.\n4. **Family Gatherings**: Holi is a time for family reunions, feasting, and merriment.\n5. **Music and Dance**: Traditional folk songs and dances, like the Holi ki Dhoom, are performed during the celebrations.\n\n**Regional Variations:**\n\nWhile Holi is celebrated across India, different regions have their unique ways of observing the festival. For example:\n\n1. **Mathura and Vrindavan**: These cities in Uttar Pradesh are known for their week-long Holi celebrations, with traditional folk songs and dances.\n2. **Braj Region**: The region around Agra and Mathura is famous for its Lathmar Holi, where women playfully beat men with sticks (lathis) as a symbol of playful revenge.\n3. **Punjab**: In Punjab, Holi is celebrated with great enthusiasm, with traditional folk dances like the Bhangra and Gidda.\n\nI hope this information helps you appreciate the significance and joy of Holi even more!\nuser: That's really interesting. I didn't know about the legend of Hiranyakashyap and Prahlad. I had a great time at the local temple, especially trying the Gujarati snacks. Do you know any recipes for those?\nassistant: The Gujarati snacks are a delight! Gujarati cuisine is known for its sweet and savory flavors, and during Holi, you'll often find traditional snacks like fafdas, dhoklas, and handvo being served. Here are some recipes for you to try:\n\n**Fafda**\n\nFafda is a crunchy, savory snack made from gram flour (chickpea flour) and spices.\n\nIngredients:\n\n* 1 cup gram flour\n* 1/2 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 teaspoon cumin seeds\n* 1/4 teaspoon asafoetida (optional)\n* 1/4 cup ghee or oil\n* Water, as needed\n\nInstructions:\n\n1. Mix the gram flour, salt, baking soda, cumin seeds, and asafoetida (if using) in a bowl.\n2. Add ghee or oil and mix until the mixture resembles breadcrumbs.\n3. Gradually add water to form a dough. Knead for 5-7 minutes.\n4. Cover and let it rest for 30 minutes.\n5. Divide the dough into small portions and roll out each portion into a thin circle.\n6. Fry the fafdas in hot oil until crispy and golden brown.\n7. Drain and serve with a sprinkle of salt and a dollop of chutney.\n\n**Dhokla**\n\nDhokla is a steamed snack made from a fermented batter of chickpea flour and yogurt.\n\nIngredients:\n\n* 1 cup chickpea flour\n* 1/2 cup yogurt\n* 1/2 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 teaspoon cumin seeds\n* 1/4 teaspoon asafoetida (optional)\n* Water, as needed\n* Chutney or oil for serving\n\nInstructions:\n\n1. Mix the chickpea flour, yogurt, salt, baking soda, cumin seeds, and asafoetida (if using) in a bowl.\n2. Add water to form a smooth batter. The consistency should be similar to pancake batter.\n3. Ferment the batter for 4-5 hours or overnight.\n4. Grease a steamer basket or a metal plate.\n5. Pour the fermented batter into the prepared steamer basket or plate.\n6. Steam the dhokla for 15-20 minutes or until it's cooked and fluffy.\n7. Serve with chutney or a drizzle of oil.\n\n**Handvo**\n\nHandvo is a savory cake made from a mixture of lentils, rice, and spices.\n\nIngredients:\n\n* 1 cup split red lentils (masoor dal)\n* 1 cup cooked rice\n* 1/2 cup yogurt\n* 1/2 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 teaspoon cumin seeds\n* 1/4 teaspoon asafoetida (optional)\n* 1/4 cup oil or ghee\n* Chutney or oil for serving\n\nInstructions:\n\n1. Mix the lentils, cooked rice, yogurt, salt, baking soda, cumin seeds, and asafoetida (if using) in a bowl.\n2. Add oil or ghee and mix well.\n3. Pour the mixture into a greased cake pan or a non-stick pan.\n4. Bake in a preheated oven at 350°F (180°C) for 20-25 minutes or until the handvo is cooked and golden brown.\n5. Serve with chutney or a drizzle of oil.\n\nThese snacks are sure to bring back memories of your Holi celebrations! Enjoy making and savoring them with your loved ones.\nuser: That sounds delicious! I'll definitely try making those snacks. By the way, can you tell me more about the significance of colors in Holi? I had a lot of fun throwing colors with my colleague Rohan and his family, but I didn't quite understand the meaning behind it.\nassistant: The colors of Holi! They're an integral part of the festival, and I'd be happy to explain their significance.\n\n**The Colors of Holi:**\n\nIn Hindu mythology, colors are associated with various emotions, gods, and goddesses. During Holi, people throw colored powders, known as gulal or abir, at each other to celebrate the festival of colors. The colors used have different meanings:\n\n1. **Red**: Symbolizes love, passion, and energy. It's often associated with the goddess Durga, who is revered as the embodiment of feminine power.\n2. **Pink**: Represents happiness, joy, and playfulness. It's a color often associated with Lord Krishna, who is known for his playful and affectionate nature.\n3. **Yellow**: Signifies sunshine, happiness, and knowledge. It's a color linked with Lord Vishnu, who is revered as the preserver of the universe.\n4. **Green**: Represents nature, fertility, and prosperity. It's a color associated with Lord Krishna's consort, Radha, who is revered as a symbol of love and devotion.\n5. **Blue**: Symbolizes tranquility, peace, and wisdom. It's often associated with Lord Krishna, who is said to have a blue complexion.\n6. **Purple**: Represents luxury, creativity, and grandeur. It's a color linked with the god of love, Kama, who is often depicted with a purple complexion.\n\n**The Significance of Throwing Colors:**\n\nThrowing colors during Holi has several meanings:\n\n1. **Unity and Equality**: By covering each other in colors, people transcend social boundaries, forgetting their differences and coming together in joy and celebration.\n2. **Washing Away Sins**: The colors are believed to wash away sins and impurities, symbolizing a fresh start and a new beginning.\n3. **Celebrating Spring**: The vibrant colors represent the arrival of spring, which brings new life and vitality to the environment.\n4. **Expressing Emotions**: Throwing colors allows people to express their emotions, letting go of inhibitions and embracing the joy of the festival.\n\nNow that you know the significance of colors in Holi, you'll appreciate the festive atmosphere even more! It's wonderful that you got to experience the joy of Holi with Rohan and his family – I'm sure you'll cherish those memories.\nuser: That's really interesting. I never knew the colors had such deep meanings. I just threw them because it was fun, but now I understand the significance. By the way, do you know any good places to buy those colorful powders? I want to have some at home for next year's Holi.\nassistant: I'm glad you're interested in continuing the Holi tradition! You can find colorful powders, also known as gulal or abir, at various stores and online platforms. Here are some options:\n\n**Indian Grocery Stores:**\n\n1. **Local Indian grocery stores**: Visit Indian grocery stores in your area, and they'll likely have a variety of gulal powders available. You can check with them about the quality and ingredients used.\n2. **Indian cultural stores**: Stores that specialize in Indian cultural products, such as Diwali decorations or Hindu puja items, might also carry gulal powders.\n\n**Online Retailers:**\n\n1. **Amazon**: Amazon offers a wide range of gulal powders from various brands, including organic and natural options. You can check reviews and ratings to ensure you get a good product.\n2. **Indian online grocery stores**: Websites like Patel Brothers, Apna Bazaar, or IndianGrocery.com often carry a variety of gulal powders.\n3. **Etsy**: If you're looking for handmade or artisanal gulal powders, Etsy might have some unique options.\n\n**Tips for Buying Gulal Powders:**\n\n1. **Check the ingredients**: Opt for gulal powders made from natural ingredients, such as turmeric, vermilion, or flower petals, which are safer for skin and the environment.\n2. **Avoid synthetic colors**: Some gulal powders might contain synthetic colors, which can be harsh on skin and cause allergic reactions. Look for products with natural colorants.\n3. **Buy in bulk**: Purchasing gulal powders in bulk can be cost-effective and ensure you have enough for future Holi celebrations.\n4. **Store them properly**: Keep the gulal powders in a cool, dry place to preserve their color and quality.\n\nRemember to always follow safety precautions when playing with gulal powders, especially if you have sensitive skin or allergies. Wear protective clothing, and avoid getting the powders in your eyes or mouth.\n\nNow, go ahead and stock up on those colorful powders for next year's Holi celebration!\nuser: That's great to know! I'll definitely check out those options. By the way, I was wondering if you know any good recipes for traditional Indian sweets like gujiyas or mathris that are often served during Holi?\nassistant: Traditional Indian sweets are a big part of Holi celebrations! Gujiyas and mathris are two popular sweets that are often served during the festival. Here are some recipes to get you started:\n\n**Gujiya Recipe**\n\nGujiyas are deep-fried dumplings filled with a sweet mixture of khoya, nuts, and dried fruits.\n\nIngredients:\n\nFor the dough:\n\n* 2 cups all-purpose flour\n* 1 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 cup ghee or oil\n* Water, as needed\n\nFor the filling:\n\n* 1 cup khoya (reduced milk)\n* 1/2 cup sugar\n* 1/4 cup chopped nuts (almonds or pistachios)\n* 1/4 cup dried fruits (cranberries or cherries)\n* 1/4 teaspoon cardamom powder\n* 1/4 teaspoon saffron threads, soaked in 1 tablespoon hot water\n\nInstructions:\n\n1. Make the dough by mixing flour, salt, baking soda, and ghee or oil. Add water as needed to form a smooth dough.\n2. Knead the dough for 5-7 minutes and cover it with a damp cloth. Let it rest for 30 minutes.\n3. Divide the dough into small portions and roll out each portion into a thin circle.\n4. Place a tablespoon of the filling in the center of each circle. Fold the dough into a half-moon shape and press the edges to seal.\n5. Deep-fry the gujiyas until golden brown. Drain and soak in sugar syrup (1 cup sugar, 1 cup water, boiled until thickened).\n6. Serve warm or at room temperature.\n\n**Mathri Recipe**\n\nMathris are crispy, flaky biscuits that are often served with a cup of hot chai.\n\nIngredients:\n\n* 2 cups all-purpose flour\n* 1 teaspoon salt\n* 1/4 teaspoon baking powder\n* 1/4 cup ghee or oil\n* 1/2 cup lukewarm water\n* Sesame seeds or poppy seeds for garnish (optional)\n\nInstructions:\n\n1. Mix flour, salt, and baking powder in a bowl.\n2. Add ghee or oil and mix until the mixture resembles breadcrumbs.\n3. Gradually add lukewarm water to form a dough. Knead for 5-7 minutes.\n4. Cover the dough with a damp cloth and let it rest for 30 minutes.\n5. Divide the dough into small portions and roll out each portion into a thin circle.\n6. Prick the mathris with a fork to prevent them from puffing up while frying.\n7. Deep-fry the mathris until golden brown. Drain and cool on a paper towel.\n8. Serve warm or at room temperature. You can garnish with sesame seeds or poppy seeds, if desired.\n\nThese recipes should help you make delicious gujiyas and mathris for your next Holi celebration!\nuser: I'm happy to help you with those recipes! However, I noticed that you mentioned attending the Hindu festival of Holi at the local temple on February 26th. Would you like to know more about other Hindu festivals or traditions?\nassistant: I think there's been a misunderstanding! I apologize for the confusion. I'm an AI, I don't have personal experiences or attend festivals. I'm here to provide information and answer your questions to the best of my abilities.\n\nHowever, I'd be happy to help you learn more about Hindu festivals and traditions! Hinduism is a rich and diverse religion with numerous festivals and celebrations throughout the year. If you have specific questions or topics you'd like to explore, feel free to ask me anytime.\n\nSome popular Hindu festivals include Diwali (the festival of lights), Navratri (a nine-day celebration of the divine feminine), and Ganesh Chaturthi (a celebration of Lord Ganesha's birthday).\n\nLet me know if you'd like to learn more about any of these festivals or other Hindu traditions!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Holi experience led to deeper interest in Hindu festivals and traditions summary=After attending a Holi celebration at their local temple, the user became interested in learning the festival's origins, cultural importance, meanings of colors, and related Hindu festivals or traditions. scope=User's interest context around Holi and Hindu festivals from the 2023-03-26 session entities=entity:<0>,entity:<1>,entity:<2> keywords=Holi,Hindu festivals,local temple,origins,cultural importance,colors,traditions tags=interest_context,festival_context evidence=I just attended the Holi celebration at my local temple on February 26th and had a blast throwing colors and learning about its significance.\n[1] type=CONTEXT title=Holi celebration included Rohan's family, colors, and Gujarati snacks summary=The user's Holi experience was social and experiential: they threw colors with colleague Rohan and his family and especially enjoyed trying Gujarati snacks, which prompted requests for recipes and gulal buying advice for next year's Holi. scope=Personal context from the user's Holi celebration and follow-up plans in the 2023-03-26 session entities=entity:<0>,entity:<1>,entity:<3>,entity:<4>,entity:<5>,entity:<6> keywords=Holi,Rohan,Rohan's family,Gujarati snacks,gulal,abir,colors,next year's Holi tags=personal_context,festival_food,social_context evidence=I had a lot of fun throwing colors with my colleague Rohan and his family\n\n        Existing active notes:\n        id=hot-path-d6fa0be85d39-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Charity event fundraising direction: bake sale plus Color Run summary=The user is planning a local community charity event and is leaning toward combining a bake sale with a themed walk/run; they especially liked the visually appealing Color Run idea and planned to share social media promotion tips with their team. scope=User's charity event planning context from the 2023-03-26 session keywords=charity event,fundraiser,bake sale,Color Run,walk/run,social media team tags=charity_event,fundraising_plan useCount=0\nid=hot-path-d6fa0be85d39-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=User reconnected with cousin Emma at St. Mary's Church summary=At St. Mary's Church the previous Sunday, the user sat next to cousin Emma, who was visiting from out of town; they later caught up, exchanged numbers, and planned to meet for brunch later that week. scope=Personal relationship context involving the user, cousin Emma, and St. Mary's Church keywords=Emma,cousin,St. Mary's Church,third pew,exchanged numbers,brunch tags=personal_context,family useCount=0\nid=hot-path-d6fa0be85d39-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Sunday mass at St. Mary's Church inspired user's community giving summary=The user's motivation for the charity/community event was reinforced by Sunday mass at St. Mary's Church on March 19, where Father John's sermon on forgiveness and compassion inspired them to give back to the community. scope=Motivational background for the user's charity event and related St. Mary's Church experience keywords=St. Mary's Church,Father John,March 19,Sunday mass,forgiveness,compassion,give back tags=personal_context,motivation,church useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2a1811e2",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:7b096cece0912ea57e6a2e6d16eca35d"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:2a1811e2\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/26 (Sun) 10:07\nTranscript:\nuser: I'm looking for some information on Hindu festivals. I just attended the Holi celebration at my local temple on February 26th and had a blast throwing colors and learning about its significance. Can you tell me more about the origins of Holi and its cultural importance in India?\nassistant: What a wonderful experience! Holi is indeed a vibrant and joyful festival celebrated with great enthusiasm in India and abroad. I'd be happy to share more about its origins, cultural significance, and importance in India.\n\n**Origins of Holi:**\n\nHoli, also known as the Festival of Colors, has its roots in Hindu mythology. There are several legends associated with its origins, but the most popular one is the story of Hiranyakashyap, a demon king who ruled the earth with cruelty and arrogance. He had a son named Prahlad, who was a devout follower of Lord Vishnu. Hiranyakashyap's sister, Holika, was granted a boon by the gods that she would not be harmed by fire. However, when she tried to burn Prahlad alive, she was consumed by the flames, while Prahlad was saved by Vishnu's intervention.\n\nThe festival of Holi is celebrated to commemorate the victory of good over evil, and the devotion of Prahlad towards Lord Vishnu. The burning of Holika's effigy, known as Holika Dahan, takes place on the eve of Holi, symbolizing the destruction of evil forces.\n\n**Cultural Significance:**\n\nHoli is an important festival in Hinduism, marking the arrival of spring and the victory of good over evil. It's a time to:\n\n1. **Celebrate the end of winter**: Holi marks the end of the cold winter season and the beginning of spring, symbolizing new life and growth.\n2. **Overcome evil**: The festival celebrates the triumph of good over evil, reminding people to stand against injustice and negativity.\n3. **Rejuvenate relationships**: Holi is a time to repair and strengthen relationships, as people come together to play with colors, share sweets, and forgive past mistakes.\n4. **Welcome the colors of spring**: The vibrant colors used during Holi represent the colors of spring, symbolizing the beauty and diversity of nature.\n\n**Cultural Practices:**\n\nIn India, Holi is celebrated with great fervor and enthusiasm. Some common practices include:\n\n1. **Holika Dahan**: The burning of Holika's effigy on the eve of Holi, symbolizing the destruction of evil forces.\n2. **Color Play** (Rangwali Holi): Throwing colors, known as gulal or abir, at each other to mark the festivities.\n3. **Sweets and Drinks**: Sharing traditional sweets like gujiyas, mathris, and thandai, a cold drink made with milk, nuts, and spices.\n4. **Family Gatherings**: Holi is a time for family reunions, feasting, and merriment.\n5. **Music and Dance**: Traditional folk songs and dances, like the Holi ki Dhoom, are performed during the celebrations.\n\n**Regional Variations:**\n\nWhile Holi is celebrated across India, different regions have their unique ways of observing the festival. For example:\n\n1. **Mathura and Vrindavan**: These cities in Uttar Pradesh are known for their week-long Holi celebrations, with traditional folk songs and dances.\n2. **Braj Region**: The region around Agra and Mathura is famous for its Lathmar Holi, where women playfully beat men with sticks (lathis) as a symbol of playful revenge.\n3. **Punjab**: In Punjab, Holi is celebrated with great enthusiasm, with traditional folk dances like the Bhangra and Gidda.\n\nI hope this information helps you appreciate the significance and joy of Holi even more!\nuser: That's really interesting. I didn't know about the legend of Hiranyakashyap and Prahlad. I had a great time at the local temple, especially trying the Gujarati snacks. Do you know any recipes for those?\nassistant: The Gujarati snacks are a delight! Gujarati cuisine is known for its sweet and savory flavors, and during Holi, you'll often find traditional snacks like fafdas, dhoklas, and handvo being served. Here are some recipes for you to try:\n\n**Fafda**\n\nFafda is a crunchy, savory snack made from gram flour (chickpea flour) and spices.\n\nIngredients:\n\n* 1 cup gram flour\n* 1/2 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 teaspoon cumin seeds\n* 1/4 teaspoon asafoetida (optional)\n* 1/4 cup ghee or oil\n* Water, as needed\n\nInstructions:\n\n1. Mix the gram flour, salt, baking soda, cumin seeds, and asafoetida (if using) in a bowl.\n2. Add ghee or oil and mix until the mixture resembles breadcrumbs.\n3. Gradually add water to form a dough. Knead for 5-7 minutes.\n4. Cover and let it rest for 30 minutes.\n5. Divide the dough into small portions and roll out each portion into a thin circle.\n6. Fry the fafdas in hot oil until crispy and golden brown.\n7. Drain and serve with a sprinkle of salt and a dollop of chutney.\n\n**Dhokla**\n\nDhokla is a steamed snack made from a fermented batter of chickpea flour and yogurt.\n\nIngredients:\n\n* 1 cup chickpea flour\n* 1/2 cup yogurt\n* 1/2 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 teaspoon cumin seeds\n* 1/4 teaspoon asafoetida (optional)\n* Water, as needed\n* Chutney or oil for serving\n\nInstructions:\n\n1. Mix the chickpea flour, yogurt, salt, baking soda, cumin seeds, and asafoetida (if using) in a bowl.\n2. Add water to form a smooth batter. The consistency should be similar to pancake batter.\n3. Ferment the batter for 4-5 hours or overnight.\n4. Grease a steamer basket or a metal plate.\n5. Pour the fermented batter into the prepared steamer basket or plate.\n6. Steam the dhokla for 15-20 minutes or until it's cooked and fluffy.\n7. Serve with chutney or a drizzle of oil.\n\n**Handvo**\n\nHandvo is a savory cake made from a mixture of lentils, rice, and spices.\n\nIngredients:\n\n* 1 cup split red lentils (masoor dal)\n* 1 cup cooked rice\n* 1/2 cup yogurt\n* 1/2 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 teaspoon cumin seeds\n* 1/4 teaspoon asafoetida (optional)\n* 1/4 cup oil or ghee\n* Chutney or oil for serving\n\nInstructions:\n\n1. Mix the lentils, cooked rice, yogurt, salt, baking soda, cumin seeds, and asafoetida (if using) in a bowl.\n2. Add oil or ghee and mix well.\n3. Pour the mixture into a greased cake pan or a non-stick pan.\n4. Bake in a preheated oven at 350°F (180°C) for 20-25 minutes or until the handvo is cooked and golden brown.\n5. Serve with chutney or a drizzle of oil.\n\nThese snacks are sure to bring back memories of your Holi celebrations! Enjoy making and savoring them with your loved ones.\nuser: That sounds delicious! I'll definitely try making those snacks. By the way, can you tell me more about the significance of colors in Holi? I had a lot of fun throwing colors with my colleague Rohan and his family, but I didn't quite understand the meaning behind it.\nassistant: The colors of Holi! They're an integral part of the festival, and I'd be happy to explain their significance.\n\n**The Colors of Holi:**\n\nIn Hindu mythology, colors are associated with various emotions, gods, and goddesses. During Holi, people throw colored powders, known as gulal or abir, at each other to celebrate the festival of colors. The colors used have different meanings:\n\n1. **Red**: Symbolizes love, passion, and energy. It's often associated with the goddess Durga, who is revered as the embodiment of feminine power.\n2. **Pink**: Represents happiness, joy, and playfulness. It's a color often associated with Lord Krishna, who is known for his playful and affectionate nature.\n3. **Yellow**: Signifies sunshine, happiness, and knowledge. It's a color linked with Lord Vishnu, who is revered as the preserver of the universe.\n4. **Green**: Represents nature, fertility, and prosperity. It's a color associated with Lord Krishna's consort, Radha, who is revered as a symbol of love and devotion.\n5. **Blue**: Symbolizes tranquility, peace, and wisdom. It's often associated with Lord Krishna, who is said to have a blue complexion.\n6. **Purple**: Represents luxury, creativity, and grandeur. It's a color linked with the god of love, Kama, who is often depicted with a purple complexion.\n\n**The Significance of Throwing Colors:**\n\nThrowing colors during Holi has several meanings:\n\n1. **Unity and Equality**: By covering each other in colors, people transcend social boundaries, forgetting their differences and coming together in joy and celebration.\n2. **Washing Away Sins**: The colors are believed to wash away sins and impurities, symbolizing a fresh start and a new beginning.\n3. **Celebrating Spring**: The vibrant colors represent the arrival of spring, which brings new life and vitality to the environment.\n4. **Expressing Emotions**: Throwing colors allows people to express their emotions, letting go of inhibitions and embracing the joy of the festival.\n\nNow that you know the significance of colors in Holi, you'll appreciate the festive atmosphere even more! It's wonderful that you got to experience the joy of Holi with Rohan and his family – I'm sure you'll cherish those memories.\nuser: That's really interesting. I never knew the colors had such deep meanings. I just threw them because it was fun, but now I understand the significance. By the way, do you know any good places to buy those colorful powders? I want to have some at home for next year's Holi.\nassistant: I'm glad you're interested in continuing the Holi tradition! You can find colorful powders, also known as gulal or abir, at various stores and online platforms. Here are some options:\n\n**Indian Grocery Stores:**\n\n1. **Local Indian grocery stores**: Visit Indian grocery stores in your area, and they'll likely have a variety of gulal powders available. You can check with them about the quality and ingredients used.\n2. **Indian cultural stores**: Stores that specialize in Indian cultural products, such as Diwali decorations or Hindu puja items, might also carry gulal powders.\n\n**Online Retailers:**\n\n1. **Amazon**: Amazon offers a wide range of gulal powders from various brands, including organic and natural options. You can check reviews and ratings to ensure you get a good product.\n2. **Indian online grocery stores**: Websites like Patel Brothers, Apna Bazaar, or IndianGrocery.com often carry a variety of gulal powders.\n3. **Etsy**: If you're looking for handmade or artisanal gulal powders, Etsy might have some unique options.\n\n**Tips for Buying Gulal Powders:**\n\n1. **Check the ingredients**: Opt for gulal powders made from natural ingredients, such as turmeric, vermilion, or flower petals, which are safer for skin and the environment.\n2. **Avoid synthetic colors**: Some gulal powders might contain synthetic colors, which can be harsh on skin and cause allergic reactions. Look for products with natural colorants.\n3. **Buy in bulk**: Purchasing gulal powders in bulk can be cost-effective and ensure you have enough for future Holi celebrations.\n4. **Store them properly**: Keep the gulal powders in a cool, dry place to preserve their color and quality.\n\nRemember to always follow safety precautions when playing with gulal powders, especially if you have sensitive skin or allergies. Wear protective clothing, and avoid getting the powders in your eyes or mouth.\n\nNow, go ahead and stock up on those colorful powders for next year's Holi celebration!\nuser: That's great to know! I'll definitely check out those options. By the way, I was wondering if you know any good recipes for traditional Indian sweets like gujiyas or mathris that are often served during Holi?\nassistant: Traditional Indian sweets are a big part of Holi celebrations! Gujiyas and mathris are two popular sweets that are often served during the festival. Here are some recipes to get you started:\n\n**Gujiya Recipe**\n\nGujiyas are deep-fried dumplings filled with a sweet mixture of khoya, nuts, and dried fruits.\n\nIngredients:\n\nFor the dough:\n\n* 2 cups all-purpose flour\n* 1 teaspoon salt\n* 1/4 teaspoon baking soda\n* 1/4 cup ghee or oil\n* Water, as needed\n\nFor the filling:\n\n* 1 cup khoya (reduced milk)\n* 1/2 cup sugar\n* 1/4 cup chopped nuts (almonds or pistachios)\n* 1/4 cup dried fruits (cranberries or cherries)\n* 1/4 teaspoon cardamom powder\n* 1/4 teaspoon saffron threads, soaked in 1 tablespoon hot water\n\nInstructions:\n\n1. Make the dough by mixing flour, salt, baking soda, and ghee or oil. Add water as needed to form a smooth dough.\n2. Knead the dough for 5-7 minutes and cover it with a damp cloth. Let it rest for 30 minutes.\n3. Divide the dough into small portions and roll out each portion into a thin circle.\n4. Place a tablespoon of the filling in the center of each circle. Fold the dough into a half-moon shape and press the edges to seal.\n5. Deep-fry the gujiyas until golden brown. Drain and soak in sugar syrup (1 cup sugar, 1 cup water, boiled until thickened).\n6. Serve warm or at room temperature.\n\n**Mathri Recipe**\n\nMathris are crispy, flaky biscuits that are often served with a cup of hot chai.\n\nIngredients:\n\n* 2 cups all-purpose flour\n* 1 teaspoon salt\n* 1/4 teaspoon baking powder\n* 1/4 cup ghee or oil\n* 1/2 cup lukewarm water\n* Sesame seeds or poppy seeds for garnish (optional)\n\nInstructions:\n\n1. Mix flour, salt, and baking powder in a bowl.\n2. Add ghee or oil and mix until the mixture resembles breadcrumbs.\n3. Gradually add lukewarm water to form a dough. Knead for 5-7 minutes.\n4. Cover the dough with a damp cloth and let it rest for 30 minutes.\n5. Divide the dough into small portions and roll out each portion into a thin circle.\n6. Prick the mathris with a fork to prevent them from puffing up while frying.\n7. Deep-fry the mathris until golden brown. Drain and cool on a paper towel.\n8. Serve warm or at room temperature. You can garnish with sesame seeds or poppy seeds, if desired.\n\nThese recipes should help you make delicious gujiyas and mathris for your next Holi celebration!\nuser: I'm happy to help you with those recipes! However, I noticed that you mentioned attending the Hindu festival of Holi at the local temple on February 26th. Would you like to know more about other Hindu festivals or traditions?\nassistant: I think there's been a misunderstanding! I apologize for the confusion. I'm an AI, I don't have personal experiences or attend festivals. I'm here to provide information and answer your questions to the best of my abilities.\n\nHowever, I'd be happy to help you learn more about Hindu festivals and traditions! Hinduism is a rich and diverse religion with numerous festivals and celebrations throughout the year. If you have specific questions or topics you'd like to explore, feel free to ask me anytime.\n\nSome popular Hindu festivals include Diwali (the festival of lights), Navratri (a nine-day celebration of the divine feminine), and Ganesh Chaturthi (a celebration of Lord Ganesha's birthday).\n\nLet me know if you'd like to learn more about any of these festivals or other Hindu traditions!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Holi experience led to deeper interest in Hindu festivals and traditions summary=After attending a Holi celebration at their local temple, the user became interested in learning the festival's origins, cultural importance, meanings of colors, and related Hindu festivals or traditions. scope=User's interest context around Holi and Hindu festivals from the 2023-03-26 session entities=entity:<0>,entity:<1>,entity:<2> keywords=Holi,Hindu festivals,local temple,origins,cultural importance,colors,traditions tags=interest_context,festival_context evidence=I just attended the Holi celebration at my local temple on February 26th and had a blast throwing colors and learning about its significance.\n[1] type=CONTEXT title=Holi celebration included Rohan's family, colors, and Gujarati snacks summary=The user's Holi experience was social and experiential: they threw colors with colleague Rohan and his family and especially enjoyed trying Gujarati snacks, which prompted requests for recipes and gulal buying advice for next year's Holi. scope=Personal context from the user's Holi celebration and follow-up plans in the 2023-03-26 session entities=entity:<0>,entity:<1>,entity:<3>,entity:<4>,entity:<5>,entity:<6> keywords=Holi,Rohan,Rohan's family,Gujarati snacks,gulal,abir,colors,next year's Holi tags=personal_context,festival_food,social_context evidence=I had a lot of fun throwing colors with my colleague Rohan and his family\n\n        Existing active notes:\n        id=hot-path-d6fa0be85d39-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Charity event fundraising direction: bake sale plus Color Run summary=The user is planning a local community charity event and is leaning toward combining a bake sale with a themed walk/run; they especially liked the visually appealing Color Run idea and planned to share social media promotion tips with their team. scope=User's charity event planning context from the 2023-03-26 session keywords=charity event,fundraiser,bake sale,Color Run,walk/run,social media team tags=charity_event,fundraising_plan useCount=0\nid=hot-path-d6fa0be85d39-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=User reconnected with cousin Emma at St. Mary's Church summary=At St. Mary's Church the previous Sunday, the user sat next to cousin Emma, who was visiting from out of town; they later caught up, exchanged numbers, and planned to meet for brunch later that week. scope=Personal relationship context involving the user, cousin Emma, and St. Mary's Church keywords=Emma,cousin,St. Mary's Church,third pew,exchanged numbers,brunch tags=personal_context,family useCount=0\nid=hot-path-d6fa0be85d39-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Sunday mass at St. Mary's Church inspired user's community giving summary=The user's motivation for the charity/community event was reinforced by Sunday mass at St. Mary's Church on March 19, where Father John's sermon on forgiveness and compassion inspired them to give back to the community. scope=Motivational background for the user's charity event and related St. Mary's Church experience keywords=St. Mary's Church,Father John,March 19,Sunday mass,forgiveness,compassion,give back tags=personal_context,motivation,church useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2a1811e2",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:7b096cece0912ea57e6a2e6d16eca35d"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Captures a distinct personal interest context about Holi and Hindu festivals not covered by existing charity or church notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Captures distinct reusable personal details from the Holi experience, including Rohan, Gujarati snacks, gulal, and plans for next year's Holi; not duplicated by existing notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5082,
+                "completionTokens": 128,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

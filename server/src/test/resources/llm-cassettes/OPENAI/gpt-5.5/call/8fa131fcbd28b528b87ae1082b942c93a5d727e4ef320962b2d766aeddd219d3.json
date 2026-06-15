@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "8fa131fcbd28b528b87ae1082b942c93a5d727e4ef320962b2d766aeddd219d3",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_5dcc0aab\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript includes explicit durable preferences and decisions about hiking boots, dated personal shoe-care/activity events, and a reusable care procedure/context, so forced write should be mixed rather than noop.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:gpt4_5dcc0aab:profile:<0> Profile for User (USER).\nStable facts:\n- The user is choosing hiking boots for an upcoming mountain trip and has narrowed the options to Merrell Moab 2 Mid Waterproof and Keen Targhee II Mid WP.\n- The user wants recommendations for waterproofing their backpack and clothes for a mountain trip planned in a few weeks.\n- The user wants recommendations for waterproofing their hiking boots for an upcoming mountain trip.\n- The user likes their black and white Vans Old Skool sneakers because they are really comfortable.\n- claim hot-path-6e96cf369707-claim-5: has_goal; The user is choosing hiking boots for an upcoming mountain trip and has narrowed the options to Merrell Moab 2 Mid Waterproof and Keen Targhee II Mid WP.; scope=User's mountain-trip hiking boot decision\n- note hot-path-6e96cf369707-note-2: CONTEXT; Hiking boot choice depends on fit, tread, terrain, and weight; For the user's upcoming mountain trip, the Merrell Moab 2 Mid Waterproof vs. Keen Targhee II Mid WP decision was framed around fit, tread, weight, and terrain: Merrell for a snugger fit and more aggressive tread on rough uneven ground; Keen for a wider/relaxed fit and lighter, more agile feel on smoother trails. The practical next step was to try on both pairs and choose by comfort and trip needs.; scope=User's mountain trip hiking boot decision involving Merrell Moab 2 Mid Waterproof and Keen Targhee II Mid WP\n- claim hot-path-6e96cf369707-claim-6: owns; The user owns a black and white pair of Vans Old Skool sneakers.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-7: prefers; The user likes their black and white Vans Old Skool sneakers because they are really comfortable.; scope=User footwear comfort preference\n- note hot-path-6e96cf369707-note-4: LESSON; Converse Chuck Taylor All Star sole-wear monitoring criteria; The user's Converse Chuck Taylor All Star sneakers were comfortable at an outdoor music festival but had heel sole wear; replacement should be considered if soles are around 1/8 inch (3 mm) or less, wear becomes uneven/unstable, comfort or support drops, or wet/slippery performance worsens. To extend life, rotate shoes, clean/condition rubber soles, and consider a sole protector or rubber sealant.; scope=Maintenance and replacement criteria for the user's Converse Chuck Taylor All Star sneakers\n- claim hot-path-6e96cf369707-claim-9: attended_event; The user attended an outdoor music festival on 2023-05-15 and wore Converse Chuck Taylor All Star sneakers there.; scope=User's attended social events\n- note hot-path-6e96cf369707-note-3: LESSON; Mountain trip waterproofing workflow for backpack, clothes, and boots; For the user's mountain trip preparation, waterproofing guidance emphasized layered protection: backpack cover plus water-resistant treatment and seam/zippers sealing; water-repellent or membrane clothing plus waterproof bags; and boots cleaned first before evenly applying compatible sprays, creams, wax, or silicone treatments and reapplying regularly.; scope=Reusable waterproofing procedure for the user's mountain trip gear\n- claim hot-path-6e96cf369707-claim-10: owns; The user owns white Adidas sneakers.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-12: has_goal; The user wants recommendations for waterproofing their hiking boots for an upcoming mountain trip.; scope=User's upcoming mountain trip preparation\n- claim hot-path-6e96cf369707-claim-11: has_goal; The user wants recommendations for waterproofing their backpack and clothes for a mountain trip planned in a few weeks.; scope=User's upcoming mountain trip preparation\n- claim hot-path-6e96cf369707-claim-8: owns; The user owns a pair of Converse Chuck Taylor All Star sneakers.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-16: pending_return; The user needs their sister to return the user's spare pair of running shoes soon.; scope=User's pending item-return errands\n- claim hot-path-6e96cf369707-claim-13: owns; The user owns brown leather dress shoes.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-15: owns; The user owns a spare pair of running shoes.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-14: attended_event; The user attended their cousin's wedding a few weeks before 2023-05-30 and wore brown leather dress shoes there.; scope=User's attended social events\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person user statements resolve to the stable namespace User entity.\n- mention=Keen Targhee II Mid WP; action=LINK_EXISTING; id=entity:<1>; type=existing; name=Keen Targhee II Mid WP; reason=Exact match to existing product entity.\n- mention=Merrell Moab 2 Mid Waterproof; action=LINK_EXISTING; id=entity:<2>; type=existing; name=Merrell Moab 2 Mid Waterproof; reason=Exact match to existing product entity.\n- mention=Keen.Dry membrane; action=CREATE_NEW; id=entity:<3>; type=TECHNOLOGY; name=Keen.Dry membrane; reason=Concrete reusable technology discussed in relation to the Keen boot; no existing candidate matches it.\n- mention=Gore-Tex membrane; action=CREATE_NEW; id=entity:<4>; type=TECHNOLOGY; name=Gore-Tex membrane; reason=Concrete reusable technology discussed in relation to the Merrell boot; no existing candidate matches it.\n- mention=white Adidas sneakers; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=User's white Adidas sneakers; reason=Concrete owned item with durable assertions; no existing entity candidate for it despite remembered claims.\n- mention=outdoor music festival; action=LINK_EXISTING; id=entity:<6>; type=existing; name=outdoor music festival; reason=Exact match to existing event-like entity.\n- mention=Vans Old Skool sneakers; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=User's black and white Vans Old Skool sneakers; reason=Concrete owned item with durable assertions; no existing entity candidate for it despite remembered claims.\n- mention=mountains; action=LINK_EXISTING; id=entity:<8>; type=existing; name=mountains; reason=In context, the mountains refer to the user's upcoming mountain trip rather than a specific geographic location.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Keen Targhee II Mid WP|Merrell Moab 2 Mid Waterproof|Keen.Dry membrane|Gore-Tex membrane|white Adidas sneakers|Vans Old Skool sneakers|outdoor music festival\n        text_queries=Keen Targhee II Mid WP ankle support breathability chosen hiking boots|Keen.Dry membrane care clean air dry avoid heat waterproofing treatment|white Adidas sneakers cleaned last month soap water air dry balcony outdoor music festival|Vans Old Skool sneakers got last weekend wearing almost every day comfortable easy slip on off\n        predicate_hints=prefers|owns|attended_event\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:d263e195a1ddbf0839d29e846e952125] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_5dcc0aab:session:2; title=LongMemEval gpt4_5dcc0aab session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/30 (Tue) 11:28\nTranscript:\nuser: I'm planning a hiking trip next month and I'm trying to decide between the Merrell Moab 2 Mid Waterproof and the Keen Targhee II Mid WP. Can you compare the features of these two hiking boots for me?\nassistant: Both boots are high-quality, waterproof options for hikers, but they have some key differences. Here's a breakdown of their features:\n\n**Merrell Moab 2 Mid Waterproof:**\n\n* **Weight:** 2 lbs 3 oz (990g)\n* **Upper:** Breathable mesh and leather upper with a waterproof and breathable Gore-Tex membrane\n* **Midsole:** EVA midsole for cushioning and support\n* **Outsole:** Vibram TC5+ outsole with 5mm lug depth for traction and stability\n* **Ankle Support:** Moderate ankle support with a comfortable, flexible design\n* **Fit:** Runs true to size, with a comfortable, roomy toe box\n* **Waterproofing:** Gore-Tex membrane ensures waterproofness and breathability\n* **Price:** Around $130-$150\n\n**Keen Targhee II Mid WP:**\n\n* **Weight:** 2 lbs 1 oz (930g)\n* **Upper:** Waterproof and breathable Keen.Dry membrane with a combination of leather and mesh\n* **Midsole:** Dual-density EVA midsole for cushioning and support\n* **Outsole:** Keen All-Terrain outsole with 4mm lug depth for traction and stability\n* **Ankle Support:** More substantial ankle support with a higher collar and a more rugged design\n* **Fit:** Runs slightly larger than true size, with a roomy toe box\n* **Waterproofing:** Keen.Dry membrane ensures waterproofness and breathability\n* **Price:** Around $140-$160\n\nNow, consider the following questions to help you decide between these two boots:\n\n1. **Ankle support:** Do you prefer more substantial ankle support (Keen Targhee II Mid WP) or a more flexible design (Merrell Moab 2 Mid Waterproof)?\n2. **Weight:** Are you looking for a lighter boot (Keen Targhee II Mid WP) or are you willing to sacrifice some weight for a more rugged design (Merrell Moab 2 Mid Waterproof)?\n3. **Traction:** Do you need a boot with deeper lugs (Merrell Moab 2 Mid Waterproof) for more challenging terrain, or will a shallower lug depth (Keen Targhee II Mid WP) suffice for your hiking plans?\n4. **Fit:** Are you comfortable with a slightly roomier fit (Keen Targhee II Mid WP) or do you prefer a more snug fit (Merrell Moab 2 Mid Waterproof)?\n5. **Budget:** Are you willing to spend a bit more for the Keen Targhee II Mid WP, or do you prefer the more affordable Merrell Moab 2 Mid Waterproof?\n\nUltimately, both boots are excellent choices for hiking. Consider your specific needs and preferences to make an informed decision. Happy trails!\nuser: I think ankle support is important for me, since I've heard the trails can be pretty rough in the mountains. Can you tell me more about the Keen.Dry membrane in the Keen Targhee II Mid WP? How does it compare to the Gore-Tex membrane in the Merrell Moab 2 Mid Waterproof?\nassistant: **Ankle Support:** You're right to prioritize ankle support, especially if you'll be tackling rough terrain. The Keen Targhee II Mid WP's higher collar and more substantial ankle support will provide additional stability and protection for your ankles.\n\n**Keen.Dry Membrane:** The Keen.Dry membrane is a proprietary waterproof and breathable technology developed by Keen. It's designed to provide a high level of waterproofness while allowing moisture to escape, preventing blisters and discomfort. Keen.Dry is a hydrophilic (water-loving) membrane that attracts and absorbs water molecules, allowing them to pass through the membrane while keeping larger water droplets out.\n\n**Comparison to Gore-Tex:** Gore-Tex is a well-known and respected waterproof and breathable technology used in many outdoor products. While both Keen.Dry and Gore-Tex are designed to provide waterproofness and breathability, there are some differences:\n\n1. **Waterproofness:** Both membranes are highly waterproof, but Gore-Tex is generally considered to be more waterproof, with a higher water column rating (28,000 mm vs. Keen.Dry's 10,000 mm). This means Gore-Tex can withstand more intense water pressure before water starts to penetrate.\n2. **Breathability:** Keen.Dry is often considered more breathable than Gore-Tex, which can make it a better choice for high-intensity activities or warmer weather. However, this increased breathability might come at the cost of slightly reduced waterproofness.\n3. **Durability:** Gore-Tex is known for its exceptional durability and resistance to abrasion, while Keen.Dry is also durable but might be more prone to scratches or damage.\n4. **Moisture Transfer:** Keen.Dry is designed to transfer moisture more quickly than Gore-Tex, which can help reduce blisters and discomfort.\n\n**In Summary:** Both Keen.Dry and Gore-Tex are high-quality waterproof and breathable membranes. While Gore-Tex is more waterproof and durable, Keen.Dry is more breathable and might be a better choice for high-intensity activities or warmer weather. If you prioritize ultimate waterproofness and durability, Gore-Tex might be the better choice. If you prefer a more breathable membrane with excellent waterproofness, Keen.Dry is a great option.\n\nConsidering your priority on ankle support, the Keen Targhee II Mid WP with its Keen.Dry membrane might be an excellent choice for you. However, if you're willing to compromise on ankle support for a more waterproof and durable membrane, the Merrell Moab 2 Mid Waterproof with Gore-Tex might be the better option.\nuser: I think I'll go with the Keen Targhee II Mid WP, the ankle support and breathability are important to me. By the way, do you know how to take care of the Keen.Dry membrane to ensure it lasts long?\nassistant: The Keen Targhee II Mid WP is a fantastic choice for hiking, and with proper care, the Keen.Dry membrane will continue to perform well for a long time.\n\n**Caring for the Keen.Dry Membrane:**\n\n1. **Cleanliness:** Regularly clean your boots to prevent dirt and debris from accumulating and affecting the membrane's performance. Use a soft-bristled brush or a clean cloth to remove dirt, and avoid using harsh chemicals or abrasive materials that can damage the membrane.\n2. **Drying:** After exposure to water or wet conditions, allow your boots to air dry slowly. Avoid direct heat, such as placing them near a heater or using a hair dryer, as this can damage the membrane. Instead, let them air dry at room temperature.\n3. **Storage:** Store your boots in a cool, dry place away from direct sunlight. Avoid folding or compressing the boots, as this can crease or damage the membrane.\n4. **Conditioning:** To maintain the membrane's water-repellent properties, apply a waterproofing treatment or conditioner specifically designed for waterproof membranes. Follow the manufacturer's instructions for application and frequency.\n5. **Avoid Contaminants:** Avoid exposing your boots to contaminants like fuel, oil, or chemicals, as these can damage the membrane. If you accidentally expose your boots to these substances, clean them immediately and apply a waterproofing treatment.\n6. **Regular Inspection:** Regularly inspect your boots for signs of wear, such as cracks, tears, or delamination. If you notice any damage, contact Keen's customer service or a authorized repair center for guidance.\n\nBy following these care tips, you'll be able to enjoy your Keen Targhee II Mid WP boots for many hiking adventures to come!\n\nRemember, it's also essential to break in your new boots before heading out on a long hike. Take them for shorter walks and gradually increase the distance to help your feet adjust to the new footwear.\n\nHappy hiking!\nuser: I'm glad I finally got around to cleaning my white Adidas sneakers last month, which I'd been meaning to do for weeks. They were getting pretty dirty after that outdoor music festival I attended.\nassistant: It's great that you finally got around to cleaning your white Adidas sneakers! It's always satisfying to get rid of dirt and stains that have been building up. Outdoor music festivals can be so much fun, but they can definitely take a toll on our shoes.\n\nI'm sure your sneakers are looking fresh and clean now. Did you use any special cleaning products or techniques to get them looking like new again?\nuser: I just used a mixture of soap and water to wipe down the uppers, and then let them air dry on the balcony for a few hours. They looked like new again after that!\nassistant: That's great! Sometimes, a simple soap and water cleaning can work wonders. It's amazing how a little TLC can revive your shoes and make them look like new again.\n\nAir drying is also a great way to prevent any water spots or discoloration. It's always a good idea to avoid using harsh chemicals or heat to dry shoes, as they can damage the materials or cause them to fade.\n\nNow that your Adidas sneakers are clean, are you planning on wearing them for any upcoming events or activities?\nuser: No, I don't think so. I've been wearing my new Vans Old Skool sneakers almost every day since I got them last weekend. They're really comfortable and easy to slip on and off. I think I'll save my Adidas sneakers for a special occasion or a outdoor event.\nassistant: It's great that you've found a new favorite pair of shoes in your Vans Old Skool sneakers. They're a classic choice for a reason - comfortable, versatile, and easy to wear.\n\nIt's also smart of you to save your Adidas sneakers for special occasions or outdoor events. They're a great pair to have in reserve for when you want to dress up or make a statement. Plus, keeping them fresh and clean will make them last longer and stay looking their best.\n\nEnjoy your Vans and save those Adidas for a special day. Happy shoe-ing!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_5dcc0aab",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:d263e195a1ddbf0839d29e846e952125"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_5dcc0aab\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript includes explicit durable preferences and decisions about hiking boots, dated personal shoe-care/activity events, and a reusable care procedure/context, so forced write should be mixed rather than noop.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:gpt4_5dcc0aab:profile:<0> Profile for User (USER).\nStable facts:\n- The user is choosing hiking boots for an upcoming mountain trip and has narrowed the options to Merrell Moab 2 Mid Waterproof and Keen Targhee II Mid WP.\n- The user wants recommendations for waterproofing their backpack and clothes for a mountain trip planned in a few weeks.\n- The user wants recommendations for waterproofing their hiking boots for an upcoming mountain trip.\n- The user likes their black and white Vans Old Skool sneakers because they are really comfortable.\n- claim hot-path-6e96cf369707-claim-5: has_goal; The user is choosing hiking boots for an upcoming mountain trip and has narrowed the options to Merrell Moab 2 Mid Waterproof and Keen Targhee II Mid WP.; scope=User's mountain-trip hiking boot decision\n- note hot-path-6e96cf369707-note-2: CONTEXT; Hiking boot choice depends on fit, tread, terrain, and weight; For the user's upcoming mountain trip, the Merrell Moab 2 Mid Waterproof vs. Keen Targhee II Mid WP decision was framed around fit, tread, weight, and terrain: Merrell for a snugger fit and more aggressive tread on rough uneven ground; Keen for a wider/relaxed fit and lighter, more agile feel on smoother trails. The practical next step was to try on both pairs and choose by comfort and trip needs.; scope=User's mountain trip hiking boot decision involving Merrell Moab 2 Mid Waterproof and Keen Targhee II Mid WP\n- claim hot-path-6e96cf369707-claim-6: owns; The user owns a black and white pair of Vans Old Skool sneakers.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-7: prefers; The user likes their black and white Vans Old Skool sneakers because they are really comfortable.; scope=User footwear comfort preference\n- note hot-path-6e96cf369707-note-4: LESSON; Converse Chuck Taylor All Star sole-wear monitoring criteria; The user's Converse Chuck Taylor All Star sneakers were comfortable at an outdoor music festival but had heel sole wear; replacement should be considered if soles are around 1/8 inch (3 mm) or less, wear becomes uneven/unstable, comfort or support drops, or wet/slippery performance worsens. To extend life, rotate shoes, clean/condition rubber soles, and consider a sole protector or rubber sealant.; scope=Maintenance and replacement criteria for the user's Converse Chuck Taylor All Star sneakers\n- claim hot-path-6e96cf369707-claim-9: attended_event; The user attended an outdoor music festival on 2023-05-15 and wore Converse Chuck Taylor All Star sneakers there.; scope=User's attended social events\n- note hot-path-6e96cf369707-note-3: LESSON; Mountain trip waterproofing workflow for backpack, clothes, and boots; For the user's mountain trip preparation, waterproofing guidance emphasized layered protection: backpack cover plus water-resistant treatment and seam/zippers sealing; water-repellent or membrane clothing plus waterproof bags; and boots cleaned first before evenly applying compatible sprays, creams, wax, or silicone treatments and reapplying regularly.; scope=Reusable waterproofing procedure for the user's mountain trip gear\n- claim hot-path-6e96cf369707-claim-10: owns; The user owns white Adidas sneakers.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-12: has_goal; The user wants recommendations for waterproofing their hiking boots for an upcoming mountain trip.; scope=User's upcoming mountain trip preparation\n- claim hot-path-6e96cf369707-claim-11: has_goal; The user wants recommendations for waterproofing their backpack and clothes for a mountain trip planned in a few weeks.; scope=User's upcoming mountain trip preparation\n- claim hot-path-6e96cf369707-claim-8: owns; The user owns a pair of Converse Chuck Taylor All Star sneakers.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-16: pending_return; The user needs their sister to return the user's spare pair of running shoes soon.; scope=User's pending item-return errands\n- claim hot-path-6e96cf369707-claim-13: owns; The user owns brown leather dress shoes.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-15: owns; The user owns a spare pair of running shoes.; scope=User's footwear ownership\n- claim hot-path-6e96cf369707-claim-14: attended_event; The user attended their cousin's wedding a few weeks before 2023-05-30 and wore brown leather dress shoes there.; scope=User's attended social events\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person user statements resolve to the stable namespace User entity.\n- mention=Keen Targhee II Mid WP; action=LINK_EXISTING; id=entity:<1>; type=existing; name=Keen Targhee II Mid WP; reason=Exact match to existing product entity.\n- mention=Merrell Moab 2 Mid Waterproof; action=LINK_EXISTING; id=entity:<2>; type=existing; name=Merrell Moab 2 Mid Waterproof; reason=Exact match to existing product entity.\n- mention=Keen.Dry membrane; action=CREATE_NEW; id=entity:<3>; type=TECHNOLOGY; name=Keen.Dry membrane; reason=Concrete reusable technology discussed in relation to the Keen boot; no existing candidate matches it.\n- mention=Gore-Tex membrane; action=CREATE_NEW; id=entity:<4>; type=TECHNOLOGY; name=Gore-Tex membrane; reason=Concrete reusable technology discussed in relation to the Merrell boot; no existing candidate matches it.\n- mention=white Adidas sneakers; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=User's white Adidas sneakers; reason=Concrete owned item with durable assertions; no existing entity candidate for it despite remembered claims.\n- mention=outdoor music festival; action=LINK_EXISTING; id=entity:<6>; type=existing; name=outdoor music festival; reason=Exact match to existing event-like entity.\n- mention=Vans Old Skool sneakers; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=User's black and white Vans Old Skool sneakers; reason=Concrete owned item with durable assertions; no existing entity candidate for it despite remembered claims.\n- mention=mountains; action=LINK_EXISTING; id=entity:<8>; type=existing; name=mountains; reason=In context, the mountains refer to the user's upcoming mountain trip rather than a specific geographic location.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Keen Targhee II Mid WP|Merrell Moab 2 Mid Waterproof|Keen.Dry membrane|Gore-Tex membrane|white Adidas sneakers|Vans Old Skool sneakers|outdoor music festival\n        text_queries=Keen Targhee II Mid WP ankle support breathability chosen hiking boots|Keen.Dry membrane care clean air dry avoid heat waterproofing treatment|white Adidas sneakers cleaned last month soap water air dry balcony outdoor music festival|Vans Old Skool sneakers got last weekend wearing almost every day comfortable easy slip on off\n        predicate_hints=prefers|owns|attended_event\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:d263e195a1ddbf0839d29e846e952125] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_5dcc0aab:session:2; title=LongMemEval gpt4_5dcc0aab session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/30 (Tue) 11:28\nTranscript:\nuser: I'm planning a hiking trip next month and I'm trying to decide between the Merrell Moab 2 Mid Waterproof and the Keen Targhee II Mid WP. Can you compare the features of these two hiking boots for me?\nassistant: Both boots are high-quality, waterproof options for hikers, but they have some key differences. Here's a breakdown of their features:\n\n**Merrell Moab 2 Mid Waterproof:**\n\n* **Weight:** 2 lbs 3 oz (990g)\n* **Upper:** Breathable mesh and leather upper with a waterproof and breathable Gore-Tex membrane\n* **Midsole:** EVA midsole for cushioning and support\n* **Outsole:** Vibram TC5+ outsole with 5mm lug depth for traction and stability\n* **Ankle Support:** Moderate ankle support with a comfortable, flexible design\n* **Fit:** Runs true to size, with a comfortable, roomy toe box\n* **Waterproofing:** Gore-Tex membrane ensures waterproofness and breathability\n* **Price:** Around $130-$150\n\n**Keen Targhee II Mid WP:**\n\n* **Weight:** 2 lbs 1 oz (930g)\n* **Upper:** Waterproof and breathable Keen.Dry membrane with a combination of leather and mesh\n* **Midsole:** Dual-density EVA midsole for cushioning and support\n* **Outsole:** Keen All-Terrain outsole with 4mm lug depth for traction and stability\n* **Ankle Support:** More substantial ankle support with a higher collar and a more rugged design\n* **Fit:** Runs slightly larger than true size, with a roomy toe box\n* **Waterproofing:** Keen.Dry membrane ensures waterproofness and breathability\n* **Price:** Around $140-$160\n\nNow, consider the following questions to help you decide between these two boots:\n\n1. **Ankle support:** Do you prefer more substantial ankle support (Keen Targhee II Mid WP) or a more flexible design (Merrell Moab 2 Mid Waterproof)?\n2. **Weight:** Are you looking for a lighter boot (Keen Targhee II Mid WP) or are you willing to sacrifice some weight for a more rugged design (Merrell Moab 2 Mid Waterproof)?\n3. **Traction:** Do you need a boot with deeper lugs (Merrell Moab 2 Mid Waterproof) for more challenging terrain, or will a shallower lug depth (Keen Targhee II Mid WP) suffice for your hiking plans?\n4. **Fit:** Are you comfortable with a slightly roomier fit (Keen Targhee II Mid WP) or do you prefer a more snug fit (Merrell Moab 2 Mid Waterproof)?\n5. **Budget:** Are you willing to spend a bit more for the Keen Targhee II Mid WP, or do you prefer the more affordable Merrell Moab 2 Mid Waterproof?\n\nUltimately, both boots are excellent choices for hiking. Consider your specific needs and preferences to make an informed decision. Happy trails!\nuser: I think ankle support is important for me, since I've heard the trails can be pretty rough in the mountains. Can you tell me more about the Keen.Dry membrane in the Keen Targhee II Mid WP? How does it compare to the Gore-Tex membrane in the Merrell Moab 2 Mid Waterproof?\nassistant: **Ankle Support:** You're right to prioritize ankle support, especially if you'll be tackling rough terrain. The Keen Targhee II Mid WP's higher collar and more substantial ankle support will provide additional stability and protection for your ankles.\n\n**Keen.Dry Membrane:** The Keen.Dry membrane is a proprietary waterproof and breathable technology developed by Keen. It's designed to provide a high level of waterproofness while allowing moisture to escape, preventing blisters and discomfort. Keen.Dry is a hydrophilic (water-loving) membrane that attracts and absorbs water molecules, allowing them to pass through the membrane while keeping larger water droplets out.\n\n**Comparison to Gore-Tex:** Gore-Tex is a well-known and respected waterproof and breathable technology used in many outdoor products. While both Keen.Dry and Gore-Tex are designed to provide waterproofness and breathability, there are some differences:\n\n1. **Waterproofness:** Both membranes are highly waterproof, but Gore-Tex is generally considered to be more waterproof, with a higher water column rating (28,000 mm vs. Keen.Dry's 10,000 mm). This means Gore-Tex can withstand more intense water pressure before water starts to penetrate.\n2. **Breathability:** Keen.Dry is often considered more breathable than Gore-Tex, which can make it a better choice for high-intensity activities or warmer weather. However, this increased breathability might come at the cost of slightly reduced waterproofness.\n3. **Durability:** Gore-Tex is known for its exceptional durability and resistance to abrasion, while Keen.Dry is also durable but might be more prone to scratches or damage.\n4. **Moisture Transfer:** Keen.Dry is designed to transfer moisture more quickly than Gore-Tex, which can help reduce blisters and discomfort.\n\n**In Summary:** Both Keen.Dry and Gore-Tex are high-quality waterproof and breathable membranes. While Gore-Tex is more waterproof and durable, Keen.Dry is more breathable and might be a better choice for high-intensity activities or warmer weather. If you prioritize ultimate waterproofness and durability, Gore-Tex might be the better choice. If you prefer a more breathable membrane with excellent waterproofness, Keen.Dry is a great option.\n\nConsidering your priority on ankle support, the Keen Targhee II Mid WP with its Keen.Dry membrane might be an excellent choice for you. However, if you're willing to compromise on ankle support for a more waterproof and durable membrane, the Merrell Moab 2 Mid Waterproof with Gore-Tex might be the better option.\nuser: I think I'll go with the Keen Targhee II Mid WP, the ankle support and breathability are important to me. By the way, do you know how to take care of the Keen.Dry membrane to ensure it lasts long?\nassistant: The Keen Targhee II Mid WP is a fantastic choice for hiking, and with proper care, the Keen.Dry membrane will continue to perform well for a long time.\n\n**Caring for the Keen.Dry Membrane:**\n\n1. **Cleanliness:** Regularly clean your boots to prevent dirt and debris from accumulating and affecting the membrane's performance. Use a soft-bristled brush or a clean cloth to remove dirt, and avoid using harsh chemicals or abrasive materials that can damage the membrane.\n2. **Drying:** After exposure to water or wet conditions, allow your boots to air dry slowly. Avoid direct heat, such as placing them near a heater or using a hair dryer, as this can damage the membrane. Instead, let them air dry at room temperature.\n3. **Storage:** Store your boots in a cool, dry place away from direct sunlight. Avoid folding or compressing the boots, as this can crease or damage the membrane.\n4. **Conditioning:** To maintain the membrane's water-repellent properties, apply a waterproofing treatment or conditioner specifically designed for waterproof membranes. Follow the manufacturer's instructions for application and frequency.\n5. **Avoid Contaminants:** Avoid exposing your boots to contaminants like fuel, oil, or chemicals, as these can damage the membrane. If you accidentally expose your boots to these substances, clean them immediately and apply a waterproofing treatment.\n6. **Regular Inspection:** Regularly inspect your boots for signs of wear, such as cracks, tears, or delamination. If you notice any damage, contact Keen's customer service or a authorized repair center for guidance.\n\nBy following these care tips, you'll be able to enjoy your Keen Targhee II Mid WP boots for many hiking adventures to come!\n\nRemember, it's also essential to break in your new boots before heading out on a long hike. Take them for shorter walks and gradually increase the distance to help your feet adjust to the new footwear.\n\nHappy hiking!\nuser: I'm glad I finally got around to cleaning my white Adidas sneakers last month, which I'd been meaning to do for weeks. They were getting pretty dirty after that outdoor music festival I attended.\nassistant: It's great that you finally got around to cleaning your white Adidas sneakers! It's always satisfying to get rid of dirt and stains that have been building up. Outdoor music festivals can be so much fun, but they can definitely take a toll on our shoes.\n\nI'm sure your sneakers are looking fresh and clean now. Did you use any special cleaning products or techniques to get them looking like new again?\nuser: I just used a mixture of soap and water to wipe down the uppers, and then let them air dry on the balcony for a few hours. They looked like new again after that!\nassistant: That's great! Sometimes, a simple soap and water cleaning can work wonders. It's amazing how a little TLC can revive your shoes and make them look like new again.\n\nAir drying is also a great way to prevent any water spots or discoloration. It's always a good idea to avoid using harsh chemicals or heat to dry shoes, as they can damage the materials or cause them to fade.\n\nNow that your Adidas sneakers are clean, are you planning on wearing them for any upcoming events or activities?\nuser: No, I don't think so. I've been wearing my new Vans Old Skool sneakers almost every day since I got them last weekend. They're really comfortable and easy to slip on and off. I think I'll save my Adidas sneakers for a special occasion or a outdoor event.\nassistant: It's great that you've found a new favorite pair of shoes in your Vans Old Skool sneakers. They're a classic choice for a reason - comfortable, versatile, and easy to wear.\n\nIt's also smart of you to save your Adidas sneakers for special occasions or outdoor events. They're a great pair to have in reserve for when you want to dress up or make a statement. Plus, keeping them fresh and clean will make them last longer and stay looking their best.\n\nEnjoy your Vans and save those Adidas for a special day. Happy shoe-ing!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_5dcc0aab",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:d263e195a1ddbf0839d29e846e952125"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user chose the Keen Targhee II Mid WP for their upcoming mountain hiking trip.\",\"The user prioritizes ankle support and breathability in hiking boots for rough mountain trails.\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll go with the Keen Targhee II Mid WP, the ankle support and breathability are important to me.\",\"evidence_reason\":\"The user explicitly states the selected boot and the reasons for choosing it.\",\"importance\":5,\"keywords\":[\"Keen Targhee II Mid WP\",\"Merrell Moab 2 Mid Waterproof\",\"ankle support\",\"breathability\",\"mountain trip\",\"hiking boots\"],\"note_type\":\"decision\",\"rationale\":\"This captures a decision with rationale and trade-offs, not just an atomic preference or ownership fact.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"entity\",\"text\":\"User's mountain-trip hiking boot decision between Keen Targhee II Mid WP and Merrell Moab 2 Mid Waterproof\"},\"summary\":\"For the upcoming mountain hiking trip, the user decided to choose the Keen Targhee II Mid WP because ankle support and breathability matter more to them than the Merrell Moab 2 Mid Waterproof's Gore-Tex waterproofness/durability trade-off.\",\"tags\":[\"hiking_boots\",\"decision\",\"mountain_trip\",\"footwear\"],\"title\":\"Keen Targhee II Mid WP chosen for ankle support and breathability\",\"valid_from\":\"2023-05-30T11:28:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Caring for the Keen.Dry Membrane:\",\"evidence_reason\":\"The assistant provided a concrete multi-step care workflow for the Keen.Dry membrane, including cleaning, drying, storage, conditioning, contaminants, inspection, and break-in advice.\",\"importance\":4,\"keywords\":[\"Keen.Dry membrane\",\"Keen Targhee II Mid WP\",\"boot care\",\"air dry\",\"waterproofing treatment\",\"break in boots\"],\"note_type\":\"lesson\",\"rationale\":\"This is a reusable procedure/lesson rather than a single clean factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Care and maintenance procedure for the user's Keen Targhee II Mid WP boots and Keen.Dry membrane\"},\"summary\":\"To preserve the Keen.Dry membrane in the user's Keen Targhee II Mid WP boots, care should emphasize regular gentle cleaning, slow room-temperature air drying, cool dry storage away from sunlight, membrane-compatible waterproofing/conditioner, avoiding fuel/oil/chemicals, and periodic inspection for cracks, tears, or delamination. New boots should also be broken in with shorter walks before long hikes.\",\"tags\":[\"shoe_care\",\"waterproofing\",\"hiking_boots\",\"procedure\"],\"title\":\"Keen.Dry membrane care procedure for Keen Targhee II Mid WP boots\",\"valid_from\":\"2023-05-30T11:28:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user cleaned their white Adidas sneakers last month using soap and water and air dried them on the balcony.\",\"The user's white Adidas sneakers looked like new after being cleaned with soap and water and air dried.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I just used a mixture of soap and water to wipe down the uppers, and then let them air dry on the balcony for a few hours.\",\"evidence_reason\":\"The user explicitly describes the cleaning method and later outcome for their white Adidas sneakers.\",\"importance\":3,\"keywords\":[\"white Adidas sneakers\",\"soap and water\",\"air dry\",\"balcony\",\"outdoor music festival\",\"shoe cleaning\"],\"note_type\":\"lesson\",\"rationale\":\"This records a reusable shoe-care method that worked for a specific owned item, beyond a simple dated event claim.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"entity\",\"text\":\"Successful cleaning method for the user's white Adidas sneakers after outdoor-event dirt\"},\"summary\":\"The user's white Adidas sneakers were successfully restored after festival dirt by wiping the uppers with soap and water and air drying them on the balcony for a few hours; the result was that they looked like new again.\",\"tags\":[\"shoe_care\",\"cleaning_method\",\"adidas\"],\"title\":\"White Adidas sneakers cleaning method that worked after festival dirt\",\"valid_from\":\"2023-05-30T11:28:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5268,
+                "completionTokens": 1178,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
