@@ -767,6 +767,7 @@ object RuntimeMemoryPromptComposer {
             If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.
             For date-scoped questions, a candidate whose event or source date matches the requested period is stronger than an ACTIVE typed fact from outside the period.
             If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.
+            For aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.
             If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
             If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.
 
