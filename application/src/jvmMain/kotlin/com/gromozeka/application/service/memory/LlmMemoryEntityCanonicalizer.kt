@@ -67,6 +67,7 @@ class LlmMemoryEntityCanonicalizer(
             stageName = "entity-canonicalizer",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
             jsonRoot = MemoryStructuredJsonRoot.OBJECT_OR_ARRAY,
+            repairAttempts = 2,
             parse = { jsonText ->
                 val responses = if (jsonText.trimStart().startsWith("{")) {
                     json.decodeFromString<EntityCanonicalizerResponseEnvelope>(jsonText).operations
@@ -290,8 +291,9 @@ class LlmMemoryEntityCanonicalizer(
             - Prefer precision over recall.
             - Do not merge distinct entities on weak evidence.
             - Create new entities only when no candidate is a safe match.
-            - If a candidate safely matches the mention, use "link_existing" with that candidate id.
-            - Use "add_alias" only when the mention is a new surface form for a safe existing candidate.
+            - If a row in Candidate existing entities safely matches the mention, use "link_existing" with that exact row id.
+            - Use "add_alias" only when the mention is a new surface form for a safe row in Candidate existing entities.
+            - Relevant retrieval context can explain meaning, but it is not a linkable entity list. If it mentions a safe referent that is absent from Candidate existing entities, use "create_new" with the same canonical identity instead of inventing an entity_id.
             - Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.
             - If distinct referents share the same surface form, disambiguate the canonical_name, for example "Java (programming language)" vs "Java (island)".
             - If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.
@@ -301,7 +303,9 @@ class LlmMemoryEntityCanonicalizer(
             - For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.
             - For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as "*.kt". Set action="noop" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.
             - Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.
-            - Do not use raw labels such as "user", "assistant", "project", or "document" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.
+            - Do not use raw labels such as "user", "assistant", "project", or "document" as entity_id.
+            - Do not invent placeholder ids such as "entity:<5>", "entity:unbound-7", "new_entity_1", or ids copied from retrieval context.
+            - entity_id must be an exact id from Candidate existing entities for "link_existing"/"add_alias", or null for "create_new"/"noop".
             - Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, "it", "that", "first one", "second one", and "from that list".
             - When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.
             - Never create chat-specific USER entities such as "User of chat:..."; a new chat is not a new user.
@@ -482,9 +486,17 @@ private fun String?.toCandidateEntityIdOrNull(
 
     throw IllegalArgumentException(
         "EntityCanonicalizer returned invalid entity reference at $fieldPath: value=$value. " +
-            "Use an exact candidate entity id."
+            "Use an exact candidate entity id from Candidate existing entities, or use create_new with entity_id=null. " +
+            "Allowed candidate entity ids: ${candidateEntityIds.renderCandidateEntityIdsForError()}"
     )
 }
+
+private fun Set<MemoryEntity.Id>.renderCandidateEntityIdsForError(): String =
+    if (isEmpty()) {
+        "none"
+    } else {
+        map { it.value }.sorted().joinToString(", ").limitForMemoryPrompt(2_000)
+    }
 
 private fun String.withEntityPrefixOrNull(): String? {
     val value = trim()

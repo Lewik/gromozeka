@@ -494,6 +494,152 @@ class LlmMemoryEntityCanonicalizerTest {
         assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
     }
 
+    @Test
+    fun repairsContextOnlyEntityIdByCreatingCanonicalEntity() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    """
+                    {
+                      "operations": [
+                        {
+                          "mention": "my NLP project",
+                          "action": "link_existing",
+                          "entity_id": "entity:unbound-7",
+                          "new_entity": null,
+                          "about_file_assertion": false,
+                          "alias_text": null,
+                          "confidence": 0.9,
+                          "reason": "Retrieval context identifies the text analysis and sentiment analysis project."
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                    """
+                    {
+                      "operations": [
+                        {
+                          "mention": "my NLP project",
+                          "action": "create_new",
+                          "entity_id": null,
+                          "new_entity": {
+                            "entity_type": "project",
+                            "canonical_name": "Text Analysis and Sentiment Analysis Project",
+                            "summary": "Project involving text analysis and sentiment analysis."
+                          },
+                          "about_file_assertion": false,
+                          "alias_text": "my NLP project",
+                          "confidence": 0.9,
+                          "reason": "Retrieval context identifies the referent, but it is not present in Candidate existing entities."
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+            )
+        )
+        val candidateId = MemoryEntity.Id("entity:0000000000000001")
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = request("My NLP project uses Corey Schafer's Python programming series."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("my NLP project")),
+            retrievedHits = listOf(MemoryStore.SearchHit.EntityHit(entity(candidateId, "User", MemoryEntity.Type.USER), score = 1.0)),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.CREATE_NEW, op.action)
+        assertEquals(MemoryEntity.Type.PROJECT, op.newEntity?.entityType)
+        assertEquals("Text Analysis and Sentiment Analysis Project", op.newEntity?.canonicalName)
+        assertEquals("my NLP project", op.aliasText)
+        assertEquals(2, runtime.requests.size)
+        assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
+        assertTrue(runtime.requests.last().repairInstructionText().contains(candidateId.value))
+        assertTrue(runtime.requests.last().repairInstructionText().contains("create_new with entity_id=null"))
+    }
+
+    @Test
+    fun allowsTwoEntityIdRepairsBeforeAcceptingCanonicalCreateNew() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    """
+                    {
+                      "operations": [
+                        {
+                          "mention": "my NLP project",
+                          "action": "link_existing",
+                          "entity_id": "entity:<5>",
+                          "new_entity": null,
+                          "about_file_assertion": false,
+                          "alias_text": null,
+                          "confidence": 0.9,
+                          "reason": "The project is visible in retrieval context."
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                    """
+                    {
+                      "operations": [
+                        {
+                          "mention": "my NLP project",
+                          "action": "link_existing",
+                          "entity_id": "entity:unbound-7",
+                          "new_entity": null,
+                          "about_file_assertion": false,
+                          "alias_text": null,
+                          "confidence": 0.9,
+                          "reason": "The project is visible in retrieval context."
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                    """
+                    {
+                      "operations": [
+                        {
+                          "mention": "my NLP project",
+                          "action": "create_new",
+                          "entity_id": null,
+                          "new_entity": {
+                            "entity_type": "project",
+                            "canonical_name": "Text Analysis and Sentiment Analysis Project",
+                            "summary": "Project involving text analysis and sentiment analysis."
+                          },
+                          "about_file_assertion": false,
+                          "alias_text": null,
+                          "confidence": 0.9,
+                          "reason": "No candidate existing entity id is available for this referent."
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+            )
+        )
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = request("My NLP project uses Corey Schafer's Python programming series."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("my NLP project")),
+            retrievedHits = emptyList(),
+        )
+
+        assertEquals(MemoryEntityCanonicalizationOp.Action.CREATE_NEW, ops.single().action)
+        assertEquals("Text Analysis and Sentiment Analysis Project", ops.single().newEntity?.canonicalName)
+        assertEquals(3, runtime.requests.size)
+        assertEquals(2, runtime.requests.last().options.toolContext["memoryStageRepairAttempt"])
+    }
+
     private suspend fun canonicalizedNewEntityId(
         entityType: String,
         canonicalName: String,
@@ -726,3 +872,9 @@ private fun String.candidateExistingEntitiesBlock(): String =
         ?.get(1)
         ?.trim()
         ?: error("Candidate existing entities block not found")
+
+private fun AiRuntimeRequest.repairInstructionText(): String =
+    messages.last().content
+        .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+        .single()
+        .text
