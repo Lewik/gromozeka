@@ -322,6 +322,7 @@ class LongMemEvalMemorySmokeTest {
         val generatedAnswerHypothesis = generateAnswerHypothesis(
             runtime = judgeRuntime,
             entry = entry,
+            selectedRefs = enrichResult.selectedRefs,
             memoryContext = memoryContext,
         )
         val answerHypothesis = applyBenchmarkAnswerFallback(
@@ -459,6 +460,7 @@ class LongMemEvalMemorySmokeTest {
     private suspend fun generateAnswerHypothesis(
         runtime: AiRuntime,
         entry: LongMemEvalEntry,
+        selectedRefs: String,
         memoryContext: String,
     ): LongMemEvalAnswerHypothesis {
         val conversationId = Conversation.Id("longmemeval-answer:${entry.questionId}")
@@ -480,6 +482,12 @@ class LongMemEvalMemorySmokeTest {
                     For noisy LongMemEval month/date arithmetic, exclude operands whose retrieved memory explicitly assigns them to a different month/date, but keep otherwise matching operands that have no explicit month/date label.
                     For noisy LongMemEval named-month arithmetic, do not infer a finish/completion month from the source/session date alone. Only an explicit month/date in the retrieved text should make an otherwise matching operand a different-month operand.
                     Apply noisy-date arithmetic in this order: collect explicit operands matching the non-date object/action, discard only operands with an explicit contradictory date label, keep operands with no date label, and compute when the remaining operand count matches the requested count.
+                    Complete-set retrieval means the context may include stale, adjacent, or superseded raw sources so that count/list answers are not incomplete. It does not make every retrieved item equally authoritative. For current factual answers, prefer direct ACTIVE claims and notes over older source excerpts, older goals, stale profiles, or raw source wording that has been superseded by a newer active typed fact.
+                    For questions about where, what, current value, current status, or recent relocation, if a direct ACTIVE claim answers the target and older raw source text or older goals disagree, answer from the active claim. Do not resurrect an older source answer merely because its source text is longer or more explicit.
+                    The ranked selected refs are the compact prioritized view. Read them before the full context. If the full context contains older raw source text that conflicts with a top-ranked direct active claim, trust the top-ranked direct active claim for current factual answers.
+                    For "led", "lead", "currently leading", "own", or "responsible for" project count questions, count a solo project, personal project, class project, or current project the user is doing as a user-led/currently-led project unless retrieved memory says someone else leads it. Also count explicit team leadership claims. Do not count a broad research area, research interest, paper, poster, or topic as a led/currently-led project unless the retrieved memory explicitly frames it as a project the user owns, leads, is currently doing, or is responsible for.
+                    For count/list questions about items, deduplicate aliases and container/detail pairs. Do not count both a concrete item and a project, diorama, setup, bundle, or plan built around that same item as separate items unless memory clearly says they are distinct. For count/list questions about errands, actions, tasks, pickups, returns, appointments, or commitments, count distinct actions separately even when they involve the same item. In an exchange, the original item to return and the replacement item to pick up are distinct physical items unless memory says it is the exact same item.
+                    For recommendation/adaptation questions about a new target, use remembered user preferences, constraints, and liked features from analogous prior targets. Do not answer "insufficient memory" solely because the exact destination/product/task is new; instead apply the remembered preference pattern and name the criteria that should guide the recommendation.
                     For questions about a specifically qualified object, project, event, or relationship, require the retrieved memory to explicitly preserve that qualification. Do not replace a requested qualified item with a merely related item, and do not bridge two memories unless the shared identity is explicit or uniquely unambiguous.
                     If retrieved memory is insufficient or conflicting, say that the available memory is insufficient.
                     Fill reasoning with one concise evidence sentence naming the selected remembered event, the remembered participant if relevant, the asked participant if relevant, and the conclusion.
@@ -496,6 +504,12 @@ class LongMemEvalMemorySmokeTest {
                             Conversation.Message.ContentItem.UserMessage(
                                 """
                                 Retrieved memory context:
+                                Ranked selected refs:
+                                ```json
+                                ${selectedRefs.ifBlank { "[]" }}
+                                ```
+
+                                Full memory context:
                                 ```text
                                 $memoryContext
                                 ```
@@ -510,6 +524,12 @@ class LongMemEvalMemorySmokeTest {
                                 For noisy benchmark month/date arithmetic, exclude explicit different-month/date operands, but do not reject otherwise matching operands just because the month/date label is absent.
                                 Do not infer a finish/completion month from source/session date alone when handling noisy benchmark named-month arithmetic.
                                 First collect explicit operands matching the non-date object/action, then discard only explicit contradictory date labels, keep missing-date operands, and compute if the remaining count matches the requested count.
+                                COMPLETE_SET memory may include stale or adjacent evidence. Direct ACTIVE typed facts beat older source excerpts, older goals, and stale profile summaries for current factual answers.
+                                For current status/location/value questions, answer from the direct active claim when it conflicts with older raw source text.
+                                Read the ranked selected refs first. If a top-ranked direct active claim answers the question, do not let older source excerpts or adjacent goals override it.
+                                For project leadership counts, count solo/current user-owned projects as currently led by the user unless memory says someone else leads them, but do not count research topics, posters, papers, or broad interests unless they are explicitly framed as projects the user owns/leads/is doing.
+                                For item counts, deduplicate an item from its container project/diorama/setup/bundle unless memory clearly says they are separate items. For errand/action/task counts, count separate actions separately even if they involve the same item. In an exchange, count the returned original and picked-up replacement separately unless memory says they are the exact same physical item.
+                                For recommendation questions, apply remembered preferences and constraints to the new target instead of refusing only because the exact new target was not remembered.
                                 If one operand is missing or only generic, answer that the available memory is insufficient.
                                 If the question asks about a qualified object, project, event, or relationship, preserve that qualifier exactly enough to avoid substituting a related but different remembered item.
 

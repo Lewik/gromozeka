@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "cf53a7ad02002a6fbf7998a6ea9e644d5d88e7984d6c5b9fb5807e60bc14e406",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:b5ef892d\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/29 (Sat) 16:26\nTranscript:\nuser: I'm planning a trip to Moab, Utah and was wondering if you could recommend some must-see attractions and trails in the area. By the way, I've been loving the scenic drives and hikes in Utah lately - we had a 7-day family road trip there in February. We did a lot of driving and hiking, but not camping for this time.\nassistant: Moab is an amazing destination! I'm thrilled to help you plan your trip. Moab is a mecca for outdoor enthusiasts, with its stunning natural beauty, unique landscapes, and endless adventure opportunities. Since you've already experienced some of Utah's scenic drives and hikes, you'll love exploring Moab's hidden gems. Here are some must-see attractions and trails to add to your itinerary:\n\n**Must-see Attractions:**\n\n1. **Arches National Park**: A must-visit, with over 2,000 natural sandstone arches, including the iconic Delicate Arch. Drive the scenic park road, and hike to popular spots like Balanced Rock and Landscape Arch.\n2. **Canyonlands National Park**: A short drive from Moab, this park is divided into three districts: Island in the Sky, The Needles, and The Maze. Each offers unique landscapes, hiking trails, and scenic vistas.\n3. **Dead Horse Point State Park**: A scenic drive and hike will reward you with breathtaking views of the Colorado River and surrounding landscape.\n4. **Downtown Moab**: Explore the charming town's shops, restaurants, and galleries, and visit the Moab Museum to learn about the area's history and geology.\n\n**Top Trails:**\n\n1. **Delicate Arch Trail** (Arches National Park): A 3-mile round-trip hike to the iconic Delicate Arch, a must-do for any Moab visitor.\n2. **Chesler Park Trail** (Canyonlands National Park): A 5.5-mile loop hike through a scenic valley surrounded by towering sandstone formations.\n3. **Fisher Towers Trail**: A 4.5-mile out-and-back hike to a unique rock formation with stunning views of the Colorado River.\n4. **Grandstaff Canyon Trail**: A 3.5-mile out-and-back hike through a scenic canyon with opportunities to spot wildlife and enjoy waterfalls.\n5. **Slickrock Trail**: A challenging 12-mile loop hike/bike ride on a unique slickrock surface, offering stunning views of the surrounding landscape.\n\n**Other Recommendations:**\n\n1. **Take a scenic drive**: Moab is surrounded by stunning landscapes, and a scenic drive can be a great way to explore. Try the **La Sal Mountain Loop Road** or **Potash Road** for breathtaking views.\n2. **Go off-roading**: Moab is famous for its off-roading opportunities. Rent a Jeep or ATV and explore the surrounding trails, such as **Hell's Revenge** or **Steel Bender**.\n3. **Take a guided tour**: Consider hiring a guide for a scenic hike, off-roading adventure, or photography tour to maximize your experience and gain insider knowledge.\n4. **Star gazing**: Moab's dark skies offer incredible stargazing opportunities. Find a secluded spot or join a guided star gazing tour.\n\n**Camping Tips:**\n\n1. **Book campsites in advance**: Moab's campsites fill up quickly, especially during peak season (March to October).\n2. **Choose a campsite with amenities**: Consider campsites with amenities like showers, laundry, and potable water to make your trip more comfortable.\n3. **Be prepared for weather**: Moab's weather can be unpredictable, so pack layers, bring sunscreen, and be prepared for possible rain showers.\n\nEnjoy your trip to Moab!\nuser: I'm interested in off-roading and was wondering if you could recommend some easy trails for a beginner like me. Also, are there any bike rentals available in Moab that you would recommend?\nassistant: Off-roading and mountain biking are two of Moab's most popular activities! I'd be happy to recommend some easy trails for a beginner like you, as well as some top-notch bike rental shops.\n\n**Easy Off-Roading Trails:**\n\n1. **Hell's Revenge (Beginner's Route)**: A modified version of the famous Hell's Revenge trail, this route is designed for beginners. It's a 4-mile loop with minimal obstacles and stunning views.\n2. **Fins and Things**: A 9-mile trail with gentle slopes and minimal technical sections, perfect for getting comfortable with your vehicle's capabilities.\n3. **Moab Rim Trail**: A 12-mile trail with scenic views of the Colorado River and surrounding landscape. It's a relatively easy trail with some gentle inclines and declines.\n4. **Kane Creek Canyon Road**: A 10-mile trail that follows a creek bed and features some gentle rock crawling and scenic views.\n\n**Off-Roading Tips for Beginners:**\n\n1. **Rent a vehicle**: Rent a 4x4 vehicle with high clearance, such as a Jeep Wrangler or a Toyota 4Runner, to ensure you have the necessary capabilities for Moab's trails.\n2. **Take a guided tour**: Consider hiring a guide or joining a guided tour to learn the basics of off-roading and get familiar with Moab's trails.\n3. **Start slow**: Begin with easy trails and gradually move to more challenging ones as you gain experience and confidence.\n4. **Follow safety guidelines**: Always wear a seatbelt, bring a first-aid kit, and carry a spare tire and tools in case of emergencies.\n\n**Bike Rentals in Moab:**\n\n1. **Moab Bike Rentals**: Offers a wide range of bikes, including full-suspension mountain bikes, hardtails, and cruisers. They also provide guided tours and bike maintenance services.\n2. **Poison Spider Bicycles**: Rents high-quality bikes, including demo and rental fleets from brands like Yeti, Santa Cruz, and Trek. They also offer guided tours and bike sales.\n3. **Chili Pepper Bike Shop**: Rents a variety of bikes, including cross-country, trail, and downhill bikes. They also provide bike repair services and offer guided tours.\n4. **Moab Cyclery**: Offers a range of bikes, including road, mountain, and e-bikes. They also provide bike rentals, sales, and repair services.\n\n**Bike Trails for Beginners:**\n\n1. **Bar M Trail**: A gentle, 4-mile trail with minimal obstacles and scenic views of the surrounding landscape.\n2. **Klonzo Trails**: A network of trails with varying difficulty levels, including beginner-friendly options like the \"Easy Does It\" trail.\n3. **Moab Brands Trails**: A series of trails with gentle slopes and minimal technical sections, perfect for getting comfortable on two wheels.\n\n**Bike Safety Tips:**\n\n1. **Wear protective gear**: Always wear a helmet, gloves, and protective eyewear.\n2. **Choose a bike that fits**: Ensure the bike is the right size for you and adjust the saddle height accordingly.\n3. **Start slow**: Begin with easy trails and gradually move to more challenging ones as you gain experience and confidence.\n4. **Follow trail rules**: Respect trail signs, stay on designated trails, and yield to other trail users.\n\nRemember to always practice safety and courtesy on the trails, and don't hesitate to ask for guidance or recommendations from local experts. Have a blast off-roading and biking in Moab!\nuser: I'll definitely check out those off-roading trails and bike rentals. Can you tell me more about the best times to visit Moab and if there are any specific events or festivals I should be aware of?\nassistant: Moab's climate and events can greatly impact your trip, so I'd be happy to share some insights on the best times to visit and notable events.\n\n**Best Times to Visit Moab:**\n\n1. **Spring (March to May)**: Mild temperatures (60s-70s Fahrenheit) and fewer crowds make spring an ideal time to visit Moab. It's a great time for off-roading, hiking, and biking.\n2. **Fall (September to November)**: Similar to spring, fall brings comfortable temperatures and smaller crowds, making it an excellent time for outdoor activities.\n3. **Winter (December to February)**: If you enjoy cooler weather (40s-50s Fahrenheit) and don't mind some trail closures, winter can be a great time to visit Moab. You'll find fewer crowds and lower prices on accommodations.\n\n**Summer (June to August)** is peak tourist season, with temperatures often reaching 90-100°F (32-38°C). While it's still a great time to visit, be prepared for crowds, long lines, and higher prices.\n\n**Events and Festivals:**\n\n1. **Easter Jeep Safari (Late March to Early April)**: A iconic off-roading event attracting thousands of enthusiasts. Expect large crowds and trail closures during this time.\n2. **Moab Off-Road (Mid-April)**: A three-day off-road racing event featuring professional drivers and teams.\n3. **Arches-Canyonlands Science Festival (Late April)**: A free event celebrating the natural and cultural wonders of the area, with guided hikes, talks, and activities.\n4. **Moab Music Festival (September)**: A classical music festival featuring performances by world-renowned musicians.\n5. **Moab Folk Festival (November)**: A celebration of folk music, craft beer, and local artisans.\n6. **Moab WinterFest (December)**: A festive event with snowshoeing, cross-country skiing, and holiday activities.\n\n**Other Events and Considerations:**\n\n1. **Full Moon Parties**: Moab's scenic trails are often busiest during full moon weekends, as many visitors come to experience the unique nighttime scenery.\n2. **Holiday Weekends**: Expect larger crowds and higher prices during holiday weekends, especially Memorial Day, Independence Day, and Labor Day.\n3. **Weather**: Moab's weather can be unpredictable, especially during the summer monsoon season (July to September). Be prepared for sudden rain showers and thunderstorms.\n\nPlan your trip accordingly, and you'll be able to make the most of your Moab adventure!\nuser: I'm also interested in visiting some of the nearby national parks. Can you recommend some day trips or shorter trips to national parks near Moab?\nassistant: Moab is strategically located near several incredible national parks, making it an ideal base for exploring the American Southwest. Here are some day trip and shorter trip recommendations to national parks near Moab:\n\n**Day Trips:**\n\n1. **Canyonlands National Park - Island in the Sky District** (1 hour 15 minutes from Moab):\n\t* Drive to the Island in the Sky Visitor Center and explore the scenic overlooks, hike to the White Rim Overlook, or take a short hike to the Grand View Point.\n2. **Dead Horse Point State Park** (30 minutes from Moab):\n\t* Take in the breathtaking views of the Colorado River and surrounding landscape from the park's scenic overlooks.\n3. **Hovenweep National Monument** (2 hours from Moab):\n\t* Explore the six ancient Puebloan ruins, including the famous \"castle\"-like structure, Hovenweep House.\n\n**Shorter Trips (2-4 days):**\n\n1. **Zion National Park, Utah** (4 hours from Moab):\n\t* Spend a day hiking the Narrows, exploring the Emerald Pools, or taking in the sunset at the Temple of Sinawava.\n2. **Bryce Canyon National Park, Utah** (4.5 hours from Moab):\n\t* Hike the Queen's Garden Trail, explore the amphitheater-shaped main area, or take a scenic drive along the rim.\n3. **Mesa Verde National Park, Colorado** (5.5 hours from Moab):\n\t* Explore the ancient cliff dwellings, such as Cliff Palace or Balcony House, and learn about the history of the Ancestral Pueblo people.\n4. **Natural Bridges National Monument, Utah** (2.5 hours from Moab):\n\t* Hike to the three massive natural bridges, explore the scenic Sipapu Bridge Trail, or take a scenic drive through the monument.\n\n**Tips and Considerations:**\n\n1. **Check park hours and road conditions**: Before heading out, ensure the park is open and roads are accessible.\n2. **Plan for transportation**: Consider renting a car or booking a guided tour if you don't have a vehicle.\n3. **Pack accordingly**: Bring water, snacks, sunscreen, and layers for changing weather conditions.\n4. **Accommodations**: Book your accommodations in advance, especially during peak season.\n5. **Combine trips**: Consider combining shorter trips to reduce travel time and make the most of your time in the region.\n\nThese day trips and shorter trips will give you a taste of the incredible national parks and monuments near Moab. Enjoy your adventures!\nuser: I'm thinking of visiting Canyonlands National Park's Island in the Sky District for a day trip. Can you give me some more information about the park's scenic drives and hikes?\nassistant: Canyonlands National Park's Island in the Sky District is an incredible destination for a day trip. Here's more information about the park's scenic drives and hikes to help you plan your visit:\n\n**Scenic Drives:**\n\n1. **Island in the Sky Scenic Drive**: A 12-mile paved road that takes you through the park's stunning landscape, offering breathtaking views of the surrounding canyons and mesas. There are several pull-outs and overlooks along the way, including:\n\t* **Grand View Point Overlook**: Offers panoramic views of the Colorado River and surrounding landscape.\n\t* **Buck Canyon Overlook**: Provides a glimpse into the rugged Buck Canyon.\n\t* **White Rim Overlook**: A popular spot for sunrise and sunset viewing.\n2. **White Rim Road**: A 100-mile dirt road that takes you down to the White Rim Plateau, offering stunning views of the Colorado River and surrounding landscape. This road is suitable for high-clearance vehicles and requires a permit.\n\n**Hikes:**\n\n1. **White Rim Overlook Trail**: A 2-mile round-trip hike that takes you to the White Rim Overlook, offering stunning views of the Colorado River and surrounding landscape.\n2. **Grand View Point Trail**: A 2-mile round-trip hike that takes you to the Grand View Point Overlook, offering panoramic views of the surrounding canyons and mesas.\n3. **Mesa Arch Trail**: A 1-mile round-trip hike that takes you to a unique arch perched on the edge of a cliff.\n4. **Upheaval Dome Trail**: A 1.7-mile round-trip hike that takes you to a unique geological formation, believed to be a meteorite impact crater.\n\n**Tips and Considerations:**\n\n1. **Weather**: Be prepared for extreme weather conditions, including heat, sun, and wind.\n2. **Water and Snacks**: Bring plenty of water and snacks, as services are limited within the park.\n3. **High-Clearance Vehicles**: If you plan to drive the White Rim Road, ensure your vehicle has high clearance and is suitable for rough dirt roads.\n4. **Permits**: Obtain a permit before driving the White Rim Road or engaging in any backcountry activities.\n5. **Trail Conditions**: Check trail conditions before heading out, as they may be closed due to weather or maintenance.\n\nRemember to respect the park's rules and regulations, and enjoy your day trip to Canyonlands National Park's Island in the Sky District!\nuser: I'd like to know more about the White Rim Road and the permits required for it. Can you provide more information on that?\nassistant: The White Rim Road is a unique and adventurous experience, but it does require some planning and preparation. Here's more information on the permits and requirements for driving the White Rim Road:\n\n**Permits:**\n\n1. **High-Clearance Vehicle Permit**: A permit is required for all vehicles driving the White Rim Road, which is a high-clearance, dirt road. You can obtain a permit at the Canyonlands National Park Visitor Center or online through the park's website.\n2. **Backcountry Permit**: If you plan to camp overnight or engage in other backcountry activities, you'll need a backcountry permit. This permit requires a fee and can be obtained at the park's visitor center.\n\n**Vehicle Requirements:**\n\n1. **High-Clearance Vehicle**: The White Rim Road is a rough, dirt road that requires a high-clearance vehicle. A 4x4 vehicle with good ground clearance (at least 8-10 inches) is recommended.\n2. **Tire Condition**: Ensure your tires are in good condition, with adequate tread and no signs of wear.\n\n**Road Conditions:**\n\n1. **Weather**: The White Rim Road is susceptible to weather conditions, including flash floods, thunderstorms, and extreme heat. Check the weather forecast before heading out and be prepared for changing conditions.\n2. **Road Maintenance**: The road is subject to maintenance and may be closed due to weather or repair work. Check the park's website for up-to-date information on road conditions.\n\n**Other Considerations:**\n\n1. **Fuel and Supplies**: There are no services or fuel stations along the White Rim Road, so ensure you have enough fuel, food, and water for your trip.\n2. **Emergency Preparedness**: Be prepared for emergencies, including a first-aid kit, spare tire, and communication devices (e.g., satellite phone or two-way radio).\n3. **Group Size**: The park has a limit of 10 vehicles per group, so plan accordingly if you're traveling with a larger group.\n\n**Itinerary:**\n\nA typical trip on the White Rim Road takes around 2-3 days, depending on your pace and the activities you want to do along the way. Here's a suggested itinerary:\n\nDay 1: Island in the Sky to Murphy Hogback Campground\n\n* Drive from the Island in the Sky Visitor Center to the White Rim Road\n* Stop at the scenic overlooks and take in the views\n* Camp at Murphy Hogback Campground\n\nDay 2: Murphy Hogback to White Crack Campground\n\n* Continue driving the White Rim Road\n* Stop at the scenic overlooks and take in the views\n* Camp at White Crack Campground\n\nDay 3: White Crack to Island in the Sky\n\n* Finish driving the White Rim Road\n* Stop at the scenic overlooks and take in the views\n* Return to the Island in the Sky Visitor Center\n\nRemember to check the park's website for up-to-date information on permits, road conditions, and other important information before planning your trip on the White Rim Road.\n\n        Candidate notes:\n        [0] type=CONTEXT title=Moab trip planning context: scenic drives, hikes, off-roading, and biking summary=The user was planning a trip to Moab, Utah after a February 2023 Utah family road trip focused on driving and hiking rather than camping. For Moab, the user showed interest in must-see attractions and trails, beginner-friendly off-roading, bike rentals, best visit timing, events, and nearby national park day trips. scope=User's Moab, Utah travel planning context from LongMemEval b5ef892d session 2 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=Moab,Utah,family road trip,scenic drives,hikes,off-roading,bike rentals,nearby national parks tags=travel_planning,moab,outdoor_recreation evidence=I'm planning a trip to Moab, Utah\n[1] type=PLAN title=Canyonlands Island in the Sky day-trip plan summary=For a possible day trip from Moab to Canyonlands National Park's Island in the Sky District, the user explored scenic drives and short hikes including Island in the Sky Scenic Drive, Grand View Point Overlook, Buck Canyon Overlook, White Rim Overlook, White Rim Overlook Trail, Grand View Point Trail, Mesa Arch Trail, and Upheaval Dome Trail. The plan emphasized limited park services, heat/sun/wind...[truncated 59 chars] scope=User's possible day trip to Canyonlands National Park's Island in the Sky District entities=entity:<0>,entity:<5>,entity:<6>,entity:<7> keywords=Canyonlands,Island in the Sky,day trip,scenic drive,Grand View Point,Mesa Arch,White Rim Overlook,Upheaval Dome tags=travel_planning,canyonlands,day_trip,hiking evidence=I'm thinking of visiting Canyonlands National Park's Island in the Sky District for a day trip.\n[2] type=CONTEXT title=White Rim Road planning and permit considerations summary=The White Rim Road was discussed as a 100-mile dirt-road route in Canyonlands requiring advance planning: a permit for vehicles, a backcountry permit for overnight camping/backcountry activities, a high-clearance 4x4-style vehicle, road and weather checks, fuel/water/food self-sufficiency, emergency supplies, and awareness that a typical full route may take 2–3 days rather than fitting a simple da...[truncated 7 chars] scope=White Rim Road access and planning considerations for the user's Canyonlands/Moab planning entities=entity:<0>,entity:<8>,entity:<9>,entity:<10> keywords=White Rim Road,permit,backcountry permit,high-clearance vehicle,Canyonlands,road conditions,2-3 days tags=travel_planning,permits,off_roading,canyonlands evidence=I'd like to know more about the White Rim Road and the permits required for it.\n\n        Existing active notes:\n        id=hot-path-80a1b3807075-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Merrell Moab 2 rationale for rocky multi-day trekking summary=The Merrell Moab 2 Mid Waterproof was treated as a strong candidate for the user's rocky, uneven, multi-day trekking needs because of waterproofing, Vibram TC5+ traction, mid-cut ankle support, breathability, and durability; caveats included weight, break-in time, socks/insoles, and trekking poles. scope=Evaluation rationale for Merrell Moab 2 Mid Waterproof in the user's backpacking plans keywords=Merrell Moab 2 Mid Waterproof,Vibram TC5+,rocky terrain,Yellowstone,New Zealand trek,ankle support,waterproofing tags=gear_evaluation,hiking_boots,backpacking useCount=0\nid=hot-path-80a1b3807075-note-2 type=PLAN status=ACTIVE maturity=FRESH title=New Zealand trek gear-selection context summary=The user was planning a 10-day trek in New Zealand in November with varying terrain including rocky trails, and was evaluating lightweight, compact, weather-ready gear: waterproof backpacking boots, a wind-resistant stove and pot, and a water treatment approach. scope=User's planned New Zealand trek and related backpacking gear decisions discussed in LongMemEval b5ef892d session 1 keywords=New Zealand,10-day trek,November,rocky trails,backpacking gear,waterproof boots,portable stove,water filter tags=travel_plan,outdoor_gear,backpacking useCount=0\nid=hot-path-80a1b3807075-note-4 type=DECISION status=ACTIVE maturity=FRESH title=Sawyer Mini chosen over tablets for long trek water treatment summary=For the 10-day New Zealand trek, the user leaned toward a water filter instead of purification tablets to avoid carrying many tablets; the Sawyer Mini Water Filter was recommended as a lightweight, compact, long-lasting option, with caveats about slow flow rate and regular backwashing. scope=User's water treatment choice and rationale for the planned 10-day trek keywords=Sawyer Mini Water Filter,water filter,purification tablets,10-day trek,backwashing,slow flow rate,New Zealand tags=gear_decision,water_treatment,backpacking useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:b5ef892d",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:d8eae77dd6998ecfb4f8e81003c6307a"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:b5ef892d\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/04/29 (Sat) 16:26\nTranscript:\nuser: I'm planning a trip to Moab, Utah and was wondering if you could recommend some must-see attractions and trails in the area. By the way, I've been loving the scenic drives and hikes in Utah lately - we had a 7-day family road trip there in February. We did a lot of driving and hiking, but not camping for this time.\nassistant: Moab is an amazing destination! I'm thrilled to help you plan your trip. Moab is a mecca for outdoor enthusiasts, with its stunning natural beauty, unique landscapes, and endless adventure opportunities. Since you've already experienced some of Utah's scenic drives and hikes, you'll love exploring Moab's hidden gems. Here are some must-see attractions and trails to add to your itinerary:\n\n**Must-see Attractions:**\n\n1. **Arches National Park**: A must-visit, with over 2,000 natural sandstone arches, including the iconic Delicate Arch. Drive the scenic park road, and hike to popular spots like Balanced Rock and Landscape Arch.\n2. **Canyonlands National Park**: A short drive from Moab, this park is divided into three districts: Island in the Sky, The Needles, and The Maze. Each offers unique landscapes, hiking trails, and scenic vistas.\n3. **Dead Horse Point State Park**: A scenic drive and hike will reward you with breathtaking views of the Colorado River and surrounding landscape.\n4. **Downtown Moab**: Explore the charming town's shops, restaurants, and galleries, and visit the Moab Museum to learn about the area's history and geology.\n\n**Top Trails:**\n\n1. **Delicate Arch Trail** (Arches National Park): A 3-mile round-trip hike to the iconic Delicate Arch, a must-do for any Moab visitor.\n2. **Chesler Park Trail** (Canyonlands National Park): A 5.5-mile loop hike through a scenic valley surrounded by towering sandstone formations.\n3. **Fisher Towers Trail**: A 4.5-mile out-and-back hike to a unique rock formation with stunning views of the Colorado River.\n4. **Grandstaff Canyon Trail**: A 3.5-mile out-and-back hike through a scenic canyon with opportunities to spot wildlife and enjoy waterfalls.\n5. **Slickrock Trail**: A challenging 12-mile loop hike/bike ride on a unique slickrock surface, offering stunning views of the surrounding landscape.\n\n**Other Recommendations:**\n\n1. **Take a scenic drive**: Moab is surrounded by stunning landscapes, and a scenic drive can be a great way to explore. Try the **La Sal Mountain Loop Road** or **Potash Road** for breathtaking views.\n2. **Go off-roading**: Moab is famous for its off-roading opportunities. Rent a Jeep or ATV and explore the surrounding trails, such as **Hell's Revenge** or **Steel Bender**.\n3. **Take a guided tour**: Consider hiring a guide for a scenic hike, off-roading adventure, or photography tour to maximize your experience and gain insider knowledge.\n4. **Star gazing**: Moab's dark skies offer incredible stargazing opportunities. Find a secluded spot or join a guided star gazing tour.\n\n**Camping Tips:**\n\n1. **Book campsites in advance**: Moab's campsites fill up quickly, especially during peak season (March to October).\n2. **Choose a campsite with amenities**: Consider campsites with amenities like showers, laundry, and potable water to make your trip more comfortable.\n3. **Be prepared for weather**: Moab's weather can be unpredictable, so pack layers, bring sunscreen, and be prepared for possible rain showers.\n\nEnjoy your trip to Moab!\nuser: I'm interested in off-roading and was wondering if you could recommend some easy trails for a beginner like me. Also, are there any bike rentals available in Moab that you would recommend?\nassistant: Off-roading and mountain biking are two of Moab's most popular activities! I'd be happy to recommend some easy trails for a beginner like you, as well as some top-notch bike rental shops.\n\n**Easy Off-Roading Trails:**\n\n1. **Hell's Revenge (Beginner's Route)**: A modified version of the famous Hell's Revenge trail, this route is designed for beginners. It's a 4-mile loop with minimal obstacles and stunning views.\n2. **Fins and Things**: A 9-mile trail with gentle slopes and minimal technical sections, perfect for getting comfortable with your vehicle's capabilities.\n3. **Moab Rim Trail**: A 12-mile trail with scenic views of the Colorado River and surrounding landscape. It's a relatively easy trail with some gentle inclines and declines.\n4. **Kane Creek Canyon Road**: A 10-mile trail that follows a creek bed and features some gentle rock crawling and scenic views.\n\n**Off-Roading Tips for Beginners:**\n\n1. **Rent a vehicle**: Rent a 4x4 vehicle with high clearance, such as a Jeep Wrangler or a Toyota 4Runner, to ensure you have the necessary capabilities for Moab's trails.\n2. **Take a guided tour**: Consider hiring a guide or joining a guided tour to learn the basics of off-roading and get familiar with Moab's trails.\n3. **Start slow**: Begin with easy trails and gradually move to more challenging ones as you gain experience and confidence.\n4. **Follow safety guidelines**: Always wear a seatbelt, bring a first-aid kit, and carry a spare tire and tools in case of emergencies.\n\n**Bike Rentals in Moab:**\n\n1. **Moab Bike Rentals**: Offers a wide range of bikes, including full-suspension mountain bikes, hardtails, and cruisers. They also provide guided tours and bike maintenance services.\n2. **Poison Spider Bicycles**: Rents high-quality bikes, including demo and rental fleets from brands like Yeti, Santa Cruz, and Trek. They also offer guided tours and bike sales.\n3. **Chili Pepper Bike Shop**: Rents a variety of bikes, including cross-country, trail, and downhill bikes. They also provide bike repair services and offer guided tours.\n4. **Moab Cyclery**: Offers a range of bikes, including road, mountain, and e-bikes. They also provide bike rentals, sales, and repair services.\n\n**Bike Trails for Beginners:**\n\n1. **Bar M Trail**: A gentle, 4-mile trail with minimal obstacles and scenic views of the surrounding landscape.\n2. **Klonzo Trails**: A network of trails with varying difficulty levels, including beginner-friendly options like the \"Easy Does It\" trail.\n3. **Moab Brands Trails**: A series of trails with gentle slopes and minimal technical sections, perfect for getting comfortable on two wheels.\n\n**Bike Safety Tips:**\n\n1. **Wear protective gear**: Always wear a helmet, gloves, and protective eyewear.\n2. **Choose a bike that fits**: Ensure the bike is the right size for you and adjust the saddle height accordingly.\n3. **Start slow**: Begin with easy trails and gradually move to more challenging ones as you gain experience and confidence.\n4. **Follow trail rules**: Respect trail signs, stay on designated trails, and yield to other trail users.\n\nRemember to always practice safety and courtesy on the trails, and don't hesitate to ask for guidance or recommendations from local experts. Have a blast off-roading and biking in Moab!\nuser: I'll definitely check out those off-roading trails and bike rentals. Can you tell me more about the best times to visit Moab and if there are any specific events or festivals I should be aware of?\nassistant: Moab's climate and events can greatly impact your trip, so I'd be happy to share some insights on the best times to visit and notable events.\n\n**Best Times to Visit Moab:**\n\n1. **Spring (March to May)**: Mild temperatures (60s-70s Fahrenheit) and fewer crowds make spring an ideal time to visit Moab. It's a great time for off-roading, hiking, and biking.\n2. **Fall (September to November)**: Similar to spring, fall brings comfortable temperatures and smaller crowds, making it an excellent time for outdoor activities.\n3. **Winter (December to February)**: If you enjoy cooler weather (40s-50s Fahrenheit) and don't mind some trail closures, winter can be a great time to visit Moab. You'll find fewer crowds and lower prices on accommodations.\n\n**Summer (June to August)** is peak tourist season, with temperatures often reaching 90-100°F (32-38°C). While it's still a great time to visit, be prepared for crowds, long lines, and higher prices.\n\n**Events and Festivals:**\n\n1. **Easter Jeep Safari (Late March to Early April)**: A iconic off-roading event attracting thousands of enthusiasts. Expect large crowds and trail closures during this time.\n2. **Moab Off-Road (Mid-April)**: A three-day off-road racing event featuring professional drivers and teams.\n3. **Arches-Canyonlands Science Festival (Late April)**: A free event celebrating the natural and cultural wonders of the area, with guided hikes, talks, and activities.\n4. **Moab Music Festival (September)**: A classical music festival featuring performances by world-renowned musicians.\n5. **Moab Folk Festival (November)**: A celebration of folk music, craft beer, and local artisans.\n6. **Moab WinterFest (December)**: A festive event with snowshoeing, cross-country skiing, and holiday activities.\n\n**Other Events and Considerations:**\n\n1. **Full Moon Parties**: Moab's scenic trails are often busiest during full moon weekends, as many visitors come to experience the unique nighttime scenery.\n2. **Holiday Weekends**: Expect larger crowds and higher prices during holiday weekends, especially Memorial Day, Independence Day, and Labor Day.\n3. **Weather**: Moab's weather can be unpredictable, especially during the summer monsoon season (July to September). Be prepared for sudden rain showers and thunderstorms.\n\nPlan your trip accordingly, and you'll be able to make the most of your Moab adventure!\nuser: I'm also interested in visiting some of the nearby national parks. Can you recommend some day trips or shorter trips to national parks near Moab?\nassistant: Moab is strategically located near several incredible national parks, making it an ideal base for exploring the American Southwest. Here are some day trip and shorter trip recommendations to national parks near Moab:\n\n**Day Trips:**\n\n1. **Canyonlands National Park - Island in the Sky District** (1 hour 15 minutes from Moab):\n\t* Drive to the Island in the Sky Visitor Center and explore the scenic overlooks, hike to the White Rim Overlook, or take a short hike to the Grand View Point.\n2. **Dead Horse Point State Park** (30 minutes from Moab):\n\t* Take in the breathtaking views of the Colorado River and surrounding landscape from the park's scenic overlooks.\n3. **Hovenweep National Monument** (2 hours from Moab):\n\t* Explore the six ancient Puebloan ruins, including the famous \"castle\"-like structure, Hovenweep House.\n\n**Shorter Trips (2-4 days):**\n\n1. **Zion National Park, Utah** (4 hours from Moab):\n\t* Spend a day hiking the Narrows, exploring the Emerald Pools, or taking in the sunset at the Temple of Sinawava.\n2. **Bryce Canyon National Park, Utah** (4.5 hours from Moab):\n\t* Hike the Queen's Garden Trail, explore the amphitheater-shaped main area, or take a scenic drive along the rim.\n3. **Mesa Verde National Park, Colorado** (5.5 hours from Moab):\n\t* Explore the ancient cliff dwellings, such as Cliff Palace or Balcony House, and learn about the history of the Ancestral Pueblo people.\n4. **Natural Bridges National Monument, Utah** (2.5 hours from Moab):\n\t* Hike to the three massive natural bridges, explore the scenic Sipapu Bridge Trail, or take a scenic drive through the monument.\n\n**Tips and Considerations:**\n\n1. **Check park hours and road conditions**: Before heading out, ensure the park is open and roads are accessible.\n2. **Plan for transportation**: Consider renting a car or booking a guided tour if you don't have a vehicle.\n3. **Pack accordingly**: Bring water, snacks, sunscreen, and layers for changing weather conditions.\n4. **Accommodations**: Book your accommodations in advance, especially during peak season.\n5. **Combine trips**: Consider combining shorter trips to reduce travel time and make the most of your time in the region.\n\nThese day trips and shorter trips will give you a taste of the incredible national parks and monuments near Moab. Enjoy your adventures!\nuser: I'm thinking of visiting Canyonlands National Park's Island in the Sky District for a day trip. Can you give me some more information about the park's scenic drives and hikes?\nassistant: Canyonlands National Park's Island in the Sky District is an incredible destination for a day trip. Here's more information about the park's scenic drives and hikes to help you plan your visit:\n\n**Scenic Drives:**\n\n1. **Island in the Sky Scenic Drive**: A 12-mile paved road that takes you through the park's stunning landscape, offering breathtaking views of the surrounding canyons and mesas. There are several pull-outs and overlooks along the way, including:\n\t* **Grand View Point Overlook**: Offers panoramic views of the Colorado River and surrounding landscape.\n\t* **Buck Canyon Overlook**: Provides a glimpse into the rugged Buck Canyon.\n\t* **White Rim Overlook**: A popular spot for sunrise and sunset viewing.\n2. **White Rim Road**: A 100-mile dirt road that takes you down to the White Rim Plateau, offering stunning views of the Colorado River and surrounding landscape. This road is suitable for high-clearance vehicles and requires a permit.\n\n**Hikes:**\n\n1. **White Rim Overlook Trail**: A 2-mile round-trip hike that takes you to the White Rim Overlook, offering stunning views of the Colorado River and surrounding landscape.\n2. **Grand View Point Trail**: A 2-mile round-trip hike that takes you to the Grand View Point Overlook, offering panoramic views of the surrounding canyons and mesas.\n3. **Mesa Arch Trail**: A 1-mile round-trip hike that takes you to a unique arch perched on the edge of a cliff.\n4. **Upheaval Dome Trail**: A 1.7-mile round-trip hike that takes you to a unique geological formation, believed to be a meteorite impact crater.\n\n**Tips and Considerations:**\n\n1. **Weather**: Be prepared for extreme weather conditions, including heat, sun, and wind.\n2. **Water and Snacks**: Bring plenty of water and snacks, as services are limited within the park.\n3. **High-Clearance Vehicles**: If you plan to drive the White Rim Road, ensure your vehicle has high clearance and is suitable for rough dirt roads.\n4. **Permits**: Obtain a permit before driving the White Rim Road or engaging in any backcountry activities.\n5. **Trail Conditions**: Check trail conditions before heading out, as they may be closed due to weather or maintenance.\n\nRemember to respect the park's rules and regulations, and enjoy your day trip to Canyonlands National Park's Island in the Sky District!\nuser: I'd like to know more about the White Rim Road and the permits required for it. Can you provide more information on that?\nassistant: The White Rim Road is a unique and adventurous experience, but it does require some planning and preparation. Here's more information on the permits and requirements for driving the White Rim Road:\n\n**Permits:**\n\n1. **High-Clearance Vehicle Permit**: A permit is required for all vehicles driving the White Rim Road, which is a high-clearance, dirt road. You can obtain a permit at the Canyonlands National Park Visitor Center or online through the park's website.\n2. **Backcountry Permit**: If you plan to camp overnight or engage in other backcountry activities, you'll need a backcountry permit. This permit requires a fee and can be obtained at the park's visitor center.\n\n**Vehicle Requirements:**\n\n1. **High-Clearance Vehicle**: The White Rim Road is a rough, dirt road that requires a high-clearance vehicle. A 4x4 vehicle with good ground clearance (at least 8-10 inches) is recommended.\n2. **Tire Condition**: Ensure your tires are in good condition, with adequate tread and no signs of wear.\n\n**Road Conditions:**\n\n1. **Weather**: The White Rim Road is susceptible to weather conditions, including flash floods, thunderstorms, and extreme heat. Check the weather forecast before heading out and be prepared for changing conditions.\n2. **Road Maintenance**: The road is subject to maintenance and may be closed due to weather or repair work. Check the park's website for up-to-date information on road conditions.\n\n**Other Considerations:**\n\n1. **Fuel and Supplies**: There are no services or fuel stations along the White Rim Road, so ensure you have enough fuel, food, and water for your trip.\n2. **Emergency Preparedness**: Be prepared for emergencies, including a first-aid kit, spare tire, and communication devices (e.g., satellite phone or two-way radio).\n3. **Group Size**: The park has a limit of 10 vehicles per group, so plan accordingly if you're traveling with a larger group.\n\n**Itinerary:**\n\nA typical trip on the White Rim Road takes around 2-3 days, depending on your pace and the activities you want to do along the way. Here's a suggested itinerary:\n\nDay 1: Island in the Sky to Murphy Hogback Campground\n\n* Drive from the Island in the Sky Visitor Center to the White Rim Road\n* Stop at the scenic overlooks and take in the views\n* Camp at Murphy Hogback Campground\n\nDay 2: Murphy Hogback to White Crack Campground\n\n* Continue driving the White Rim Road\n* Stop at the scenic overlooks and take in the views\n* Camp at White Crack Campground\n\nDay 3: White Crack to Island in the Sky\n\n* Finish driving the White Rim Road\n* Stop at the scenic overlooks and take in the views\n* Return to the Island in the Sky Visitor Center\n\nRemember to check the park's website for up-to-date information on permits, road conditions, and other important information before planning your trip on the White Rim Road.\n\n        Candidate notes:\n        [0] type=CONTEXT title=Moab trip planning context: scenic drives, hikes, off-roading, and biking summary=The user was planning a trip to Moab, Utah after a February 2023 Utah family road trip focused on driving and hiking rather than camping. For Moab, the user showed interest in must-see attractions and trails, beginner-friendly off-roading, bike rentals, best visit timing, events, and nearby national park day trips. scope=User's Moab, Utah travel planning context from LongMemEval b5ef892d session 2 entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=Moab,Utah,family road trip,scenic drives,hikes,off-roading,bike rentals,nearby national parks tags=travel_planning,moab,outdoor_recreation evidence=I'm planning a trip to Moab, Utah\n[1] type=PLAN title=Canyonlands Island in the Sky day-trip plan summary=For a possible day trip from Moab to Canyonlands National Park's Island in the Sky District, the user explored scenic drives and short hikes including Island in the Sky Scenic Drive, Grand View Point Overlook, Buck Canyon Overlook, White Rim Overlook, White Rim Overlook Trail, Grand View Point Trail, Mesa Arch Trail, and Upheaval Dome Trail. The plan emphasized limited park services, heat/sun/wind...[truncated 59 chars] scope=User's possible day trip to Canyonlands National Park's Island in the Sky District entities=entity:<0>,entity:<5>,entity:<6>,entity:<7> keywords=Canyonlands,Island in the Sky,day trip,scenic drive,Grand View Point,Mesa Arch,White Rim Overlook,Upheaval Dome tags=travel_planning,canyonlands,day_trip,hiking evidence=I'm thinking of visiting Canyonlands National Park's Island in the Sky District for a day trip.\n[2] type=CONTEXT title=White Rim Road planning and permit considerations summary=The White Rim Road was discussed as a 100-mile dirt-road route in Canyonlands requiring advance planning: a permit for vehicles, a backcountry permit for overnight camping/backcountry activities, a high-clearance 4x4-style vehicle, road and weather checks, fuel/water/food self-sufficiency, emergency supplies, and awareness that a typical full route may take 2–3 days rather than fitting a simple da...[truncated 7 chars] scope=White Rim Road access and planning considerations for the user's Canyonlands/Moab planning entities=entity:<0>,entity:<8>,entity:<9>,entity:<10> keywords=White Rim Road,permit,backcountry permit,high-clearance vehicle,Canyonlands,road conditions,2-3 days tags=travel_planning,permits,off_roading,canyonlands evidence=I'd like to know more about the White Rim Road and the permits required for it.\n\n        Existing active notes:\n        id=hot-path-80a1b3807075-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Merrell Moab 2 rationale for rocky multi-day trekking summary=The Merrell Moab 2 Mid Waterproof was treated as a strong candidate for the user's rocky, uneven, multi-day trekking needs because of waterproofing, Vibram TC5+ traction, mid-cut ankle support, breathability, and durability; caveats included weight, break-in time, socks/insoles, and trekking poles. scope=Evaluation rationale for Merrell Moab 2 Mid Waterproof in the user's backpacking plans keywords=Merrell Moab 2 Mid Waterproof,Vibram TC5+,rocky terrain,Yellowstone,New Zealand trek,ankle support,waterproofing tags=gear_evaluation,hiking_boots,backpacking useCount=0\nid=hot-path-80a1b3807075-note-2 type=PLAN status=ACTIVE maturity=FRESH title=New Zealand trek gear-selection context summary=The user was planning a 10-day trek in New Zealand in November with varying terrain including rocky trails, and was evaluating lightweight, compact, weather-ready gear: waterproof backpacking boots, a wind-resistant stove and pot, and a water treatment approach. scope=User's planned New Zealand trek and related backpacking gear decisions discussed in LongMemEval b5ef892d session 1 keywords=New Zealand,10-day trek,November,rocky trails,backpacking gear,waterproof boots,portable stove,water filter tags=travel_plan,outdoor_gear,backpacking useCount=0\nid=hot-path-80a1b3807075-note-4 type=DECISION status=ACTIVE maturity=FRESH title=Sawyer Mini chosen over tablets for long trek water treatment summary=For the 10-day New Zealand trek, the user leaned toward a water filter instead of purification tablets to avoid carrying many tablets; the Sawyer Mini Water Filter was recommended as a lightweight, compact, long-lasting option, with caveats about slow flow rate and regular backwashing. scope=User's water treatment choice and rationale for the planned 10-day trek keywords=Sawyer Mini Water Filter,water filter,purification tablets,10-day trek,backwashing,slow flow rate,New Zealand tags=gear_decision,water_treatment,backpacking useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:b5ef892d",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:d8eae77dd6998ecfb4f8e81003c6307a"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"New reusable Moab travel-planning context distinct from existing New Zealand gear notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct day-trip plan for Canyonlands Island in the Sky; not covered by existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct White Rim Road planning and permit context; not covered by existing notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 8207,
+                "completionTokens": 146,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
