@@ -342,12 +342,12 @@ class LongMemEvalMemorySmokeTest {
             progressPath,
             "answer_judge_done id=${entry.questionId} supported=${answerJudgement.supported} reason=${answerJudgement.reason.oneLineForArtifact(240)}"
         )
-        val memorySmokePassReason = when {
-            answerJudgement.supported -> "answer_judge"
-            allEvidenceSourcesHit == true -> "all_expected_evidence_sources_selected"
-            else -> "missing_supported_answer_or_gold_sources"
+        val memorySmokePassReason = if (answerJudgement.supported) {
+            "answer_judge"
+        } else {
+            "unsupported_answer"
         }
-        val memorySmokePassed = memorySmokePassReason != "missing_supported_answer_or_gold_sources"
+        val memorySmokePassed = answerJudgement.supported
         val caseDossierPath = caseArtifactDirectory.resolve("${entry.questionId.sanitizePathSegment()}.md")
         caseDossierPath.writeText(
             renderCaseDossier(
@@ -418,6 +418,7 @@ class LongMemEvalMemorySmokeTest {
                     Do not use hidden knowledge, the benchmark expected answer, or assumptions outside retrieved memory.
                     LongMemEval questions can contain noisy or approximate relative dates. Treat temporal wording as a retrieval hint, not as a hard filter, when retrieved memory contains one uniquely relevant event for the rest of the question. If the date is inconsistent but the remembered event clearly answers the user intent, answer the intent and mention the date uncertainty only if it materially matters.
                     For yes/no questions about whether an event involved a specific person, relation, or participant category, answer "no" when retrieved memory names a different participant and contains no evidence that the asked participant was also present.
+                    For arithmetic, savings, comparison, and count questions, compute only when retrieved memory explicitly provides compatible operands for the exact requested items, route, time, and scope. Do not substitute generic advice, adjacent alternatives, broad ranges, or assistant-suggested examples for a missing operand.
                     If retrieved memory is insufficient or conflicting, say that the available memory is insufficient.
                     Fill reasoning with one concise evidence sentence naming the selected remembered event, the remembered participant if relevant, the asked participant if relevant, and the conclusion.
                     Keep the answer concise and directly responsive.
@@ -440,6 +441,7 @@ class LongMemEvalMemorySmokeTest {
                                 LongMemEval evaluation note:
                                 the benchmark question's relative date can be noisy. If the retrieved memory has one uniquely relevant event matching the non-date part of the question, do not reject it solely because the relative date wording is approximate.
                                 For yes/no participant questions, a remembered different participant is enough to answer "no" unless retrieved memory also supports the asked participant being present.
+                                For arithmetic or comparison questions, use only explicit matching operands from retrieved memory. If one operand is missing or only generic, answer that the available memory is insufficient.
 
                                 Current date:
                                 ${entry.questionDate}

@@ -76,6 +76,10 @@ that hypothesis with the expected answer for development feedback. The
 `official-hypotheses.jsonl` file is the one to pass to LongMemEval's external
 `evaluate_qa.py gpt-4o ...` scorer.
 
+`memory smoke pass` is intentionally answer-level: evidence-source hits are
+reported as retrieval diagnostics, but they do not make an unsupported answer
+pass.
+
 The default-Gromozeka prompt used for hypothesis generation is pinned in:
 
 ```text

@@ -1,0 +1,179 @@
+{
+    "version": 1,
+    "hash": "2f11900f29fdbbb5b92af9a728a8816715c71a4378c8929acd6d605c811edd26",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Question:\nHow much will I save by taking the bus from the airport to my hotel instead of a taxi?\n\nQuestion date:\n2023/05/28 (Sun) 06:58\n\nNoisy expected-answer label:\nThe information provided is not enough. You did not mention how much will the bus take.\n\nCandidate answer:\nThe available memory is insufficient to calculate the exact savings.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "09ba9854_abs",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nMark supported=true when the candidate answer is equivalent to the expected answer or contains all central facts needed to answer.\nMark supported=false when the candidate answer misses the central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nThe expected-answer label can contain noisy illustrative examples or broad inferences; do not require every illustrative example when the candidate gives the central answer.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nMark supported=true when the candidate answer is equivalent to the expected answer or contains all central facts needed to answer.\nMark supported=false when the candidate answer misses the central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nThe expected-answer label can contain noisy illustrative examples or broad inferences; do not require every illustrative example when the candidate gives the central answer.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Question:\nHow much will I save by taking the bus from the airport to my hotel instead of a taxi?\n\nQuestion date:\n2023/05/28 (Sun) 06:58\n\nNoisy expected-answer label:\nThe information provided is not enough. You did not mention how much will the bus take.\n\nCandidate answer:\nThe available memory is insufficient to calculate the exact savings.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "09ba9854_abs",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"It correctly states that there is not enough information to calculate the savings.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 334,
+                "completionTokens": 68,
+                "thinkingTokens": 31,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

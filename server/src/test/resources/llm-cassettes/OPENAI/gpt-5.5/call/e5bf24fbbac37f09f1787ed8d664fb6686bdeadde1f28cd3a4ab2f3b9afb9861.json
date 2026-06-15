@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "hash": "817ff7fff3a1a70eb3bfd0d5f5a81ff89c2283d6fe3b9a536de6ea25887a12be",
+    "hash": "e5bf24fbbac37f09f1787ed8d664fb6686bdeadde1f28cd3a4ab2f3b9afb9861",
     "provider": "OPENAI",
     "model": "gpt-5.5",
     "operation": "call",
@@ -12,7 +12,7 @@
                 "content": [
                     {
                         "state": "COMPLETE",
-                        "text": "Question:\nI mentioned visiting a museum two months ago. Did I visit with a friend or not?\n\nQuestion date:\n2023/03/11 (Sat) 21:26\n\nNoisy expected-answer label:\nNo, you did not visit with a friend.\n\nCandidate answer:\nNo. You visited the Natural History Museum with your dad, not a friend.",
+                        "text": "Question:\nI mentioned visiting a museum two months ago. Did I visit with a friend or not?\n\nQuestion date:\n2023/03/11 (Sat) 21:26\n\nNoisy expected-answer label:\nNo, you did not visit with a friend.\n\nCandidate answer:\nNo. You visited with your dad, not a friend.",
                         "type": "Message"
                     }
                 ],
@@ -80,7 +80,7 @@
                 "content": [
                     {
                         "state": "COMPLETE",
-                        "text": "Question:\nI mentioned visiting a museum two months ago. Did I visit with a friend or not?\n\nQuestion date:\n2023/03/11 (Sat) 21:26\n\nNoisy expected-answer label:\nNo, you did not visit with a friend.\n\nCandidate answer:\nNo. You visited the Natural History Museum with your dad, not a friend.",
+                        "text": "Question:\nI mentioned visiting a museum two months ago. Did I visit with a friend or not?\n\nQuestion date:\n2023/03/11 (Sat) 21:26\n\nNoisy expected-answer label:\nNo, you did not visit with a friend.\n\nCandidate answer:\nNo. You visited with your dad, not a friend.",
                         "type": "Message"
                     }
                 ],
@@ -148,7 +148,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"reason\":\"The candidate clearly states that the museum visit was not with a friend, matching the expected answer.\",\"supported\":true}",
+                                "fullText": "{\"reason\":\"The candidate clearly states that the visit was not with a friend, matching the expected answer.\",\"supported\":true}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -163,9 +163,9 @@
                 }
             ],
             "usage": {
-                "promptTokens": 329,
-                "completionTokens": 67,
-                "thinkingTokens": 25,
+                "promptTokens": 325,
+                "completionTokens": 71,
+                "thinkingTokens": 30,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0
             },
