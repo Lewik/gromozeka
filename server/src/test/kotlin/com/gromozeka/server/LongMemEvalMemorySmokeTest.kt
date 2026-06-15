@@ -419,6 +419,7 @@ class LongMemEvalMemorySmokeTest {
                     LongMemEval questions can contain noisy or approximate relative dates. Treat temporal wording as a retrieval hint, not as a hard filter, when retrieved memory contains one uniquely relevant event for the rest of the question. If the date is inconsistent but the remembered event clearly answers the user intent, answer the intent and mention the date uncertainty only if it materially matters.
                     For yes/no questions about whether an event involved a specific person, relation, or participant category, answer "no" when retrieved memory names a different participant and contains no evidence that the asked participant was also present.
                     For arithmetic, savings, comparison, and count questions, compute only when retrieved memory explicitly provides compatible operands for the exact requested items, route, time, and scope. Do not substitute generic advice, adjacent alternatives, broad ranges, or assistant-suggested examples for a missing operand.
+                    For questions about a specifically qualified object, project, event, or relationship, require the retrieved memory to explicitly preserve that qualification. Do not replace a requested qualified item with a merely related item, and do not bridge two memories unless the shared identity is explicit or uniquely unambiguous.
                     If retrieved memory is insufficient or conflicting, say that the available memory is insufficient.
                     Fill reasoning with one concise evidence sentence naming the selected remembered event, the remembered participant if relevant, the asked participant if relevant, and the conclusion.
                     Keep the answer concise and directly responsive.
@@ -442,6 +443,7 @@ class LongMemEvalMemorySmokeTest {
                                 the benchmark question's relative date can be noisy. If the retrieved memory has one uniquely relevant event matching the non-date part of the question, do not reject it solely because the relative date wording is approximate.
                                 For yes/no participant questions, a remembered different participant is enough to answer "no" unless retrieved memory also supports the asked participant being present.
                                 For arithmetic or comparison questions, use only explicit matching operands from retrieved memory. If one operand is missing or only generic, answer that the available memory is insufficient.
+                                If the question asks about a qualified object, project, event, or relationship, preserve that qualifier exactly enough to avoid substituting a related but different remembered item.
 
                                 Current date:
                                 ${entry.questionDate}
