@@ -748,7 +748,7 @@ object RuntimeMemoryPromptComposer {
 
         val historicalMemoryInstruction =
             if (request.targetAsksForHistoricalTypedMemory(plan)) {
-                "If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value."
+                "If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value. If a selected non-current typed claim directly gives the requested historical value, use that exact typed value instead of recomputing from vague or approximate source wording."
             } else {
                 null
             }
@@ -768,6 +768,7 @@ object RuntimeMemoryPromptComposer {
             For date-scoped questions, a candidate whose event or source date matches the requested period is stronger than an ACTIVE typed fact from outside the period.
             For unqualified current/usual/status questions with conflicting ACTIVE facts, prefer the most recent explicit event or source date as the current answer. Use older scoped facts only when the user asks for that specific scope, such as a particular day, project, person, place, or time period.
             If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.
+            For aggregate total/count questions, count only explicit numeric operands or explicit list items that the retrieved memory places in the requested aggregate. Do not add an implicit count of 1 for a singular mentioned object unless memory says it belongs to the counted inventory, collection, or total.
             For aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.
             For category-scoped count/list questions, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.
             For replaced/fixed/upgraded household-item counts, count one functional slot when memory says the user fixed it, replaced it with a newer item, got rid of or donated the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the user asks for inventory.
