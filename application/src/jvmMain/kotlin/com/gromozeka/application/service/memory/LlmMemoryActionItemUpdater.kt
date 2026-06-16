@@ -21,7 +21,6 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -102,6 +101,7 @@ class LlmMemoryActionItemUpdater(
                             existingActionItems = existingActionItems,
                             entityRefs = entityRefValidator,
                             operationPath = "operations[$index]",
+                            timezone = timezone,
                         )
                     }
             },
@@ -178,13 +178,14 @@ class LlmMemoryActionItemUpdater(
             existingActionItems: List<MemoryActionItem>,
             entityRefs: MemoryEntityRefValidator,
             operationPath: String,
+            timezone: String,
         ): MemoryActionItemUpdateOp? {
             val target = targetActionItemId.toActionItemMemoryIdTextOrNull()?.let { MemoryActionItem.Id(it) }
             if (target != null && existingActionItems.none { it.id == target }) {
                 return null
             }
 
-            val draft = actionItem?.toDraft(request, entityRefs, "$operationPath.action_item")
+            val draft = actionItem?.toDraft(request, entityRefs, "$operationPath.action_item", timezone)
             return when (action.trim().lowercase()) {
                 "insert" -> draft?.takeIf { !it.evidenceQuote.isNullOrBlank() }?.let {
                     MemoryActionItemUpdateOp(
@@ -264,6 +265,7 @@ class LlmMemoryActionItemUpdater(
             request: DirectStructuredMemoryWriteRequest,
             entityRefs: MemoryEntityRefValidator,
             actionItemPath: String,
+            timezone: String,
         ): MemoryActionItemUpdateOp.Draft? {
             val cleanTitle = title.trim().take(180)
             if (cleanTitle.isBlank()) return null
@@ -288,7 +290,7 @@ class LlmMemoryActionItemUpdater(
                 assigneeEntityId = assignee,
                 status = status.toMemoryActionItemStatus(),
                 priority = priority.toMemoryActionItemPriority(),
-                dueAt = dueAt.toActionItemInstantOrNull(),
+                dueAt = dueAt.toMemoryInstantOrNull(timezone),
                 acceptanceCriteria = acceptanceCriteria.cleanActionItemTextList(maxItems = 8, maxChars = 180),
                 blockers = blockers.cleanActionItemTextList(maxItems = 8, maxChars = 180),
                 relatedEntityIds = related,
@@ -500,11 +502,6 @@ private fun String.toMemoryActionItemEvidenceKind(): MemoryEvidenceRef.Kind =
         "derived_from_note" -> MemoryEvidenceRef.Kind.DERIVED_FROM_NOTE
         else -> MemoryEvidenceRef.Kind.DIRECT
     }
-
-private fun String?.toActionItemInstantOrNull(): Instant? {
-    val value = this?.trim()?.takeIf { it.isNotBlank() && it != "null" } ?: return null
-    return runCatching { Instant.parse(value) }.getOrNull()
-}
 
 private fun String?.toActionItemMemoryIdTextOrNull(): String? {
     val value = this?.trim()?.takeIf { it.isNotBlank() } ?: return null

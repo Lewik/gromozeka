@@ -1,0 +1,678 @@
+{
+    "version": 1,
+    "hash": "7d8d759d2f77427b5804e9d7526d96b952a3ec4bb2b951aea00c6fd3d27312b6",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/predicate-semantics-aggregate-delta",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ledger baseline: as of 2026-05-01, Project Atlas accessibility queue current open design review ticket count is 4.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.75,\"reason\":\"Durable dated project status baseline.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":1,\"claims\":1,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, actionItems=0, entities=1; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"current_metric_value\",\"status\":\"ACTIVE\",\"text\":\"As of 2026-05-01, the Project Atlas accessibility queue had a current open design review ticket count of 4.\"}],\"notes\":[],\"actionItems\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"CONCEPT\",\"name\":\"Project Atlas accessibility queue\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Noted.",
+                            "ttsText": "",
+                            "voiceTone": ""
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ledger delta: on 2026-05-04, Project Atlas accessibility queue increased by exactly 2 open design review tickets.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.8,\"reason\":\"Dated durable project state change about Project Atlas accessibility queue.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":2,\"sources\":0,\"runs\":1,\"entities\":1,\"claims\":3,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=3, actionItems=0, entities=1; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<1>\",\"predicate\":\"aggregate_increase\",\"status\":\"ACTIVE\",\"text\":\"On 2026-05-04, the Project Atlas accessibility queue increased by exactly 2 open design review tickets.\"},{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"current_metric_value\",\"status\":\"SUPERSEDED\",\"text\":\"As of 2026-05-01, the Project Atlas accessibility queue had a current open design review ticket count of 4.\"},{\"id\":\"hot-path:claim:<2>\",\"predicate\":\"current_metric_value\",\"status\":\"ACTIVE\",\"text\":\"Project Atlas accessibility queue current open design review ticket count current aggregate count is 6.\"}],\"notes\":[],\"actionItems\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"CONCEPT\",\"name\":\"Project Atlas accessibility queue\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":2,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"MEMORY-ONLY CONTEXT\\nThis message is not part of the real conversation and must not be stored as evidence.\\nThe retrieved memory below was selected for the immediately following user request.\\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\nIf selected typed memory is incomplete for an exact requested detail, use selected source evidence as fallback evidence; extract only explicit source facts and say memory is insufficient when the source still does not contain the detail.\\nIf the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value. If a selected non-current typed claim directly gives the requested historical value, use that exact typed value instead of recomputing from vague or approximate source wording.\\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering. For ordering or comparison between named alternatives, require explicit retrieved evidence for every compared alternative; if one alternative is missing, answer that memory is insufficient instead of ranking the known alternative.\\nIf the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\\nFor date-scoped questions, a candidate whose event or source date matches the requested period is stronger than an ACTIVE typed fact from outside the period.\\nFor unqualified current/usual/status questions with conflicting ACTIVE facts, prefer the most recent explicit event or source date as the current answer. Use older scoped facts only when the user asks for that specific scope, such as a particular day, project, person, place, or time period.\\nIf Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\nFor numeric count/list answers, first form the set of counted items from retrieved memory and make the final number match that set size. If a selected ranked reference is a plausible counted item, include it or explicitly exclude it; do not silently ignore it.\\nFor aggregate total/count questions, count only explicit numeric operands or explicit list items that the retrieved memory places in the requested aggregate. Do not add an implicit count of 1 for a singular mentioned object unless memory says it belongs to the counted inventory, collection, or total. For current aggregate totals, first find the latest explicit baseline total for the same collection, then apply later explicit additions or removals in chronological order. A direct older current_metric_value is not final when selected later memory explicitly adds or removes an item in the same aggregate.\\nFor count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, count evidence-backed variants that satisfy the requested category even when retrieved memory uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not count merely adjacent examples.\\nFor acquisition-style count/list questions, count concrete physical or digital items when retrieved memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; do not count mere mentions, interests, recommendations, or assistant-only suggestions.\\nFirst-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Do not use this shortcut when the question asks for purchase/download transaction details such as price, store, payment, download source, or exact date.\\nTreat \\\"how many X did I buy/download/acquire/get\\\" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.\\nFor broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.\\nIn count/list questions, broad category labels are category-fit tests, not exact-word qualifiers. Do not exclude a plausible counted item solely because memory names a member, carrier, copy, or concrete instance instead of repeating the category label.\\nFor specifically qualified questions, satisfy every explicit qualifier in the question. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting.\\nFor formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline. Include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the asked span.\\nFor aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.\\nFor category-scoped count/list questions, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.\\nFor replaced/fixed/upgraded household-item counts, count one functional slot when memory says the user fixed it, replaced it with a newer item, got rid of or donated the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the user asks for inventory.\\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\nNamespace: project:<0>\\nAnswer mode: FACTUAL\\nCoverage mode: MINIMAL\\nRequire evidence fallback: false\\n\\nRetrieved profile:\\nnone\\n\\nRetrieved action items:\\nnone\\n\\nRetrieved claims:\\n- claim hot-path:claim:<1> [ACTIVE] aggregate_increase family=aggregate_increase: On 2026-05-04, the Project Atlas accessibility queue increased by exactly 2 open design review tickets.; scope=Project Atlas accessibility queue open design review ticket count; context=\\\"The aggregate is the open design review ticket count in the Project Atlas accessibility queue.\\\"\\n\\nRetrieved notes:\\nnone\\n\\nRetrieved evidence:\\nnot requested for this answer mode\\n\\nRetrieved entities:\\n- entity entity:<0> [CONCEPT]: Project Atlas accessibility queue; Concept named Project Atlas accessibility queue.\\n\\nRetrieved episodes:\\nnone\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"summary\":\"On 2026-05-04, the Project Atlas accessibility queue increased by exactly 2 open design review tickets.\",\"predicate\":\"aggregate_increase\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"chat:<1>\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"CONCEPT:Project Atlas accessibility queue\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Direct active claim for the target delta on 2026-05-04.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Derived current aggregate value, not needed to answer the delta itself.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Superseded baseline count, only needed for aggregate calculation, not the delta claim.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic entity anchor not needed because the selected claim contains the named scope.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 840000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/predicate-semantics-aggregate-delta"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ledger baseline: as of 2026-05-01, Project Atlas accessibility queue current open design review ticket count is 4.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.75,\"reason\":\"Durable dated project status baseline.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":1,\"claims\":1,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, actionItems=0, entities=1; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"current_metric_value\",\"status\":\"ACTIVE\",\"text\":\"As of 2026-05-01, the Project Atlas accessibility queue had a current open design review ticket count of 4.\"}],\"notes\":[],\"actionItems\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"CONCEPT\",\"name\":\"Project Atlas accessibility queue\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Noted.",
+                            "ttsText": "",
+                            "voiceTone": ""
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ledger delta: on 2026-05-04, Project Atlas accessibility queue increased by exactly 2 open design review tickets.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.8,\"reason\":\"Dated durable project state change about Project Atlas accessibility queue.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":2,\"sources\":0,\"runs\":1,\"entities\":1,\"claims\":3,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=3, actionItems=0, entities=1; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<1>\",\"predicate\":\"aggregate_increase\",\"status\":\"ACTIVE\",\"text\":\"On 2026-05-04, the Project Atlas accessibility queue increased by exactly 2 open design review tickets.\"},{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"current_metric_value\",\"status\":\"SUPERSEDED\",\"text\":\"As of 2026-05-01, the Project Atlas accessibility queue had a current open design review ticket count of 4.\"},{\"id\":\"hot-path:claim:<2>\",\"predicate\":\"current_metric_value\",\"status\":\"ACTIVE\",\"text\":\"Project Atlas accessibility queue current open design review ticket count current aggregate count is 6.\"}],\"notes\":[],\"actionItems\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"CONCEPT\",\"name\":\"Project Atlas accessibility queue\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":2,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"MEMORY-ONLY CONTEXT\\nThis message is not part of the real conversation and must not be stored as evidence.\\nThe retrieved memory below was selected for the immediately following user request.\\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\nIf selected typed memory is incomplete for an exact requested detail, use selected source evidence as fallback evidence; extract only explicit source facts and say memory is insufficient when the source still does not contain the detail.\\nIf the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value. If a selected non-current typed claim directly gives the requested historical value, use that exact typed value instead of recomputing from vague or approximate source wording.\\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering. For ordering or comparison between named alternatives, require explicit retrieved evidence for every compared alternative; if one alternative is missing, answer that memory is insufficient instead of ranking the known alternative.\\nIf the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\\nFor date-scoped questions, a candidate whose event or source date matches the requested period is stronger than an ACTIVE typed fact from outside the period.\\nFor unqualified current/usual/status questions with conflicting ACTIVE facts, prefer the most recent explicit event or source date as the current answer. Use older scoped facts only when the user asks for that specific scope, such as a particular day, project, person, place, or time period.\\nIf Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\nFor numeric count/list answers, first form the set of counted items from retrieved memory and make the final number match that set size. If a selected ranked reference is a plausible counted item, include it or explicitly exclude it; do not silently ignore it.\\nFor aggregate total/count questions, count only explicit numeric operands or explicit list items that the retrieved memory places in the requested aggregate. Do not add an implicit count of 1 for a singular mentioned object unless memory says it belongs to the counted inventory, collection, or total. For current aggregate totals, first find the latest explicit baseline total for the same collection, then apply later explicit additions or removals in chronological order. A direct older current_metric_value is not final when selected later memory explicitly adds or removes an item in the same aggregate.\\nFor count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, count evidence-backed variants that satisfy the requested category even when retrieved memory uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not count merely adjacent examples.\\nFor acquisition-style count/list questions, count concrete physical or digital items when retrieved memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; do not count mere mentions, interests, recommendations, or assistant-only suggestions.\\nFirst-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Do not use this shortcut when the question asks for purchase/download transaction details such as price, store, payment, download source, or exact date.\\nTreat \\\"how many X did I buy/download/acquire/get\\\" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.\\nFor broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.\\nIn count/list questions, broad category labels are category-fit tests, not exact-word qualifiers. Do not exclude a plausible counted item solely because memory names a member, carrier, copy, or concrete instance instead of repeating the category label.\\nFor specifically qualified questions, satisfy every explicit qualifier in the question. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting.\\nFor formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline. Include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the asked span.\\nFor aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.\\nFor category-scoped count/list questions, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.\\nFor replaced/fixed/upgraded household-item counts, count one functional slot when memory says the user fixed it, replaced it with a newer item, got rid of or donated the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the user asks for inventory.\\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\nNamespace: project:<0>\\nAnswer mode: FACTUAL\\nCoverage mode: MINIMAL\\nRequire evidence fallback: false\\n\\nRetrieved profile:\\nnone\\n\\nRetrieved action items:\\nnone\\n\\nRetrieved claims:\\n- claim hot-path:claim:<1> [ACTIVE] aggregate_increase family=aggregate_increase: On 2026-05-04, the Project Atlas accessibility queue increased by exactly 2 open design review tickets.; scope=Project Atlas accessibility queue open design review ticket count; context=\\\"The aggregate is the open design review ticket count in the Project Atlas accessibility queue.\\\"\\n\\nRetrieved notes:\\nnone\\n\\nRetrieved evidence:\\nnot requested for this answer mode\\n\\nRetrieved entities:\\n- entity entity:<0> [CONCEPT]: Project Atlas accessibility queue; Concept named Project Atlas accessibility queue.\\n\\nRetrieved episodes:\\nnone\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"summary\":\"On 2026-05-04, the Project Atlas accessibility queue increased by exactly 2 open design review tickets.\",\"predicate\":\"aggregate_increase\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"chat:<1>\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"CONCEPT:Project Atlas accessibility queue\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Direct active claim for the target delta on 2026-05-04.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Derived current aggregate value, not needed to answer the delta itself.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Superseded baseline count, only needed for aggregate calculation, not the delta claim.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic entity anchor not needed because the selected claim contains the named scope.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 840000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/predicate-semantics-aggregate-delta"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Noted.",
+                                "ttsText": "",
+                                "voiceTone": "",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3428,
+                "completionTokens": 28,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

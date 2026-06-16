@@ -23,7 +23,6 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -98,6 +97,7 @@ class LlmMemoryNoteConsolidator(
                     selectedById = selectedById,
                     existingTaskIds = existingTaskIds,
                     entityRefs = entityRefValidator,
+                    timezone = timezone,
                 )
             },
         )
@@ -217,6 +217,7 @@ class LlmMemoryNoteConsolidator(
             selectedById: Map<MemoryNote.Id, MemoryNote>,
             existingTaskIds: Set<MemoryActionItem.Id>,
             entityRefs: MemoryEntityRefValidator,
+            timezone: String,
         ): MappedNoteConsolidationResult =
             MappedNoteConsolidationResult(
                 claimCandidates = claimCandidates.mapIndexedNotNull { index, candidate ->
@@ -225,6 +226,7 @@ class LlmMemoryNoteConsolidator(
                         selectedById = selectedById,
                         entityRefs = entityRefs,
                         candidatePath = "claim_candidates[$index]",
+                        timezone = timezone,
                     )
                 },
                 actionItemActions = actionItemActions.mapIndexedNotNull { index, action ->
@@ -234,6 +236,7 @@ class LlmMemoryNoteConsolidator(
                         existingTaskIds = existingTaskIds,
                         entityRefs = entityRefs,
                         actionPath = "action_item_actions[$index]",
+                        timezone = timezone,
                     )
                 },
                 profileProjection = profilePatch?.toProfileProjection(),
@@ -296,6 +299,7 @@ class LlmMemoryNoteConsolidator(
             selectedById: Map<MemoryNote.Id, MemoryNote>,
             entityRefs: MemoryEntityRefValidator,
             candidatePath: String,
+            timezone: String,
         ): MemoryClaimCandidate? {
             val originNote = originNoteId.toNoteIdOrNull()?.let(selectedById::get) ?: return null
             val subjectId = entityRefs.optional(subjectEntityId, "$candidatePath.subject_entity_id")
@@ -325,8 +329,8 @@ class LlmMemoryNoteConsolidator(
                 qualifiers = qualifiersJson ?: JsonObject(emptyMap()),
                 confidence = confidence.coerceIn(0.0, 1.0),
                 importance = importance.coerceIn(1, 10),
-                validFrom = validFrom.toMaintenanceInstantOrNull(),
-                validTo = validTo.toMaintenanceInstantOrNull(),
+                validFrom = validFrom.toMemoryInstantOrNull(timezone),
+                validTo = validTo.toMemoryInstantOrNull(timezone),
                 evidenceQuote = evidenceQuote.cleanNullableText(500),
                 evidenceKind = evidenceKind.toMaintenanceEvidenceKind(),
                 evidenceReason = evidenceReason.trim().take(500),
@@ -353,12 +357,13 @@ class LlmMemoryNoteConsolidator(
             existingTaskIds: Set<MemoryActionItem.Id>,
             entityRefs: MemoryEntityRefValidator,
             actionPath: String,
+            timezone: String,
         ): MemoryActionItemUpdateOp? {
             val target = targetActionItemId.toMemoryIdOrNull()?.let { MemoryActionItem.Id(it) }
             if (target != null && target !in existingTaskIds) return null
 
             val originNote = originNoteId.toNoteIdOrNull()?.let(selectedById::get)
-            val draft = actionItem?.toDraft(request, originNote, entityRefs, "$actionPath.action_item")
+            val draft = actionItem?.toDraft(request, originNote, entityRefs, "$actionPath.action_item", timezone)
 
             return when (action.trim().lowercase()) {
                 "insert" -> draft?.let {
@@ -440,6 +445,7 @@ class LlmMemoryNoteConsolidator(
             originNote: MemoryNote?,
             entityRefs: MemoryEntityRefValidator,
             actionItemPath: String,
+            timezone: String,
         ): MemoryActionItemUpdateOp.Draft? {
             val cleanTitle = title.trim().take(180)
             if (cleanTitle.isBlank()) return null
@@ -457,7 +463,7 @@ class LlmMemoryNoteConsolidator(
                 assigneeEntityId = assignee,
                 status = status.toMaintenanceTaskStatus(),
                 priority = priority.toMaintenanceTaskPriority(),
-                dueAt = dueAt.toMaintenanceInstantOrNull(),
+                dueAt = dueAt.toMemoryInstantOrNull(timezone),
                 acceptanceCriteria = acceptanceCriteria.cleanTextList(8, 180),
                 blockers = blockers.cleanTextList(8, 180),
                 relatedEntityIds = related,
@@ -737,11 +743,6 @@ private fun String?.toMemoryIdOrNull(): String? {
 
 private fun String?.toNoteIdOrNull(): MemoryNote.Id? =
     toMemoryIdOrNull()?.let { MemoryNote.Id(it) }
-
-private fun String?.toMaintenanceInstantOrNull(): Instant? {
-    val value = cleanNullableText(80) ?: return null
-    return runCatching { Instant.parse(value) }.getOrNull()
-}
 
 private fun String?.cleanNullableText(maxChars: Int): String? =
     this?.trim()

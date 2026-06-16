@@ -1,6 +1,7 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.ai.AiResponseFormat
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -189,6 +190,12 @@ internal object MemoryStructuredResponseFormats {
                     "cardinality" to nullableStringEnumSchema("single", "multi"),
                     "temporal_policy" to nullableStringEnumSchema("atemporal", "time_scoped", "status_like"),
                     "conflict_policy" to nullableStringEnumSchema("replace", "coexist", "range_split"),
+                    "semantic_kinds" to arraySchema(
+                        stringEnumSchema(*lowercaseEnumValues<MemoryPredicateDefinition.SemanticKind>())
+                    ),
+                    "aggregate_effect" to stringEnumSchema(
+                        *lowercaseEnumValues<MemoryPredicateDefinition.AggregateEffect>()
+                    ),
                     "reason" to stringSchema(),
                 )
             ),
@@ -519,6 +526,9 @@ private fun stringEnumSchema(vararg values: String): JsonObject =
             values.forEach { add(JsonPrimitive(it)) }
         }
     }
+
+private inline fun <reified T : Enum<T>> lowercaseEnumValues(): Array<String> =
+    enumValues<T>().map { it.name.lowercase() }.toTypedArray()
 
 private fun anyOfSchema(vararg schemas: JsonObject): JsonObject =
     buildJsonObject {

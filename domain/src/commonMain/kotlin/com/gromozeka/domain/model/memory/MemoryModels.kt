@@ -201,11 +201,18 @@ data class MemoryPredicateDefinition(
     val cardinality: Cardinality = Cardinality.MULTI,
     val temporalPolicy: TemporalPolicy = TemporalPolicy.ATEMPORAL,
     val conflictPolicy: ConflictPolicy = ConflictPolicy.COEXIST,
+    val semanticKinds: Set<SemanticKind>,
+    val aggregateEffect: AggregateEffect = AggregateEffect.NONE,
     val profileSync: Boolean = false,
     val actionItemSync: Boolean = false,
     val defaultImportance: Int = 5,
     val active: Boolean = true,
 ) {
+    init {
+        require(predicate.isNotBlank()) { "Memory predicate must not be blank" }
+        require(semanticKinds.isNotEmpty()) { "Memory predicate '$predicate' must declare at least one semantic kind" }
+    }
+
     fun scopedTo(namespace: MemoryNamespace): MemoryPredicateDefinition =
         copy(
             namespace = namespace,
@@ -250,6 +257,39 @@ data class MemoryPredicateDefinition(
         REPLACE,
         COEXIST,
         RANGE_SPLIT,
+    }
+
+    @Serializable
+    enum class SemanticKind {
+        IDENTITY,
+        LANGUAGE,
+        TIMEZONE,
+        PREFERENCE,
+        AVOIDANCE,
+        BELIEF,
+        CAPABILITY,
+        EVENT_PARTICIPATION,
+        GOAL,
+        AGGREGATE_VALUE,
+        AGGREGATE_DELTA,
+        LOCATION,
+        ARTIFACT_DETAIL,
+        OBLIGATION,
+        CONSTRAINT,
+        RESPONSIBILITY,
+        ASSIGNMENT,
+        PROJECT_ASSOCIATION,
+        TECHNICAL_CONFIGURATION,
+        POSSESSION,
+        OTHER,
+    }
+
+    @Serializable
+    enum class AggregateEffect {
+        NONE,
+        SET_CURRENT_VALUE,
+        INCREASE,
+        DECREASE,
     }
 }
 

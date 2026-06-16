@@ -10,6 +10,8 @@ import com.gromozeka.domain.model.memory.MemoryClaimReconciliationOp
 import com.gromozeka.domain.model.memory.MemoryClaimReconciler
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
 import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition.AggregateEffect
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition.SemanticKind
 import com.gromozeka.domain.model.memory.MemoryReconciliationAction
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.resolvePredicateDefinition
@@ -44,7 +46,7 @@ class LlmMemoryClaimReconciler(
             .map { it.claim }
             .filter { it.status == MemoryClaim.Status.ACTIVE }
 
-        if (existingClaims.isEmpty()) {
+        if (existingClaims.isEmpty() && claimCandidates.all { it.hasKnownPredicatePolicy(predicateCatalog) }) {
             log.info {
                 "Memory claim reconciler direct insert: namespace=${request.namespace.value} source=${request.source.id.value} " +
                     "reason=no_existing_active_claims candidates=${claimCandidates.size}"
@@ -52,7 +54,7 @@ class LlmMemoryClaimReconciler(
             return claimCandidates.map {
                 MemoryClaimReconciliationOp(
                     action = MemoryReconciliationAction.INSERT,
-                    candidate = it.withPredicatePolicy(request, predicateCatalog),
+                    candidate = it.withKnownPredicatePolicy(request, predicateCatalog),
                     reason = "No existing active claims were retrieved.",
                 )
             }
@@ -145,6 +147,8 @@ class LlmMemoryClaimReconciler(
               "cardinality": "single | multi | null",
               "temporal_policy": "atemporal | time_scoped | status_like | null",
               "conflict_policy": "replace | coexist | range_split | null",
+              "semantic_kinds": ["preference"],
+              "aggregate_effect": "none | set_current_value | increase | decrease",
               "reason": "short explanation"
             }
           ]
@@ -163,17 +167,20 @@ class LlmMemoryClaimReconciler(
         - cardinality: single if one subject can have only one active value in this family and scope; multi if several values can coexist.
         - temporal_policy: atemporal for timeless facts, time_scoped for facts true in explicit time windows, status_like for current states, current preferences, decisions, and other evolving values.
         - conflict_policy: replace when a new value invalidates the old active value, coexist when both can remain true, range_split when old and new values are both temporally meaningful.
+        - semantic_kinds: machine-readable relation categories. Use catalog values when reusing a catalog predicate. For learned predicates, choose the smallest useful non-empty set.
+        - aggregate_effect: none for ordinary predicates, set_current_value for current aggregate values, increase/decrease for explicit numeric aggregate deltas.
 
         Rules:
         - Use the target source and full thread context to understand corrections, replacements, pronouns, temporal meaning, and scope.
         - Do not decide by literal predicate names. Infer the semantic predicate family from the claim meaning, subject, object, qualifiers, evidence, scope, and temporal fields.
         - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.
-        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.
+        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, conflict_policy, semantic_kinds, and aggregate_effect.
         - Invent a new canonical_predicate only when no active catalog predicate captures the relation.
         - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as "is_described_as", "has_property", "is_a", or "defined_as". Choose a specific durable relation or return noop.
         - For ordinary positive preferences, use catalog predicate "prefers"; do not keep category-specific variants such as "prefers_car_brand" unless they represent a named current/default slot.
         - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.
         - For named metric, record, score, benchmark, quota, threshold, or personal-best values, use catalog predicate "current_metric_value" when present. Preserve the metric/domain in scope or qualifiers so unrelated metrics do not replace each other.
+        - For explicit countable aggregate changes, use catalog predicate "aggregate_increase" or "aggregate_decrease" when present. object_kind must be number, object_value must be the positive numeric amount, and aggregate_effect must match the catalog predicate.
         - For current place, residence, base, or relocation-result values, use catalog predicate "current_location" when present. It is a status-like single-value slot for the same subject and scope; newer explicit current-location values replace older active values.
         - For concrete details inside imported generated artifacts, use catalog predicate "generated_artifact_detail" when no more specific catalog predicate fits. These details usually coexist unless a later artifact version explicitly supersedes an earlier version.
         - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.
@@ -234,6 +241,10 @@ class LlmMemoryClaimReconciler(
         val temporalPolicy: String? = null,
         @SerialName("conflict_policy")
         val conflictPolicy: String? = null,
+        @SerialName("semantic_kinds")
+        val semanticKinds: List<String>,
+        @SerialName("aggregate_effect")
+        val aggregateEffect: String,
         val reason: String = "",
     ) {
         fun toOp(
@@ -252,6 +263,8 @@ class LlmMemoryClaimReconciler(
                 cardinality = cardinality,
                 temporalPolicy = temporalPolicy,
                 conflictPolicy = conflictPolicy,
+                semanticKinds = semanticKinds,
+                aggregateEffect = aggregateEffect,
             )
             val target = targetClaimId?.trim()?.takeIf { it.isNotBlank() && it != "null" }?.let { MemoryClaim.Id(it) }
             val targetExists = target == null || existingClaims.any { it.id == target }
@@ -326,6 +339,23 @@ class LlmMemoryClaimReconciler(
     }
 }
 
+private fun MemoryClaimCandidate.hasKnownPredicatePolicy(predicateCatalog: MemoryPredicateCatalog): Boolean =
+    predicatePolicy != null || predicateCatalog.resolvePredicateDefinition(predicate, predicateFamily) != null
+
+private fun MemoryClaimCandidate.withKnownPredicatePolicy(
+    request: DirectStructuredMemoryWriteRequest,
+    predicateCatalog: MemoryPredicateCatalog,
+): MemoryClaimCandidate {
+    val policy = predicatePolicy?.scopedTo(request.namespace)
+        ?: predicateCatalog.resolvePredicateDefinition(predicate, predicateFamily)?.scopedTo(request.namespace)
+        ?: throw IllegalArgumentException("Claim candidate '$predicate' has no predicate policy")
+    return copy(
+        predicate = policy.predicate,
+        predicateFamily = policy.predicate,
+        predicatePolicy = policy,
+    )
+}
+
 private fun MemoryClaimCandidate.withPredicatePolicy(
     request: DirectStructuredMemoryWriteRequest,
     predicateCatalog: MemoryPredicateCatalog,
@@ -336,6 +366,8 @@ private fun MemoryClaimCandidate.withPredicatePolicy(
     cardinality: String? = null,
     temporalPolicy: String? = null,
     conflictPolicy: String? = null,
+    semanticKinds: List<String>,
+    aggregateEffect: String,
 ): MemoryClaimCandidate {
     val canonical = canonicalPredicate
         ?.trim()
@@ -351,6 +383,8 @@ private fun MemoryClaimCandidate.withPredicatePolicy(
     val explicitCardinality = cardinality.toEnumValueOrNull<MemoryPredicateDefinition.Cardinality>()
     val explicitTemporalPolicy = temporalPolicy.toEnumValueOrNull<MemoryPredicateDefinition.TemporalPolicy>()
     val explicitConflictPolicy = conflictPolicy.toEnumValueOrNull<MemoryPredicateDefinition.ConflictPolicy>()
+    val explicitSemanticKinds = semanticKinds.toEnumValueSet<SemanticKind>("semantic_kinds")
+    val explicitAggregateEffect = aggregateEffect.toRequiredEnumValue<AggregateEffect>("aggregate_effect")
 
     if (catalogDefinition != null &&
         (catalogDefinition.matchesExplicitPolicy(
@@ -387,6 +421,14 @@ private fun MemoryClaimCandidate.withPredicatePolicy(
         cardinality = explicitCardinality ?: catalogDefinition?.cardinality ?: MemoryPredicateDefinition.Cardinality.MULTI,
         temporalPolicy = explicitTemporalPolicy ?: catalogDefinition?.temporalPolicy ?: MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
         conflictPolicy = explicitConflictPolicy ?: catalogDefinition?.conflictPolicy ?: MemoryPredicateDefinition.ConflictPolicy.COEXIST,
+        semanticKinds = if (catalogDefinition == null) {
+            explicitSemanticKinds.ifEmpty {
+                throw IllegalArgumentException("Learned predicate '$learnedPredicate' must declare at least one semantic_kind")
+            }
+        } else {
+            catalogDefinition.semanticKinds
+        },
+        aggregateEffect = catalogDefinition?.aggregateEffect ?: explicitAggregateEffect,
         profileSync = catalogDefinition?.profileSync == true,
         actionItemSync = catalogDefinition?.actionItemSync == true,
         defaultImportance = catalogDefinition?.defaultImportance ?: 5,
@@ -434,6 +476,18 @@ private inline fun <reified T : Enum<T>> String?.toEnumValueOrNull(): T? {
     val normalized = this?.trim()?.takeIf { it.isNotBlank() && it != "null" } ?: return null
     return enumValues<T>().firstOrNull { it.name.equals(normalized.replace("-", "_"), ignoreCase = true) }
 }
+
+private inline fun <reified T : Enum<T>> String.toRequiredEnumValue(fieldName: String): T {
+    val normalized = trim().takeIf { it.isNotBlank() && it != "null" }
+        ?: throw IllegalArgumentException("Missing required enum field '$fieldName'")
+    return enumValues<T>().firstOrNull { it.name.equals(normalized.replace("-", "_"), ignoreCase = true) }
+        ?: throw IllegalArgumentException("Unknown enum value '$this' for '$fieldName'")
+}
+
+private inline fun <reified T : Enum<T>> List<String>.toEnumValueSet(fieldName: String): Set<T> =
+    map { value ->
+        value.toRequiredEnumValue<T>(fieldName)
+    }.toSet()
 
 private fun MemoryPredicateDefinition.matchesExplicitPolicy(
     objectKind: MemoryPredicateDefinition.ObjectValueKind?,
@@ -513,7 +567,8 @@ private val learnedPredicateStopWords = setOf(
 )
 
 private fun MemoryPredicateDefinition.policyForReconcilerLog(): String =
-    "cardinality=${cardinality.name},temporal=${temporalPolicy.name},conflict=${conflictPolicy.name}"
+    "cardinality=${cardinality.name},temporal=${temporalPolicy.name},conflict=${conflictPolicy.name}," +
+        "semantics=${semanticKinds.joinToString("|") { it.name }},aggregateEffect=${aggregateEffect.name}"
 
 private fun String.oneLineForReconcilerMemoryLog(maxChars: Int): String {
     val normalized = replace('\n', ' ').replace(Regex("\\s+"), " ").trim()

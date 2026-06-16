@@ -619,6 +619,7 @@ class MemoryRealModelE2eTest {
             cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.OTHER),
             profileSync = true,
             defaultImportance = 8,
         )
@@ -725,6 +726,7 @@ class MemoryRealModelE2eTest {
             cardinality = MemoryPredicateDefinition.Cardinality.MULTI,
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.COEXIST,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.OTHER),
             profileSync = true,
             defaultImportance = 8,
         )
@@ -958,6 +960,7 @@ class MemoryRealModelE2eTest {
             cardinality = MemoryPredicateDefinition.Cardinality.MULTI,
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.COEXIST,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.OTHER),
             profileSync = true,
             defaultImportance = 8,
         )
@@ -1021,6 +1024,7 @@ class MemoryRealModelE2eTest {
             cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.OTHER),
             profileSync = true,
             defaultImportance = 8,
         )
@@ -2247,6 +2251,11 @@ class MemoryRealModelE2eTest {
         if (expectation.temporalPolicyIn.isNotEmpty() && temporalPolicy.name !in expectation.temporalPolicyIn.map { it.uppercase() }) return false
         if (expectation.conflictPolicyIn.isNotEmpty() && conflictPolicy.name !in expectation.conflictPolicyIn.map { it.uppercase() }) return false
         if (expectation.objectKindIn.isNotEmpty() && objectKind.name !in expectation.objectKindIn.map { it.uppercase() }) return false
+        if (expectation.semanticKindsIn.isNotEmpty()) {
+            val actual = semanticKinds.mapTo(mutableSetOf()) { it.name }
+            if (actual.intersect(expectation.semanticKindsIn.mapTo(mutableSetOf()) { it.uppercase() }).isEmpty()) return false
+        }
+        if (expectation.aggregateEffectIn.isNotEmpty() && aggregateEffect.name !in expectation.aggregateEffectIn.map { it.uppercase() }) return false
 
         val haystack = listOf(
             predicate,
@@ -2256,6 +2265,8 @@ class MemoryRealModelE2eTest {
             cardinality.name,
             temporalPolicy.name,
             conflictPolicy.name,
+            semanticKinds.joinToString("\n") { it.name },
+            aggregateEffect.name,
         ).joinToString("\n").lowercase()
 
         return expectation.containsAll.all { it.lowercase() in haystack }
@@ -2267,6 +2278,11 @@ class MemoryRealModelE2eTest {
         if (expectation.predicatePolicyCardinalityIn.isNotEmpty() && predicatePolicy?.cardinality?.name !in expectation.predicatePolicyCardinalityIn.map { it.uppercase() }) return false
         if (expectation.predicatePolicyTemporalPolicyIn.isNotEmpty() && predicatePolicy?.temporalPolicy?.name !in expectation.predicatePolicyTemporalPolicyIn.map { it.uppercase() }) return false
         if (expectation.predicatePolicyConflictPolicyIn.isNotEmpty() && predicatePolicy?.conflictPolicy?.name !in expectation.predicatePolicyConflictPolicyIn.map { it.uppercase() }) return false
+        if (expectation.predicatePolicySemanticKindsIn.isNotEmpty()) {
+            val actual = predicatePolicy?.semanticKinds?.mapTo(mutableSetOf()) { it.name }.orEmpty()
+            if (actual.intersect(expectation.predicatePolicySemanticKindsIn.mapTo(mutableSetOf()) { it.uppercase() }).isEmpty()) return false
+        }
+        if (expectation.predicatePolicyAggregateEffectIn.isNotEmpty() && predicatePolicy?.aggregateEffect?.name !in expectation.predicatePolicyAggregateEffectIn.map { it.uppercase() }) return false
         if (expectation.statusIn.isNotEmpty() && status.name !in expectation.statusIn.map { it.uppercase() }) return false
 
         val subject = snapshot.entities.firstOrNull { it.id == subjectEntityId }
@@ -2287,6 +2303,8 @@ class MemoryRealModelE2eTest {
             subject?.canonicalName.orEmpty(),
             objectEntity?.canonicalName.orEmpty(),
             objectValue?.toString().orEmpty(),
+            predicatePolicy?.semanticKinds?.joinToString("\n") { it.name }.orEmpty(),
+            predicatePolicy?.aggregateEffect?.name.orEmpty(),
         ).joinToString("\n").lowercase()
 
         if (expectation.normalizedContainsAll.any { it.lowercase() !in normalizedText.lowercase() }) return false
@@ -2324,11 +2342,13 @@ class MemoryRealModelE2eTest {
 
     private fun PredicateDefinitionExpectation.describe(): String =
         "predicateIn=$predicateIn cardinalityIn=$cardinalityIn temporalPolicyIn=$temporalPolicyIn " +
-            "conflictPolicyIn=$conflictPolicyIn objectKindIn=$objectKindIn containsAll=$containsAll"
+            "conflictPolicyIn=$conflictPolicyIn objectKindIn=$objectKindIn semanticKindsIn=$semanticKindsIn " +
+            "aggregateEffectIn=$aggregateEffectIn containsAll=$containsAll"
 
     private fun ClaimExpectation.describe(): String =
         "predicateIn=$predicateIn predicateFamilyIn=$predicateFamilyIn " +
             "policyCardinality=$predicatePolicyCardinalityIn policyTemporal=$predicatePolicyTemporalPolicyIn policyConflict=$predicatePolicyConflictPolicyIn " +
+            "policySemanticKinds=$predicatePolicySemanticKindsIn policyAggregateEffect=$predicatePolicyAggregateEffectIn " +
             "containsAll=$containsAll normalizedContainsAll=$normalizedContainsAll " +
             "subjectEntityCanonicalNameIn=$subjectEntityCanonicalNameIn objectEntityCanonicalNameIn=$objectEntityCanonicalNameIn " +
             "objectValueStringIn=$objectValueStringIn objectValueContainsAll=$objectValueContainsAll evidenceQuoteContainsAll=$evidenceQuoteContainsAll"
@@ -2802,6 +2822,8 @@ class MemoryRealModelE2eTest {
                         cardinality = it.cardinality.name,
                         temporalPolicy = it.temporalPolicy.name,
                         conflictPolicy = it.conflictPolicy.name,
+                        semanticKinds = it.semanticKinds.map { kind -> kind.name },
+                        aggregateEffect = it.aggregateEffect.name,
                         profileSync = it.profileSync,
                         actionItemSync = it.actionItemSync,
                         defaultImportance = it.defaultImportance,
@@ -2835,6 +2857,8 @@ class MemoryRealModelE2eTest {
                                 cardinality = it.cardinality.name,
                                 temporalPolicy = it.temporalPolicy.name,
                                 conflictPolicy = it.conflictPolicy.name,
+                                semanticKinds = it.semanticKinds.map { kind -> kind.name },
+                                aggregateEffect = it.aggregateEffect.name,
                                 description = it.description,
                             )
                         },
@@ -3337,6 +3361,8 @@ private data class PredicateDefinitionExpectation(
     val temporalPolicyIn: List<String> = emptyList(),
     val conflictPolicyIn: List<String> = emptyList(),
     val objectKindIn: List<String> = emptyList(),
+    val semanticKindsIn: List<String> = emptyList(),
+    val aggregateEffectIn: List<String> = emptyList(),
     val containsAll: List<String> = emptyList(),
     val minMatches: Int = 1,
 )
@@ -3348,6 +3374,8 @@ private data class ClaimExpectation(
     val predicatePolicyCardinalityIn: List<String> = emptyList(),
     val predicatePolicyTemporalPolicyIn: List<String> = emptyList(),
     val predicatePolicyConflictPolicyIn: List<String> = emptyList(),
+    val predicatePolicySemanticKindsIn: List<String> = emptyList(),
+    val predicatePolicyAggregateEffectIn: List<String> = emptyList(),
     val statusIn: List<String> = emptyList(),
     val subjectEntityTypeIn: List<String> = emptyList(),
     val subjectEntityCanonicalNameIn: List<String> = emptyList(),
@@ -3800,6 +3828,8 @@ private data class RenderedPredicateDefinition(
     val cardinality: String,
     val temporalPolicy: String,
     val conflictPolicy: String,
+    val semanticKinds: List<String>,
+    val aggregateEffect: String,
     val profileSync: Boolean,
     val actionItemSync: Boolean,
     val defaultImportance: Int,
@@ -3887,5 +3917,7 @@ private data class RenderedPredicatePolicy(
     val cardinality: String,
     val temporalPolicy: String,
     val conflictPolicy: String,
+    val semanticKinds: List<String>,
+    val aggregateEffect: String,
     val description: String,
 )

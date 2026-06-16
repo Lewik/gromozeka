@@ -15,7 +15,6 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -71,7 +70,7 @@ class LlmMemoryWriteRetrievalPlanner(
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
             parse = {
                 json.decodeFromString<RetrievalPlannerResponse>(it)
-                    .toPlan()
+                    .toPlan(timezone)
                     .withRouteTaskGrounding(routeDecision)
             },
         )
@@ -124,7 +123,7 @@ class LlmMemoryWriteRetrievalPlanner(
         val timeFilters: TimeFilters = TimeFilters(),
         val limits: Limits = Limits(),
     ) {
-        fun toPlan(): MemoryWriteRetrievalPlan =
+        fun toPlan(timezone: String): MemoryWriteRetrievalPlan =
             MemoryWriteRetrievalPlan(
                 needRetrieval = needRetrieval,
                 entityQueries = entityQueries.cleanQueries(),
@@ -134,7 +133,7 @@ class LlmMemoryWriteRetrievalPlanner(
                     .mapNotNull { it.toMemorySemanticType() }
                     .toSet()
                     .withEntityCandidatesIfTypesWereSelected(needRetrieval),
-                timeWindow = timeFilters.toMemoryTimeWindow(),
+                timeWindow = timeFilters.toMemoryTimeWindow(timezone),
                 retrievalBudget = MemoryRetrievalBudget(
                     claims = limits.claims.coerceIn(0, 20),
                     notes = limits.notes.coerceIn(0, 10),
@@ -151,9 +150,9 @@ class LlmMemoryWriteRetrievalPlanner(
         @SerialName("to_iso")
         val toIso: String? = null,
     ) {
-        fun toMemoryTimeWindow(): MemoryTimeWindow? {
-            val from = fromIso?.takeIf { it.isNotBlank() }?.let { Instant.parse(it) }
-            val to = toIso?.takeIf { it.isNotBlank() }?.let { Instant.parse(it) }
+        fun toMemoryTimeWindow(timezone: String): MemoryTimeWindow? {
+            val from = fromIso.toMemoryInstantOrNull(timezone)
+            val to = toIso.toMemoryInstantOrNull(timezone)
             if (from == null && to == null) {
                 return null
             }

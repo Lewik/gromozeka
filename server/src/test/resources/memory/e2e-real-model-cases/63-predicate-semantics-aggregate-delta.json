@@ -1,0 +1,109 @@
+{
+  "id": "predicate-semantics-aggregate-delta",
+  "category": "predicate_policy",
+  "description": "Predicate machine semantics should drive aggregate count updates instead of lexical predicate guessing.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "text": "Memory ledger baseline: as of 2026-05-01, Project Atlas accessibility queue current open design review ticket count is 4.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
+            "materializedClaimsMin": 1
+          }
+        },
+        {
+          "text": "Memory ledger delta: on 2026-05-04, Project Atlas accessibility queue increased by exactly 2 open design review tickets.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
+            "materializedClaimsMin": 2
+          }
+        }
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What is the current open design review ticket count in the Project Atlas accessibility queue? Answer with only the number.",
+          "answerExpectation": {
+            "containsAll": ["6"],
+            "containsNone": ["4", "2"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["current_metric_value"],
+                "predicatePolicySemanticKindsIn": ["AGGREGATE_VALUE"],
+                "predicatePolicyAggregateEffectIn": ["SET_CURRENT_VALUE"],
+                "objectValueStringIn": ["6"],
+                "containsAll": ["Project Atlas", "accessibility"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Project Atlas", "accessibility", "6"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "userSourcesMin": 2,
+    "requiredPredicateDefinitions": [
+      {
+        "predicateIn": ["current_metric_value"],
+        "semanticKindsIn": ["AGGREGATE_VALUE"],
+        "aggregateEffectIn": ["SET_CURRENT_VALUE"]
+      },
+      {
+        "predicateIn": ["aggregate_increase"],
+        "semanticKindsIn": ["AGGREGATE_DELTA"],
+        "aggregateEffectIn": ["INCREASE"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "predicateIn": ["current_metric_value"],
+        "predicatePolicySemanticKindsIn": ["AGGREGATE_VALUE"],
+        "predicatePolicyAggregateEffectIn": ["SET_CURRENT_VALUE"],
+        "objectValueStringIn": ["6"],
+        "containsAll": ["Project Atlas", "accessibility"]
+      },
+      {
+        "predicateIn": ["aggregate_increase"],
+        "predicatePolicySemanticKindsIn": ["AGGREGATE_DELTA"],
+        "predicatePolicyAggregateEffectIn": ["INCREASE"],
+        "objectValueStringIn": ["2"],
+        "containsAll": ["Project Atlas", "accessibility"],
+        "evidenceQuoteContainsAll": ["increased by exactly 2"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "predicateIn": ["current_metric_value"],
+        "predicatePolicySemanticKindsIn": ["AGGREGATE_VALUE"],
+        "predicatePolicyAggregateEffectIn": ["SET_CURRENT_VALUE"],
+        "objectValueStringIn": ["6"],
+        "containsAll": ["Project Atlas", "accessibility"]
+      },
+      {
+        "predicateIn": ["aggregate_increase"],
+        "predicatePolicySemanticKindsIn": ["AGGREGATE_DELTA"],
+        "predicatePolicyAggregateEffectIn": ["INCREASE"],
+        "objectValueStringIn": ["2"],
+        "containsAll": ["Project Atlas", "accessibility"]
+      }
+    ]
+  }
+}

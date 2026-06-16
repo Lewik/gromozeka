@@ -527,6 +527,7 @@ class MemoryMaintenancePipelineTest {
             objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,
             cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.TECHNICAL_CONFIGURATION),
             profileSync = true,
         )
         val oldClaim = claim(
@@ -593,6 +594,7 @@ class MemoryMaintenancePipelineTest {
             objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,
             cardinality = MemoryPredicateDefinition.Cardinality.MULTI,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.COEXIST,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.PREFERENCE),
             profileSync = true,
         )
         val profile = profile(
@@ -2685,6 +2687,8 @@ class MemoryMaintenancePipelineTest {
             cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.AGGREGATE_VALUE),
+            aggregateEffect = MemoryPredicateDefinition.AggregateEffect.SET_CURRENT_VALUE,
         )
         val goalClaim = claim(
             id = "goal-claim",
@@ -4340,6 +4344,7 @@ class MemoryMaintenancePipelineTest {
             cardinality = MemoryPredicateDefinition.Cardinality.MULTI,
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.RANGE_SPLIT,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.TECHNICAL_CONFIGURATION),
         )
         val currentPolicy = MemoryPredicateDefinition(
             predicate = "primary_storage_backend",
@@ -4348,6 +4353,7 @@ class MemoryMaintenancePipelineTest {
             cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+            semanticKinds = setOf(MemoryPredicateDefinition.SemanticKind.TECHNICAL_CONFIGURATION),
         )
         val historicalClaim = claim(
             id = "historical-sqlite-claim",

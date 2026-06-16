@@ -31,6 +31,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added a new field guide to User's field guide collection.",
             contextText = "The user just added a new field guide to the collection.",
             evidenceQuote = "I just added a new field guide to my collection",
+            amount = 1,
             scope = collectionScope,
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
         )
@@ -47,6 +48,31 @@ class MemoryAggregateMetricDeriverTest {
     }
 
     @Test
+    fun derivesUpdatedMetricFromLaterDecreaseInSameScope() {
+        val baseline = metricClaim(
+            normalizedText = "User's field guide collection current aggregate count is 4.",
+            scope = metricScope,
+            value = "4",
+            validFrom = Instant.parse("2023-01-01T00:00:00Z"),
+        )
+        val candidate = membershipCandidate(
+            normalizedText = "The user removed a field guide from User's field guide collection.",
+            contextText = "The user removed one field guide from the collection.",
+            evidenceQuote = "I removed one field guide from my collection",
+            amount = 1,
+            predicate = "aggregate_decrease",
+            scope = collectionScope,
+            validFrom = Instant.parse("2023-01-02T00:00:00Z"),
+        )
+
+        val derived = derive(baseline, candidate)
+
+        assertEquals(1, derived.size)
+        assertEquals("3", derived.single().objectValue?.jsonPrimitive?.contentOrNull)
+        assertTrue(derived.single().contextText.orEmpty().contains("removal of 1"))
+    }
+
+    @Test
     fun ignoresAdditionInDifferentScope() {
         val baseline = metricClaim(
             normalizedText = "User's field guide collection current aggregate count is 4.",
@@ -58,6 +84,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added a new coin to User's coin collection.",
             contextText = "The user just added a new coin to another collection.",
             evidenceQuote = "I just added a new coin to my other collection",
+            amount = 1,
             scope = MemoryScope.Entity("User's coin collection", USER_ENTITY),
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
         )
@@ -78,6 +105,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added a Barber quarter to User's coin collection.",
             contextText = "The user added a Barber quarter to their collection of pre-1920 American coins.",
             evidenceQuote = "I just added a new coin to my collection of pre-1920 American coins - a Barber quarter.",
+            amount = 1,
             scope = MemoryScope.Entity("User's coin collection", USER_ENTITY),
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
         )
@@ -102,6 +130,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added a Morgan dollar to User's broader coin collection.",
             contextText = "The Morgan dollar belongs to the user's American coin collection.",
             evidenceQuote = "I just added a Morgan dollar to my American coin collection.",
+            amount = 1,
             scope = MemoryScope.Entity("User's broader coin collection", USER_ENTITY),
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
         )
@@ -124,6 +153,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added a new field guide to User's field guide collection.",
             contextText = "The user just added a new field guide to the collection.",
             evidenceQuote = "I just added a new field guide to my collection",
+            amount = 1,
             scope = collectionScope,
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
         )
@@ -131,6 +161,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user bought another field guide for User's field guide collection.",
             contextText = "The user bought another field guide for the same collection.",
             evidenceQuote = "I bought another field guide for the same collection",
+            amount = 1,
             scope = collectionScope,
             validFrom = Instant.parse("2023-01-03T00:00:00Z"),
         )
@@ -154,6 +185,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added two field guides to User's field guide collection.",
             contextText = "The user added two field guides to the same collection.",
             evidenceQuote = "I added two field guides to my collection",
+            amount = 2,
             scope = collectionScope,
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
         )
@@ -177,6 +209,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user expanded User's field guide collection.",
             contextText = "The user added several field guides to the collection.",
             evidenceQuote = "I bought two field guides and received three more field guides for my collection",
+            amount = 5,
             scope = collectionScope,
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
         )
@@ -189,7 +222,7 @@ class MemoryAggregateMetricDeriverTest {
     }
 
     @Test
-    fun derivesFromExplicitDeltaWithoutPredicateNameGate() {
+    fun ignoresCandidateWithoutAggregateDeltaPolicy() {
         val baseline = metricClaim(
             normalizedText = "User's field guide collection current aggregate count is 4.",
             scope = metricScope,
@@ -200,16 +233,14 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added a field guide to User's field guide collection.",
             contextText = "The user explicitly added a field guide to the collection.",
             evidenceQuote = "I added a field guide to my collection",
+            amount = 1,
             scope = collectionScope,
             validFrom = Instant.parse("2023-01-02T00:00:00Z"),
             predicate = "custom_collection_event",
             predicateFamily = "custom_collection_event",
         )
 
-        val derived = derive(baseline, candidate)
-
-        assertEquals(1, derived.size)
-        assertEquals("5", derived.single().objectValue?.jsonPrimitive?.contentOrNull)
+        assertEquals(emptyList(), derive(baseline, candidate))
     }
 
     @Test
@@ -224,6 +255,7 @@ class MemoryAggregateMetricDeriverTest {
             normalizedText = "The user added a new field guide to User's field guide collection.",
             contextText = "The user added a new field guide to the collection.",
             evidenceQuote = "I added a new field guide to my collection",
+            amount = 1,
             scope = collectionScope,
             validFrom = null,
         )
@@ -275,16 +307,20 @@ class MemoryAggregateMetricDeriverTest {
         normalizedText: String,
         contextText: String,
         evidenceQuote: String,
+        amount: Int,
         scope: MemoryScope,
         validFrom: Instant?,
-        predicate: String = "collection_event",
+        predicate: String = "aggregate_increase",
         predicateFamily: String? = predicate,
-    ): MemoryClaimCandidate =
-        MemoryClaimCandidate(
+    ): MemoryClaimCandidate {
+        val policy = MemoryPredicateCatalogDefaults.forNamespace(NAMESPACE)
+            .resolvePredicateDefinition(predicate)
+        return MemoryClaimCandidate(
             subjectEntityId = USER_ENTITY,
             predicate = predicate,
             predicateFamily = predicateFamily,
-            objectValue = JsonPrimitive("new item"),
+            predicatePolicy = policy,
+            objectValue = JsonPrimitive(amount),
             normalizedText = normalizedText,
             contextText = contextText,
             scope = scope,
@@ -294,9 +330,10 @@ class MemoryAggregateMetricDeriverTest {
             validFrom = validFrom,
             evidenceQuote = evidenceQuote,
             evidenceKind = MemoryEvidenceRef.Kind.DIRECT,
-            evidenceReason = "The quote directly says the item was added to the collection.",
-            reason = "A new item in the collection is a durable collection event.",
+            evidenceReason = "The quote directly states the aggregate delta.",
+            reason = "A numeric aggregate delta is durable enough to update a current aggregate metric.",
         )
+    }
 
     private companion object {
         val NAMESPACE = MemoryNamespace("aggregate-metric-test")

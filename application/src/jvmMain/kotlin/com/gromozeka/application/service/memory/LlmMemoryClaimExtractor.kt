@@ -21,7 +21,6 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -226,6 +225,8 @@ class LlmMemoryClaimExtractor(
         return MemoryClaimCandidate(
             subjectEntityId = subjectId,
             predicate = mappedPredicate,
+            predicateFamily = predicateDefinition?.predicate,
+            predicatePolicy = predicateDefinition?.scopedTo(request.namespace),
             objectEntityId = mappedObjectEntityId,
             objectValue = mappedObjectValue,
             normalizedText = mappedText,
@@ -234,8 +235,8 @@ class LlmMemoryClaimExtractor(
             qualifiers = qualifiersJson ?: JsonObject(emptyMap()),
             confidence = confidence.coerceIn(0.0, 1.0),
             importance = importance.coerceIn(1, 10),
-            validFrom = validFrom.toInstantOrNull(),
-            validTo = validTo.toInstantOrNull(),
+            validFrom = validFrom.toMemoryInstantOrNull(timezone),
+            validTo = validTo.toMemoryInstantOrNull(timezone),
             evidenceQuote = mappedEvidenceQuote,
             evidenceKind = evidenceKind.toMemoryEvidenceKind(),
             evidenceReason = evidenceReason.trim(),
@@ -322,7 +323,7 @@ class LlmMemoryClaimExtractor(
             - Use a predicate from Predicate catalog excerpt whenever it fits the claim meaning.
             - Invent a new predicate only when no active catalog predicate captures the same semantic relation.
             - New predicates must be stable snake_case relations, not wording-specific paraphrases of an existing catalog predicate.
-            - Do not invent aliases for catalog predicates. Use owns instead of owns_item/has_item, and made_by instead of made_by_brand/from_brand.
+            - Do not invent aliases for catalog predicates. Reuse the exact catalog predicate when its description and machine semantics fit.
             - Do not emit generic description, classification, property-bag, or paraphrase predicates such as "is_described_as", "has_property", "is_a", or "defined_as". If the target only provides descriptive context, return zero claims for that wrapper unless you can extract a specific durable relation.
             - Do not collapse a named current/default/primary/chosen/backend slot into a generic preference, affinity, or usage predicate; use or create the specific slot predicate.
             - Prefer the most specific durable claim that captures the target message's intended memory. Do not also emit a broader paraphrase that is merely entailed by that specific claim.
@@ -337,6 +338,8 @@ class LlmMemoryClaimExtractor(
             - Do not require the user to literally say "I prefer" when a preference is established by an explicit selection, endorsement, or "I'll go with X" choice.
             - For named metric, record, score, benchmark, quota, threshold, or personal-best values, use catalog predicate "current_metric_value". Keep the metric name and domain in normalized_text, context_text, scope_json, or qualifiers_json so different metrics can coexist.
             - If a goal says the user wants to beat, improve, reduce, raise, or otherwise change a named current/best/record value, extract both the goal and the current_metric_value benchmark when both are explicitly supported by TARGET_MESSAGE. Example: "I want to beat my personal best time of 25:50" yields a "has_goal" claim and a "current_metric_value" claim for the 25:50 personal-best benchmark.
+            - For explicit countable aggregate changes, use "aggregate_increase" or "aggregate_decrease" when the catalog contains them. Set object_value_json to the positive numeric amount. Use 1 only for explicit singular wording such as "a", "one", or "another"; otherwise do not infer a count.
+            - Keep the aggregate identity in scope_json.text, context_text, normalized_text, or qualifiers_json so aggregate deltas can be matched to the right current_metric_value.
             - Professional, educational, or membership tenure and progression are named metric/history facts. Preserve role/company/program tenure such as "3 years at the company", "in this role for 8 months", "started as X", "promoted to Y after 2 years", or "worked up to Y after 2 years and 4 months" as explicit claims with role names, prior role names, durations, and dates when present.
             - For a subject's current place, residence, base, or relocation result, use catalog predicate "current_location" when the source establishes the subject's current state. Keep historical moves as dated event/history only when the source is explicitly about a past phase rather than the resulting current location.
             - Dated personal events are claim-worthy even when they appear as incidental context inside a planning conversation. For "I just got back from X today", "I attended X yesterday", "X ran from 6 PM to 8 PM today", or similar wording, emit predicate "attended_event" with the event name/date/time in normalized_text and context_text.
@@ -510,11 +513,6 @@ private fun String?.toScopeBasis(): MemoryScope.Basis =
         "imported" -> MemoryScope.Basis.IMPORTED
         else -> MemoryScope.Basis.EXPLICIT
     }
-
-private fun String?.toInstantOrNull(): Instant? {
-    val value = this?.trim()?.takeIf { it.isNotBlank() && it != "null" } ?: return null
-    return runCatching { Instant.parse(value) }.getOrNull()
-}
 
 private fun String.toMemoryEvidenceKind(): MemoryEvidenceRef.Kind =
     when (trim().lowercase().replace("-", "_")) {

@@ -1,6 +1,7 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition.SemanticKind
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.activeDefinitions
 
@@ -31,6 +32,10 @@ internal fun MemoryPredicateCatalog.renderForMemoryPrompt(
         "- ${definition.predicate}: ${definition.description}; " +
             "subject=${definition.subjectType?.name ?: "any"}; object=${definition.objectKind.name}; " +
             "cardinality=${definition.cardinality.name}; temporal=${definition.temporalPolicy.name}; " +
-            "conflict=${definition.conflictPolicy.name}; importance=${definition.defaultImportance}"
+            "conflict=${definition.conflictPolicy.name}; semantics=${definition.semanticKinds.renderSemanticKinds()}; " +
+            "aggregate_effect=${definition.aggregateEffect.name.lowercase()}; importance=${definition.defaultImportance}"
     }
 }
+
+private fun Set<SemanticKind>.renderSemanticKinds(): String =
+    if (isEmpty()) "none" else joinToString("|") { it.name.lowercase() }

@@ -186,6 +186,8 @@ class LlmMemoryClaimReconcilerTest {
                   "cardinality": "multi",
                   "temporal_policy": "status_like",
                   "conflict_policy": "coexist",
+                  "semantic_kinds": ["constraint"],
+                  "aggregate_effect": "none",
                   "reason": "Test operation."
                 }
               ]

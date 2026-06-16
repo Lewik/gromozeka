@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizationOp
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalogDefaults
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
@@ -181,6 +182,10 @@ class LlmMemoryClaimExtractorTest {
         assertEquals(miraEntityId, candidates.single().subjectEntityId)
         assertEquals(tokenRotationEntityId, candidates.single().objectEntityId)
         assertNull(candidates.single().objectValue)
+        assertEquals(
+            setOf(MemoryPredicateDefinition.SemanticKind.RESPONSIBILITY),
+            candidates.single().predicatePolicy?.semanticKinds,
+        )
     }
 
     @Test

@@ -20,7 +20,6 @@ import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -197,8 +196,8 @@ class LlmMemoryNoteConstructor(
             candidateClaims = JsonArray(candidateClaimHints.take(8)),
             confidence = confidence.coerceIn(0.0, 1.0),
             importance = importance.coerceIn(1, 10),
-            validFrom = validFrom.toNoteInstantOrNull(),
-            validTo = validTo.toNoteInstantOrNull(),
+            validFrom = validFrom.toMemoryInstantOrNull(timezone),
+            validTo = validTo.toMemoryInstantOrNull(timezone),
             evidenceQuote = quote,
             evidenceKind = evidenceKind.toMemoryEvidenceKindForNote(),
             evidenceReason = evidenceReason.trim().take(400),
@@ -450,11 +449,6 @@ private fun String.toMemoryEvidenceKindForNote(): MemoryEvidenceRef.Kind =
         "derived_from_note" -> MemoryEvidenceRef.Kind.DERIVED_FROM_NOTE
         else -> MemoryEvidenceRef.Kind.SUMMARIZED
     }
-
-private fun String?.toNoteInstantOrNull(): Instant? {
-    val value = this?.trim()?.takeIf { it.isNotBlank() && it != "null" } ?: return null
-    return runCatching { Instant.parse(value) }.getOrNull()
-}
 
 private fun List<String>.cleanTextList(
     maxItems: Int,

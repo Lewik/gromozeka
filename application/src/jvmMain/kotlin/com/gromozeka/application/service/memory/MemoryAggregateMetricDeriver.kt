@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryClaimCandidate
 import com.gromozeka.domain.model.memory.MemoryEvidenceRef
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition.AggregateEffect
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.resolvePredicateDefinition
@@ -27,7 +28,7 @@ internal object MemoryAggregateMetricDeriver {
             .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
             .map { it.claim }
             .filter { it.status == MemoryClaim.Status.ACTIVE && it.archivedAt == null }
-            .filter { it.predicate == metricPolicy.predicate || it.predicateFamily == metricPolicy.predicate }
+            .filter { it.predicatePolicy?.aggregateEffect == AggregateEffect.SET_CURRENT_VALUE }
             .mapNotNull { it.toAggregateBaseline() }
 
         if (baselines.isEmpty()) return emptyList()
@@ -67,11 +68,18 @@ internal object MemoryAggregateMetricDeriver {
     }
 
     private fun MemoryClaimCandidate.toAggregateDelta(): AggregateDelta? {
-        val value = listOfNotNull(evidenceQuote, normalizedText, contextText)
-            .mapNotNull { it.extractAggregateDeltaValue() }
-            .maxByOrNull { it.absoluteValue }
+        val effect = predicatePolicy?.aggregateEffect ?: return null
+        val sign = when (effect) {
+            AggregateEffect.INCREASE -> 1
+            AggregateEffect.DECREASE -> -1
+            AggregateEffect.NONE,
+            AggregateEffect.SET_CURRENT_VALUE,
+            -> return null
+        }
+        val amount = objectValue?.jsonPrimitive?.contentOrNull?.toIntOrNull()
             ?: return null
-        return AggregateDelta(this, value)
+        if (amount <= 0) return null
+        return AggregateDelta(this, sign * amount)
     }
 
     private fun MemoryClaimCandidate.toDerivedMetricCandidate(
@@ -188,36 +196,6 @@ internal object MemoryAggregateMetricDeriver {
     private fun String.extractFirstMetricNumber(): Int? =
         plainIntegerRegex.find(this)?.value?.toIntOrNull()
 
-    private fun String.extractAggregateDeltaValue(): Int? {
-        val text = lowercase()
-        if (aggregateDeltaNegationRegex.containsMatchIn(text)) return null
-
-        val additions = aggregateAdditionRegex.findAll(text).map { it.aggregateQuantityOrOne() }.toList()
-        val removals = aggregateRemovalRegex.findAll(text).map { it.aggregateQuantityOrOne() }.toList()
-        return when {
-            additions.isNotEmpty() && removals.isEmpty() -> additions.sum()
-            removals.isNotEmpty() && additions.isEmpty() -> -removals.sum()
-            else -> null
-        }
-    }
-
-    private fun MatchResult.aggregateQuantityOrOne(): Int {
-        val normalized = value.trim().lowercase()
-        groupValues.drop(1).firstNotNullOfOrNull { it.toIntOrNull() }?.let { return it }
-        return when (normalized.split(spaceRegex).lastOrNull()) {
-            "two" -> 2
-            "three" -> 3
-            "four" -> 4
-            "five" -> 5
-            "six" -> 6
-            "seven" -> 7
-            "eight" -> 8
-            "nine" -> 9
-            "ten" -> 10
-            else -> 1
-        }
-    }
-
     private data class AggregateBaseline(
         val claim: MemoryClaim,
         val value: Int,
@@ -262,12 +240,6 @@ internal object MemoryAggregateMetricDeriver {
         val delta: AggregateDelta,
     )
 
-    private val aggregateAdditionRegex =
-        Regex("""(?i)\b(?:just\s+|newly\s+)?(?:added|bought|purchased|acquired|received|collected|downloaded|picked\s+up|obtained|adopted)\s+(?:(\d{1,4})|a|an|one|two|three|four|five|six|seven|eight|nine|ten|another|new)?\b""")
-    private val aggregateRemovalRegex =
-        Regex("""(?i)\b(?:just\s+|newly\s+)?(?:removed|sold|donated|discarded|returned|gave\s+away)\s+(?:(\d{1,4})|a|an|one|two|three|four|five|six|seven|eight|nine|ten|another|old)?\b""")
-    private val aggregateDeltaNegationRegex =
-        Regex("""(?i)\b(?:did\s+not|didn't|not|never|without|no\s+longer)\s+(?:add|added|buy|bought|purchase|purchased|acquire|acquired|receive|received|collect|collected|download|downloaded|pick\s+up|picked\s+up|obtain|obtained|adopt|adopted|remove|removed|sell|sold|donate|donated|discard|discarded|return|returned|give\s+away|gave\s+away)\b""")
     private val metricNumberAfterMarkerRegex =
         Regex("""(?i)\b(?:count(?:s)?(?:\s+is|\s+of)?|total(?:\s+of)?|is|are)\s+(\d{1,9})\b""")
     private val metricNumberBeforeNounRegex =
