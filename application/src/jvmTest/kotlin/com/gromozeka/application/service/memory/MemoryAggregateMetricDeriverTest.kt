@@ -22,13 +22,13 @@ class MemoryAggregateMetricDeriverTest {
     @Test
     fun derivesUpdatedMetricFromLaterAdditionInSameScope() {
         val baseline = metricClaim(
-            normalizedText = "User's field guide collection contains 4 items.",
+            normalizedText = "User's field guide collection current aggregate count is 4.",
             scope = metricScope,
             value = "4",
             validFrom = Instant.parse("2023-01-01T00:00:00Z"),
         )
         val candidate = membershipCandidate(
-            normalizedText = "The user owns a new field guide in User's field guide collection.",
+            normalizedText = "The user added a new field guide to User's field guide collection.",
             contextText = "The user just added a new field guide to the collection.",
             evidenceQuote = "I just added a new field guide to my collection",
             scope = collectionScope,
@@ -49,13 +49,13 @@ class MemoryAggregateMetricDeriverTest {
     @Test
     fun ignoresAdditionInDifferentScope() {
         val baseline = metricClaim(
-            normalizedText = "User's field guide collection contains 4 items.",
+            normalizedText = "User's field guide collection current aggregate count is 4.",
             scope = metricScope,
             value = "4",
             validFrom = Instant.parse("2023-01-01T00:00:00Z"),
         )
         val candidate = membershipCandidate(
-            normalizedText = "The user owns a new coin in User's coin collection.",
+            normalizedText = "The user added a new coin to User's coin collection.",
             contextText = "The user just added a new coin to another collection.",
             evidenceQuote = "I just added a new coin to my other collection",
             scope = MemoryScope.Entity("User's coin collection", USER_ENTITY),
@@ -69,13 +69,13 @@ class MemoryAggregateMetricDeriverTest {
     fun derivesUpdatedMetricWhenCandidateScopeIsBroaderButEvidenceMatchesCollection() {
         val baselineScope = MemoryScope.Entity("User's pre-1920 American coins collection", COLLECTION_ENTITY)
         val baseline = metricClaim(
-            normalizedText = "User's pre-1920 American coins collection contains 37 items.",
+            normalizedText = "User's pre-1920 American coins collection current aggregate count is 37.",
             scope = baselineScope,
             value = "37",
             validFrom = Instant.parse("2023-01-01T00:00:00Z"),
         )
         val candidate = membershipCandidate(
-            normalizedText = "The user owns a newly added Barber quarter in User's coin collection.",
+            normalizedText = "The user added a Barber quarter to User's coin collection.",
             contextText = "The user added a Barber quarter to their collection of pre-1920 American coins.",
             evidenceQuote = "I just added a new coin to my collection of pre-1920 American coins - a Barber quarter.",
             scope = MemoryScope.Entity("User's coin collection", USER_ENTITY),
@@ -90,15 +90,138 @@ class MemoryAggregateMetricDeriverTest {
     }
 
     @Test
-    fun ignoresAdditionWithoutTemporalOrder() {
+    fun doesNotRequireTheCurrentMetricNumberToAppearInTheDeltaEvidence() {
+        val baselineScope = MemoryScope.Entity("User's American coin collection", COLLECTION_ENTITY)
         val baseline = metricClaim(
-            normalizedText = "User's field guide collection contains 4 items.",
+            normalizedText = "User's American coin collection current aggregate count is 37.",
+            scope = baselineScope,
+            value = "37",
+            validFrom = Instant.parse("2023-01-01T00:00:00Z"),
+        )
+        val candidate = membershipCandidate(
+            normalizedText = "The user added a Morgan dollar to User's broader coin collection.",
+            contextText = "The Morgan dollar belongs to the user's American coin collection.",
+            evidenceQuote = "I just added a Morgan dollar to my American coin collection.",
+            scope = MemoryScope.Entity("User's broader coin collection", USER_ENTITY),
+            validFrom = Instant.parse("2023-01-02T00:00:00Z"),
+        )
+
+        val derived = derive(baseline, candidate)
+
+        assertEquals(1, derived.size)
+        assertEquals("38", derived.single().objectValue?.jsonPrimitive?.contentOrNull)
+    }
+
+    @Test
+    fun accumulatesMultipleLaterDeltasForSameBaseline() {
+        val baseline = metricClaim(
+            normalizedText = "User's field guide collection current aggregate count is 4.",
+            scope = metricScope,
+            value = "4",
+            validFrom = Instant.parse("2023-01-01T00:00:00Z"),
+        )
+        val firstCandidate = membershipCandidate(
+            normalizedText = "The user added a new field guide to User's field guide collection.",
+            contextText = "The user just added a new field guide to the collection.",
+            evidenceQuote = "I just added a new field guide to my collection",
+            scope = collectionScope,
+            validFrom = Instant.parse("2023-01-02T00:00:00Z"),
+        )
+        val secondCandidate = membershipCandidate(
+            normalizedText = "The user bought another field guide for User's field guide collection.",
+            contextText = "The user bought another field guide for the same collection.",
+            evidenceQuote = "I bought another field guide for the same collection",
+            scope = collectionScope,
+            validFrom = Instant.parse("2023-01-03T00:00:00Z"),
+        )
+
+        val derived = derive(baseline, firstCandidate, secondCandidate)
+
+        assertEquals(1, derived.size)
+        assertEquals("6", derived.single().objectValue?.jsonPrimitive?.contentOrNull)
+        assertTrue(derived.single().contextText.orEmpty().contains("addition of 2"))
+    }
+
+    @Test
+    fun doesNotDuplicateSameDeltaRepeatedAcrossCandidateFields() {
+        val baseline = metricClaim(
+            normalizedText = "User's field guide collection current aggregate count is 4.",
             scope = metricScope,
             value = "4",
             validFrom = Instant.parse("2023-01-01T00:00:00Z"),
         )
         val candidate = membershipCandidate(
-            normalizedText = "The user owns a new field guide in User's field guide collection.",
+            normalizedText = "The user added two field guides to User's field guide collection.",
+            contextText = "The user added two field guides to the same collection.",
+            evidenceQuote = "I added two field guides to my collection",
+            scope = collectionScope,
+            validFrom = Instant.parse("2023-01-02T00:00:00Z"),
+        )
+
+        val derived = derive(baseline, candidate)
+
+        assertEquals(1, derived.size)
+        assertEquals("6", derived.single().objectValue?.jsonPrimitive?.contentOrNull)
+        assertTrue(derived.single().contextText.orEmpty().contains("addition of 2"))
+    }
+
+    @Test
+    fun sumsMultipleExplicitDeltasWithinSingleEvidenceField() {
+        val baseline = metricClaim(
+            normalizedText = "User's field guide collection current aggregate count is 4.",
+            scope = metricScope,
+            value = "4",
+            validFrom = Instant.parse("2023-01-01T00:00:00Z"),
+        )
+        val candidate = membershipCandidate(
+            normalizedText = "The user expanded User's field guide collection.",
+            contextText = "The user added several field guides to the collection.",
+            evidenceQuote = "I bought two field guides and received three more field guides for my collection",
+            scope = collectionScope,
+            validFrom = Instant.parse("2023-01-02T00:00:00Z"),
+        )
+
+        val derived = derive(baseline, candidate)
+
+        assertEquals(1, derived.size)
+        assertEquals("9", derived.single().objectValue?.jsonPrimitive?.contentOrNull)
+        assertTrue(derived.single().contextText.orEmpty().contains("addition of 5"))
+    }
+
+    @Test
+    fun derivesFromExplicitDeltaWithoutPredicateNameGate() {
+        val baseline = metricClaim(
+            normalizedText = "User's field guide collection current aggregate count is 4.",
+            scope = metricScope,
+            value = "4",
+            validFrom = Instant.parse("2023-01-01T00:00:00Z"),
+        )
+        val candidate = membershipCandidate(
+            normalizedText = "The user added a field guide to User's field guide collection.",
+            contextText = "The user explicitly added a field guide to the collection.",
+            evidenceQuote = "I added a field guide to my collection",
+            scope = collectionScope,
+            validFrom = Instant.parse("2023-01-02T00:00:00Z"),
+            predicate = "custom_collection_event",
+            predicateFamily = "custom_collection_event",
+        )
+
+        val derived = derive(baseline, candidate)
+
+        assertEquals(1, derived.size)
+        assertEquals("5", derived.single().objectValue?.jsonPrimitive?.contentOrNull)
+    }
+
+    @Test
+    fun ignoresAdditionWithoutTemporalOrder() {
+        val baseline = metricClaim(
+            normalizedText = "User's field guide collection current aggregate count is 4.",
+            scope = metricScope,
+            value = "4",
+            validFrom = Instant.parse("2023-01-01T00:00:00Z"),
+        )
+        val candidate = membershipCandidate(
+            normalizedText = "The user added a new field guide to User's field guide collection.",
             contextText = "The user added a new field guide to the collection.",
             evidenceQuote = "I added a new field guide to my collection",
             scope = collectionScope,
@@ -110,10 +233,10 @@ class MemoryAggregateMetricDeriverTest {
 
     private fun derive(
         baseline: MemoryClaim,
-        candidate: MemoryClaimCandidate,
+        vararg candidates: MemoryClaimCandidate,
     ): List<MemoryClaimCandidate> =
         MemoryAggregateMetricDeriver.derive(
-            claimCandidates = listOf(candidate),
+            claimCandidates = candidates.toList(),
             retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(baseline, score = 1.0)),
             predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(NAMESPACE),
         )
@@ -154,11 +277,13 @@ class MemoryAggregateMetricDeriverTest {
         evidenceQuote: String,
         scope: MemoryScope,
         validFrom: Instant?,
+        predicate: String = "collection_event",
+        predicateFamily: String? = predicate,
     ): MemoryClaimCandidate =
         MemoryClaimCandidate(
             subjectEntityId = USER_ENTITY,
-            predicate = "owns",
-            predicateFamily = "owns",
+            predicate = predicate,
+            predicateFamily = predicateFamily,
             objectValue = JsonPrimitive("new item"),
             normalizedText = normalizedText,
             contextText = contextText,
@@ -170,7 +295,7 @@ class MemoryAggregateMetricDeriverTest {
             evidenceQuote = evidenceQuote,
             evidenceKind = MemoryEvidenceRef.Kind.DIRECT,
             evidenceReason = "The quote directly says the item was added to the collection.",
-            reason = "A new item in the collection is a durable ownership fact.",
+            reason = "A new item in the collection is a durable collection event.",
         )
 
     private companion object {

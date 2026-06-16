@@ -13,6 +13,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlin.math.absoluteValue
 
 internal object MemoryAggregateMetricDeriver {
     fun derive(
@@ -31,20 +32,30 @@ internal object MemoryAggregateMetricDeriver {
 
         if (baselines.isEmpty()) return emptyList()
 
-        return claimCandidates.mapNotNull { candidate ->
+        val matchedDeltas = claimCandidates.mapNotNull { candidate ->
             val delta = candidate.toAggregateDelta() ?: return@mapNotNull null
             val baseline = baselines
-                .filter { it.matchesAggregateScope(candidate) }
-                .filter { it.isOlderThan(candidate.validFrom) }
+                .filter { it.matchesAggregateScope(delta) }
+                .filter { it.isOlderThan(delta.candidate.validFrom) }
                 .maxByOrNull { it.claim.validFrom ?: it.claim.createdAt }
                 ?: return@mapNotNull null
-            candidate.toDerivedMetricCandidate(
-                metricPolicy = metricPolicy,
-                baseline = baseline,
-                value = baseline.value + delta,
-                delta = delta,
-            )
+            MatchedAggregateDelta(baseline, delta)
         }
+
+        return matchedDeltas.groupBy { it.baseline.claim.id }
+            .values
+            .mapNotNull { deltas ->
+                val totalDelta = deltas.sumOf { it.delta.value }
+                if (totalDelta == 0) return@mapNotNull null
+                val latest = deltas.maxBy { it.delta.candidate.validFrom ?: it.baseline.claim.createdAt }
+                latest.delta.candidate.toDerivedMetricCandidate(
+                    metricPolicy = metricPolicy,
+                    baseline = latest.baseline,
+                    value = latest.baseline.value + totalDelta,
+                    delta = totalDelta,
+                    contributingDeltaCount = deltas.size,
+                )
+            }
     }
 
     private fun MemoryClaim.toAggregateBaseline(): AggregateBaseline? {
@@ -55,24 +66,12 @@ internal object MemoryAggregateMetricDeriver {
         return AggregateBaseline(this, value)
     }
 
-    private fun MemoryClaimCandidate.toAggregateDelta(): Int? {
-        if (!isCountableCollectionMembershipCandidate()) return null
-        val text = listOfNotNull(evidenceQuote, normalizedText, contextText)
-            .joinToString(" ")
-            .lowercase()
-        val hasAddition = aggregateAdditionMarkers.any { it in text }
-        val hasRemoval = aggregateRemovalMarkers.any { it in text }
-        return when {
-            hasAddition && !hasRemoval -> 1
-            hasRemoval && !hasAddition -> -1
-            else -> null
-        }
-    }
-
-    private fun MemoryClaimCandidate.isCountableCollectionMembershipCandidate(): Boolean {
-        val predicateName = predicate.lowercase()
-        val familyName = predicateFamily?.lowercase()
-        return predicateName in countableMembershipPredicates || familyName in countableMembershipPredicates
+    private fun MemoryClaimCandidate.toAggregateDelta(): AggregateDelta? {
+        val value = listOfNotNull(evidenceQuote, normalizedText, contextText)
+            .mapNotNull { it.extractAggregateDeltaValue() }
+            .maxByOrNull { it.absoluteValue }
+            ?: return null
+        return AggregateDelta(this, value)
     }
 
     private fun MemoryClaimCandidate.toDerivedMetricCandidate(
@@ -80,6 +79,7 @@ internal object MemoryAggregateMetricDeriver {
         baseline: AggregateBaseline,
         value: Int,
         delta: Int,
+        contributingDeltaCount: Int,
     ): MemoryClaimCandidate =
         copy(
             subjectEntityId = baseline.claim.subjectEntityId,
@@ -88,23 +88,24 @@ internal object MemoryAggregateMetricDeriver {
             predicatePolicy = metricPolicy,
             objectEntityId = null,
             objectValue = JsonPrimitive(value.toString()),
-            normalizedText = "${baseline.claim.scope.text} has current aggregate count $value.",
-            contextText = "Derived from previous aggregate count ${baseline.value} and a later explicit ${delta.deltaWord()} in the same scope.",
+            normalizedText = "${baseline.claim.scope.text} current aggregate count is $value.",
+            contextText = "Derived from previous aggregate count ${baseline.value} and later explicit ${delta.deltaPhrase()} in the same scope.",
             scope = baseline.claim.scope,
             qualifiers = buildJsonObject {
                 put("derived_from_claim_id", baseline.claim.id.value)
                 put("aggregate_delta", delta)
+                put("contributing_delta_count", contributingDeltaCount)
                 put("aggregate_scope", baseline.claim.scope.text)
             },
             confidence = minOf(confidence, baseline.claim.confidence).coerceAtLeast(0.7),
             importance = maxOf(importance, baseline.claim.importance),
             evidenceKind = MemoryEvidenceRef.Kind.INFERRED,
             evidenceReason = "The source gives an explicit aggregate delta in the same scope as a retrieved active aggregate metric.",
-            reason = "Derived updated aggregate metric from previous current_metric_value and later explicit collection delta.",
+            reason = "Derived updated aggregate metric from previous current_metric_value and later explicit aggregate delta.",
         )
 
-    private fun Int.deltaWord(): String =
-        if (this > 0) "addition" else "removal"
+    private fun Int.deltaPhrase(): String =
+        if (this > 0) "addition of $this" else "removal of ${absoluteValue}"
 
     private fun AggregateBaseline.isOlderThan(candidateValidFrom: Instant?): Boolean {
         val baselineValidFrom = claim.validFrom ?: return false
@@ -112,15 +113,15 @@ internal object MemoryAggregateMetricDeriver {
         return baselineValidFrom < candidateFrom
     }
 
-    private fun AggregateBaseline.matchesAggregateScope(candidate: MemoryClaimCandidate): Boolean {
-        if (claim.scope.sameAggregateScopeAs(candidate.scope)) return true
+    private fun AggregateBaseline.matchesAggregateScope(delta: AggregateDelta): Boolean {
+        if (claim.scope.sameAggregateScopeAs(delta.candidate.scope)) return true
         val baselineTokens = claim.aggregateScopeTokens()
-        val candidateTokens = candidate.aggregateScopeTokens()
+        val candidateTokens = delta.candidate.aggregateScopeTokens()
         if (baselineTokens.isEmpty() || candidateTokens.isEmpty()) return false
 
         val overlap = baselineTokens.intersect(candidateTokens)
-        val baselineNumericTokens = baselineTokens.filterTo(mutableSetOf()) { it.all(Char::isDigit) }
-        if (baselineNumericTokens.isNotEmpty() && overlap.none { it in baselineNumericTokens }) return false
+        val scopeNumericTokens = claim.scope.text.aggregateScopeTokens().filterTo(mutableSetOf()) { it.all(Char::isDigit) }
+        if (scopeNumericTokens.isNotEmpty() && overlap.none { it in scopeNumericTokens }) return false
 
         val requiredOverlap = minOf(2, minOf(baselineTokens.size, candidateTokens.size))
         return overlap.size >= requiredOverlap
@@ -130,9 +131,11 @@ internal object MemoryAggregateMetricDeriver {
         aggregateScopeKey() == other.aggregateScopeKey() || text.normalizedScopeText() == other.text.normalizedScopeText()
 
     private fun MemoryClaim.aggregateScopeTokens(): Set<String> =
-        listOfNotNull(scope.text, normalizedText, contextText)
-            .joinToString(" ")
-            .aggregateScopeTokens()
+        scope.text.aggregateScopeTokens() +
+            listOfNotNull(normalizedText, contextText)
+                .joinToString(" ")
+                .aggregateScopeTokens()
+                .filterNot { it.all(Char::isDigit) }
 
     private fun MemoryClaimCandidate.aggregateScopeTokens(): Set<String> =
         listOfNotNull(scope.text, normalizedText, contextText, evidenceQuote)
@@ -185,26 +188,44 @@ internal object MemoryAggregateMetricDeriver {
     private fun String.extractFirstMetricNumber(): Int? =
         plainIntegerRegex.find(this)?.value?.toIntOrNull()
 
+    private fun String.extractAggregateDeltaValue(): Int? {
+        val text = lowercase()
+        if (aggregateDeltaNegationRegex.containsMatchIn(text)) return null
+
+        val additions = aggregateAdditionRegex.findAll(text).map { it.aggregateQuantityOrOne() }.toList()
+        val removals = aggregateRemovalRegex.findAll(text).map { it.aggregateQuantityOrOne() }.toList()
+        return when {
+            additions.isNotEmpty() && removals.isEmpty() -> additions.sum()
+            removals.isNotEmpty() && additions.isEmpty() -> -removals.sum()
+            else -> null
+        }
+    }
+
+    private fun MatchResult.aggregateQuantityOrOne(): Int {
+        val normalized = value.trim().lowercase()
+        groupValues.drop(1).firstNotNullOfOrNull { it.toIntOrNull() }?.let { return it }
+        return when (normalized.split(spaceRegex).lastOrNull()) {
+            "two" -> 2
+            "three" -> 3
+            "four" -> 4
+            "five" -> 5
+            "six" -> 6
+            "seven" -> 7
+            "eight" -> 8
+            "nine" -> 9
+            "ten" -> 10
+            else -> 1
+        }
+    }
+
     private data class AggregateBaseline(
         val claim: MemoryClaim,
         val value: Int,
     )
 
-    private val countableMembershipPredicates = setOf(
-        "owns",
-        "has",
-        "contains",
-        "includes",
-    )
-    private val aggregateAdditionMarkers = listOf(
-        " added ",
-        " add ",
-        " bought ",
-        " purchased ",
-        " acquired ",
-        " got ",
-        " received ",
-        " collected ",
+    private data class AggregateDelta(
+        val candidate: MemoryClaimCandidate,
+        val value: Int,
     )
     private val aggregateScopeStopWords = setOf(
         "user",
@@ -221,12 +242,6 @@ internal object MemoryAggregateMetricDeriver {
         "same",
         "scope",
         "explicit",
-        "own",
-        "owns",
-        "owned",
-        "has",
-        "have",
-        "had",
         "their",
         "my",
         "the",
@@ -242,17 +257,19 @@ internal object MemoryAggregateMetricDeriver {
         "was",
         "were",
     )
-    private val aggregateRemovalMarkers = listOf(
-        " removed ",
-        " remove ",
-        " sold ",
-        " donated ",
-        " gave away ",
-        " got rid of ",
-        " discarded ",
+    private data class MatchedAggregateDelta(
+        val baseline: AggregateBaseline,
+        val delta: AggregateDelta,
     )
+
+    private val aggregateAdditionRegex =
+        Regex("""(?i)\b(?:just\s+|newly\s+)?(?:added|bought|purchased|acquired|received|collected|downloaded|picked\s+up|obtained|adopted)\s+(?:(\d{1,4})|a|an|one|two|three|four|five|six|seven|eight|nine|ten|another|new)?\b""")
+    private val aggregateRemovalRegex =
+        Regex("""(?i)\b(?:just\s+|newly\s+)?(?:removed|sold|donated|discarded|returned|gave\s+away)\s+(?:(\d{1,4})|a|an|one|two|three|four|five|six|seven|eight|nine|ten|another|old)?\b""")
+    private val aggregateDeltaNegationRegex =
+        Regex("""(?i)\b(?:did\s+not|didn't|not|never|without|no\s+longer)\s+(?:add|added|buy|bought|purchase|purchased|acquire|acquired|receive|received|collect|collected|download|downloaded|pick\s+up|picked\s+up|obtain|obtained|adopt|adopted|remove|removed|sell|sold|donate|donated|discard|discarded|return|returned|give\s+away|gave\s+away)\b""")
     private val metricNumberAfterMarkerRegex =
-        Regex("""(?i)\b(?:contains|contain|count(?:s)?(?:\s+is|\s+of)?|total(?:\s+of)?|has|have|had|is|are)\s+(\d{1,9})\b""")
+        Regex("""(?i)\b(?:count(?:s)?(?:\s+is|\s+of)?|total(?:\s+of)?|is|are)\s+(\d{1,9})\b""")
     private val metricNumberBeforeNounRegex =
         Regex("""(?i)\b(\d{1,9})\s+(?:items?|entries|objects|coins?|books?|records?|albums?|tasks?|events?|people|members)\b""")
     private val plainIntegerRegex = Regex("""\b\d{1,9}\b""")

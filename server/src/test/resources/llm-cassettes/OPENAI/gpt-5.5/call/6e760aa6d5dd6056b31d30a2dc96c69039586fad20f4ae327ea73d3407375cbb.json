@@ -1,0 +1,179 @@
+{
+    "version": 1,
+    "hash": "6e760aa6d5dd6056b31d30a2dc96c69039586fad20f4ae327ea73d3407375cbb",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about Caribbean dishes and I was wondering, what was the name of that Jamaican dish you recommended I try with snapper that has fruit in it?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:31\n\n                                Noisy expected-answer label:\n                                Grilled Snapper with Mango Salsa\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 02:17\nTranscript:\nuser: What type of fish is commonly used in Caribbean dishes?\nassistant: One type of fish commonly used in Caribbean dishes is snapper.\nuser: Oh, I love snapper! What are some popular Caribbean dishes that feature snapper?\nassistant: There are many popular Caribbean dishes that feature snapper, some of which include:\n\n1. Escovitch Fish - a Jamaican dish where fried snapper is topped with a spicy pickled vegetable sauce.\n2. Fish Curry - a Trinidadian dish that features snapper cooked in a curry sauce with vegetables and aromatics.\n3. Conch & Snapper Stew - a dish from the Bahamas that combines conch and snapper in a tomato-based stew with peppers and onions.\n4. Grilled Snapper with Mango Salsa - a popular dish in many Caribbean countries where grilled snapper is topped with a fruity and spicy salsa.\n5. Fish and Fungi - a dish from the Virgin Islands where snapper is served with a polenta-like dish made from cornmeal.\n\nThese dishes are just a few of the many delicious ways snapper can be cooked and enjoyed in Caribbean cuisine.\nuser: Wow, all of those dishes sound amazing! Which one do you recommend I try first?\nassistant: I don't have any personal preferences. however, escovitch fish is a classic and popular jamaican dish that many people love, so it might be a good one to try first. it's a combination of crispy fried snapper topped with a spicy and tangy pickled vegetable sauce, usually made with carrots, onion, bell peppers, and vinegar. the flavors are bold and vibrant, and it's a great way to experience the spicy and acidic flavors that are typical of caribbean cuisine.\nuser: That sounds perfect, I'll give Escovitch Fish a try! Can you recommend a place to find it in my area?\nassistant: I don't have access to your location or specific information about restaurants in your area. however, there are a few ways you can find a restaurant that serves escovitch fish near you:\n\n1. check review websites and apps such as yelp, google reviews, or zomato. simply search for restaurants in your area that serve jamaican cuisine, and check their menus to see if escovitch fish is on it.\n\n2. call or visit jamaican restaurants in your area and ask if they serve escovitch fish. they might also be able to recommend other caribbean dishes that feature snapper.\n\n3. ask for recommendations from friends or family members who have tried caribbean cuisine before. they might know of a great spot that you haven't heard of before.\n\ni hope this helps you find a delicious plate of escovitch fish to enjoy!\nuser: I will definitely give Escovitch Fish a try and check out some Jamaican restaurants in my area. Do you have any other favorite dishes from Caribbean cuisine?\nassistant: I don't have personal preferences, but there are many other delicious dishes from caribbean cuisine. here are a few more popular ones:\n\n1. jerk chicken - a spicy and flavorful jamaican dish where chicken is marinated in a blend of spices and grilled over charcoal or wood. 2. arroz con pollo - a puerto rican dish that translates to \"rice with chicken,\" made with yellow rice, chicken, and sofrito (a mixture of onions, peppers, and garlic). 3. callaloo - a popular trinidadian soup made with leafy greens, okra, coconut milk, and spices. 4. cubano sandwich - a cuban sandwich made with cuban bread, roast pork, ham, swiss cheese, pickles, and mustard. 5. tostones - fried plantains, a popular side dish in many caribbean countries. these dishes are just a few examples, and there are many more delicious dishes to explore in caribbean cuisine.\nuser: I've actually tried Jerk Chicken before and loved it! Are there any other Jamaican dishes that I should try?\nassistant: Yes, there are many other Jamaican dishes that are worth trying. Here are a few more:\n\n1. Ackee and Saltfish - Jamaica's national dish, made with the fruit of the ackee tree and salted codfish.\n\n2. Curry Goat - a flavorful curry made with tender goat meat and Jamaican curry spices.\n\n3. Festival and Fried Fish - festival is a popular Jamaican festival, similar to a fried cornbread or dumpling, that is often eaten with fried fish.\n\n4. Brown Stew Chicken - chicken is marinated in a sweet and savory sauce, then cooked with vegetables such as onion, garlic, and bell peppers.\n\n5. Oxtail Stew - oxtail is slow-cooked in a rich and savory stew with vegetables and beans.\n\nAll of these dishes are hearty, flavorful, and unique to Jamaican cuisine.\n                                ```\n\n                                Candidate answer:\n                                The Jamaican snapper dish I recommended you try was Escovitch Fish. The fruit-related ingredient in the description was not fruit itself; it was a spicy, tangy pickled vegetable sauce.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "778164c6",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about Caribbean dishes and I was wondering, what was the name of that Jamaican dish you recommended I try with snapper that has fruit in it?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:31\n\n                                Noisy expected-answer label:\n                                Grilled Snapper with Mango Salsa\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 02:17\nTranscript:\nuser: What type of fish is commonly used in Caribbean dishes?\nassistant: One type of fish commonly used in Caribbean dishes is snapper.\nuser: Oh, I love snapper! What are some popular Caribbean dishes that feature snapper?\nassistant: There are many popular Caribbean dishes that feature snapper, some of which include:\n\n1. Escovitch Fish - a Jamaican dish where fried snapper is topped with a spicy pickled vegetable sauce.\n2. Fish Curry - a Trinidadian dish that features snapper cooked in a curry sauce with vegetables and aromatics.\n3. Conch & Snapper Stew - a dish from the Bahamas that combines conch and snapper in a tomato-based stew with peppers and onions.\n4. Grilled Snapper with Mango Salsa - a popular dish in many Caribbean countries where grilled snapper is topped with a fruity and spicy salsa.\n5. Fish and Fungi - a dish from the Virgin Islands where snapper is served with a polenta-like dish made from cornmeal.\n\nThese dishes are just a few of the many delicious ways snapper can be cooked and enjoyed in Caribbean cuisine.\nuser: Wow, all of those dishes sound amazing! Which one do you recommend I try first?\nassistant: I don't have any personal preferences. however, escovitch fish is a classic and popular jamaican dish that many people love, so it might be a good one to try first. it's a combination of crispy fried snapper topped with a spicy and tangy pickled vegetable sauce, usually made with carrots, onion, bell peppers, and vinegar. the flavors are bold and vibrant, and it's a great way to experience the spicy and acidic flavors that are typical of caribbean cuisine.\nuser: That sounds perfect, I'll give Escovitch Fish a try! Can you recommend a place to find it in my area?\nassistant: I don't have access to your location or specific information about restaurants in your area. however, there are a few ways you can find a restaurant that serves escovitch fish near you:\n\n1. check review websites and apps such as yelp, google reviews, or zomato. simply search for restaurants in your area that serve jamaican cuisine, and check their menus to see if escovitch fish is on it.\n\n2. call or visit jamaican restaurants in your area and ask if they serve escovitch fish. they might also be able to recommend other caribbean dishes that feature snapper.\n\n3. ask for recommendations from friends or family members who have tried caribbean cuisine before. they might know of a great spot that you haven't heard of before.\n\ni hope this helps you find a delicious plate of escovitch fish to enjoy!\nuser: I will definitely give Escovitch Fish a try and check out some Jamaican restaurants in my area. Do you have any other favorite dishes from Caribbean cuisine?\nassistant: I don't have personal preferences, but there are many other delicious dishes from caribbean cuisine. here are a few more popular ones:\n\n1. jerk chicken - a spicy and flavorful jamaican dish where chicken is marinated in a blend of spices and grilled over charcoal or wood. 2. arroz con pollo - a puerto rican dish that translates to \"rice with chicken,\" made with yellow rice, chicken, and sofrito (a mixture of onions, peppers, and garlic). 3. callaloo - a popular trinidadian soup made with leafy greens, okra, coconut milk, and spices. 4. cubano sandwich - a cuban sandwich made with cuban bread, roast pork, ham, swiss cheese, pickles, and mustard. 5. tostones - fried plantains, a popular side dish in many caribbean countries. these dishes are just a few examples, and there are many more delicious dishes to explore in caribbean cuisine.\nuser: I've actually tried Jerk Chicken before and loved it! Are there any other Jamaican dishes that I should try?\nassistant: Yes, there are many other Jamaican dishes that are worth trying. Here are a few more:\n\n1. Ackee and Saltfish - Jamaica's national dish, made with the fruit of the ackee tree and salted codfish.\n\n2. Curry Goat - a flavorful curry made with tender goat meat and Jamaican curry spices.\n\n3. Festival and Fried Fish - festival is a popular Jamaican festival, similar to a fried cornbread or dumpling, that is often eaten with fried fish.\n\n4. Brown Stew Chicken - chicken is marinated in a sweet and savory sauce, then cooked with vegetables such as onion, garlic, and bell peppers.\n\n5. Oxtail Stew - oxtail is slow-cooked in a rich and savory stew with vegetables and beans.\n\nAll of these dishes are hearty, flavorful, and unique to Jamaican cuisine.\n                                ```\n\n                                Candidate answer:\n                                The Jamaican snapper dish I recommended you try was Escovitch Fish. The fruit-related ingredient in the description was not fruit itself; it was a spicy, tangy pickled vegetable sauce.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "778164c6",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The evidence-backed snapper dish with fruit was Grilled Snapper with Mango Salsa, not Escovitch Fish.\",\"supported\":false}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1511,
+                "completionTokens": 471,
+                "thinkingTokens": 425,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
