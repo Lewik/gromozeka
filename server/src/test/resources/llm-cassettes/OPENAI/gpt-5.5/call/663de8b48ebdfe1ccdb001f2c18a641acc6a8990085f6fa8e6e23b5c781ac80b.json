@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "663de8b48ebdfe1ccdb001f2c18a641acc6a8990085f6fa8e6e23b5c781ac80b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_731e37d7\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/02/26 (Sun) 07:17\nTranscript:\nuser: I'm looking for some writing tips. I've been working on a short story since a writing workshop I attended in November at a literary festival. It was a two-day workshop, and I paid $200 to attend. The instructor was a published author, and I got some great feedback on my work. Do you have any resources on character development and editing that you could recommend?\nassistant: It sounds like you've already taken a great step by attending a writing workshop and getting feedback from a published author! Now, to help you further, I'd be happy to provide you with some resources on character development and editing.\n\n**Character Development:**\n\n1. **Character Arcs:** A crucial aspect of character development is creating a compelling character arc. Check out this article by K.M. Weiland on \"The 5 Key Elements of a Character Arc\" to learn more.\n2. **Character Interviews:** This technique can help you get into your character's head and flesh out their personality, motivations, and backstory. You can find a character interview template online or create your own questions.\n3. **Character Profiles:** Develop detailed profiles for your main characters, including their physical appearance, personality traits, strengths, weaknesses, goals, and motivations. This will help you keep track of their development throughout the story.\n4. **Character-driven Plotting:** Focus on how your characters' actions and decisions drive the plot forward. This article by Janice Hardy on \"How to Create a Character-Driven Plot\" can provide valuable insights.\n\n**Editing:**\n\n1. **Self-Editing Checklist:** Create a checklist of common mistakes to watch out for, such as grammar errors, pacing issues, and inconsistent character traits. You can find many self-editing checklists online or create your own based on your workshop feedback.\n2. **Beta Readers:** Share your work with beta readers who can provide feedback on character development, pacing, and overall story coherence. You can find beta readers through writing communities, online forums, or by joining a writing group.\n3. **Revise and Revise Again:** Editing is a crucial step in the writing process. Be prepared to make significant changes to your manuscript to strengthen your story and characters.\n4. **Editing Resources:** Check out resources like Grammar Girl, ProWritingAid, or AutoCrit to help with grammar, sentence structure, and writing style.\n\n**Additional Resources:**\n\n1. **Writing Books:** \"The Writer's Journey: Mythic Structure for Writers\" by Christopher Vogler, \"Character & Viewpoint\" by Orson Scott Card, and \"Self-Editing for Fiction Writers\" by Renni Browne and Dave King are excellent resources for writers.\n2. **Online Writing Communities:** Join online forums like Writing.com, NaNoWriMo, or Reddit's r/writingcommunity to connect with fellow writers, get feedback, and learn from others.\n3. **Writing Podcasts:** Listen to podcasts like \"The Creative Penn,\" \"I Should Be Writing,\" or \"The Portfolio Life\" for tips, inspiration, and industry insights.\n\nRemember, writing is a process that takes time, effort, and practice. Don't be afraid to make mistakes or try new techniques. Keep writing, and most importantly, have fun!\n\nDo you have any specific questions about character development or editing that I can help with?\nuser: That's a lot of helpful information! I'll definitely check out those resources. I'm also interested in learning more about writing workshops and events in my area. Do you know of any websites or platforms that list writing workshops, conferences, or festivals? I'd love to attend more events like the one I attended in November.\nassistant: I'm glad you found the resources helpful!\n\nYes, there are several websites and platforms that list writing workshops, conferences, and festivals. Here are some popular ones:\n\n1. **Writing Conferences & Writing Workshops:** This website lists writing conferences, workshops, and festivals in the US and Canada. You can search by location, genre, and date.\n2. **Shaw Guides:** Shaw Guides is a comprehensive directory of writing conferences, workshops, and festivals worldwide. You can search by location, genre, and date.\n3. **Poets & Writers:** Poets & Writers is a great resource for writers, offering a database of writing conferences, workshops, and festivals in the US. You can search by location, genre, and date.\n4. **Writer's Digest:** Writer's Digest hosts its own conferences and workshops, but it also lists other writing events on its website. You can search by location, genre, and date.\n5. **Meetup:** Meetup is a great platform to find local writing groups, workshops, and events. You can search for writing-related groups in your area and attend events that interest you.\n6. **Facebook Groups:** Join Facebook groups dedicated to writing, such as \"Writing Workshops & Conferences\" or \"Writers' Events,\" to stay updated on upcoming events and connect with other writers.\n7. **Local Literary Organizations:** Look for local literary organizations, writing centers, or libraries in your area that often host writing workshops, readings, and festivals. These events might not be listed online, so it's essential to check their websites or visit in person.\n8. **Google Search:** A simple Google search with keywords like \"writing workshops near me\" or \"writing conferences in [your state/city]\" can yield a list of relevant results.\n\nRemember to research the event, instructor, and organization before attending to ensure it's a good fit for your writing goals and style.\n\nAdditionally, consider subscribing to writing newsletters, like the ones offered by Writers Digest or Poets & Writers, to stay informed about upcoming events and opportunities.\n\nI hope this helps you find more writing workshops and events in your area!\nuser: I'll definitely check out those websites and platforms. I'm interested in finding more writing workshops and events like the one I attended in November, which was a two-day writing workshop at a literary festival. I paid $200 to attend, and it was really worth it. Do you know of any websites or platforms that allow me to search for events by price range or duration? That would be really helpful in finding the right fit for me.\nassistant: I understand what you're looking for now!\n\nWhile there isn't a single platform that allows you to search for writing workshops and events by price range and duration, you can use a combination of the resources I mentioned earlier to filter your search. Here's a suggested approach:\n\n1. **Shaw Guides:** Shaw Guides allows you to filter search results by \"Cost\" (free, under $100, $100-$500, $500-$1000, over $1000). You can also filter by \"Duration\" (1-2 days, 3-5 days, 1-2 weeks, etc.).\n2. **Writing Conferences & Writing Workshops:** This website allows you to filter search results by \"Cost\" (free, under $100, $100-$500, $500-$1000, over $1000). Although it doesn't have a specific filter for duration, you can check the event descriptions for the duration.\n3. **Poets & Writers:** Poets & Writers allows you to filter search results by \"Cost\" (free, under $100, $100-$500, $500-$1000, over $1000). You can also use the \"Event Type\" filter to select \"Workshops\" or \"Conferences\" and then check the event descriptions for duration.\n4. **Google Search:** Use specific search terms like \"2-day writing workshops near me\" or \"writing conferences under $500\" to find relevant results. You can also use Google's advanced search features to filter results by date, location, and more.\n\nAdditionally, you can try searching on platforms like:\n\n1. **Eventbrite:** Eventbrite is a popular platform for event organizers to list their events. You can search for writing workshops and conferences, and filter results by price range, date, and location.\n2. **Lanyrd:** Lanyrd is a platform that lists conferences and events, including writing workshops. You can search for writing events and filter results by price range, date, and location.\n\nBy combining these resources and using specific search terms, you should be able to find writing workshops and events that fit your budget and duration preferences.\nuser: That's really helpful. I'll definitely try out those resources. I'm also curious to know if you have any information on digital marketing workshops. I recently attended a two-day digital marketing workshop at the city convention center, and it was really informative. The instructor was a well-known industry expert. I learned a lot about social media advertising and SEO, which I've been trying to implement in my own business. Do you know of any resources or websites that offer digital marketing workshops or online courses?\nassistant: Digital marketing is a fascinating field, and it's great that you're looking to expand your skills!\n\nYes, there are many resources and websites that offer digital marketing workshops and online courses. Here are a few popular ones:\n\n1. **HubSpot Academy:** HubSpot offers a range of free and paid online courses and certifications in digital marketing, including inbound marketing, sales, and customer service.\n2. **Digital Marketing Institute:** The Digital Marketing Institute offers a range of online courses and certifications in digital marketing, including social media, SEO, and PPC.\n3. **Udemy:** Udemy is an online learning platform that offers a vast range of courses on digital marketing, including social media, SEO, and content marketing.\n4. **Coursera:** Coursera is an online learning platform that partners with top universities to offer courses on digital marketing, including University of Illinois's \"Digital Marketing Specialization\" and University of California's \"Digital Marketing\" course.\n5. **Skillshare:** Skillshare is an online learning platform that offers courses and workshops on digital marketing, social media, and content creation.\n6. **General Assembly:** General Assembly offers online and in-person courses and workshops on digital marketing, including social media, SEO, and email marketing.\n7. **MarketingProfs University:** MarketingProfs University offers online courses and certifications in digital marketing, including social media, SEO, and content marketing.\n8. ** Moz:** Moz is a well-known SEO tool provider that offers online courses and certifications in SEO, content marketing, and digital marketing.\n9. **Social Media Examiner:** Social Media Examiner offers online courses and certifications in social media marketing, including Facebook, Instagram, and LinkedIn marketing.\n10. **Google Analytics Academy:** Google Analytics Academy offers free online courses and certifications in Google Analytics and digital marketing.\n\nThese resources offer a range of formats, from self-paced online courses to live workshops and instructor-led training. You can choose the ones that fit your schedule, budget, and learning style.\n\nRemember to research the instructor, course content, and reviews before investing in any digital marketing workshop or online course.\nuser: That's a great list of resources! I'll definitely check them out. I'm particularly interested in SEO and social media advertising, as I learned a lot about those topics in the digital marketing workshop I attended recently. Do you know of any online communities or forums where I can connect with other digital marketers and get feedback on my marketing strategies?\nassistant: Connecting with other digital marketers can be incredibly valuable for learning, getting feedback, and staying up-to-date with the latest trends!\n\nYes, there are many online communities and forums where you can connect with other digital marketers, get feedback on your strategies, and learn from their experiences. Here are some popular ones:\n\n1. **Reddit:** r/digitalmarketing, r/SEO, r/socialmedia, and r/advertising are all active communities with thousands of members. Share your experiences, ask questions, and get feedback from others.\n2. **Facebook Groups:** Join groups like Digital Marketing Professionals, SEO and Digital Marketing, Social Media Marketing, and Online Marketing Masters to connect with other marketers and get feedback on your strategies.\n3. **LinkedIn Groups:** Participate in groups like Digital Marketing, SEO and Social Media, Online Marketing, and Content Marketing to connect with other professionals and stay updated on industry news.\n4. **Quora:** Quora is a Q&A platform where you can ask questions and get answers from experienced digital marketers. Follow topics like digital marketing, SEO, social media, and advertising to stay informed.\n5. **Stack Exchange:** Stack Exchange has a dedicated community for digital marketing, where you can ask questions and get answers from experienced marketers.\n6. **Warrior Forum:** Warrior Forum is a popular community for digital marketers, with sections dedicated to SEO, social media, and online marketing.\n7. **GrowthHackers:** GrowthHackers is a community focused on growth hacking and digital marketing. Share your experiences, ask questions, and get feedback from others.\n8. **Inbound.org:** Inbound.org is a community for inbound marketers, with sections dedicated to SEO, social media, content marketing, and more.\n9. **Digital Marketing Forum:** Digital Marketing Forum is a dedicated community for digital marketers, with sections on SEO, social media, PPC, and more.\n10. ** Moz Community:** Moz is a well-known SEO tool provider, and their community is a great place to connect with other SEO professionals, ask questions, and get feedback.\n\nRemember to always follow community guidelines, be respectful, and provide value to others. These communities can be a great resource for learning, getting feedback, and growing your network.\n\nDo you have any specific questions about digital marketing or SEO that you'd like to discuss? I'm here to help!\n\n        Candidate notes:\n        [0] type=CONTEXT title=User seeks workshop-style learning with practical feedback loops summary=The user values paid, multi-day workshops where expert instructors provide concrete feedback, and uses follow-up resources and communities to continue improving after the event. This pattern appears in both creative writing and digital marketing contexts, including interest in searchable event platforms by cost and duration. scope=Applies to the user's learning preferences for workshops, events, online courses, and professional communities. entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=workshops,feedback,price range,duration,expert instructors,online communities tags=learning_preferences,workshops,feedback_loop evidence=I paid $200 to attend, and it was really worth it. Do you know of any websites or platforms that allow me to search for events by price range or duration?\n[1] type=CONTEXT title=Short story development focus after literary festival workshop summary=The user's short story is in a post-workshop development phase: they received feedback from a published author and are looking for resources on character development and editing to revise the work. scope=Applies to the user's short story and related writing-improvement context after the November literary festival workshop. entities=entity:<5>,entity:<6>,entity:<1>,entity:<7>,entity:<8>,entity:<9> keywords=short story,character development,editing,published author feedback,literary festival tags=writing,short_story,revision evidence=I've been working on a short story since a writing workshop I attended in November at a literary festival.\n\n        Existing active notes:\n        id=hot-path-b4e92ce88050-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Workshops support User's business growth path summary=The user applies workshop learning to their business, including digital marketing strategies, and sees accelerator programs or incubators as a way to take the business to the next level through mentorship, resources, networking, feedback, collaborations, or investments. scope=Applies to the user's business-development approach involving workshops, accelerators, and incubators. keywords=business growth,digital marketing,startup accelerator,incubator,mentorship,investments,collaborations tags=business_context,entrepreneurship,growth_strategy useCount=0\nid=hot-path-b4e92ce88050-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=User's cross-field workshop strategy summary=The user attends workshops across fields because it helps them become more well-rounded and open to new ideas; they value transferable skills such as communication and problem-solving, plus networking with people from different backgrounds and industries. scope=Applies to the user's motivation and learning strategy for attending workshops across different domains. keywords=workshops,cross-field learning,networking,communication,problem-solving,well-rounded tags=learning_strategy,workshops,networking useCount=0\nid=hot-path-b4e92ce88050-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Mindfulness as entrepreneurship stress-management practice summary=The user uses mindfulness and wellness workshops to stay focused and calm while handling the stresses of entrepreneurship, including using exercises and tips from a workbook received at a mindfulness workshop. scope=Applies to the user's wellbeing practices in the context of entrepreneurship and business stress. keywords=mindfulness,wellness,entrepreneurship stress,focused,calm,workbook,stress management tags=wellbeing,entrepreneurship,stress_management useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_731e37d7",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:2560ef1ba7c03b5b41d74bf51e1da9c8"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_731e37d7\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/02/26 (Sun) 07:17\nTranscript:\nuser: I'm looking for some writing tips. I've been working on a short story since a writing workshop I attended in November at a literary festival. It was a two-day workshop, and I paid $200 to attend. The instructor was a published author, and I got some great feedback on my work. Do you have any resources on character development and editing that you could recommend?\nassistant: It sounds like you've already taken a great step by attending a writing workshop and getting feedback from a published author! Now, to help you further, I'd be happy to provide you with some resources on character development and editing.\n\n**Character Development:**\n\n1. **Character Arcs:** A crucial aspect of character development is creating a compelling character arc. Check out this article by K.M. Weiland on \"The 5 Key Elements of a Character Arc\" to learn more.\n2. **Character Interviews:** This technique can help you get into your character's head and flesh out their personality, motivations, and backstory. You can find a character interview template online or create your own questions.\n3. **Character Profiles:** Develop detailed profiles for your main characters, including their physical appearance, personality traits, strengths, weaknesses, goals, and motivations. This will help you keep track of their development throughout the story.\n4. **Character-driven Plotting:** Focus on how your characters' actions and decisions drive the plot forward. This article by Janice Hardy on \"How to Create a Character-Driven Plot\" can provide valuable insights.\n\n**Editing:**\n\n1. **Self-Editing Checklist:** Create a checklist of common mistakes to watch out for, such as grammar errors, pacing issues, and inconsistent character traits. You can find many self-editing checklists online or create your own based on your workshop feedback.\n2. **Beta Readers:** Share your work with beta readers who can provide feedback on character development, pacing, and overall story coherence. You can find beta readers through writing communities, online forums, or by joining a writing group.\n3. **Revise and Revise Again:** Editing is a crucial step in the writing process. Be prepared to make significant changes to your manuscript to strengthen your story and characters.\n4. **Editing Resources:** Check out resources like Grammar Girl, ProWritingAid, or AutoCrit to help with grammar, sentence structure, and writing style.\n\n**Additional Resources:**\n\n1. **Writing Books:** \"The Writer's Journey: Mythic Structure for Writers\" by Christopher Vogler, \"Character & Viewpoint\" by Orson Scott Card, and \"Self-Editing for Fiction Writers\" by Renni Browne and Dave King are excellent resources for writers.\n2. **Online Writing Communities:** Join online forums like Writing.com, NaNoWriMo, or Reddit's r/writingcommunity to connect with fellow writers, get feedback, and learn from others.\n3. **Writing Podcasts:** Listen to podcasts like \"The Creative Penn,\" \"I Should Be Writing,\" or \"The Portfolio Life\" for tips, inspiration, and industry insights.\n\nRemember, writing is a process that takes time, effort, and practice. Don't be afraid to make mistakes or try new techniques. Keep writing, and most importantly, have fun!\n\nDo you have any specific questions about character development or editing that I can help with?\nuser: That's a lot of helpful information! I'll definitely check out those resources. I'm also interested in learning more about writing workshops and events in my area. Do you know of any websites or platforms that list writing workshops, conferences, or festivals? I'd love to attend more events like the one I attended in November.\nassistant: I'm glad you found the resources helpful!\n\nYes, there are several websites and platforms that list writing workshops, conferences, and festivals. Here are some popular ones:\n\n1. **Writing Conferences & Writing Workshops:** This website lists writing conferences, workshops, and festivals in the US and Canada. You can search by location, genre, and date.\n2. **Shaw Guides:** Shaw Guides is a comprehensive directory of writing conferences, workshops, and festivals worldwide. You can search by location, genre, and date.\n3. **Poets & Writers:** Poets & Writers is a great resource for writers, offering a database of writing conferences, workshops, and festivals in the US. You can search by location, genre, and date.\n4. **Writer's Digest:** Writer's Digest hosts its own conferences and workshops, but it also lists other writing events on its website. You can search by location, genre, and date.\n5. **Meetup:** Meetup is a great platform to find local writing groups, workshops, and events. You can search for writing-related groups in your area and attend events that interest you.\n6. **Facebook Groups:** Join Facebook groups dedicated to writing, such as \"Writing Workshops & Conferences\" or \"Writers' Events,\" to stay updated on upcoming events and connect with other writers.\n7. **Local Literary Organizations:** Look for local literary organizations, writing centers, or libraries in your area that often host writing workshops, readings, and festivals. These events might not be listed online, so it's essential to check their websites or visit in person.\n8. **Google Search:** A simple Google search with keywords like \"writing workshops near me\" or \"writing conferences in [your state/city]\" can yield a list of relevant results.\n\nRemember to research the event, instructor, and organization before attending to ensure it's a good fit for your writing goals and style.\n\nAdditionally, consider subscribing to writing newsletters, like the ones offered by Writers Digest or Poets & Writers, to stay informed about upcoming events and opportunities.\n\nI hope this helps you find more writing workshops and events in your area!\nuser: I'll definitely check out those websites and platforms. I'm interested in finding more writing workshops and events like the one I attended in November, which was a two-day writing workshop at a literary festival. I paid $200 to attend, and it was really worth it. Do you know of any websites or platforms that allow me to search for events by price range or duration? That would be really helpful in finding the right fit for me.\nassistant: I understand what you're looking for now!\n\nWhile there isn't a single platform that allows you to search for writing workshops and events by price range and duration, you can use a combination of the resources I mentioned earlier to filter your search. Here's a suggested approach:\n\n1. **Shaw Guides:** Shaw Guides allows you to filter search results by \"Cost\" (free, under $100, $100-$500, $500-$1000, over $1000). You can also filter by \"Duration\" (1-2 days, 3-5 days, 1-2 weeks, etc.).\n2. **Writing Conferences & Writing Workshops:** This website allows you to filter search results by \"Cost\" (free, under $100, $100-$500, $500-$1000, over $1000). Although it doesn't have a specific filter for duration, you can check the event descriptions for the duration.\n3. **Poets & Writers:** Poets & Writers allows you to filter search results by \"Cost\" (free, under $100, $100-$500, $500-$1000, over $1000). You can also use the \"Event Type\" filter to select \"Workshops\" or \"Conferences\" and then check the event descriptions for duration.\n4. **Google Search:** Use specific search terms like \"2-day writing workshops near me\" or \"writing conferences under $500\" to find relevant results. You can also use Google's advanced search features to filter results by date, location, and more.\n\nAdditionally, you can try searching on platforms like:\n\n1. **Eventbrite:** Eventbrite is a popular platform for event organizers to list their events. You can search for writing workshops and conferences, and filter results by price range, date, and location.\n2. **Lanyrd:** Lanyrd is a platform that lists conferences and events, including writing workshops. You can search for writing events and filter results by price range, date, and location.\n\nBy combining these resources and using specific search terms, you should be able to find writing workshops and events that fit your budget and duration preferences.\nuser: That's really helpful. I'll definitely try out those resources. I'm also curious to know if you have any information on digital marketing workshops. I recently attended a two-day digital marketing workshop at the city convention center, and it was really informative. The instructor was a well-known industry expert. I learned a lot about social media advertising and SEO, which I've been trying to implement in my own business. Do you know of any resources or websites that offer digital marketing workshops or online courses?\nassistant: Digital marketing is a fascinating field, and it's great that you're looking to expand your skills!\n\nYes, there are many resources and websites that offer digital marketing workshops and online courses. Here are a few popular ones:\n\n1. **HubSpot Academy:** HubSpot offers a range of free and paid online courses and certifications in digital marketing, including inbound marketing, sales, and customer service.\n2. **Digital Marketing Institute:** The Digital Marketing Institute offers a range of online courses and certifications in digital marketing, including social media, SEO, and PPC.\n3. **Udemy:** Udemy is an online learning platform that offers a vast range of courses on digital marketing, including social media, SEO, and content marketing.\n4. **Coursera:** Coursera is an online learning platform that partners with top universities to offer courses on digital marketing, including University of Illinois's \"Digital Marketing Specialization\" and University of California's \"Digital Marketing\" course.\n5. **Skillshare:** Skillshare is an online learning platform that offers courses and workshops on digital marketing, social media, and content creation.\n6. **General Assembly:** General Assembly offers online and in-person courses and workshops on digital marketing, including social media, SEO, and email marketing.\n7. **MarketingProfs University:** MarketingProfs University offers online courses and certifications in digital marketing, including social media, SEO, and content marketing.\n8. ** Moz:** Moz is a well-known SEO tool provider that offers online courses and certifications in SEO, content marketing, and digital marketing.\n9. **Social Media Examiner:** Social Media Examiner offers online courses and certifications in social media marketing, including Facebook, Instagram, and LinkedIn marketing.\n10. **Google Analytics Academy:** Google Analytics Academy offers free online courses and certifications in Google Analytics and digital marketing.\n\nThese resources offer a range of formats, from self-paced online courses to live workshops and instructor-led training. You can choose the ones that fit your schedule, budget, and learning style.\n\nRemember to research the instructor, course content, and reviews before investing in any digital marketing workshop or online course.\nuser: That's a great list of resources! I'll definitely check them out. I'm particularly interested in SEO and social media advertising, as I learned a lot about those topics in the digital marketing workshop I attended recently. Do you know of any online communities or forums where I can connect with other digital marketers and get feedback on my marketing strategies?\nassistant: Connecting with other digital marketers can be incredibly valuable for learning, getting feedback, and staying up-to-date with the latest trends!\n\nYes, there are many online communities and forums where you can connect with other digital marketers, get feedback on your strategies, and learn from their experiences. Here are some popular ones:\n\n1. **Reddit:** r/digitalmarketing, r/SEO, r/socialmedia, and r/advertising are all active communities with thousands of members. Share your experiences, ask questions, and get feedback from others.\n2. **Facebook Groups:** Join groups like Digital Marketing Professionals, SEO and Digital Marketing, Social Media Marketing, and Online Marketing Masters to connect with other marketers and get feedback on your strategies.\n3. **LinkedIn Groups:** Participate in groups like Digital Marketing, SEO and Social Media, Online Marketing, and Content Marketing to connect with other professionals and stay updated on industry news.\n4. **Quora:** Quora is a Q&A platform where you can ask questions and get answers from experienced digital marketers. Follow topics like digital marketing, SEO, social media, and advertising to stay informed.\n5. **Stack Exchange:** Stack Exchange has a dedicated community for digital marketing, where you can ask questions and get answers from experienced marketers.\n6. **Warrior Forum:** Warrior Forum is a popular community for digital marketers, with sections dedicated to SEO, social media, and online marketing.\n7. **GrowthHackers:** GrowthHackers is a community focused on growth hacking and digital marketing. Share your experiences, ask questions, and get feedback from others.\n8. **Inbound.org:** Inbound.org is a community for inbound marketers, with sections dedicated to SEO, social media, content marketing, and more.\n9. **Digital Marketing Forum:** Digital Marketing Forum is a dedicated community for digital marketers, with sections on SEO, social media, PPC, and more.\n10. ** Moz Community:** Moz is a well-known SEO tool provider, and their community is a great place to connect with other SEO professionals, ask questions, and get feedback.\n\nRemember to always follow community guidelines, be respectful, and provide value to others. These communities can be a great resource for learning, getting feedback, and growing your network.\n\nDo you have any specific questions about digital marketing or SEO that you'd like to discuss? I'm here to help!\n\n        Candidate notes:\n        [0] type=CONTEXT title=User seeks workshop-style learning with practical feedback loops summary=The user values paid, multi-day workshops where expert instructors provide concrete feedback, and uses follow-up resources and communities to continue improving after the event. This pattern appears in both creative writing and digital marketing contexts, including interest in searchable event platforms by cost and duration. scope=Applies to the user's learning preferences for workshops, events, online courses, and professional communities. entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=workshops,feedback,price range,duration,expert instructors,online communities tags=learning_preferences,workshops,feedback_loop evidence=I paid $200 to attend, and it was really worth it. Do you know of any websites or platforms that allow me to search for events by price range or duration?\n[1] type=CONTEXT title=Short story development focus after literary festival workshop summary=The user's short story is in a post-workshop development phase: they received feedback from a published author and are looking for resources on character development and editing to revise the work. scope=Applies to the user's short story and related writing-improvement context after the November literary festival workshop. entities=entity:<5>,entity:<6>,entity:<1>,entity:<7>,entity:<8>,entity:<9> keywords=short story,character development,editing,published author feedback,literary festival tags=writing,short_story,revision evidence=I've been working on a short story since a writing workshop I attended in November at a literary festival.\n\n        Existing active notes:\n        id=hot-path-b4e92ce88050-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Workshops support User's business growth path summary=The user applies workshop learning to their business, including digital marketing strategies, and sees accelerator programs or incubators as a way to take the business to the next level through mentorship, resources, networking, feedback, collaborations, or investments. scope=Applies to the user's business-development approach involving workshops, accelerators, and incubators. keywords=business growth,digital marketing,startup accelerator,incubator,mentorship,investments,collaborations tags=business_context,entrepreneurship,growth_strategy useCount=0\nid=hot-path-b4e92ce88050-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=User's cross-field workshop strategy summary=The user attends workshops across fields because it helps them become more well-rounded and open to new ideas; they value transferable skills such as communication and problem-solving, plus networking with people from different backgrounds and industries. scope=Applies to the user's motivation and learning strategy for attending workshops across different domains. keywords=workshops,cross-field learning,networking,communication,problem-solving,well-rounded tags=learning_strategy,workshops,networking useCount=0\nid=hot-path-b4e92ce88050-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Mindfulness as entrepreneurship stress-management practice summary=The user uses mindfulness and wellness workshops to stay focused and calm while handling the stresses of entrepreneurship, including using exercises and tips from a workbook received at a mindfulness workshop. scope=Applies to the user's wellbeing practices in the context of entrepreneurship and business stress. keywords=mindfulness,wellness,entrepreneurship stress,focused,calm,workbook,stress management tags=wellbeing,entrepreneurship,stress_management useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_731e37d7",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:2560ef1ba7c03b5b41d74bf51e1da9c8"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-b4e92ce88050-note-2\"},{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-b4e92ce88050-note-3\"}],\"patch\":null,\"reason\":\"Captures a distinct reusable preference for paid multi-day expert-led workshops with practical feedback loops and searchable filters, refining but not duplicating the broader cross-field workshop strategy.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-b4e92ce88050-note-2\"}],\"patch\":null,\"reason\":\"Adds a distinct project-specific context about the user's short story revision needs after a literary festival workshop, not covered by existing general workshop-learning notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4361,
+                "completionTokens": 221,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
