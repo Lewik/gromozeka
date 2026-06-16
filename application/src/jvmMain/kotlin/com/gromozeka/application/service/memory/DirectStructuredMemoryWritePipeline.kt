@@ -675,9 +675,22 @@ class DirectStructuredMemoryWritePipeline(
                 "claims=${claimCandidates.claimDetailsForLog()}"
         }
 
+        val derivedClaimCandidates = MemoryAggregateMetricDeriver.derive(
+            claimCandidates = claimCandidates,
+            retrievedHits = retrievedHits,
+            predicateCatalog = predicateCatalog,
+        )
+        val reconciledClaimCandidates = claimCandidates + derivedClaimCandidates
+        if (derivedClaimCandidates.isNotEmpty()) {
+            log.info {
+                "Memory aggregate metric deriver result: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "derived=${derivedClaimCandidates.size} claims=${derivedClaimCandidates.claimSummary()}"
+            }
+        }
+
         val rawClaimOps = reconcileClaimCandidates(
             request = request,
-            claimCandidates = claimCandidates,
+            claimCandidates = reconciledClaimCandidates,
             retrievedHits = retrievedHits,
             predicateCatalog = predicateCatalog,
         )
@@ -702,7 +715,7 @@ class DirectStructuredMemoryWritePipeline(
         }
 
         return MemoryWriteClaimBranchResult(
-            claimCandidates = claimCandidates,
+            claimCandidates = reconciledClaimCandidates,
             rawClaimOps = rawClaimOps,
             claimOps = claimOps,
         )

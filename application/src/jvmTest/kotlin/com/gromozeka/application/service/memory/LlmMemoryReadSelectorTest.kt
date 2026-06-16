@@ -374,6 +374,57 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
+    fun promptKeepsIntermediateFormalEducationForStageToDegreeDuration() = runBlocking {
+        val claims = listOf(
+            claim(
+                id = "claim-high-school",
+                normalizedText = "The user attended high school from 2010 to 2014.",
+                predicate = "attended_education",
+            ),
+            claim(
+                id = "claim-associate",
+                normalizedText = "The user completed an associate degree at community college in 2016.",
+                predicate = "completed_education",
+            ),
+            claim(
+                id = "claim-bachelor",
+                normalizedText = "The user completed a bachelor's degree in 2020.",
+                predicate = "completed_education",
+            ),
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-high-school", "claim-bachelor"))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("How many years did I spend in formal education from high school to my Bachelor's degree?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 3),
+                ),
+                candidateHits = claims.mapIndexed { index, claim ->
+                    MemoryStore.SearchHit.ClaimHit(claim, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(claims = claims),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(
+            prompt.contains("For formal education timeline or duration questions"),
+            prompt,
+        )
+        assertTrue(
+            prompt.contains("keep intermediate formal education credentials"),
+            prompt,
+        )
+    }
+
+    @Test
     fun promptKeepsLaterPlansForCurrentStateQuestionsAtLaterTargetDate() = runBlocking {
         val claims = listOf(
             claim(
