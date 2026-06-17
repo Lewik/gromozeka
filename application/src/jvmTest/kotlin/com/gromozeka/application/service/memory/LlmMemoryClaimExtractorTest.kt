@@ -189,6 +189,75 @@ class LlmMemoryClaimExtractorTest {
     }
 
     @Test
+    fun acceptsGenericPossessionClaimsWithEntityObject() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val signedRecordEntityId = MemoryEntity.Id("entity-signed-record")
+        val request = DirectStructuredMemoryWriteRequest(
+            namespace = TEST_NAMESPACE,
+            source = source("I got my signed record added to my music collection."),
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "claims": [
+                    {
+                      "subject_entity_id": "${userEntityId.value}",
+                      "predicate": "owns",
+                      "object_entity_id": "${signedRecordEntityId.value}",
+                      "object_value_json": null,
+                      "normalized_text": "The user owns a signed record in the user's music collection.",
+                      "context_text": "Personal music collection item.",
+                      "scope_json": {"kind": "global", "text": "User's personal possessions", "basis": "explicit"},
+                      "qualifiers_json": {"category": "music_media", "format": "record", "signed": true},
+                      "confidence": 0.88,
+                      "importance": 7,
+                      "evidence_quote": "my signed record added to my music collection",
+                      "evidence_kind": "direct",
+                      "evidence_reason": "The target explicitly says the signed record is in the user's collection.",
+                      "reason": "A personal collected item is durable possession memory."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val candidates = extractor.extract(
+            request = request,
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target contains a durable possession fact.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("owns"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(
+                entityOp("I", userEntityId, MemoryEntity.Type.USER),
+                entityOp("signed record", signedRecordEntityId, MemoryEntity.Type.PRODUCT),
+            ),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, candidates.size)
+        assertEquals("owns", candidates.single().predicate)
+        assertEquals(userEntityId, candidates.single().subjectEntityId)
+        assertEquals(signedRecordEntityId, candidates.single().objectEntityId)
+        assertNull(candidates.single().objectValue)
+        assertEquals(
+            setOf(MemoryPredicateDefinition.SemanticKind.POSSESSION),
+            candidates.single().predicatePolicy?.semanticKinds,
+        )
+    }
+
+    @Test
     fun resolvesUserLiteralEntityReferenceBeforeMappingClaims() = runBlocking {
         val userEntityId = MemoryEntity.Id("entity-user")
         val runtime = SequencedJsonRuntime(

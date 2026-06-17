@@ -412,7 +412,16 @@ class RuntimeMemoryReadPipeline(
             candidateHits = selectorCandidateHits,
             protectedRefs = selectorSelectedRefs,
         )
-        val sourceSafety = selectedSourceSafety
+        val selectedSourceTypedSupport = selectedSourceSafety.hits.withSelectedSourceTypedEvidenceSupport(
+            request = request,
+            plan = plan,
+            includeHistoricalTypedMemory = includeHistoricalTypedMemory,
+        )
+        val sourceSafety = selectedSourceSafety.copy(
+            hits = selectedSourceTypedSupport.hits,
+            restoredTypedHits = (selectedSourceSafety.restoredTypedHits + selectedSourceTypedSupport.addedHits)
+                .distinctBy { it.toItemRef() },
+        )
         if (sourceSafety.changed) {
             log.info {
                 "Memory read source freshness guard: namespace=${request.namespace.value} " +
@@ -681,6 +690,41 @@ class RuntimeMemoryReadPipeline(
 
         return this + supportHits
     }
+
+    private suspend fun List<MemoryStore.SearchHit>.withSelectedSourceTypedEvidenceSupport(
+        request: MemoryReadRequest,
+        plan: MemoryReadPlan,
+        includeHistoricalTypedMemory: Boolean,
+    ): RuntimeMemorySelectedSourceTypedSupportResult {
+        if (!plan.shouldRestoreTypedEvidenceForSelectedSources()) {
+            return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
+        }
+
+        val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+            .mapTo(mutableSetOf()) { it.source.id }
+        if (sourceIds.isEmpty()) return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
+
+        val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
+        val supportHits = store.findTypedMemoryByEvidenceSourceIds(request.namespace, sourceIds)
+            .filter { includeHistoricalTypedMemory || !it.isInactiveTypedHitForRead() }
+            .filter { includeHistoricalTypedMemory || it.isCurrentTruthBearingTypedHit() }
+            .filterNot { it.toItemRef() in existingRefs }
+            .map { it.withRuntimeEvidenceSupportScore(request, plan) }
+            .sortedForRuntimeMemoryRead(plan)
+            .take(READ_SELECTED_SOURCE_TYPED_SUPPORT_LIMIT)
+        if (supportHits.isEmpty()) return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
+
+        log.info {
+            "Memory read selected source typed support: namespace=${request.namespace.value} " +
+                "sources=${sourceIds.size} support=${supportHits.breakdownForRuntimeMemoryLog()} " +
+                "refs=${supportHits.summaryForRuntimeMemoryLog()}"
+        }
+
+        return RuntimeMemorySelectedSourceTypedSupportResult(
+            hits = this + supportHits,
+            addedHits = supportHits,
+        )
+    }
 }
 
 private data class RuntimeMemoryRetrievedHits(
@@ -709,6 +753,11 @@ private data class RuntimeMemorySourceSafetyResult(
     val restoredTypedRefs: Set<MemoryItemRef> = restoredTypedHits.mapTo(mutableSetOf()) { it.toItemRef() }
     val changed: Boolean = suppressedSourceIds.isNotEmpty() || restoredTypedRefs.isNotEmpty()
 }
+
+private data class RuntimeMemorySelectedSourceTypedSupportResult(
+    val hits: List<MemoryStore.SearchHit>,
+    val addedHits: List<MemoryStore.SearchHit> = emptyList(),
+)
 
 private data class RuntimeMemoryRawSourceDeferralResult(
     val hits: List<MemoryStore.SearchHit>,
@@ -772,10 +821,12 @@ object RuntimeMemoryPromptComposer {
             For aggregate total/count questions, count only explicit numeric operands or explicit list items that the retrieved memory places in the requested aggregate. Do not add an implicit count of 1 for a singular mentioned object unless memory says it belongs to the counted inventory, collection, or total. For current aggregate totals, first find the latest explicit baseline total for the same collection, then apply later explicit additions or removals in chronological order. A direct older current_metric_value is not final when selected later memory explicitly adds or removes an item in the same aggregate.
             For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, count evidence-backed variants that satisfy the requested category even when retrieved memory uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not count merely adjacent examples.
             For acquisition-style count/list questions, count concrete physical or digital items when retrieved memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; do not count mere mentions, interests, recommendations, or assistant-only suggestions.
+            For acquisition-style count/list questions, selected ACTIVE "owns" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.
             First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Do not use this shortcut when the question asks for purchase/download transaction details such as price, store, payment, download source, or exact date.
             Treat "how many X did I buy/download/acquire/get" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.
             For broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.
             In count/list questions, broad category labels are category-fit tests, not exact-word qualifiers. Do not exclude a plausible counted item solely because memory names a member, carrier, copy, or concrete instance instead of repeating the category label.
+            For broad category counts, a missing exact subtype word is not a contradiction. Exclude a selected user-attributed copy/member/carrier only when retrieved memory gives an explicit conflicting subtype or category, or when the question asks for exact subtype/transaction details.
             For specifically qualified questions, satisfy every explicit qualifier in the question. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting.
             For formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline. Include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the asked span.
             For aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.
@@ -1689,7 +1740,12 @@ private fun List<MemoryStore.SearchHit>.renderClaims(includeEvidence: Boolean): 
                 ?.let { contextText -> "; context=\"$contextText\"" }
                 .orEmpty()
             val evidence = if (includeEvidence) "; evidence=${it.claim.evidenceRefs.renderEvidenceRefs()}" else ""
-            "- claim ${it.claim.id.value} [${it.claim.status.name}] ${it.claim.predicate} family=${it.claim.predicateFamily ?: "unknown"}: ${it.claim.normalizedText}; scope=${it.claim.scope.text}$context$evidence"
+            val policy = it.claim.predicatePolicy
+                ?.let { policy ->
+                    " semantics=${policy.semanticKinds.joinToString("|") { semanticKind -> semanticKind.name }} aggregate_effect=${policy.aggregateEffect.name}"
+                }
+                .orEmpty()
+            "- claim ${it.claim.id.value} [${it.claim.status.name}] ${it.claim.predicate} family=${it.claim.predicateFamily ?: "unknown"}$policy: ${it.claim.normalizedText}; scope=${it.claim.scope.text}$context$evidence"
         }
         .ifBlank { "none" }
 
@@ -1778,6 +1834,13 @@ private fun MemoryReadPlan.shouldIncludeSourceEvidence(): Boolean =
 
 private fun MemoryReadPlan.shouldRenderEvidenceInPrompt(): Boolean =
     evidenceHydrationSourceLimit() > 0
+
+private fun MemoryReadPlan.shouldRestoreTypedEvidenceForSelectedSources(): Boolean =
+    shouldRenderEvidenceInPrompt() && (
+        coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET ||
+            answerMode == MemoryReadPlan.AnswerMode.FACTUAL ||
+            answerMode == MemoryReadPlan.AnswerMode.ACTION_ITEM
+        )
 
 private fun List<MemoryStore.SearchHit>.keepLinkedEvidenceSources(
     evidenceSourceIds: List<MemorySource.Id>,
@@ -2039,6 +2102,7 @@ private fun String.truncateForRuntimeMemoryPrompt(maxChars: Int): String {
 
 private const val MAX_RUNTIME_CLAIM_CONTEXT_CHARS = 700
 private const val MAX_RUNTIME_FULL_SOURCE_CHARS = 12_000
+private const val READ_SELECTED_SOURCE_TYPED_SUPPORT_LIMIT = 16
 
 private fun MemorySource.sourceLabelForMemoryPrompt(): String =
     when (this) {

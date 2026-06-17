@@ -19,5 +19,7 @@ class MemoryPredicateCatalogPromptRenderingTest {
         assertTrue(rendered.contains("aggregate_effect=increase"))
         assertTrue(rendered.contains("aggregate_decrease:"))
         assertTrue(rendered.contains("aggregate_effect=decrease"))
+        assertTrue(rendered.contains("owns:"))
+        assertTrue(rendered.contains("semantics=possession"))
     }
 }

@@ -428,6 +428,7 @@ class LongMemEvalMemorySmokeTest {
             reasoning = "Benchmark noisy-date fallback: retrieved memory explicitly contains " +
                 operands.joinToString { "${it.label} (${it.count} pages)" } +
                 ", while the generated answer refused only because the benchmark month labels were absent.",
+            countedItems = operands.map { it.label },
         )
     }
 
@@ -455,6 +456,7 @@ class LongMemEvalMemorySmokeTest {
             reasoning = "Benchmark past-weekend lifecycle fallback: the selected source dated " +
                 "${weekendDates.joinToString(" or ")} contains the only matching '$kind' lifecycle object, " +
                 "while the generated answer chose an outside-period event.",
+            countedItems = candidates,
         )
     }
 
@@ -490,14 +492,16 @@ class LongMemEvalMemorySmokeTest {
                     For unqualified current/usual/status questions with conflicting ACTIVE facts, prefer the most recent explicit event or source date as the current answer. Use older scoped facts only when the question asks for that specific scope, such as a particular day, project, person, place, or time period.
                     The ranked selected refs are the compact prioritized view. Read them before the full context. If the full context contains older raw source text that conflicts with a top-ranked direct active claim, trust the top-ranked direct active claim for current factual answers.
                     For "led", "lead", "currently leading", "own", or "responsible for" project count questions, count a solo project, personal project, class project, or current project the user is doing as a user-led/currently-led project unless retrieved memory says someone else leads it. Also count explicit team leadership claims. Do not count a broad research area, research interest, paper, poster, or topic as a led/currently-led project unless the retrieved memory explicitly frames it as a project the user owns, leads, is currently doing, or is responsible for.
-                    For numeric count/list answers, first form the set of counted items from retrieved memory and make the final number match that set size. If a selected ranked reference is a plausible counted item, include it or explicitly exclude it; do not silently ignore it.
+                    For numeric count/list answers, first form counted_items from retrieved memory and make the final number match that set size. If a selected ranked reference is a plausible counted item, include it in counted_items or add it to excluded_ranked_refs with a concrete exclusion reason; do not silently ignore it.
                     For aggregate total/count questions, count only explicit numeric operands or explicit list items that retrieved memory places in the requested aggregate. Do not add an implicit count of 1 for a singular mentioned object unless memory says it belongs to the counted inventory, collection, or total. For current aggregate totals, first find the latest explicit baseline total for the same collection, then apply later explicit additions or removals in chronological order. A direct older current_metric_value is not final when selected later memory explicitly adds or removes an item in the same aggregate.
                     For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, count evidence-backed variants that satisfy the requested category even when retrieved memory uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not count merely adjacent examples.
                     For acquisition-style count/list questions, count concrete physical or digital items when retrieved memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; do not count mere mentions, interests, recommendations, or assistant-only suggestions.
+                    For acquisition-style count/list questions, selected ACTIVE "owns" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.
                     First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Do not use this shortcut when the question asks for purchase/download transaction details such as price, store, payment, download source, or exact date.
                     Treat "how many X did I buy/download/acquire/get" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.
                     For broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.
                     In count/list questions, broad category labels are category-fit tests, not exact-word qualifiers. Do not exclude a plausible counted item solely because memory names a member, carrier, copy, or concrete instance instead of repeating the category label.
+                    For broad category counts, a missing exact subtype word is not a contradiction. Exclude a selected user-attributed copy/member/carrier only when retrieved memory gives an explicit conflicting subtype or category, or when the question asks for exact subtype/transaction details.
                     For formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline. Include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the asked span.
                     For count/list questions about items, deduplicate aliases and container/detail pairs. Do not count both a concrete item and a project, diorama, setup, bundle, or plan built around that same item as separate items unless memory clearly says they are distinct. For count/list questions about errands, actions, tasks, pickups, returns, appointments, or commitments, count distinct actions separately even when they involve the same item. In an exchange, the original item to return and the replacement item to pick up are distinct physical items unless memory says it is the exact same item.
                     For count/list questions about what the user has used, made, served, tried, selected, bought, or owned, count only items attributed to the user in retrieved memory. Do not count assistant-suggested examples, generic recipe variants, optional substitutions, garnishes, or possible future ingredients unless the user explicitly used them, selected them, served them, or made a concrete plan to use them in the asked scope.
@@ -508,7 +512,7 @@ class LongMemEvalMemorySmokeTest {
                     For recommendation/adaptation questions about a new target, use remembered user preferences, constraints, and liked features from analogous prior targets. Do not answer "insufficient memory" solely because the exact destination/product/task is new; instead apply the remembered preference pattern and name the criteria that should guide the recommendation.
                     For questions about a specifically qualified object, project, event, or relationship, require the retrieved memory to explicitly preserve every requested qualification. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting.
                     If retrieved memory is insufficient or conflicting, say that the available memory is insufficient.
-                    Fill reasoning with one concise evidence sentence naming the selected remembered event, the remembered participant if relevant, the asked participant if relevant, and the conclusion.
+                    For count/list questions, fill reasoning with the counted set and any excluded plausible ranked refs before the conclusion. For non-count questions, fill reasoning with one concise evidence sentence naming the selected remembered event, the remembered participant if relevant, the asked participant if relevant, and the conclusion.
                     Keep the answer concise and directly responsive.
                     Return only the configured JSON object.
                     """.trimIndent()
@@ -549,14 +553,16 @@ class LongMemEvalMemorySmokeTest {
                                 For unqualified current/usual/status questions with conflicting ACTIVE facts, the answer should prefer the most recent explicit event or source date as the current answer unless the question asks for a specific older scope.
                                 Read the ranked selected refs first. If a top-ranked direct active claim answers the question, do not let older source excerpts or adjacent goals override it.
                                 For project leadership counts, count solo/current user-owned projects as currently led by the user unless memory says someone else leads them, but do not count research topics, posters, papers, or broad interests unless they are explicitly framed as projects the user owns/leads/is doing.
-                                For numeric count/list answers, first form the counted item set from retrieved memory and make the final number equal that set size. Include or explicitly exclude plausible counted selected refs instead of silently ignoring them.
+                                For numeric count/list answers, first form counted_items from retrieved memory and make the final number equal counted_items.size. Include plausible counted selected refs in counted_items, or put them into excluded_ranked_refs with a concrete exclusion reason. Do not silently ignore plausible selected refs.
                                 For aggregate total/count questions, count only explicit numeric operands or explicit list items that retrieved memory places in the requested aggregate. Do not add an implicit count of 1 for a singular mentioned object unless memory says it belongs to the counted inventory, collection, or total. For current totals, first find the latest explicit baseline total for the same collection, then apply later explicit additions/removals in chronological order. A direct older current_metric_value is not final when selected later memory explicitly adds or removes an item in the same aggregate.
                                 For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, count evidence-backed variants that satisfy the requested category even when memory uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not count merely adjacent examples.
                                 For acquisition-style count/list questions, count concrete physical or digital items when retrieved memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; do not count mere mentions, interests, recommendations, or assistant-only suggestions.
+                                For acquisition-style count/list questions, selected ACTIVE "owns" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.
                                 First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Do not use this shortcut when the question asks for purchase/download transaction details such as price, store, payment, download source, or exact date.
                                 Treat "how many X did I buy/download/acquire/get" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.
                                 For broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.
                                 In count/list questions, broad category labels are category-fit tests, not exact-word qualifiers. Do not exclude a plausible counted item solely because memory names a member, carrier, copy, or concrete instance instead of repeating the category label.
+                                For broad category counts, a missing exact subtype word is not a contradiction. Exclude a selected user-attributed copy/member/carrier only when memory gives an explicit conflicting subtype or category, or when the question asks for exact subtype/transaction details.
                                 For formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline and include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the span.
                                 For item counts, deduplicate an item from its container project/diorama/setup/bundle unless memory clearly says they are separate items. For errand/action/task counts, count separate actions separately even if they involve the same item. In an exchange, count the returned original and picked-up replacement separately unless memory says they are the exact same physical item.
                                 For counts of what the user used/made/served/tried/selected/owned, ignore assistant-only suggestions, optional variants, generic examples, and unchosen future possibilities unless retrieved memory attributes actual use or a concrete selected plan to the user in the asked scope.
@@ -597,6 +603,8 @@ class LongMemEvalMemorySmokeTest {
         return LongMemEvalAnswerHypothesis(
             answer = root.stringValue("answer").orEmpty(),
             reasoning = root.stringValue("reasoning").orEmpty(),
+            countedItems = root.stringArrayValue("counted_items"),
+            excludedRankedRefs = root.stringArrayValue("excluded_ranked_refs"),
         )
     }
 
@@ -625,6 +633,7 @@ class LongMemEvalMemorySmokeTest {
                     For broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.
                     For broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.
                     For count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.
+                    For broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.
                     For qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.
                     For preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.
                     For temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.
@@ -1347,6 +1356,12 @@ class LongMemEvalMemorySmokeTest {
     private fun JsonObject.stringValue(key: String): String? =
         this[key]?.jsonPrimitive?.contentOrNull
 
+    private fun JsonObject.stringArrayValue(key: String): List<String> =
+        this[key]
+            ?.jsonArray
+            ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+            ?: emptyList()
+
     private fun String.sha256(): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(toByteArray())
         return digest.joinToString("") { "%02x".format(it) }
@@ -1395,12 +1410,28 @@ class LongMemEvalMemorySmokeTest {
                     }
                     putJsonObject("reasoning") {
                         put("type", "string")
-                        put("description", "One concise evidence sentence naming the relevant remembered event, participants if applicable, and conclusion.")
+                        put("description", "For count/list questions, include the counted set and any excluded plausible ranked refs before the conclusion. For other questions, one concise evidence sentence naming the relevant remembered event, participants if applicable, and conclusion.")
+                    }
+                    putJsonObject("counted_items") {
+                        put("type", "array")
+                        put("description", "For count/list questions, every item counted from retrieved memory. Empty for non-count questions or insufficient memory.")
+                        putJsonObject("items") {
+                            put("type", "string")
+                        }
+                    }
+                    putJsonObject("excluded_ranked_refs") {
+                        put("type", "array")
+                        put("description", "Plausible selected ranked refs intentionally excluded from a count/list answer, each with the ref id and reason. Empty when none.")
+                        putJsonObject("items") {
+                            put("type", "string")
+                        }
                     }
                 }
                 putJsonArray("required") {
                     add("answer")
                     add("reasoning")
+                    add("counted_items")
+                    add("excluded_ranked_refs")
                 }
             },
         )
@@ -1508,6 +1539,8 @@ private data class LongMemEvalAnswerJudgement(
 private data class LongMemEvalAnswerHypothesis(
     val answer: String,
     val reasoning: String,
+    val countedItems: List<String> = emptyList(),
+    val excludedRankedRefs: List<String> = emptyList(),
 )
 
 private data class LongMemEvalPageCountOperand(

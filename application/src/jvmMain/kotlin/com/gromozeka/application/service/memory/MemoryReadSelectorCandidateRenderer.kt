@@ -145,6 +145,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             lifecycleState = lifecycleState,
             predicate = predicate,
             predicateFamily = predicateFamily,
+            predicateSemanticKinds = predicatePolicy?.semanticKinds?.map { it.name },
             subjectEntityId = subjectEntityId.value,
             objectEntityId = objectEntityId?.value,
             text = normalizedText.limitForSelectorView(900),
@@ -301,6 +302,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             status = status.name,
             lifecycleState = if (status == MemoryClaim.Status.ACTIVE) "current" else "non_current",
             predicate = predicate,
+            predicateSemanticKinds = predicatePolicy?.semanticKinds?.map { it.name },
             text = normalizedText.limitForSelectorView(300),
             evidenceSourceIds = evidenceRefs.map { it.sourceId.value }.distinct(),
             overriddenByIds = snapshot.activeClaimReplacementsFor(this).map { it.id },
@@ -395,6 +397,8 @@ private data class CandidateView(
     val predicate: String? = null,
     @SerialName("predicate_family")
     val predicateFamily: String? = null,
+    @SerialName("predicate_semantic_kinds")
+    val predicateSemanticKinds: List<String>? = null,
     @SerialName("note_type")
     val noteType: String? = null,
     val title: String? = null,
@@ -429,6 +433,8 @@ private data class TypedMemoryRef(
     @SerialName("lifecycle_state")
     val lifecycleState: String? = null,
     val predicate: String? = null,
+    @SerialName("predicate_semantic_kinds")
+    val predicateSemanticKinds: List<String>? = null,
     val title: String? = null,
     val text: String? = null,
     @SerialName("evidence_source_ids")

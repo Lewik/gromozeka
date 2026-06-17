@@ -426,6 +426,55 @@ class LlmMemoryEntityCanonicalizerTest {
     }
 
     @Test
+    fun promptRequestsPersonalItemEntitiesForPossessionClaims() = runBlocking {
+        val prompt = captureEntityCanonicalizerPrompt(retrievedHits = emptyList())
+
+        assertTrue(prompt.contains("concrete personal items"))
+        assertTrue(prompt.contains("First-person possessive wording"))
+        assertTrue(prompt.contains("my copy of X"))
+    }
+
+    @Test
+    fun acceptsDescriptivePersonalMediaProductEntity() = runBlocking {
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "my signed record",
+                      "action": "create_new",
+                      "entity_id": null,
+                      "new_entity": {
+                        "entity_type": "product",
+                        "canonical_name": "User's signed record",
+                        "summary": "Concrete personal music-media item owned by the user."
+                      },
+                      "confidence": 0.9,
+                      "reason": "First-person possessive wording identifies a reusable personal item."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = request("I got my signed record added to my music collection."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("my signed record")),
+            retrievedHits = emptyList(),
+        )
+
+        val op = ops.single()
+        assertEquals(MemoryEntityCanonicalizationOp.Action.CREATE_NEW, op.action)
+        assertEquals(MemoryEntity.Type.PRODUCT, op.newEntity?.entityType)
+        assertEquals("User's signed record", op.newEntity?.canonicalName)
+        assertTrue(requireNotNull(op.entityId).value.isValidMemoryEntityId())
+    }
+
+    @Test
     fun repairsDocumentFileEntityWithoutAboutFileAssertion() = runBlocking {
         val runtime = SequencedJsonRuntime(
             responses = ArrayDeque(

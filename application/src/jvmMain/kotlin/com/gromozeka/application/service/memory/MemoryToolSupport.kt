@@ -1,7 +1,9 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
+import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryReadResult
+import com.gromozeka.domain.model.memory.MemoryReadTrace
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
@@ -126,11 +128,16 @@ object MemoryToolResultRenderer {
             )
             put("memory_context", result.runtimePrompt ?: "No relevant persisted memory was retrieved for the target context.")
             putJsonArray("selected_refs") {
-                result.trace.selectedHits.take(16).forEach { hit ->
+                result.selectedToolRefs(limit = 16).forEach { selectedRef ->
+                    val hit = selectedRef.hit
                     add(buildJsonObject {
                         put("type", hit.ref.type.name)
                         put("id", hit.ref.id)
                         put("summary", hit.summary.shortForMemoryToolResult())
+                        selectedRef.decision?.let { decision ->
+                            put("rank", decision.rank)
+                            put("selection_reason", decision.reason.shortForMemoryToolResult())
+                        }
                         hit.predicate?.let { put("predicate", it) }
                         hit.status?.let { put("status", it) }
                         if (hit.evidenceSourceIds.isNotEmpty()) {
@@ -156,6 +163,40 @@ object MemoryToolResultRenderer {
             }
         }.toString()
     }
+
+    private fun MemoryReadResult.selectedToolRefs(limit: Int): List<MemoryToolSelectedRef> {
+        val hitsByRef = trace.selectedHits.associateBy { it.ref }
+        val decisionsByRef = trace.selectorDecisions.associateBy { it.ref }
+        val ordered = mutableListOf<MemoryToolSelectedRef>()
+        val addedRefs = mutableSetOf<MemoryItemRef>()
+
+        trace.selectorDecisions
+            .asSequence()
+            .filter { it.selected }
+            .filter { it.rank > 0 && it.rank < Int.MAX_VALUE }
+            .sortedWith(compareBy<MemoryReadTrace.SelectorDecision> { it.rank }
+                .thenBy { it.ref.type.name }
+                .thenBy { it.ref.id })
+            .forEach { decision ->
+                val hit = hitsByRef[decision.ref] ?: return@forEach
+                if (addedRefs.add(hit.ref)) {
+                    ordered += MemoryToolSelectedRef(hit = hit, decision = decision)
+                }
+            }
+
+        trace.selectedHits.forEach { hit ->
+            if (addedRefs.add(hit.ref)) {
+                ordered += MemoryToolSelectedRef(hit = hit, decision = decisionsByRef[hit.ref])
+            }
+        }
+
+        return ordered.take(limit)
+    }
+
+    private data class MemoryToolSelectedRef(
+        val hit: MemoryReadTrace.Hit,
+        val decision: MemoryReadTrace.SelectorDecision?,
+    )
 
     internal fun rememberDocumentResultJsonString(result: MemoryRememberDocumentResult): String =
         buildJsonObject {

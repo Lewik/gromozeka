@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEntity
+import com.gromozeka.domain.model.memory.MemoryEvidenceRef
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryReadPlan
 import com.gromozeka.domain.model.memory.MemoryReadRequest
@@ -176,6 +177,69 @@ class LlmMemoryReadSelectorTest {
         )
         assertTrue(runtime.finalCandidateIds.single().containsAll(listOf("source-01", "source-02", "source-03")))
         assertTrue(result.summary.contains("Final safety added"))
+    }
+
+    @Test
+    fun keepsTypedEvidenceFromSelectedSourceForCompleteSet() = runBlocking {
+        val source = source(
+            id = "source-personal-copy",
+            text = "The source contains a low lexical score personal item that still belongs to the complete set.",
+        )
+        val evidenceClaim = claim(
+            id = "claim-personal-copy",
+            normalizedText = "The user owns a signed personal music-media copy.",
+            predicate = "owns",
+            evidenceSourceId = source.id.value,
+        )
+        val notes = (1..43).map { index ->
+            note(
+                id = "note-${index.toString().padStart(2, '0')}",
+                title = "Distractor note $index",
+                summary = "Distractor note $index has stronger lexical score than the evidence-backed claim.",
+            )
+        }
+        val hits = notes.take(38).mapIndexed { index, note ->
+            MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
+        } + listOf(
+            MemoryStore.SearchHit.SourceHit(source, score = 0.61),
+            MemoryStore.SearchHit.ClaimHit(evidenceClaim, score = 0.05),
+        ) + notes.drop(38).mapIndexed { index, note ->
+            MemoryStore.SearchHit.NoteHit(note, score = 0.5 - index / 100.0)
+        }
+        val runtime = SelectingRuntime(
+            intermediateSelectedIds = setOf("note-38"),
+            finalSelectedIds = setOf("source-personal-copy"),
+        )
+
+        val result = LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("How many complete-set items did I acquire?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(notes = 1, sources = 1, claims = 1),
+                    requireEvidenceFallback = true,
+                ),
+                candidateHits = hits,
+                snapshot = MemoryNamespaceSnapshot(
+                    claims = listOf(evidenceClaim),
+                    notes = notes,
+                    sources = listOf(source),
+                ),
+            )
+        )
+
+        assertTrue(runtime.finalCandidateIds.single().contains("claim-personal-copy"))
+        assertTrue(
+            result.selectedHits
+                .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
+                .any { it.claim.id.value == "claim-personal-copy" }
+        )
     }
 
     @Test
@@ -668,6 +732,7 @@ class LlmMemoryReadSelectorTest {
             normalizedText: String,
             predicate: String,
             qualifiers: JsonObject = JsonObject(emptyMap()),
+            evidenceSourceId: String? = null,
         ): MemoryClaim =
             MemoryClaim(
                 id = MemoryClaim.Id(id),
@@ -682,6 +747,15 @@ class LlmMemoryReadSelectorTest {
                 importance = 6,
                 firstSeenAt = NOW,
                 lastSeenAt = NOW,
+                evidenceRefs = evidenceSourceId?.let {
+                    listOf(
+                        MemoryEvidenceRef(
+                            sourceId = MemorySource.Id(it),
+                            kind = MemoryEvidenceRef.Kind.DIRECT,
+                            cachedQuote = "test quote",
+                        )
+                    )
+                } ?: emptyList(),
                 createdAt = NOW,
                 updatedAt = NOW,
             )

@@ -14,6 +14,8 @@ import com.gromozeka.domain.model.memory.MemoryReadSelectionResult
 import com.gromozeka.domain.model.memory.MemoryReadSelector
 import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
+import com.gromozeka.domain.model.memory.MemorySemanticType
+import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AiRuntime
@@ -288,7 +290,7 @@ class LlmMemoryReadSelector(
         Selection rules:
         ${passMode.extraRules(request.plan)}
         - $selectionRule
-        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.
+        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, predicate_semantic_kinds, supports, supersedes, and overridden_by before choosing.
         - Reject candidates that only have vague lexical overlap.
         - Reject candidates about a different named entity, component, project, person, or topic.
         - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.
@@ -302,6 +304,8 @@ class LlmMemoryReadSelector(
         - For count, list, "how many", and COMPLETE_SET questions, do not require exact target wording. Select plausible action, lifecycle, ownership, ordering, delivery, repair, completion, attendance, and status variants when they may contribute a separate answer item.
         - For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, keep evidence-backed variants that may satisfy the requested category even when the source uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not keep merely adjacent examples.
         - For acquisition-style count/list questions, keep concrete physical or digital items when memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; reject mere mentions, interests, recommendations, or assistant-only suggestions.
+        - For acquisition-style count/list questions, POSSESSION semantic claims are strong typed evidence when the possessed item fits the requested category.
+        - For acquisition-style count/list questions, selected ACTIVE "owns" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.
         - First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Keep it unless the question specifically asks for purchase/download transaction details such as price, store, payment, download source, or exact date.
         - Treat "how many X did I buy/download/acquire/get" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.
         - For broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.
@@ -527,34 +531,46 @@ private fun String.oneLineForReadSelectorLog(maxChars: Int): String =
     limitForReadSelectorPrompt(maxChars)
 
 private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: MemoryReadPlan): List<MemoryStore.SearchHit> {
-    val scoreLeaders = sortedByReadSelectorStrength().take(plan.readSelectorScoreSafetyLimit())
+    val scoreLeaders = sortedByReadSelectorStrength(plan).take(plan.readSelectorScoreSafetyLimit())
+    val preferredPredicateLeaders = filter { it.matchesPreferredClaimPredicate(plan) }
+        .sortedByReadSelectorStrength(plan)
+        .take(plan.readSelectorPreferredPredicateSafetyLimit())
     val activeTypedLeaders = filter { it.isActiveTypedMemory() }
-        .sortedByReadSelectorStrength()
+        .sortedByReadSelectorStrength(plan)
         .take(plan.readSelectorActiveTypedSafetyLimit())
     val profileLeaders = if (MemoryReadPlan.CoreBlock.PROFILE in plan.coreBlocks) {
         filterIsInstance<MemoryStore.SearchHit.ProfileHit>()
-            .sortedByReadSelectorStrength()
+            .sortedByReadSelectorStrength(plan)
             .take(1)
     } else {
         emptyList()
     }
     val evidenceLeaders = if (plan.readSelectorEvidenceSafetyLimit() > 0) {
         filterIsInstance<MemoryStore.SearchHit.SourceHit>()
-            .sortedByReadSelectorStrength()
+            .sortedByReadSelectorStrength(plan)
             .take(plan.readSelectorEvidenceSafetyLimit())
     } else {
         emptyList()
     }
+    val evidenceSupportedTypedLeaders = evidenceSupportedTypedSafetySurvivors(plan)
     val modeLeaders = when (plan.answerMode) {
         MemoryReadPlan.AnswerMode.RATIONALE -> filterIsInstance<MemoryStore.SearchHit.NoteHit>() +
             filterIsInstance<MemoryStore.SearchHit.EpisodeHit>()
         MemoryReadPlan.AnswerMode.ACTION_ITEM -> filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
         else -> emptyList()
     }
-        .sortedByReadSelectorStrength()
+        .sortedByReadSelectorStrength(plan)
         .take(1)
 
-    return (scoreLeaders + activeTypedLeaders + profileLeaders + evidenceLeaders + modeLeaders)
+    return (
+        scoreLeaders +
+            preferredPredicateLeaders +
+            evidenceSupportedTypedLeaders +
+            activeTypedLeaders +
+            profileLeaders +
+            evidenceLeaders +
+            modeLeaders
+        )
         .distinctBy { it.toReadSelectorItemRef() }
         .take(plan.readSelectorSafetySurvivorLimit())
 }
@@ -589,6 +605,9 @@ private fun MemoryReadPlan.readSelectorScoreSafetyLimit(): Int =
 
 private fun MemoryReadPlan.readSelectorActiveTypedSafetyLimit(): Int =
     if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) 12 else READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH
+
+private fun MemoryReadPlan.readSelectorPreferredPredicateSafetyLimit(): Int =
+    if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) 8 else 2
 
 private fun MemoryReadPlan.readSelectorEvidenceSafetyLimit(): Int =
     when {
@@ -656,13 +675,71 @@ private fun readSelectorTraceStage(
 private fun List<MemoryStore.SearchHit>.toReadSelectorTraceRefs(): List<MemoryItemRef> =
     take(READ_SELECTOR_TRACE_REF_LIMIT).map { it.toReadSelectorItemRef() }
 
-private fun List<MemoryStore.SearchHit>.sortedByReadSelectorStrength(): List<MemoryStore.SearchHit> =
+private fun List<MemoryStore.SearchHit>.evidenceSupportedTypedSafetySurvivors(
+    plan: MemoryReadPlan,
+): List<MemoryStore.SearchHit> {
+    if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) return emptyList()
+
+    val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+        .mapTo(mutableSetOf()) { it.source.id }
+    if (sourceIds.isEmpty()) return emptyList()
+
+    return filter { hit ->
+        hit.isActiveTypedMemory() && hit.readSelectorEvidenceSourceIds().any { it in sourceIds }
+    }
+        .sortedByReadSelectorStrength(plan)
+        .take(READ_SELECTOR_COMPLETE_SET_EVIDENCE_TYPED_SAFETY_PER_BATCH)
+}
+
+private fun List<MemoryStore.SearchHit>.sortedByReadSelectorStrength(
+    plan: MemoryReadPlan,
+): List<MemoryStore.SearchHit> =
     sortedWith(
-        compareByDescending<MemoryStore.SearchHit> { it.score }
+        compareByDescending<MemoryStore.SearchHit> { it.readSelectorPredicatePriority(plan) }
+            .thenByDescending { it.score }
             .thenByDescending { it.readSelectorImportance() }
             .thenBy { it.toReadSelectorItemRef().type.name }
             .thenBy { it.toReadSelectorItemRef().id }
     )
+
+private fun MemoryStore.SearchHit.matchesPreferredClaimPredicate(plan: MemoryReadPlan): Boolean =
+    readSelectorPredicatePriority(plan) > 0
+
+private fun MemoryStore.SearchHit.readSelectorPredicatePriority(plan: MemoryReadPlan): Int {
+    if (this !is MemoryStore.SearchHit.ClaimHit) return 0
+
+    val predicates = buildSet {
+        add(claim.predicate.lowercase())
+        claim.predicateFamily?.lowercase()?.let(::add)
+    }
+    val preferred = plan.retrievalRequests
+        .filter { it.memoryType == MemorySemanticType.CLAIM }
+        .flatMap { it.preferredClaimPredicates }
+        .mapTo(mutableSetOf()) { it.lowercase() }
+    val deprioritized = plan.retrievalRequests
+        .filter { it.memoryType == MemorySemanticType.CLAIM }
+        .flatMap { it.deprioritizedClaimPredicates }
+        .mapTo(mutableSetOf()) { it.lowercase() }
+
+    return when {
+        predicates.any { it in preferred } -> 2
+        predicates.any { it in deprioritized } -> -1
+        else -> 0
+    }
+}
+
+private fun MemoryStore.SearchHit.readSelectorEvidenceSourceIds(): List<MemorySource.Id> =
+    when (this) {
+        is MemoryStore.SearchHit.ClaimHit -> claim.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.NoteHit -> note.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.EpisodeHit -> episode.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.ProfileHit,
+        is MemoryStore.SearchHit.EntityHit,
+        is MemoryStore.SearchHit.SourceHit,
+        is MemoryStore.SearchHit.RunHit,
+        -> emptyList()
+    }
 
 private fun MemoryStore.SearchHit.isActiveTypedMemory(): Boolean =
     when (this) {
@@ -700,6 +777,7 @@ private const val READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH = 8
 private const val READ_SELECTOR_COMPLETE_SET_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH = 16
 private const val READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH = 4
 private const val READ_SELECTOR_COMPLETE_SET_SAFETY_SURVIVORS_PER_BATCH = 16
+private const val READ_SELECTOR_COMPLETE_SET_EVIDENCE_TYPED_SAFETY_PER_BATCH = 8
 private const val READ_SELECTOR_SCORE_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT = 20

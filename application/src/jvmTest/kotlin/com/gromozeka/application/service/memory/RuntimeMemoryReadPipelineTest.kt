@@ -1,12 +1,20 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.memory.MemoryClaim
+import com.gromozeka.domain.model.memory.MemoryEvidenceRef
+import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
+import com.gromozeka.domain.model.memory.MemoryPredicateCatalogDefaults
 import com.gromozeka.domain.model.memory.MemoryReadPlan
 import com.gromozeka.domain.model.memory.MemoryReadPlanner
 import com.gromozeka.domain.model.memory.MemoryReadRequest
+import com.gromozeka.domain.model.memory.MemoryReadSelectionRequest
+import com.gromozeka.domain.model.memory.MemoryReadSelectionResult
+import com.gromozeka.domain.model.memory.MemoryReadSelector
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
+import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -56,10 +64,69 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(result.trace.searchSteps.any { it.stage == "coverage:SOURCE" })
     }
 
+    @Test
+    fun selectedSourcesRestoreActiveTypedEvidenceSupport() = runBlocking {
+        val source = source(
+            id = "source-owned-item",
+            text = "The source mentions a personal item that the user owns, but lexical selector may keep only the source.",
+        )
+        val claim = claim(
+            id = "claim-owned-item",
+            sourceId = source.id,
+            text = "The user owns a signed personal music-media copy.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                claims = listOf(claim),
+            )
+        )
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need raw evidence for the complete set.",
+                            query = "owned music media items",
+                            topK = 1,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+            selector = SourceOnlySelector,
+        )
+
+        val result = pipeline.read(readRequest("How many music items did I acquire?"))
+
+        assertTrue(
+            result.retrievedHits
+                .filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
+                .any { it.claim.id == claim.id },
+        )
+        assertTrue(result.runtimePrompt.orEmpty().contains("claim-owned-item"))
+        assertTrue(result.runtimePrompt.orEmpty().contains("semantics=POSSESSION"))
+        assertTrue(result.trace.sourceSafety.restoredTypedHits.any { it.ref.id == "claim-owned-item" })
+    }
+
     private class FixedMemoryReadPlanner(
         private val plan: MemoryReadPlan,
     ) : MemoryReadPlanner {
         override suspend fun plan(request: MemoryReadRequest): MemoryReadPlan = plan
+    }
+
+    private object SourceOnlySelector : MemoryReadSelector {
+        override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult =
+            MemoryReadSelectionResult(
+                selectedHits = request.candidateHits.filterIsInstance<MemoryStore.SearchHit.SourceHit>(),
+                summary = "Test selector kept only raw sources.",
+            )
     }
 
     private class SourceSweepStore private constructor(
@@ -122,6 +189,36 @@ class RuntimeMemoryReadPipelineTest {
                 contentHash = id,
                 observedAt = NOW,
                 createdAt = NOW,
+            )
+
+        private fun claim(
+            id: String,
+            sourceId: MemorySource.Id,
+            text: String,
+        ): MemoryClaim =
+            MemoryClaim(
+                id = MemoryClaim.Id(id),
+                namespace = NAMESPACE,
+                subjectEntityId = MemoryEntity.Id("entity:user"),
+                predicate = "owns",
+                predicateFamily = "owns",
+                predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(NAMESPACE)
+                    .single { it.predicate == "owns" },
+                normalizedText = text,
+                scope = MemoryScope.Global("User possessions"),
+                confidence = 1.0,
+                importance = 7,
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                evidenceRefs = listOf(
+                    MemoryEvidenceRef(
+                        sourceId = sourceId,
+                        kind = MemoryEvidenceRef.Kind.DIRECT,
+                        cachedQuote = "my signed personal music-media copy",
+                    )
+                ),
+                createdAt = NOW,
+                updatedAt = NOW,
             )
     }
 }
