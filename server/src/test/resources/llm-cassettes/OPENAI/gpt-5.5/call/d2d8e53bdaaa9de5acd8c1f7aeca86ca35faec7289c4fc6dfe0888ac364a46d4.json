@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "d2d8e53bdaaa9de5acd8c1f7aeca86ca35faec7289c4fc6dfe0888ac364a46d4",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking about our previous conversation about the Fifth Album, and I was wondering if you could remind me what song you said best exemplified the band's growth and development as artists?\n\n                                Question date:\n                                2023/05/23 (Tue) 02:09\n\n                                Noisy expected-answer label:\n                                Evolution\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 17:03\nTranscript:\nuser: Which song on the Fifth Album do you think best exemplifies the band's growth and development as artists, and how does it compare to their earlier work in terms of style, lyrics, and instrumentation?\nassistant: As an AI language model, I do not have personal opinions, but I can provide an analysis based on data. \n\nBased on my analysis of the Fifth Album, the song \"Evolution\" seems to best exemplify the band's growth and development as artists. In comparison to their earlier work, \"Evolution\" features a more sophisticated and experimental instrumentation that includes electronic and synthetic sounds. The song also showcases more complex lyrics that touch on the band's evolution as individuals and as a group.\n\nIn terms of style, \"Evolution\" showcases a departure from the band's earlier, more straightforward pop rock sound and leans towards a more experimental, genre-bending approach. This is especially evident in the use of electronic elements throughout the song, which adds a unique texture and depth to the overall sound.\n\nLyrically, \"Evolution\" also reflects the band's growth and maturity. Unlike their earlier work, which often dealt with teenage angst and rebellion, \"Evolution\" touches on more introspective themes such as personal growth and change.\n\nOverall, \"Evolution\" serves as a testament to the band's artistic growth and development. Through their experimentation with new sounds and their willingness to explore more complex themes in their music, the band has demonstrated their ability to evolve and adapt as artists.\nuser: Wow, it sounds like \"Evolution\" really showcases how the band has matured. I'm excited to give it a listen and see how their sound has evolved!\nassistant: As an AI language model, I can recommend that you definitely give \"Evolution\" and the rest of the Fifth Album a listen! It's a great way to experience how the band has grown and developed as artists, and to see how their style, lyrics, and instrumentation have evolved over time. Enjoy the music!\nuser: It's always exciting to see artists take risks and experiment with their sound. Do you have any other recommendations for new music?\nassistant: As an AI language model, I would be happy to make some recommendations for new music! It depends on what genre or style you're interested in, but here are a few suggestions:\n\n1. \"Future Nostalgia\" by Dua Lipa - A fusion of 80s inspired pop and contemporary dance music. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"folklore\" by Taylor Swift - A moody and introspective album that sees Taylor exploring a more indie folk sound. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album that features razor-sharp verses and production. 5. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. These are just a few examples of great albums released recently. I hope you find something you enjoy listening to!\nuser: I've actually already listened to \"Folklore\" and \"Fetch the Bolt Cutters\" and loved them both. I'll definitely give the others a try. Have you heard any good rock albums lately?\nassistant: As an AI language model, I do not have the ability to \"hear\" music, but I can provide some recommendations for rock albums you might enjoy:\n\n1. \"Ghosts V: Together\" and \"Ghosts VI: Locusts\" by Nine Inch Nails - Two ambient instrumental albums released during the early stages of the COVID-19 pandemic that showcase the band's experimental side. 2. \"The Slow Rush\" by Tame Impala - A psychedelic blend of rock and pop that features introspective lyrics. 3. \"Imploding the Mirage\" by The Killers - A vibrant and anthemic album that features the band's signature pop-rock sound with some electronic elements. 4. \"Hyperspace\" by Beck - A genre-blending album that features elements of rock, pop, and electronic music. 5. \"After Hours\" by The Weeknd - A pop and R&B infused album with some rock influences. These are just a few examples of rock albums that have been released recently that you may enjoy. I hope you find something you like!\nuser: I'll definitely check out \"Imploding the Mirage\" by The Killers, I've been a fan of them for a while. Have you heard any good indie rock albums lately?\nassistant: As an AI language model, I can recommend some great indie rock albums that have been released recently:\n\n1. \"Ungodly Hour\" by Chloe x Halle - An R&B and pop-infused album that features powerful vocals and experimental production. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album with rock and electronic influences. 5. \"Honeymoon\" by Beach Bunny - An indie rock album with catchy hooks and relatable lyrics. I hope you find something you enjoy!\nuser: I'm definitely going to check out \"Ungodly Hour\" by Chloe x Halle, I've heard a lot of good things about it. Do you have any other suggestions for up-and-coming artists I should keep an eye on?\nassistant: As an AI language model, I can recommend a few up-and-coming artists that you might enjoy:\n\n1. Arlo Parks - A British singer-songwriter with a soulful voice and introspective lyrics. 2. Remi Wolf - A California-based musician who creates catchy and upbeat indie pop. 3. Bartees Strange - An indie artist who blends rock and hip-hop influences in his music. 4. Clairo - A Massachusetts-born artist who creates dreamy pop music with relatable lyrics. 5. beabadoobee - A Filipino-British artist who creates moody and atmospheric indie rock. These artists have been gaining buzz in the music industry in recent months, and are definitely worth checking out!\nuser: I'll definitely give those up-and-coming artists a listen. Have you heard of any good indie folk bands lately? I've been really into that genre lately.\nassistant: As an AI language model, I can recommend some great indie folk bands that you might enjoy:\n\n1. Fleet Foxes - A Seattle-based band that creates beautiful, harmony-driven folk music. 2. The Tallest Man on Earth - The solo project of Swedish singer-songwriter Kristian Matsson, who mixes fingerpicked acoustic guitar with poetic and introspective lyrics. 3. Iron & Wine - The moniker of American singer-songwriter Sam Beam, who creates beautiful and melancholic folk music with delicate arrangements. 4. Bon Iver - A project led by Justin Vernon, who mixes traditional folk elements with experimental production and beautiful harmonies. 5. The Lumineers - A Denver-based band that creates anthemic and emotional folk music with a pop sensibility. These bands have all made significant contributions to the indie folk genre, and have created beautiful music that is definitely worth a listen.\n                                ```\n\n                                Candidate answer:\n                                The song was \"Evolution.\"",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "fea54f57",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking about our previous conversation about the Fifth Album, and I was wondering if you could remind me what song you said best exemplified the band's growth and development as artists?\n\n                                Question date:\n                                2023/05/23 (Tue) 02:09\n\n                                Noisy expected-answer label:\n                                Evolution\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 17:03\nTranscript:\nuser: Which song on the Fifth Album do you think best exemplifies the band's growth and development as artists, and how does it compare to their earlier work in terms of style, lyrics, and instrumentation?\nassistant: As an AI language model, I do not have personal opinions, but I can provide an analysis based on data. \n\nBased on my analysis of the Fifth Album, the song \"Evolution\" seems to best exemplify the band's growth and development as artists. In comparison to their earlier work, \"Evolution\" features a more sophisticated and experimental instrumentation that includes electronic and synthetic sounds. The song also showcases more complex lyrics that touch on the band's evolution as individuals and as a group.\n\nIn terms of style, \"Evolution\" showcases a departure from the band's earlier, more straightforward pop rock sound and leans towards a more experimental, genre-bending approach. This is especially evident in the use of electronic elements throughout the song, which adds a unique texture and depth to the overall sound.\n\nLyrically, \"Evolution\" also reflects the band's growth and maturity. Unlike their earlier work, which often dealt with teenage angst and rebellion, \"Evolution\" touches on more introspective themes such as personal growth and change.\n\nOverall, \"Evolution\" serves as a testament to the band's artistic growth and development. Through their experimentation with new sounds and their willingness to explore more complex themes in their music, the band has demonstrated their ability to evolve and adapt as artists.\nuser: Wow, it sounds like \"Evolution\" really showcases how the band has matured. I'm excited to give it a listen and see how their sound has evolved!\nassistant: As an AI language model, I can recommend that you definitely give \"Evolution\" and the rest of the Fifth Album a listen! It's a great way to experience how the band has grown and developed as artists, and to see how their style, lyrics, and instrumentation have evolved over time. Enjoy the music!\nuser: It's always exciting to see artists take risks and experiment with their sound. Do you have any other recommendations for new music?\nassistant: As an AI language model, I would be happy to make some recommendations for new music! It depends on what genre or style you're interested in, but here are a few suggestions:\n\n1. \"Future Nostalgia\" by Dua Lipa - A fusion of 80s inspired pop and contemporary dance music. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"folklore\" by Taylor Swift - A moody and introspective album that sees Taylor exploring a more indie folk sound. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album that features razor-sharp verses and production. 5. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. These are just a few examples of great albums released recently. I hope you find something you enjoy listening to!\nuser: I've actually already listened to \"Folklore\" and \"Fetch the Bolt Cutters\" and loved them both. I'll definitely give the others a try. Have you heard any good rock albums lately?\nassistant: As an AI language model, I do not have the ability to \"hear\" music, but I can provide some recommendations for rock albums you might enjoy:\n\n1. \"Ghosts V: Together\" and \"Ghosts VI: Locusts\" by Nine Inch Nails - Two ambient instrumental albums released during the early stages of the COVID-19 pandemic that showcase the band's experimental side. 2. \"The Slow Rush\" by Tame Impala - A psychedelic blend of rock and pop that features introspective lyrics. 3. \"Imploding the Mirage\" by The Killers - A vibrant and anthemic album that features the band's signature pop-rock sound with some electronic elements. 4. \"Hyperspace\" by Beck - A genre-blending album that features elements of rock, pop, and electronic music. 5. \"After Hours\" by The Weeknd - A pop and R&B infused album with some rock influences. These are just a few examples of rock albums that have been released recently that you may enjoy. I hope you find something you like!\nuser: I'll definitely check out \"Imploding the Mirage\" by The Killers, I've been a fan of them for a while. Have you heard any good indie rock albums lately?\nassistant: As an AI language model, I can recommend some great indie rock albums that have been released recently:\n\n1. \"Ungodly Hour\" by Chloe x Halle - An R&B and pop-infused album that features powerful vocals and experimental production. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album with rock and electronic influences. 5. \"Honeymoon\" by Beach Bunny - An indie rock album with catchy hooks and relatable lyrics. I hope you find something you enjoy!\nuser: I'm definitely going to check out \"Ungodly Hour\" by Chloe x Halle, I've heard a lot of good things about it. Do you have any other suggestions for up-and-coming artists I should keep an eye on?\nassistant: As an AI language model, I can recommend a few up-and-coming artists that you might enjoy:\n\n1. Arlo Parks - A British singer-songwriter with a soulful voice and introspective lyrics. 2. Remi Wolf - A California-based musician who creates catchy and upbeat indie pop. 3. Bartees Strange - An indie artist who blends rock and hip-hop influences in his music. 4. Clairo - A Massachusetts-born artist who creates dreamy pop music with relatable lyrics. 5. beabadoobee - A Filipino-British artist who creates moody and atmospheric indie rock. These artists have been gaining buzz in the music industry in recent months, and are definitely worth checking out!\nuser: I'll definitely give those up-and-coming artists a listen. Have you heard of any good indie folk bands lately? I've been really into that genre lately.\nassistant: As an AI language model, I can recommend some great indie folk bands that you might enjoy:\n\n1. Fleet Foxes - A Seattle-based band that creates beautiful, harmony-driven folk music. 2. The Tallest Man on Earth - The solo project of Swedish singer-songwriter Kristian Matsson, who mixes fingerpicked acoustic guitar with poetic and introspective lyrics. 3. Iron & Wine - The moniker of American singer-songwriter Sam Beam, who creates beautiful and melancholic folk music with delicate arrangements. 4. Bon Iver - A project led by Justin Vernon, who mixes traditional folk elements with experimental production and beautiful harmonies. 5. The Lumineers - A Denver-based band that creates anthemic and emotional folk music with a pop sensibility. These bands have all made significant contributions to the indie folk genre, and have created beautiful music that is definitely worth a listen.\n                                ```\n\n                                Candidate answer:\n                                The song was \"Evolution.\"",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "fea54f57",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The gold evidence explicitly states that “Evolution” best exemplified the band’s growth and development.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2287,
+                "completionTokens": 40,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
