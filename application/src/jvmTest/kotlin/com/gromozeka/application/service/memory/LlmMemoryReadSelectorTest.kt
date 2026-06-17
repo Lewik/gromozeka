@@ -566,6 +566,42 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
+    fun promptDoesNotPromotePlainProjectAssociationAsLeadershipEvidence() = runBlocking {
+        val claims = listOf(
+            claim(
+                id = "claim-project-association",
+                normalizedText = "The user was working on research about a broad topic.",
+                predicate = "works_on_project",
+            )
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-project-association"))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("How many projects have I led or am currently leading?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                ),
+                candidateHits = claims.mapIndexed { index, claim ->
+                    MemoryStore.SearchHit.ClaimHit(claim, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(claims = claims),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(prompt.contains("project leadership, ownership, or responsibility count/list questions"), prompt)
+        assertTrue(prompt.contains("Treat plain works_on_project, generic project association"), prompt)
+    }
+
+    @Test
     fun promptKeepsLaterPlansForCurrentStateQuestionsAtLaterTargetDate() = runBlocking {
         val claims = listOf(
             claim(

@@ -195,6 +195,46 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(prompt.contains("do not add separate singular possession or ownership claims as +1"), prompt)
     }
 
+    @Test
+    fun runtimePromptDoesNotTreatPlainProjectAssociationAsLeadership() = runBlocking {
+        val source = source(
+            id = "source-project-association",
+            text = "The user was working on research about a broad topic.",
+        )
+        val claim = claim(
+            id = "claim-project-association",
+            sourceId = source.id,
+            text = "The user was working on research about a broad topic.",
+            predicate = "works_on_project",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source), claims = listOf(claim)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need project leadership evidence.",
+                            query = "projects led currently leading",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("How many projects have I led or am currently leading?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("a plain works_on_project or generic project association claim is not enough"), prompt)
+        assertTrue(prompt.contains("solo or user-owned project evidence"), prompt)
+    }
+
     private class FixedMemoryReadPlanner(
         private val plan: MemoryReadPlan,
     ) : MemoryReadPlanner {
