@@ -489,6 +489,83 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
+    fun promptRejectsSingularPossessionsWhenAggregateMetricOperandsDefineCountedInventory() = runBlocking {
+        val claims = listOf(
+            claim(
+                id = "claim-rare-books",
+                normalizedText = "The user's rare book collection contained 5 books.",
+                predicate = "current_metric_value",
+            ),
+            claim(
+                id = "claim-antique-vase",
+                normalizedText = "The user owns their grandmother's antique vase.",
+                predicate = "owns",
+            ),
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-rare-books"))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("How many rare items do I have in total?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                ),
+                candidateHits = claims.mapIndexed { index, claim ->
+                    MemoryStore.SearchHit.ClaimHit(claim, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(claims = claims),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(prompt.contains("numeric operands as the counted inventory"), prompt)
+        assertTrue(prompt.contains("Reject separate singular POSSESSION or owns candidates"), prompt)
+    }
+
+    @Test
+    fun promptKeepsMusicCarriersForBroadReleaseCounts() = runBlocking {
+        val claims = listOf(
+            claim(
+                id = "claim-signed-vinyl",
+                normalizedText = "The user owns a signed vinyl record after the show.",
+                predicate = "owns",
+            )
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-signed-vinyl"))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("How many music albums or EPs have I purchased or downloaded?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                ),
+                candidateHits = claims.mapIndexed { index, claim ->
+                    MemoryStore.SearchHit.ClaimHit(claim, score = 1.0 - index / 100.0)
+                },
+                snapshot = MemoryNamespaceSnapshot(claims = claims),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(prompt.contains("For broad counts of music works or releases"), prompt)
+        assertTrue(prompt.contains("can count as an album/EP/release item"), prompt)
+    }
+
+    @Test
     fun promptKeepsLaterPlansForCurrentStateQuestionsAtLaterTargetDate() = runBlocking {
         val claims = listOf(
             claim(

@@ -115,6 +115,86 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(result.trace.sourceSafety.restoredTypedHits.any { it.ref.id == "claim-owned-item" })
     }
 
+    @Test
+    fun runtimePromptTreatsMusicCarriersAsBroadReleaseItems() = runBlocking {
+        val source = source(
+            id = "source-music-carrier",
+            text = "The user got a signed vinyl record after the show.",
+        )
+        val claim = claim(
+            id = "claim-music-carrier",
+            sourceId = source.id,
+            text = "The user owns a signed vinyl record after the show.",
+            predicate = "owns",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source), claims = listOf(claim)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need acquired music release evidence.",
+                            query = "music albums EPs purchased downloaded",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("How many music albums or EPs have I purchased or downloaded?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("For broad counts of music works or releases"), prompt)
+        assertTrue(prompt.contains("vinyl record, CD, cassette, digital copy, or music download"), prompt)
+    }
+
+    @Test
+    fun runtimePromptTreatsAggregateMetricOperandsAsCountedInventory() = runBlocking {
+        val source = source(
+            id = "source-aggregate-total",
+            text = "The user has 12 rare figurines and also mentioned a separate antique vase.",
+        )
+        val claim = claim(
+            id = "claim-aggregate-total",
+            sourceId = source.id,
+            text = "The user's rare figurine collection contained 12 rare figurines.",
+            predicate = "current_metric_value",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source), claims = listOf(claim)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need aggregate operands.",
+                            query = "rare item total",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("How many rare items do I have in total?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("define the counted inventory"), prompt)
+        assertTrue(prompt.contains("do not add separate singular possession or ownership claims as +1"), prompt)
+    }
+
     private class FixedMemoryReadPlanner(
         private val plan: MemoryReadPlan,
     ) : MemoryReadPlanner {
@@ -195,30 +275,34 @@ class RuntimeMemoryReadPipelineTest {
             id: String,
             sourceId: MemorySource.Id,
             text: String,
+            predicate: String = "owns",
         ): MemoryClaim =
-            MemoryClaim(
-                id = MemoryClaim.Id(id),
-                namespace = NAMESPACE,
-                subjectEntityId = MemoryEntity.Id("entity:user"),
-                predicate = "owns",
-                predicateFamily = "owns",
-                predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(NAMESPACE)
-                    .single { it.predicate == "owns" },
-                normalizedText = text,
-                scope = MemoryScope.Global("User possessions"),
-                confidence = 1.0,
-                importance = 7,
-                firstSeenAt = NOW,
-                lastSeenAt = NOW,
-                evidenceRefs = listOf(
-                    MemoryEvidenceRef(
-                        sourceId = sourceId,
-                        kind = MemoryEvidenceRef.Kind.DIRECT,
-                        cachedQuote = "my signed personal music-media copy",
+            MemoryPredicateCatalogDefaults.forNamespace(NAMESPACE)
+                .single { it.predicate == predicate }
+                .let { predicatePolicy ->
+                    MemoryClaim(
+                        id = MemoryClaim.Id(id),
+                        namespace = NAMESPACE,
+                        subjectEntityId = MemoryEntity.Id("entity:user"),
+                        predicate = predicate,
+                        predicateFamily = predicate,
+                        predicatePolicy = predicatePolicy,
+                        normalizedText = text,
+                        scope = MemoryScope.Global("User possessions"),
+                        confidence = 1.0,
+                        importance = 7,
+                        firstSeenAt = NOW,
+                        lastSeenAt = NOW,
+                        evidenceRefs = listOf(
+                            MemoryEvidenceRef(
+                                sourceId = sourceId,
+                                kind = MemoryEvidenceRef.Kind.DIRECT,
+                                cachedQuote = "my signed personal music-media copy",
+                            )
+                        ),
+                        createdAt = NOW,
+                        updatedAt = NOW,
                     )
-                ),
-                createdAt = NOW,
-                updatedAt = NOW,
-            )
+                }
     }
 }
