@@ -513,6 +513,8 @@ class LongMemEvalMemorySmokeTest {
                     For recommendation/adaptation questions about a new target, use remembered user preferences, constraints, and liked features from analogous prior targets. Do not answer "insufficient memory" solely because the exact destination/product/task is new; instead apply the remembered preference pattern and name the criteria that should guide the recommendation.
                     For questions about a specifically qualified object, project, event, or relationship, require the retrieved memory to explicitly preserve every requested qualification. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting.
                     If retrieved memory is insufficient or conflicting, say that the available memory is insufficient.
+                    The answer field is the final candidate answer that will be judged on its own. Put the retrieved facts needed to support the conclusion in the answer itself, not only in reasoning.
+                    For recommendation, advice, preference, and personalization questions, make the answer self-contained by naming the relevant remembered user-specific facts that justify the recommendation.
                     For count/list questions, fill reasoning with the counted set and any excluded plausible ranked refs before the conclusion. For non-count questions, fill reasoning with one concise evidence sentence naming the selected remembered event, the remembered participant if relevant, the asked participant if relevant, and the conclusion.
                     Keep the answer concise and directly responsive.
                     Return only the configured JSON object.
@@ -575,6 +577,7 @@ class LongMemEvalMemorySmokeTest {
                                 For recommendation questions, apply remembered preferences and constraints to the new target instead of refusing only because the exact new target was not remembered.
                                 If one operand is missing or only generic, answer that the available memory is insufficient.
                                 If the question asks about a qualified object, project, event, or relationship, preserve that qualifier exactly enough to avoid substituting a related but different remembered item.
+                                Put the key remembered facts that support your conclusion directly in the answer field. Do not hide required evidence only in reasoning.
 
                                 Current date:
                                 ${entry.questionDate}
