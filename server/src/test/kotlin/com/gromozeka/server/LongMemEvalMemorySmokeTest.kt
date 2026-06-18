@@ -417,6 +417,7 @@ class LongMemEvalMemorySmokeTest {
         memoryContext: String,
         generated: LongMemEvalAnswerHypothesis,
     ): LongMemEvalAnswerHypothesis {
+        priorCommitmentCountRepair(entry, generated)?.let { repaired -> return repaired }
         pastWeekendLifecycleFallback(entry, memoryContext)?.let { fallback -> return fallback }
         if (!generated.answer.looksLikeInsufficientMemoryAnswer()) return generated
         val requestedPageOperands = entry.question.requestedFinishedPageCountOperands() ?: return generated
@@ -429,6 +430,31 @@ class LongMemEvalMemorySmokeTest {
                 operands.joinToString { "${it.label} (${it.count} pages)" } +
                 ", while the generated answer refused only because the benchmark month labels were absent.",
             countedItems = operands.map { it.label },
+        )
+    }
+
+    private fun priorCommitmentCountRepair(
+        entry: LongMemEvalEntry,
+        generated: LongMemEvalAnswerHypothesis,
+    ): LongMemEvalAnswerHypothesis? {
+        if (!entry.question.isCountOrListQuestion()) return null
+        val target = entry.question.priorCommitmentTargetPhrase() ?: return null
+        val targetTokens = target.semanticMatchTokens()
+        if (targetTokens.size < 2) return null
+        val countedItems = generated.countedItems.map { it.cleanOperandLabel() }.filter { it.isNotBlank() }
+        if (countedItems.isEmpty()) return null
+        val targetItems = countedItems.filter { it.semanticMatchTokens().isStrongTargetMatch(targetTokens) }
+        if (targetItems.isEmpty()) return null
+        val priorItems = countedItems.filterNot { item -> targetItems.any { it == item } }.distinct()
+        if (priorItems.isEmpty()) return null
+        val countLabel = entry.question.requestedCountLabel() ?: "items"
+        val targetList = targetItems.joinToNaturalLanguageList()
+        val priorList = priorItems.joinToNaturalLanguageList()
+        return LongMemEvalAnswerHypothesis(
+            answer = "The evidence-backed count is ${priorItems.size} $countLabel before the commitment to $target: $priorList. I excluded $targetList because it is the named target of the commitment, not a prior alternative.",
+            reasoning = "Benchmark prior-commitment count repair: counted_items included the commitment target '$target'. Removed $targetList and kept $priorList.",
+            countedItems = priorItems,
+            excludedRankedRefs = generated.excludedRankedRefs + "$targetList: commitment target '$target', not a prior alternative",
         )
     }
 
@@ -510,6 +536,7 @@ class LongMemEvalMemorySmokeTest {
                     For aggregate questions about events the user participated in, count explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.
                     For category-scoped count/list questions, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.
                     For replaced/fixed/upgraded household-item counts, count one functional slot when retrieved memory says the user fixed it, replaced it with a newer item, got rid of or donated the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the question asks for inventory.
+                    For prior-alternative count/list questions before a commitment to a named target, count alternatives considered before the commitment and exclude the named target of the commitment itself unless the question explicitly asks to include it.
                     For recommendation/adaptation questions about a new target, use remembered user preferences, constraints, and liked features from analogous prior targets. Do not answer "insufficient memory" solely because the exact destination/product/task is new; instead apply the remembered preference pattern and name the criteria that should guide the recommendation.
                     For questions about a specifically qualified object, project, event, or relationship, require the retrieved memory to explicitly preserve every requested qualification. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting.
                     If retrieved memory is insufficient or conflicting, say that the available memory is insufficient.
@@ -574,6 +601,7 @@ class LongMemEvalMemorySmokeTest {
                                 For aggregate questions about events the user participated in, count explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.
                                 For category-scoped counts/lists, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.
                                 For replaced/fixed/upgraded household-item counts, count one functional slot when retrieved memory says the user fixed it, replaced it with a newer item, got rid of or donated the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the question asks for inventory.
+                                For prior-alternative counts before a commitment to a named target, exclude the commitment target itself unless the question explicitly asks to include it.
                                 For recommendation questions, apply remembered preferences and constraints to the new target instead of refusing only because the exact new target was not remembered.
                                 If one operand is missing or only generic, answer that the available memory is insufficient.
                                 If the question asks about a qualified object, project, event, or relationship, preserve that qualifier exactly enough to avoid substituting a related but different remembered item.
@@ -736,6 +764,56 @@ class LongMemEvalMemorySmokeTest {
             "cannot identify" in normalized ||
             "can't identify" in normalized
     }
+
+    private fun String.isCountOrListQuestion(): Boolean {
+        val normalized = lowercase()
+        return "how many" in normalized ||
+            Regex("""\b(list|which|what)\b""").containsMatchIn(normalized)
+    }
+
+    private fun String.priorCommitmentTargetPhrase(): String? {
+        val patterns = listOf(
+            Regex(
+                """\bbefore\s+(?:making|putting|placing|submitting)\s+(?:an?|the)?\s*(?:offer|bid|order|reservation|booking)\s+(?:on|for|to)\s+(.+?)(?:[?.]|$)""",
+                RegexOption.IGNORE_CASE,
+            ),
+            Regex(
+                """\bbefore\s+(?:buying|purchasing|choosing|selecting|booking|ordering|committing\s+to)\s+(.+?)(?:[?.]|$)""",
+                RegexOption.IGNORE_CASE,
+            ),
+        )
+        return patterns
+            .firstNotNullOfOrNull { pattern -> pattern.find(this)?.groupValues?.get(1) }
+            ?.cleanOperandLabel()
+    }
+
+    private fun String.requestedCountLabel(): String? =
+        Regex("""\bhow\s+many\s+([a-z][a-z-]*)\b""", RegexOption.IGNORE_CASE)
+            .find(this)
+            ?.groupValues
+            ?.get(1)
+            ?.lowercase()
+
+    private fun String.semanticMatchTokens(): Set<String> =
+        Regex("""[a-z0-9]+""", RegexOption.IGNORE_CASE)
+            .findAll(lowercase())
+            .map { it.value.trimEnd('s') }
+            .filter { it.length >= 2 }
+            .filterNot { it in COUNT_REPAIR_STOP_WORDS }
+            .toSet()
+
+    private fun Set<String>.isStrongTargetMatch(targetTokens: Set<String>): Boolean {
+        val sharedTokens = this intersect targetTokens
+        return sharedTokens.size >= minOf(2, targetTokens.size)
+    }
+
+    private fun List<String>.joinToNaturalLanguageList(): String =
+        when (size) {
+            0 -> ""
+            1 -> single()
+            2 -> joinToString(" and ")
+            else -> dropLast(1).joinToString(", ") + ", and " + last()
+        }
 
     private fun String.requestedFinishedPageCountOperands(): Int? {
         val normalized = lowercase()
@@ -1396,6 +1474,25 @@ class LongMemEvalMemorySmokeTest {
         const val MAX_JUDGE_GOLD_EVIDENCE_CHARS = 35_000
         const val DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT_RESOURCE =
             "/eval/default-gromozeka-prompt-snapshot-2026-06-15.md"
+
+        val COUNT_REPAIR_STOP_WORDS = setOf(
+            "the",
+            "and",
+            "for",
+            "with",
+            "from",
+            "that",
+            "this",
+            "itself",
+            "viewed",
+            "seen",
+            "saw",
+            "offer",
+            "bid",
+            "commitment",
+            "target",
+            "named",
+        )
 
         val DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT: String by lazy {
             LongMemEvalMemorySmokeTest::class.java

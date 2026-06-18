@@ -398,6 +398,56 @@ class LlmMemoryClaimExtractorTest {
     }
 
     @Test
+    fun promptTreatsDatedOptionEvaluationsAsEvents() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(listOf("""{"claims":[]}"""))
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        extractor.extract(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source(
+                    "I fell in love with a 2-bedroom condo on February 15, but my offer was rejected because another buyer made a higher bid."
+                ),
+            ),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target may contain option evaluation memory.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("attended_event", "metric_observation"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(entityOp("I", userEntityId, MemoryEntity.Type.USER)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        val prompt = runtime.requests.single().messages.joinToString("\n") { message ->
+            message.content.joinToString("\n") { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.UserMessage -> item.text
+                    is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                    else -> item.toString()
+                }
+            }
+        }
+        assertTrue(prompt.contains("Dated option evaluation events"))
+        assertTrue(prompt.contains("Historical option outcomes are claim-worthy"))
+        assertTrue(prompt.contains("being outbid"))
+        assertTrue(prompt.contains("Do not weaken concrete dated option evaluations into has_experience_with"))
+    }
+
+    @Test
     fun promptUsesSourceSessionDateAsAnchorForDatedImportedEvents() = runBlocking {
         val userEntityId = MemoryEntity.Id("entity-user")
         val runtime = SequencedJsonRuntime(
