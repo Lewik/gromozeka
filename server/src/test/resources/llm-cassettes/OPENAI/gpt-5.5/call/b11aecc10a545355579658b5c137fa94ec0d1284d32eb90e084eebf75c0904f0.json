@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "b11aecc10a545355579658b5c137fa94ec0d1284d32eb90e084eebf75c0904f0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:0f05491a\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable facts/corrections and user context around loyalty rewards plus broader reusable context about organizing rewards programs, not just a one-off question.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:0f05491a:profile:<0> Profile for User (USER).\nStable facts:\n- The user uses the Starbucks Rewards app.\n- The user was trying to reach the Gold level on the Starbucks Rewards app.\n- The user wanted tips for earning Starbucks Rewards stars faster.\n- The user was thinking of stocking up on coffee for their daily routine on 2023-07-11.\n- The user was trying to plan a shopping trip for the week on 2023-07-11.\n- The user intended to check the website of their local grocery store to see what was on sale during the week of 2023-07-11.\n- claim hot-path-0bf527ddc6f3-claim-10: current_metric_value; The Starbucks Rewards Gold level requirement was corrected to 125 stars within a 12-month period.; scope=Gold level star requirement on the Starbucks Rewards app, as corrected by the user in the imported 2023-07-11 session.\n- claim hot-path-0bf527ddc6f3-claim-9: has_goal; The user was trying to reach the Gold level on the Starbucks Rewards app.; scope=User's Starbucks Rewards Gold level goal from the imported 2023-07-11 session.\n- note hot-path-0bf527ddc6f3-note-3: LESSON; Corrected Starbucks Rewards Gold requirement; In this session, the user corrected prior incorrect Starbucks Rewards Gold-level information, stating that Gold level requires 125 stars on the Starbucks Rewards app, not 400. Future answers about this should treat the correction as the session-specific authoritative detail unless newer evidence supersedes it.; scope=Applies to future discussion of Starbucks Rewards Gold level star requirements and prior corrections in this session.\n- claim hot-path-0bf527ddc6f3-claim-8: has_goal; The user wanted tips for earning Starbucks Rewards stars faster.; scope=User's Starbucks Rewards app usage and rewards optimization interest from the imported 2023-07-11 session.\n- claim hot-path-0bf527ddc6f3-claim-7: works_with; The user uses the Starbucks Rewards app.; scope=User's Starbucks Rewards app usage as stated in the imported 2023-07-11 session.\n- claim hot-path-0bf527ddc6f3-claim-4: has_goal; The user was trying to plan a shopping trip for the week on 2023-07-11.; scope=Imported past chat session dated 2023-07-11 about weekly grocery shopping and Starbucks Rewards.\n- claim hot-path-0bf527ddc6f3-claim-6: has_goal; The user was thinking of stocking up on coffee for their daily routine on 2023-07-11.; scope=Imported past chat session dated 2023-07-11 about shopping for coffee deals.\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=Sephora; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=Sephora; reason=Concrete retailer mentioned as a shopping destination; no existing candidate matches.\n- mention=Starbucks; action=CREATE_NEW; id=entity:<2>; type=ORGANIZATION; name=Starbucks; reason=Organization mentioned as a place the user may visit; existing Starbucks Rewards entities are services/products, not the company.\n- mention=Starbucks Rewards app; action=LINK_EXISTING; id=entity:<3>; type=existing; name=Starbucks Rewards app; reason=Exact match to existing product entity.\n- mention=Starbucks Rewards; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Starbucks Rewards; reason=Exact match to existing service entity.\n- mention=gold level; action=LINK_EXISTING; id=entity:<5>; type=existing; name=gold level; reason=Refers to the Starbucks Rewards Gold level candidate.\n- mention=loyalty cards and rewards points; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Loyalty cards and rewards points; reason=Reusable concept for the user's organization/tracking preference; no existing candidate matches.\n- mention=spreadsheet; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Spreadsheet; reason=Mentioned as the user's current organization method; may be needed as object of a preference/current-use claim, but no specific file is identified.\n- mention=new laptop; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=User's prospective new laptop; reason=First-person buying consideration makes this a reusable personal prospective item, though no model is specified.\n- mention=Best Buy; action=CREATE_NEW; id=entity:<9>; type=ORGANIZATION; name=Best Buy; reason=Retailer associated with the loyalty program; no existing candidate matches.\n- mention=My Best Buy; action=CREATE_NEW; id=entity:<10>; type=SERVICE; name=My Best Buy; reason=Named loyalty program; no existing candidate matches.\n- mention=$10 gift card; action=CREATE_NEW; id=entity:<11>; type=PRODUCT; name=My Best Buy $10 gift card; reason=In the My Best Buy question, the gift card is a reusable reward object; disambiguated from the Fetch Rewards gift card.\n- mention=Fetch Rewards; action=CREATE_NEW; id=entity:<12>; type=SERVICE; name=Fetch Rewards; reason=Named rewards service; no existing candidate matches.\n- mention=$10 gift card on Fetch Rewards; action=CREATE_NEW; id=entity:<13>; type=PRODUCT; name=Fetch Rewards $10 gift card; reason=Distinct reward object from the My Best Buy gift card; later claims may need its point requirement.\n- mention=current project; action=CREATE_NEW; id=entity:<14>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Starbucks Rewards|My Best Buy|Fetch Rewards|loyalty cards|rewards points\n        text_queries=Starbucks Rewards gold level 120 stars|organize loyalty cards rewards points spreadsheet|My Best Buy 250 points $10 gift card|Fetch Rewards 3000 points $10 gift card\n        predicate_hints=current_metric_value|has_goal|prefers|believes\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:c874f26360e73fcf5316958545b9270a] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:0f05491a:session:2; title=LongMemEval 0f05491a session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/07/30 (Sun) 03:56\nTranscript:\nuser: I'm trying to plan my weekend shopping trip. Can you give me some ideas on what to buy at Sephora?\nassistant: Sephora is a beauty lover's paradise! You can find a wide range of products from various brands, so I'll give you some ideas based on popular categories and current trends. Feel free to pick and choose based on your interests and skin type!\n\n**Skincare:**\n\n1. Drunk Elephant products: Their Beste No. 9 Jelly Cleanser, Protini Polypeptide Cream, and Slaai Makeup-Melting Butter Cleanser are fan favorites.\n2. Sunday Riley Power Couple: This duo includes the popular Good Genes Lactic Acid Treatment and the Auto Correct Eye Cream.\n3. Laneige Water Bank Moisturizing Cream: A hydrating moisturizer perfect for dry skin.\n4. Dr. Dennis Gross Skincare Alpha Beta Peel Body & Face: A gentle, at-home peel for radiant skin.\n\n**Makeup:**\n\n1. NARS Audacious Lipsticks: Try the iconic Heat Wave or a new shade from their latest collection.\n2. Huda Beauty Rose Gold Remastered Eyeshadow Palette: A stunning, versatile palette with 18 shades.\n3. Anastasia Beverly Hills Brow Wiz: A cult favorite for defining and filling brows.\n4. Tarte Amazonian Clay 12-Hour Full-Coverage Foundation: A best-selling foundation with great coverage and a natural finish.\n\n**Fragrances:**\n\n1. Jo Malone London Blackberry & Bay: A fresh, fruity scent perfect for spring.\n2. Tom Ford Black Orchid: A sophisticated, oriental fragrance for evening wear.\n3. Viktor & Rolf Flowerbomb: A floral, feminine scent with a modern twist.\n4. Gucci Bamboo Eau de Parfum: A light, airy fragrance with notes of green tea and white flowers.\n\n**Tools and Accessories:**\n\n1. Sephora Collection Pro Brushes: Invest in a few high-quality brushes for a flawless makeup application.\n2. Beautyblender Sponge: A must-have for blending foundation and concealer.\n3. Drunk Elephant The Littles: A travel-sized skincare set perfect for on-the-go.\n4. Sephora Collection Makeup Remover Wipes: Gentle, effective wipes for quick makeup removal.\n\n**Trendy Products:**\n\n1. Fenty Beauty by Rihanna Pro Filt'r Foundation: A highly pigmented, inclusive foundation range.\n2. Glossier Boy Brow: A brow gel that adds volume and texture.\n3. Urban Decay Naked Palette: A classic, neutral eyeshadow palette.\n4. Sunday Riley Good Genes: A lactic acid treatment that exfoliates and brightens.\n\nRemember to check out Sephora's sales and promotions, and don't hesitate to ask for recommendations from their knowledgeable staff. Happy shopping!\nuser: I'm also thinking of stopping by Starbucks after Sephora. Do you know what's the easiest way to earn stars on my Starbucks Rewards app?\nassistant: A perfect combo: beauty shopping and coffee! Earning stars on your Starbucks Rewards app is a great way to redeem rewards and treats. Here are some easy ways to earn stars:\n\n1. **Make a purchase:** Earn 2 stars for every $1 you spend at Starbucks, including drinks, food, and merchandise.\n2. **Pay with the app:** Use the Starbucks app to pay and earn an extra star for every dollar spent.\n3. **Order ahead:** Place an order ahead through the app and earn an extra star for every dollar spent.\n4. **Take advantage of Double Star Days:** Starbucks often offers Double Star Days, where you earn double the stars on your purchases. Keep an eye on the app or sign up for email notifications to stay informed.\n5. **Starbucks Rewards Visa Card:** If you have the Starbucks Rewards Visa Card, you'll earn 3 stars for every dollar spent at Starbucks and 1 star for every dollar spent outside of Starbucks.\n6. **Refuel and Earn:** When you buy a Starbucks beverage, earn stars for every dollar spent on fuel at participating Exxon and Mobil stations.\n7. **Starbucks Rewards Games:** Participate in games and challenges within the app to earn bonus stars.\n8. **Birthday Reward:** As a Starbucks Rewards member, you'll receive a free birthday reward, which can be redeemed during your birthday month.\n9. **Referrals:** Refer friends to join Starbucks Rewards, and you'll both earn 200 stars when they make their first purchase.\n10. **Check the app:** Regularly check the app for special offers, promotions, and limited-time earning opportunities.\n\nTo maximize your star earnings, consider the following:\n\n* Make sure you're earning stars for every purchase by scanning your app or registered card.\n* Take advantage of the 2x star multiplier when you pay with the app or order ahead.\n* Plan your purchases during Double Star Days or special promotions.\n* Use your Starbucks Rewards Visa Card for daily purchases to earn stars outside of Starbucks.\n\nHappy sipping and earning!\nuser: I'm trying to reach the gold level on my Starbucks Rewards app, which I know requires a certain number of stars. Can you remind me how many stars I need to reach gold?\nassistant: You're aiming for gold! To reach the Gold level on your Starbucks Rewards app, you need to earn a total of **300 stars** within a 12-month period. Once you reach 300 stars, you'll be upgraded to Gold status, which comes with some fantastic benefits, such as:\n\n* Free drinks and treats: Redeem stars for free drinks and food items\n* Extra stars: Earn 2x stars on every dollar spent\n* Priority service: Get priority service at participating stores\n* Free refills: Enjoy free refills on brewed coffee and tea\n* Personalized offers: Receive exclusive offers and discounts\n\nTo track your progress, open your Starbucks Rewards app and check your star balance. You can also view your star history and see how many stars you need to reach the next level.\n\nRemember, you can earn stars through various methods, such as making purchases, paying with the app, ordering ahead, and participating in special promotions. Good luck, and I hope you reach Gold status soon!\nuser: Actually, I need 120 stars to reach the gold level, not 300. Anyway, thanks for the tips on earning stars. I'll try to make the most out of my Starbucks visits. By the way, do you know what's the best way to organize my loyalty cards and rewards points? I've been using a spreadsheet, but I'm open to other suggestions.\nassistant: I apologize for the mistake! You're correct that reaching Gold level on Starbucks Rewards requires 120 stars. I'll make sure to update my knowledge with the correct information.\n\nNow, about organizing your loyalty cards and rewards points... A spreadsheet is a great way to keep track of your rewards, but there are other options you might find more convenient:\n\n1. **Loyalty card apps:** Apps like Stocard, Loyalty Card Manager, or Reward Card allow you to store your loyalty cards digitally and track your points. You can also receive notifications when you're near a participating store or when your points are about to expire.\n2. **Digital wallets:** Many digital wallets, such as Apple Wallet or Google Pay, allow you to add loyalty cards and track your rewards.\n3. **Browser extensions:** Browser extensions like Loyalty Checker or Rewards Keeper can help you track your rewards points and alert you to expiring points or special offers.\n4. **Physical card holders:** If you prefer a physical solution, consider a loyalty card holder or a small binder to keep your cards organized. You can also attach a small notebook to keep track of your points and expiration dates.\n5. **Reward tracking websites:** Websites like AwardWallet or TravelBank allow you to track your rewards points across multiple loyalty programs, including credit cards, airlines, and hotels.\n\nExperiment with different methods to find the one that works best for you. You might also consider setting reminders for when your points are about to expire or when you need to earn a certain number of points to reach a reward level.\n\nRemember, the key is to find a system that you're comfortable with and can easily maintain. Happy reward tracking!\nuser: I'm thinking of buying a new laptop, and I've been considering Best Buy's loyalty program, My Best Buy. Do you know how many points I need to earn a $10 gift card?\nassistant: New laptop shopping! My Best Buy is a great loyalty program to consider. To earn a $10 gift card, you need to accumulate 250 points in the My Best Buy program. Here's a quick breakdown of the program's rewards structure:\n\n* 250 points = $10 reward certificate\n* 500 points = $20 reward certificate\n* 1,000 points = $40 reward certificate\n\nYou earn 1 point for every $1 spent at Best Buy, and Elite Plus members earn 1.5 points per $1 spent. You can also earn points through other activities, such as:\n\n* Completing online reviews (25 points per review)\n* Participating in online surveys (25 points per survey)\n* Purchasing Best Buy's protection plans (50 points per plan)\n\nPoints expire 60 days after they're earned, so be sure to redeem them regularly. You can track your points and redeem rewards through the My Best Buy website or mobile app.\n\nRemember to consider other benefits of the My Best Buy program, such as exclusive sales, early access to deals, and free shipping on online orders. Happy shopping for your new laptop!\nuser: Can you also tell me how many points I need to redeem a $10 gift card on Fetch Rewards?\nassistant: Another loyalty program! On Fetch Rewards, you need 3,000 points to redeem a $10 gift card. Here's a quick rundown of Fetch Rewards' redemption options:\n\n* 3,000 points = $10 gift card\n* 5,000 points = $15 gift card\n* 10,000 points = $25 gift card\n* 25,000 points = $50 gift card\n\nYou earn points by uploading receipts from participating stores, including grocery stores, gas stations, and restaurants. The points you earn vary depending on the type of receipt and the store you shop at.\n\nFetch Rewards also offers other redemption options, such as sweepstakes entries, charitable donations, and discounts on gas and other purchases. You can track your points and redeem rewards through the Fetch Rewards app.\n\nRemember to check the app regularly for special offers, bonuses, and limited-time promotions to maximize your point earnings!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:0f05491a",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:c874f26360e73fcf5316958545b9270a"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:0f05491a\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable facts/corrections and user context around loyalty rewards plus broader reusable context about organizing rewards programs, not just a one-off question.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:0f05491a:profile:<0> Profile for User (USER).\nStable facts:\n- The user uses the Starbucks Rewards app.\n- The user was trying to reach the Gold level on the Starbucks Rewards app.\n- The user wanted tips for earning Starbucks Rewards stars faster.\n- The user was thinking of stocking up on coffee for their daily routine on 2023-07-11.\n- The user was trying to plan a shopping trip for the week on 2023-07-11.\n- The user intended to check the website of their local grocery store to see what was on sale during the week of 2023-07-11.\n- claim hot-path-0bf527ddc6f3-claim-10: current_metric_value; The Starbucks Rewards Gold level requirement was corrected to 125 stars within a 12-month period.; scope=Gold level star requirement on the Starbucks Rewards app, as corrected by the user in the imported 2023-07-11 session.\n- claim hot-path-0bf527ddc6f3-claim-9: has_goal; The user was trying to reach the Gold level on the Starbucks Rewards app.; scope=User's Starbucks Rewards Gold level goal from the imported 2023-07-11 session.\n- note hot-path-0bf527ddc6f3-note-3: LESSON; Corrected Starbucks Rewards Gold requirement; In this session, the user corrected prior incorrect Starbucks Rewards Gold-level information, stating that Gold level requires 125 stars on the Starbucks Rewards app, not 400. Future answers about this should treat the correction as the session-specific authoritative detail unless newer evidence supersedes it.; scope=Applies to future discussion of Starbucks Rewards Gold level star requirements and prior corrections in this session.\n- claim hot-path-0bf527ddc6f3-claim-8: has_goal; The user wanted tips for earning Starbucks Rewards stars faster.; scope=User's Starbucks Rewards app usage and rewards optimization interest from the imported 2023-07-11 session.\n- claim hot-path-0bf527ddc6f3-claim-7: works_with; The user uses the Starbucks Rewards app.; scope=User's Starbucks Rewards app usage as stated in the imported 2023-07-11 session.\n- claim hot-path-0bf527ddc6f3-claim-4: has_goal; The user was trying to plan a shopping trip for the week on 2023-07-11.; scope=Imported past chat session dated 2023-07-11 about weekly grocery shopping and Starbucks Rewards.\n- claim hot-path-0bf527ddc6f3-claim-6: has_goal; The user was thinking of stocking up on coffee for their daily routine on 2023-07-11.; scope=Imported past chat session dated 2023-07-11 about shopping for coffee deals.\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=Sephora; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=Sephora; reason=Concrete retailer mentioned as a shopping destination; no existing candidate matches.\n- mention=Starbucks; action=CREATE_NEW; id=entity:<2>; type=ORGANIZATION; name=Starbucks; reason=Organization mentioned as a place the user may visit; existing Starbucks Rewards entities are services/products, not the company.\n- mention=Starbucks Rewards app; action=LINK_EXISTING; id=entity:<3>; type=existing; name=Starbucks Rewards app; reason=Exact match to existing product entity.\n- mention=Starbucks Rewards; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Starbucks Rewards; reason=Exact match to existing service entity.\n- mention=gold level; action=LINK_EXISTING; id=entity:<5>; type=existing; name=gold level; reason=Refers to the Starbucks Rewards Gold level candidate.\n- mention=loyalty cards and rewards points; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Loyalty cards and rewards points; reason=Reusable concept for the user's organization/tracking preference; no existing candidate matches.\n- mention=spreadsheet; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Spreadsheet; reason=Mentioned as the user's current organization method; may be needed as object of a preference/current-use claim, but no specific file is identified.\n- mention=new laptop; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=User's prospective new laptop; reason=First-person buying consideration makes this a reusable personal prospective item, though no model is specified.\n- mention=Best Buy; action=CREATE_NEW; id=entity:<9>; type=ORGANIZATION; name=Best Buy; reason=Retailer associated with the loyalty program; no existing candidate matches.\n- mention=My Best Buy; action=CREATE_NEW; id=entity:<10>; type=SERVICE; name=My Best Buy; reason=Named loyalty program; no existing candidate matches.\n- mention=$10 gift card; action=CREATE_NEW; id=entity:<11>; type=PRODUCT; name=My Best Buy $10 gift card; reason=In the My Best Buy question, the gift card is a reusable reward object; disambiguated from the Fetch Rewards gift card.\n- mention=Fetch Rewards; action=CREATE_NEW; id=entity:<12>; type=SERVICE; name=Fetch Rewards; reason=Named rewards service; no existing candidate matches.\n- mention=$10 gift card on Fetch Rewards; action=CREATE_NEW; id=entity:<13>; type=PRODUCT; name=Fetch Rewards $10 gift card; reason=Distinct reward object from the My Best Buy gift card; later claims may need its point requirement.\n- mention=current project; action=CREATE_NEW; id=entity:<14>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Starbucks Rewards|My Best Buy|Fetch Rewards|loyalty cards|rewards points\n        text_queries=Starbucks Rewards gold level 120 stars|organize loyalty cards rewards points spreadsheet|My Best Buy 250 points $10 gift card|Fetch Rewards 3000 points $10 gift card\n        predicate_hints=current_metric_value|has_goal|prefers|believes\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:c874f26360e73fcf5316958545b9270a] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:0f05491a:session:2; title=LongMemEval 0f05491a session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/07/30 (Sun) 03:56\nTranscript:\nuser: I'm trying to plan my weekend shopping trip. Can you give me some ideas on what to buy at Sephora?\nassistant: Sephora is a beauty lover's paradise! You can find a wide range of products from various brands, so I'll give you some ideas based on popular categories and current trends. Feel free to pick and choose based on your interests and skin type!\n\n**Skincare:**\n\n1. Drunk Elephant products: Their Beste No. 9 Jelly Cleanser, Protini Polypeptide Cream, and Slaai Makeup-Melting Butter Cleanser are fan favorites.\n2. Sunday Riley Power Couple: This duo includes the popular Good Genes Lactic Acid Treatment and the Auto Correct Eye Cream.\n3. Laneige Water Bank Moisturizing Cream: A hydrating moisturizer perfect for dry skin.\n4. Dr. Dennis Gross Skincare Alpha Beta Peel Body & Face: A gentle, at-home peel for radiant skin.\n\n**Makeup:**\n\n1. NARS Audacious Lipsticks: Try the iconic Heat Wave or a new shade from their latest collection.\n2. Huda Beauty Rose Gold Remastered Eyeshadow Palette: A stunning, versatile palette with 18 shades.\n3. Anastasia Beverly Hills Brow Wiz: A cult favorite for defining and filling brows.\n4. Tarte Amazonian Clay 12-Hour Full-Coverage Foundation: A best-selling foundation with great coverage and a natural finish.\n\n**Fragrances:**\n\n1. Jo Malone London Blackberry & Bay: A fresh, fruity scent perfect for spring.\n2. Tom Ford Black Orchid: A sophisticated, oriental fragrance for evening wear.\n3. Viktor & Rolf Flowerbomb: A floral, feminine scent with a modern twist.\n4. Gucci Bamboo Eau de Parfum: A light, airy fragrance with notes of green tea and white flowers.\n\n**Tools and Accessories:**\n\n1. Sephora Collection Pro Brushes: Invest in a few high-quality brushes for a flawless makeup application.\n2. Beautyblender Sponge: A must-have for blending foundation and concealer.\n3. Drunk Elephant The Littles: A travel-sized skincare set perfect for on-the-go.\n4. Sephora Collection Makeup Remover Wipes: Gentle, effective wipes for quick makeup removal.\n\n**Trendy Products:**\n\n1. Fenty Beauty by Rihanna Pro Filt'r Foundation: A highly pigmented, inclusive foundation range.\n2. Glossier Boy Brow: A brow gel that adds volume and texture.\n3. Urban Decay Naked Palette: A classic, neutral eyeshadow palette.\n4. Sunday Riley Good Genes: A lactic acid treatment that exfoliates and brightens.\n\nRemember to check out Sephora's sales and promotions, and don't hesitate to ask for recommendations from their knowledgeable staff. Happy shopping!\nuser: I'm also thinking of stopping by Starbucks after Sephora. Do you know what's the easiest way to earn stars on my Starbucks Rewards app?\nassistant: A perfect combo: beauty shopping and coffee! Earning stars on your Starbucks Rewards app is a great way to redeem rewards and treats. Here are some easy ways to earn stars:\n\n1. **Make a purchase:** Earn 2 stars for every $1 you spend at Starbucks, including drinks, food, and merchandise.\n2. **Pay with the app:** Use the Starbucks app to pay and earn an extra star for every dollar spent.\n3. **Order ahead:** Place an order ahead through the app and earn an extra star for every dollar spent.\n4. **Take advantage of Double Star Days:** Starbucks often offers Double Star Days, where you earn double the stars on your purchases. Keep an eye on the app or sign up for email notifications to stay informed.\n5. **Starbucks Rewards Visa Card:** If you have the Starbucks Rewards Visa Card, you'll earn 3 stars for every dollar spent at Starbucks and 1 star for every dollar spent outside of Starbucks.\n6. **Refuel and Earn:** When you buy a Starbucks beverage, earn stars for every dollar spent on fuel at participating Exxon and Mobil stations.\n7. **Starbucks Rewards Games:** Participate in games and challenges within the app to earn bonus stars.\n8. **Birthday Reward:** As a Starbucks Rewards member, you'll receive a free birthday reward, which can be redeemed during your birthday month.\n9. **Referrals:** Refer friends to join Starbucks Rewards, and you'll both earn 200 stars when they make their first purchase.\n10. **Check the app:** Regularly check the app for special offers, promotions, and limited-time earning opportunities.\n\nTo maximize your star earnings, consider the following:\n\n* Make sure you're earning stars for every purchase by scanning your app or registered card.\n* Take advantage of the 2x star multiplier when you pay with the app or order ahead.\n* Plan your purchases during Double Star Days or special promotions.\n* Use your Starbucks Rewards Visa Card for daily purchases to earn stars outside of Starbucks.\n\nHappy sipping and earning!\nuser: I'm trying to reach the gold level on my Starbucks Rewards app, which I know requires a certain number of stars. Can you remind me how many stars I need to reach gold?\nassistant: You're aiming for gold! To reach the Gold level on your Starbucks Rewards app, you need to earn a total of **300 stars** within a 12-month period. Once you reach 300 stars, you'll be upgraded to Gold status, which comes with some fantastic benefits, such as:\n\n* Free drinks and treats: Redeem stars for free drinks and food items\n* Extra stars: Earn 2x stars on every dollar spent\n* Priority service: Get priority service at participating stores\n* Free refills: Enjoy free refills on brewed coffee and tea\n* Personalized offers: Receive exclusive offers and discounts\n\nTo track your progress, open your Starbucks Rewards app and check your star balance. You can also view your star history and see how many stars you need to reach the next level.\n\nRemember, you can earn stars through various methods, such as making purchases, paying with the app, ordering ahead, and participating in special promotions. Good luck, and I hope you reach Gold status soon!\nuser: Actually, I need 120 stars to reach the gold level, not 300. Anyway, thanks for the tips on earning stars. I'll try to make the most out of my Starbucks visits. By the way, do you know what's the best way to organize my loyalty cards and rewards points? I've been using a spreadsheet, but I'm open to other suggestions.\nassistant: I apologize for the mistake! You're correct that reaching Gold level on Starbucks Rewards requires 120 stars. I'll make sure to update my knowledge with the correct information.\n\nNow, about organizing your loyalty cards and rewards points... A spreadsheet is a great way to keep track of your rewards, but there are other options you might find more convenient:\n\n1. **Loyalty card apps:** Apps like Stocard, Loyalty Card Manager, or Reward Card allow you to store your loyalty cards digitally and track your points. You can also receive notifications when you're near a participating store or when your points are about to expire.\n2. **Digital wallets:** Many digital wallets, such as Apple Wallet or Google Pay, allow you to add loyalty cards and track your rewards.\n3. **Browser extensions:** Browser extensions like Loyalty Checker or Rewards Keeper can help you track your rewards points and alert you to expiring points or special offers.\n4. **Physical card holders:** If you prefer a physical solution, consider a loyalty card holder or a small binder to keep your cards organized. You can also attach a small notebook to keep track of your points and expiration dates.\n5. **Reward tracking websites:** Websites like AwardWallet or TravelBank allow you to track your rewards points across multiple loyalty programs, including credit cards, airlines, and hotels.\n\nExperiment with different methods to find the one that works best for you. You might also consider setting reminders for when your points are about to expire or when you need to earn a certain number of points to reach a reward level.\n\nRemember, the key is to find a system that you're comfortable with and can easily maintain. Happy reward tracking!\nuser: I'm thinking of buying a new laptop, and I've been considering Best Buy's loyalty program, My Best Buy. Do you know how many points I need to earn a $10 gift card?\nassistant: New laptop shopping! My Best Buy is a great loyalty program to consider. To earn a $10 gift card, you need to accumulate 250 points in the My Best Buy program. Here's a quick breakdown of the program's rewards structure:\n\n* 250 points = $10 reward certificate\n* 500 points = $20 reward certificate\n* 1,000 points = $40 reward certificate\n\nYou earn 1 point for every $1 spent at Best Buy, and Elite Plus members earn 1.5 points per $1 spent. You can also earn points through other activities, such as:\n\n* Completing online reviews (25 points per review)\n* Participating in online surveys (25 points per survey)\n* Purchasing Best Buy's protection plans (50 points per plan)\n\nPoints expire 60 days after they're earned, so be sure to redeem them regularly. You can track your points and redeem rewards through the My Best Buy website or mobile app.\n\nRemember to consider other benefits of the My Best Buy program, such as exclusive sales, early access to deals, and free shipping on online orders. Happy shopping for your new laptop!\nuser: Can you also tell me how many points I need to redeem a $10 gift card on Fetch Rewards?\nassistant: Another loyalty program! On Fetch Rewards, you need 3,000 points to redeem a $10 gift card. Here's a quick rundown of Fetch Rewards' redemption options:\n\n* 3,000 points = $10 gift card\n* 5,000 points = $15 gift card\n* 10,000 points = $25 gift card\n* 25,000 points = $50 gift card\n\nYou earn points by uploading receipts from participating stores, including grocery stores, gas stations, and restaurants. The points you earn vary depending on the type of receipt and the store you shop at.\n\nFetch Rewards also offers other redemption options, such as sweepstakes entries, charitable donations, and discounts on gas and other purchases. You can track your points and redeem rewards through the Fetch Rewards app.\n\nRemember to check the app regularly for special offers, bonuses, and limited-time promotions to maximize your point earnings!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:0f05491a",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:c874f26360e73fcf5316958545b9270a"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user has been using a spreadsheet to organize loyalty cards and rewards points.\",\"The user is open to other ways to organize loyalty cards and rewards points.\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<10>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<12>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I've been using a spreadsheet, but I'm open to other suggestions.\",\"evidence_reason\":\"The quoted user statement directly establishes both the current organization method and openness to alternatives, while the surrounding session shows this spans several rewards programs.\",\"importance\":4,\"keywords\":[\"loyalty cards\",\"rewards points\",\"spreadsheet\",\"Starbucks Rewards\",\"My Best Buy\",\"Fetch Rewards\",\"digital wallet\",\"reward tracking\"],\"note_type\":\"context\",\"rationale\":\"This is broader contextual workflow information about how the user manages loyalty programs, not just a single atomic fact; it can guide future recommendations across rewards services.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's approach to organizing loyalty cards, rewards points, and shopping-related rewards programs discussed in the 2023-07-30 session.\"},\"summary\":\"The user is actively comparing and organizing multiple loyalty and rewards programs, including Starbucks Rewards, My Best Buy, and Fetch Rewards. They currently use a spreadsheet for loyalty cards and rewards points but are open to more convenient alternatives such as loyalty-card apps, digital wallets, browser extensions, physical organizers, or reward-tracking websites.\",\"tags\":[\"loyalty_rewards\",\"organization\",\"shopping\"],\"title\":\"User's loyalty rewards organization context\",\"valid_from\":\"2023-07-30T03:56:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user corrected that Starbucks Rewards gold level required 120 stars in the 2023-07-30 session.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<5>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<0>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Actually, I need 120 stars to reach the gold level, not 300.\",\"evidence_reason\":\"The quote is the user's direct correction of the assistant's incorrect 300-star answer.\",\"importance\":5,\"keywords\":[\"Starbucks Rewards app\",\"gold level\",\"120 stars\",\"not 300\",\"correction\"],\"note_type\":\"lesson\",\"rationale\":\"The target captures a correction/lesson about how to handle future answers, including a conflict with assistant-provided information; this is more reusable as a correction note than only a bare metric claim.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"entity\",\"text\":\"Applies to Starbucks Rewards gold level star requirement as corrected by the user in the 2023-07-30 imported session.\"},\"summary\":\"In the 2023-07-30 session, the user corrected the assistant that Starbucks Rewards gold level requires 120 stars, not 300. Future discussion of that session's Starbucks Rewards goal should prefer the user's correction unless newer evidence supersedes it.\",\"tags\":[\"correction\",\"starbucks_rewards\"],\"title\":\"Corrected Starbucks Rewards Gold requirement in 2023-07-30 session\",\"valid_from\":\"2023-07-30T03:56:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5060,
+                "completionTokens": 828,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
