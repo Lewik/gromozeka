@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "86cb7f84964e8ada738ac90986f73ccfdc89667232bee3b7b03ffb1eb6afd3d0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:9d25d4e0\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Past session contains durable personal event/status about engagement ring and concrete preferences/plans for organizing a jewelry inventory spreadsheet, plus richer procedure/design context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:9d25d4e0:profile:<0> Profile for User (USER).\nStable facts:\n- The user intends to contact their cousin to ask her to return the diamond earrings from grandma.\n- The user owns an engagement ring acquired around 2023-04-23.\n- The user owns a special pair of little diamond earrings given to them by their grandma.\n- The user intends to contact the jeweler where they got their engagement ring to ask about the resizing process.\n- The user owns a silver necklace with a small pendant acquired on 2023-04-15.\n- The user intends to make a list of their jewelry and take photos of each piece as a record.\n- The user owns a jewelry collection.\n- claim hot-path-e0cf5bec101b-claim-14: metric_observation; The user's engagement ring was still a bit too loose on 2023-05-23, about one month after acquisition.; scope=Fit observation for the user's engagement ring in the imported 2023-05-23 session.\n- note hot-path-e0cf5bec101b-note-4: PLAN; Engagement ring resizing follow-up plan; The user's engagement ring was still a bit too loose about a month after getting it, and the user planned to contact the original jeweler to ask about the resizing process.; scope=Applies to the user's engagement ring resizing and communications with the original jeweler.\n- claim hot-path-e0cf5bec101b-claim-15: has_goal; The user intends to contact the jeweler where they got their engagement ring to ask about the resizing process.; scope=User's engagement ring resizing plan in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-13: owns; The user owns an engagement ring acquired around 2023-04-23.; scope=User's personal jewelry ownership in the imported 2023-05-23 session.\n- claim hot-path-e0cf5bec101b-claim-5: owns; The user owns a jewelry collection.; scope=User's personal possessions in the imported 2023-05-23 jewelry conversation.\n- note hot-path-e0cf5bec101b-note-2: PLAN; Jewelry inventory and photo-record plan; The user planned to start a jewelry inventory by making a list of their jewelry and taking photos of each piece, useful for tracking, ownership records, and avoiding future loss.; scope=Applies to the user's jewelry collection and future jewelry tracking/inventory discussions.\n- claim hot-path-e0cf5bec101b-claim-8: has_goal; The user intends to make a list of their jewelry and take photos of each piece as a record.; scope=User's jewelry inventory plan from the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-7: aggregate_increase; The user's jewelry collection increased by one item when they acquired the silver necklace with a small pendant on 2023-04-15.; scope=Aggregate change to the user's jewelry collection from the necklace acquisition in the imported 2023-05-23 session.\n- claim hot-path-e0cf5bec101b-claim-11: current_location; The user's diamond earrings from grandma may currently be at the user's cousin's place after the cousin's birthday party.; scope=Unconfirmed possible location of the user's missing earrings in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-9: owns; The user owns a special pair of little diamond earrings given to them by their grandma.; scope=User's personal jewelry ownership in the imported 2023-05-23 session.\n- claim hot-path-e0cf5bec101b-claim-10: attended_event; The user wore their diamond earrings from grandma to the user's cousin's birthday party before possibly leaving them at the cousin's place.; scope=User's participation in the cousin's birthday party as described in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-12: has_goal; The user intends to contact their cousin to ask her to return the diamond earrings from grandma.; scope=User's plan to recover missing earrings in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-6: owns; The user owns a silver necklace with a small pendant acquired on 2023-04-15.; scope=User's personal jewelry ownership in the imported 2023-05-23 session.\n- note hot-path-e0cf5bec101b-note-3: PLAN; Recovery plan for grandma's diamond earrings; The user believed they may have left the special little-diamond earrings from their grandma at their cousin's place after the cousin's birthday party and planned to contact the cousin to ask for their return politely.; scope=Applies to the user's missing diamond earrings from grandma and recovery communications with the cousin.\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace User entity.\n- mention=my jewelry / jewelry collection; action=LINK_EXISTING; id=entity:<1>; type=existing; name=my jewelry / jewelry collection; reason=The target message repeatedly discusses the user's jewelry collection, matching the existing product entity.\n- mention=my engagement ring; action=LINK_EXISTING; id=entity:<2>; type=existing; name=my engagement ring; reason=The target message refers to the user's engagement ring, which matches the existing product entity.\n- mention=jeweler where you purchased it / jeweler where user got engagement ring; action=LINK_EXISTING; id=entity:<3>; type=existing; name=jeweler where you purchased it / jeweler where user got engagement ring; reason=The jeweler for engagement-ring resizing matches the existing organization entity.\n- mention=spreadsheet to document my jewelry / Google Sheets; action=CREATE_NEW; id=entity:<4>; type=DOCUMENT; name=User's jewelry inventory spreadsheet; reason=The user intends to use a spreadsheet/Google Sheets as a durable documentation object for the jewelry collection; no existing candidate matches it.\n- mention=Google Sheets; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Google Sheets; reason=Google Sheets is a reusable product/service mentioned as the chosen tool, and no existing candidate entity matches it.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|engagement ring|jewelry collection|jewelry inventory spreadsheet|Google Sheets\n        text_queries=engagement ring resized loose|jewelry inventory spreadsheet columns Google Sheets occasion storage location wear count cleaning maintenance|jewelry collection documentation photos\n        predicate_hints=owns|pending_pickup|has_goal|prefers_storage|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:befeebef44a32a7776db2c6a9bac2450] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:9d25d4e0:session:2; title=LongMemEval 9d25d4e0 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 00:16\nTranscript:\nuser: I need help with cleaning my jewelry. Can you give me some tips on how to properly clean my gold chains and rings? Oh, and by the way, I got my engagement ring a month ago, and I still need to get it resized - it's still a bit too loose.\nassistant: Congratulations on your recent engagement! I'd be happy to help you with cleaning your gold jewelry and offer some advice on getting your engagement ring resized.\n\n**Cleaning Your Gold Chains and Rings:**\n\n1. **Avoid harsh chemicals:** Never use bleach, acid, or abrasive cleaners, as they can damage or discolor your gold jewelry. Instead, opt for mild soap and water or a gentle cleaning solution specifically designed for gold.\n2. **Use a soft cloth:** Look for a microfiber cloth or a soft, lint-free cloth to clean your gold jewelry. Avoid using paper towels or tissues, as they can scratch the metal.\n3. **Mix soap and water:** Create a solution of warm water and mild soap, like dish soap or hand soap. Dip your cloth into the solution, wring it out thoroughly, and gently rub your gold jewelry. Rinse the cloth and wipe your jewelry clean.\n4. **Use a gold-specific cleaner:** If you want a more thorough clean, you can use a gold cleaning solution or a jewelry cleaning cloth. These products are specifically designed to remove dirt and oils from gold without damaging it.\n5. **Dry thoroughly:** After cleaning, use a soft cloth to dry your jewelry to prevent water spots.\n6. **Avoid ultrasonic cleaners:** While ultrasonic cleaners can be effective, they may not be suitable for all types of gold jewelry, especially if it has gemstones or intricate details. Always check the manufacturer's instructions before using an ultrasonic cleaner.\n\n**Resizing Your Engagement Ring:**\n\n1. **Visit your jeweler:** Take your engagement ring back to the jeweler where you purchased it or a reputable local jeweler. They can assess the ring and provide guidance on the best way to resize it.\n2. **Check the warranty:** If your ring is still under warranty, check if resizing is covered. Some jewelers may offer free or discounted resizing services.\n3. **Consider a professional:** Resizing a ring can be a complex process, especially if it involves adjusting the band or setting. A professional jeweler will ensure the job is done correctly and maintains the ring's integrity.\n4. **Be prepared for a wait:** Depending on the jeweler's workload and the complexity of the resize, it may take a few days or weeks to complete.\n\nAdditional Tips:\n\n* Regularly cleaning your gold jewelry can help prevent the buildup of oils and dirt, which can cause damage or discoloration.\n* Store your gold jewelry separately to prevent scratching or tangling.\n* Consider cleaning your gold jewelry after each wear to maintain its sparkle and shine.\n\nI hope this helps! If you have any more questions or concerns, feel free to ask.\nuser: I'm also thinking of taking inventory of my jewelry collection and maybe even taking some photos of each piece to keep a record. Can you give me some tips on how to organize and document my jewelry?\nassistant: What a great idea! Organizing and documenting your jewelry collection can help you keep track of your pieces, prevent loss, and even provide valuable information for insurance purposes. Here are some tips to get you started:\n\n**Organizing Your Jewelry Collection:**\n\n1. **Categorize and group:** Divide your jewelry into categories, such as:\n\t* Type (e.g., necklaces, rings, earrings, bracelets)\n\t* Metal type (e.g., gold, silver, platinum)\n\t* Gemstone or material (e.g., diamond, pearl, crystal)\n\t* Occasion or style (e.g., everyday, formal, vintage)\n2. **Use storage containers:** Invest in jewelry storage cases, boxes, or armoires that have individual compartments to keep your pieces separate and prevent tangling. You can also use velvet-lined trays, pouches, or rolls for specific types of jewelry.\n3. **Utilize vertical space:** Consider using stackable storage units or hanging organizers to maximize your storage space and keep your jewelry collection visible.\n4. **Label and sign:** Label each storage container or compartment with its contents, and consider signing each piece with a small label or engraving to identify it.\n\n**Documenting Your Jewelry:**\n\n1. **Take high-quality photos:** Use a camera or smartphone with good lighting to take clear, close-up photos of each piece from multiple angles. Consider using a tripod, jewelry photography props, or a lightbox to enhance the photos.\n2. **Capture details:** Take photos of any distinctive features, such as engravings, hallmarks, or signatures.\n3. **Record descriptions:** Write down details about each piece, including:\n\t* Type of metal and gemstone(s)\n\t* Dimensions and weight\n\t* Provenance or history\n\t* Appraisal or purchase information\n\t* Any repairs or maintenance\n4. **Create a spreadsheet or catalog:** Organize your documentation in a spreadsheet, document, or digital catalog. You can use templates or create your own format to suit your needs.\n5. **Store digital copies:** Keep digital copies of your photos and documentation in a secure location, such as an external hard drive, cloud storage, or a password-protected folder.\n\n**Additional Tips:**\n\n* Consider creating a jewelry inventory sheet or card for each piece, which can be easily updated and referenced.\n* Keep your documentation and photos up to date as you acquire new pieces or make changes to your collection.\n* If you have particularly valuable or sentimental pieces, consider creating a separate, more detailed record, including appraisals, certificates of authenticity, or historical documentation.\n* Share your documentation with a trusted friend or family member in case of an emergency or loss.\n\nBy following these tips, you'll have a comprehensive and organized jewelry collection that's easy to manage and enjoy. Happy documenting!\nuser: That's really helpful, thanks! I'm thinking of using a spreadsheet to document my jewelry. Do you have any suggestions on what columns or fields I should include in the spreadsheet?\nassistant: A spreadsheet is a fantastic way to organize and track your jewelry collection. Here are some suggested columns or fields to include in your spreadsheet:\n\n**Basic Information:**\n\n1. **Item ID** (a unique identifier for each piece)\n2. **Description** (a brief description of the piece, e.g., \"14k gold necklace with diamond pendant\")\n3. **Type** (e.g., necklace, ring, earring, bracelet)\n4. **Category** (e.g., fine jewelry, costume jewelry, vintage, antique)\n\n**Metal and Materials:**\n\n1. **Metal** (e.g., gold, silver, platinum, rose gold)\n2. **Purity** (e.g., 14k, 18k, 22k)\n3. **Gemstone(s)** (list the type and quantity of gemstones, e.g., \"diamond, 0.5 carats\")\n4. **Other Materials** (e.g., pearls, crystals, wood, fabric)\n\n**Dimensions and Weight:**\n\n1. **Length** (e.g., necklace length, earring drop)\n2. **Width** (e.g., ring band width, bracelet width)\n3. **Weight** (in grams or ounces)\n\n**Provenance and History:**\n\n1. **Purchase Date**\n2. **Purchase Location** (e.g., store, online retailer, estate sale)\n3. **Appraisal Date** (if applicable)\n4. **Appraisal Value** (if applicable)\n5. **Provenance Notes** (any notable history or stories about the piece)\n\n**Maintenance and Repairs:**\n\n1. **Last Cleaned** (date)\n2. **Last Serviced** (date)\n3. **Repair History** (list any repairs or maintenance, including dates and descriptions)\n\n**Insurance and Valuation:**\n\n1. **Insurance Value** (if applicable)\n2. **Appraisal Document** (file attachment or link to the appraisal document)\n3. **Insurance Policy** (policy number and provider)\n\n**Photos and Documents:**\n\n1. **Photo** (attach a photo of the piece or link to a cloud storage location)\n2. **Certificate of Authenticity** (attach a copy of the certificate or link to a cloud storage location)\n\n**Additional Columns:**\n\n1. **Notes** (any additional information or comments about the piece)\n2. **Location** (where the piece is currently stored)\n3. **Status** (e.g., \"in use,\" \"in storage,\" \"on loan\")\n\nFeel free to customize these columns to fit your specific needs and the type of jewelry you're documenting. You may also want to consider creating separate sheets or tabs for different categories of jewelry or for tracking maintenance and repairs.\n\nRemember to regularly back up your spreadsheet and store it in a secure location to ensure your data is safe. Happy documenting!\nuser: That's really helpful, thanks! I think I'll use Google Sheets so I can access it from anywhere and it's easy to share with others if needed. I also want to add a column for the occasion or event I wore each piece to, so I can keep track of what I wore when.\nassistant: Google Sheets is a fantastic choice for documenting your jewelry collection. It's cloud-based, easily accessible, and shareable. Adding a column for the occasion or event is a great idea, too! This can help you:\n\n1. **Track your jewelry rotation:** See which pieces you wear frequently and which ones need more love.\n2. **Remember special moments:** Associate each piece with a specific memory or occasion, making it easier to recall when and where you wore it.\n3. **Plan outfits:** When planning an outfit for an upcoming event, you can quickly see which pieces you've worn to similar events in the past.\n\nTo make the most of this column, consider using a consistent format for entering the occasion or event. For example:\n\n* Use a specific format for dates, such as \"YYYY-MM-DD\" or \"MM/DD/YYYY\".\n* Create a list of common events or occasions, like \"Wedding\", \"Birthday\", \"Formal Gala\", \"Everyday\", etc.\n* Use abbreviations or acronyms for frequent events, like \"WD\" for \"Work Dinner\" or \"VDay\" for \"Valentine's Day\".\n\nThis will make it easier to filter, sort, and analyze your data later on.\n\nSome other ideas to consider:\n\n* **Add a \"Last Worn\" column:** Track when you last wore each piece to ensure you're rotating your jewelry collection regularly.\n* **Include a \"Wear Count\" column:** Keep a running total of how many times you've worn each piece to help you identify your favorites.\n* **Create a \"Jewelry Box\" or \"Storage\" column:** Track where each piece is currently stored, such as a specific jewelry box, armoire, or safe.\n\nBy customizing your spreadsheet to fit your needs, you'll be able to monitor your jewelry collection, plan your outfits, and enjoy your pieces even more!\nuser: That's a great idea! I think I'll also add a column for the location where I stored each piece, so I can easily find them when I need to. And I like the idea of tracking the wear count, it'll be interesting to see which pieces are my favorites.\nassistant: Excellent decisions! Adding a column for the storage location will help you quickly locate each piece when you need it, and tracking the wear count will give you valuable insights into your jewelry habits.\n\nBy keeping track of the storage location, you'll be able to:\n\n1. **Reduce clutter:** Ensure that each piece has a designated home, making it easier to find what you need and preventing clutter from building up.\n2. **Prevent loss:** Avoid misplacing or losing pieces by knowing exactly where they're stored.\n3. **Streamline your routine:** Save time when getting ready by knowing exactly where to find the piece you want to wear.\n\nAnd, by tracking the wear count, you'll be able to:\n\n1. **Identify favorites:** See which pieces you reach for most often and why.\n2. **Discover hidden gems:** Uncover pieces that you haven't worn in a while and give them some love.\n3. **Optimize your collection:** Consider rotating or storing pieces that don't get worn frequently to make room for new additions or to declutter your collection.\n\nRemember to update your spreadsheet regularly to ensure it remains an accurate reflection of your jewelry collection. You might even consider setting reminders to review and update your spreadsheet every few months to keep your data fresh.\n\nAs you continue to refine your spreadsheet, you might find that you want to add more columns or features. Don't hesitate to experiment and customize it to fit your needs. The more you use it, the more valuable it will become in helping you manage and enjoy your jewelry collection!\nuser: I think I'll also add a column to track when I need to clean or maintain each piece. That way, I can stay on top of keeping my jewelry in good condition.\nassistant: What a fantastic idea! Adding a column to track maintenance and cleaning schedules will help you stay on top of keeping your jewelry collection in pristine condition. This is especially important for pieces that require regular cleaning, like diamond jewelry, or those that need periodic maintenance, like pearl necklaces.\n\nBy tracking maintenance and cleaning schedules, you'll be able to:\n\n1. **Prevent damage:** Regular cleaning and maintenance can prevent damage to your jewelry, such as tarnishing, corrosion, or gemstone damage.\n2. **Maintain sparkle:** Keep your jewelry looking its best by staying on top of cleaning and polishing schedules.\n3. **Identify potential issues:** Catch any potential problems early, such as loose prongs or worn-out clasps, before they become major issues.\n4. **Save time and money:** Regular maintenance can help prevent the need for costly repairs or even replacement.\n\nConsider adding the following columns to track maintenance and cleaning:\n\n* **Last Cleaned:** Date of last cleaning or maintenance\n* **Next Cleaning Due:** Date when the piece is due for its next cleaning or maintenance\n* **Cleaning Notes:** Any specific cleaning instructions or notes, such as \"use gentle soap and water\" or \"avoid harsh chemicals\"\n* **Maintenance History:** A record of any maintenance or repairs performed, including dates and descriptions\n\nYou can also set reminders or notifications to ensure you stay on top of your maintenance and cleaning schedules. This will help you develop a routine and keep your jewelry collection looking its best.\n\nBy incorporating these columns into your spreadsheet, you'll be able to take your jewelry collection management to the next level. You'll be able to track your pieces, plan your outfits, and maintain your jewelry in top condition.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:9d25d4e0",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:befeebef44a32a7776db2c6a9bac2450"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:9d25d4e0\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Past session contains durable personal event/status about engagement ring and concrete preferences/plans for organizing a jewelry inventory spreadsheet, plus richer procedure/design context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:9d25d4e0:profile:<0> Profile for User (USER).\nStable facts:\n- The user intends to contact their cousin to ask her to return the diamond earrings from grandma.\n- The user owns an engagement ring acquired around 2023-04-23.\n- The user owns a special pair of little diamond earrings given to them by their grandma.\n- The user intends to contact the jeweler where they got their engagement ring to ask about the resizing process.\n- The user owns a silver necklace with a small pendant acquired on 2023-04-15.\n- The user intends to make a list of their jewelry and take photos of each piece as a record.\n- The user owns a jewelry collection.\n- claim hot-path-e0cf5bec101b-claim-14: metric_observation; The user's engagement ring was still a bit too loose on 2023-05-23, about one month after acquisition.; scope=Fit observation for the user's engagement ring in the imported 2023-05-23 session.\n- note hot-path-e0cf5bec101b-note-4: PLAN; Engagement ring resizing follow-up plan; The user's engagement ring was still a bit too loose about a month after getting it, and the user planned to contact the original jeweler to ask about the resizing process.; scope=Applies to the user's engagement ring resizing and communications with the original jeweler.\n- claim hot-path-e0cf5bec101b-claim-15: has_goal; The user intends to contact the jeweler where they got their engagement ring to ask about the resizing process.; scope=User's engagement ring resizing plan in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-13: owns; The user owns an engagement ring acquired around 2023-04-23.; scope=User's personal jewelry ownership in the imported 2023-05-23 session.\n- claim hot-path-e0cf5bec101b-claim-5: owns; The user owns a jewelry collection.; scope=User's personal possessions in the imported 2023-05-23 jewelry conversation.\n- note hot-path-e0cf5bec101b-note-2: PLAN; Jewelry inventory and photo-record plan; The user planned to start a jewelry inventory by making a list of their jewelry and taking photos of each piece, useful for tracking, ownership records, and avoiding future loss.; scope=Applies to the user's jewelry collection and future jewelry tracking/inventory discussions.\n- claim hot-path-e0cf5bec101b-claim-8: has_goal; The user intends to make a list of their jewelry and take photos of each piece as a record.; scope=User's jewelry inventory plan from the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-7: aggregate_increase; The user's jewelry collection increased by one item when they acquired the silver necklace with a small pendant on 2023-04-15.; scope=Aggregate change to the user's jewelry collection from the necklace acquisition in the imported 2023-05-23 session.\n- claim hot-path-e0cf5bec101b-claim-11: current_location; The user's diamond earrings from grandma may currently be at the user's cousin's place after the cousin's birthday party.; scope=Unconfirmed possible location of the user's missing earrings in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-9: owns; The user owns a special pair of little diamond earrings given to them by their grandma.; scope=User's personal jewelry ownership in the imported 2023-05-23 session.\n- claim hot-path-e0cf5bec101b-claim-10: attended_event; The user wore their diamond earrings from grandma to the user's cousin's birthday party before possibly leaving them at the cousin's place.; scope=User's participation in the cousin's birthday party as described in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-12: has_goal; The user intends to contact their cousin to ask her to return the diamond earrings from grandma.; scope=User's plan to recover missing earrings in the imported 2023-05-23 conversation.\n- claim hot-path-e0cf5bec101b-claim-6: owns; The user owns a silver necklace with a small pendant acquired on 2023-04-15.; scope=User's personal jewelry ownership in the imported 2023-05-23 session.\n- note hot-path-e0cf5bec101b-note-3: PLAN; Recovery plan for grandma's diamond earrings; The user believed they may have left the special little-diamond earrings from their grandma at their cousin's place after the cousin's birthday party and planned to contact the cousin to ask for their return politely.; scope=Applies to the user's missing diamond earrings from grandma and recovery communications with the cousin.\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace User entity.\n- mention=my jewelry / jewelry collection; action=LINK_EXISTING; id=entity:<1>; type=existing; name=my jewelry / jewelry collection; reason=The target message repeatedly discusses the user's jewelry collection, matching the existing product entity.\n- mention=my engagement ring; action=LINK_EXISTING; id=entity:<2>; type=existing; name=my engagement ring; reason=The target message refers to the user's engagement ring, which matches the existing product entity.\n- mention=jeweler where you purchased it / jeweler where user got engagement ring; action=LINK_EXISTING; id=entity:<3>; type=existing; name=jeweler where you purchased it / jeweler where user got engagement ring; reason=The jeweler for engagement-ring resizing matches the existing organization entity.\n- mention=spreadsheet to document my jewelry / Google Sheets; action=CREATE_NEW; id=entity:<4>; type=DOCUMENT; name=User's jewelry inventory spreadsheet; reason=The user intends to use a spreadsheet/Google Sheets as a durable documentation object for the jewelry collection; no existing candidate matches it.\n- mention=Google Sheets; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Google Sheets; reason=Google Sheets is a reusable product/service mentioned as the chosen tool, and no existing candidate entity matches it.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|engagement ring|jewelry collection|jewelry inventory spreadsheet|Google Sheets\n        text_queries=engagement ring resized loose|jewelry inventory spreadsheet columns Google Sheets occasion storage location wear count cleaning maintenance|jewelry collection documentation photos\n        predicate_hints=owns|pending_pickup|has_goal|prefers_storage|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:befeebef44a32a7776db2c6a9bac2450] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:9d25d4e0:session:2; title=LongMemEval 9d25d4e0 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 00:16\nTranscript:\nuser: I need help with cleaning my jewelry. Can you give me some tips on how to properly clean my gold chains and rings? Oh, and by the way, I got my engagement ring a month ago, and I still need to get it resized - it's still a bit too loose.\nassistant: Congratulations on your recent engagement! I'd be happy to help you with cleaning your gold jewelry and offer some advice on getting your engagement ring resized.\n\n**Cleaning Your Gold Chains and Rings:**\n\n1. **Avoid harsh chemicals:** Never use bleach, acid, or abrasive cleaners, as they can damage or discolor your gold jewelry. Instead, opt for mild soap and water or a gentle cleaning solution specifically designed for gold.\n2. **Use a soft cloth:** Look for a microfiber cloth or a soft, lint-free cloth to clean your gold jewelry. Avoid using paper towels or tissues, as they can scratch the metal.\n3. **Mix soap and water:** Create a solution of warm water and mild soap, like dish soap or hand soap. Dip your cloth into the solution, wring it out thoroughly, and gently rub your gold jewelry. Rinse the cloth and wipe your jewelry clean.\n4. **Use a gold-specific cleaner:** If you want a more thorough clean, you can use a gold cleaning solution or a jewelry cleaning cloth. These products are specifically designed to remove dirt and oils from gold without damaging it.\n5. **Dry thoroughly:** After cleaning, use a soft cloth to dry your jewelry to prevent water spots.\n6. **Avoid ultrasonic cleaners:** While ultrasonic cleaners can be effective, they may not be suitable for all types of gold jewelry, especially if it has gemstones or intricate details. Always check the manufacturer's instructions before using an ultrasonic cleaner.\n\n**Resizing Your Engagement Ring:**\n\n1. **Visit your jeweler:** Take your engagement ring back to the jeweler where you purchased it or a reputable local jeweler. They can assess the ring and provide guidance on the best way to resize it.\n2. **Check the warranty:** If your ring is still under warranty, check if resizing is covered. Some jewelers may offer free or discounted resizing services.\n3. **Consider a professional:** Resizing a ring can be a complex process, especially if it involves adjusting the band or setting. A professional jeweler will ensure the job is done correctly and maintains the ring's integrity.\n4. **Be prepared for a wait:** Depending on the jeweler's workload and the complexity of the resize, it may take a few days or weeks to complete.\n\nAdditional Tips:\n\n* Regularly cleaning your gold jewelry can help prevent the buildup of oils and dirt, which can cause damage or discoloration.\n* Store your gold jewelry separately to prevent scratching or tangling.\n* Consider cleaning your gold jewelry after each wear to maintain its sparkle and shine.\n\nI hope this helps! If you have any more questions or concerns, feel free to ask.\nuser: I'm also thinking of taking inventory of my jewelry collection and maybe even taking some photos of each piece to keep a record. Can you give me some tips on how to organize and document my jewelry?\nassistant: What a great idea! Organizing and documenting your jewelry collection can help you keep track of your pieces, prevent loss, and even provide valuable information for insurance purposes. Here are some tips to get you started:\n\n**Organizing Your Jewelry Collection:**\n\n1. **Categorize and group:** Divide your jewelry into categories, such as:\n\t* Type (e.g., necklaces, rings, earrings, bracelets)\n\t* Metal type (e.g., gold, silver, platinum)\n\t* Gemstone or material (e.g., diamond, pearl, crystal)\n\t* Occasion or style (e.g., everyday, formal, vintage)\n2. **Use storage containers:** Invest in jewelry storage cases, boxes, or armoires that have individual compartments to keep your pieces separate and prevent tangling. You can also use velvet-lined trays, pouches, or rolls for specific types of jewelry.\n3. **Utilize vertical space:** Consider using stackable storage units or hanging organizers to maximize your storage space and keep your jewelry collection visible.\n4. **Label and sign:** Label each storage container or compartment with its contents, and consider signing each piece with a small label or engraving to identify it.\n\n**Documenting Your Jewelry:**\n\n1. **Take high-quality photos:** Use a camera or smartphone with good lighting to take clear, close-up photos of each piece from multiple angles. Consider using a tripod, jewelry photography props, or a lightbox to enhance the photos.\n2. **Capture details:** Take photos of any distinctive features, such as engravings, hallmarks, or signatures.\n3. **Record descriptions:** Write down details about each piece, including:\n\t* Type of metal and gemstone(s)\n\t* Dimensions and weight\n\t* Provenance or history\n\t* Appraisal or purchase information\n\t* Any repairs or maintenance\n4. **Create a spreadsheet or catalog:** Organize your documentation in a spreadsheet, document, or digital catalog. You can use templates or create your own format to suit your needs.\n5. **Store digital copies:** Keep digital copies of your photos and documentation in a secure location, such as an external hard drive, cloud storage, or a password-protected folder.\n\n**Additional Tips:**\n\n* Consider creating a jewelry inventory sheet or card for each piece, which can be easily updated and referenced.\n* Keep your documentation and photos up to date as you acquire new pieces or make changes to your collection.\n* If you have particularly valuable or sentimental pieces, consider creating a separate, more detailed record, including appraisals, certificates of authenticity, or historical documentation.\n* Share your documentation with a trusted friend or family member in case of an emergency or loss.\n\nBy following these tips, you'll have a comprehensive and organized jewelry collection that's easy to manage and enjoy. Happy documenting!\nuser: That's really helpful, thanks! I'm thinking of using a spreadsheet to document my jewelry. Do you have any suggestions on what columns or fields I should include in the spreadsheet?\nassistant: A spreadsheet is a fantastic way to organize and track your jewelry collection. Here are some suggested columns or fields to include in your spreadsheet:\n\n**Basic Information:**\n\n1. **Item ID** (a unique identifier for each piece)\n2. **Description** (a brief description of the piece, e.g., \"14k gold necklace with diamond pendant\")\n3. **Type** (e.g., necklace, ring, earring, bracelet)\n4. **Category** (e.g., fine jewelry, costume jewelry, vintage, antique)\n\n**Metal and Materials:**\n\n1. **Metal** (e.g., gold, silver, platinum, rose gold)\n2. **Purity** (e.g., 14k, 18k, 22k)\n3. **Gemstone(s)** (list the type and quantity of gemstones, e.g., \"diamond, 0.5 carats\")\n4. **Other Materials** (e.g., pearls, crystals, wood, fabric)\n\n**Dimensions and Weight:**\n\n1. **Length** (e.g., necklace length, earring drop)\n2. **Width** (e.g., ring band width, bracelet width)\n3. **Weight** (in grams or ounces)\n\n**Provenance and History:**\n\n1. **Purchase Date**\n2. **Purchase Location** (e.g., store, online retailer, estate sale)\n3. **Appraisal Date** (if applicable)\n4. **Appraisal Value** (if applicable)\n5. **Provenance Notes** (any notable history or stories about the piece)\n\n**Maintenance and Repairs:**\n\n1. **Last Cleaned** (date)\n2. **Last Serviced** (date)\n3. **Repair History** (list any repairs or maintenance, including dates and descriptions)\n\n**Insurance and Valuation:**\n\n1. **Insurance Value** (if applicable)\n2. **Appraisal Document** (file attachment or link to the appraisal document)\n3. **Insurance Policy** (policy number and provider)\n\n**Photos and Documents:**\n\n1. **Photo** (attach a photo of the piece or link to a cloud storage location)\n2. **Certificate of Authenticity** (attach a copy of the certificate or link to a cloud storage location)\n\n**Additional Columns:**\n\n1. **Notes** (any additional information or comments about the piece)\n2. **Location** (where the piece is currently stored)\n3. **Status** (e.g., \"in use,\" \"in storage,\" \"on loan\")\n\nFeel free to customize these columns to fit your specific needs and the type of jewelry you're documenting. You may also want to consider creating separate sheets or tabs for different categories of jewelry or for tracking maintenance and repairs.\n\nRemember to regularly back up your spreadsheet and store it in a secure location to ensure your data is safe. Happy documenting!\nuser: That's really helpful, thanks! I think I'll use Google Sheets so I can access it from anywhere and it's easy to share with others if needed. I also want to add a column for the occasion or event I wore each piece to, so I can keep track of what I wore when.\nassistant: Google Sheets is a fantastic choice for documenting your jewelry collection. It's cloud-based, easily accessible, and shareable. Adding a column for the occasion or event is a great idea, too! This can help you:\n\n1. **Track your jewelry rotation:** See which pieces you wear frequently and which ones need more love.\n2. **Remember special moments:** Associate each piece with a specific memory or occasion, making it easier to recall when and where you wore it.\n3. **Plan outfits:** When planning an outfit for an upcoming event, you can quickly see which pieces you've worn to similar events in the past.\n\nTo make the most of this column, consider using a consistent format for entering the occasion or event. For example:\n\n* Use a specific format for dates, such as \"YYYY-MM-DD\" or \"MM/DD/YYYY\".\n* Create a list of common events or occasions, like \"Wedding\", \"Birthday\", \"Formal Gala\", \"Everyday\", etc.\n* Use abbreviations or acronyms for frequent events, like \"WD\" for \"Work Dinner\" or \"VDay\" for \"Valentine's Day\".\n\nThis will make it easier to filter, sort, and analyze your data later on.\n\nSome other ideas to consider:\n\n* **Add a \"Last Worn\" column:** Track when you last wore each piece to ensure you're rotating your jewelry collection regularly.\n* **Include a \"Wear Count\" column:** Keep a running total of how many times you've worn each piece to help you identify your favorites.\n* **Create a \"Jewelry Box\" or \"Storage\" column:** Track where each piece is currently stored, such as a specific jewelry box, armoire, or safe.\n\nBy customizing your spreadsheet to fit your needs, you'll be able to monitor your jewelry collection, plan your outfits, and enjoy your pieces even more!\nuser: That's a great idea! I think I'll also add a column for the location where I stored each piece, so I can easily find them when I need to. And I like the idea of tracking the wear count, it'll be interesting to see which pieces are my favorites.\nassistant: Excellent decisions! Adding a column for the storage location will help you quickly locate each piece when you need it, and tracking the wear count will give you valuable insights into your jewelry habits.\n\nBy keeping track of the storage location, you'll be able to:\n\n1. **Reduce clutter:** Ensure that each piece has a designated home, making it easier to find what you need and preventing clutter from building up.\n2. **Prevent loss:** Avoid misplacing or losing pieces by knowing exactly where they're stored.\n3. **Streamline your routine:** Save time when getting ready by knowing exactly where to find the piece you want to wear.\n\nAnd, by tracking the wear count, you'll be able to:\n\n1. **Identify favorites:** See which pieces you reach for most often and why.\n2. **Discover hidden gems:** Uncover pieces that you haven't worn in a while and give them some love.\n3. **Optimize your collection:** Consider rotating or storing pieces that don't get worn frequently to make room for new additions or to declutter your collection.\n\nRemember to update your spreadsheet regularly to ensure it remains an accurate reflection of your jewelry collection. You might even consider setting reminders to review and update your spreadsheet every few months to keep your data fresh.\n\nAs you continue to refine your spreadsheet, you might find that you want to add more columns or features. Don't hesitate to experiment and customize it to fit your needs. The more you use it, the more valuable it will become in helping you manage and enjoy your jewelry collection!\nuser: I think I'll also add a column to track when I need to clean or maintain each piece. That way, I can stay on top of keeping my jewelry in good condition.\nassistant: What a fantastic idea! Adding a column to track maintenance and cleaning schedules will help you stay on top of keeping your jewelry collection in pristine condition. This is especially important for pieces that require regular cleaning, like diamond jewelry, or those that need periodic maintenance, like pearl necklaces.\n\nBy tracking maintenance and cleaning schedules, you'll be able to:\n\n1. **Prevent damage:** Regular cleaning and maintenance can prevent damage to your jewelry, such as tarnishing, corrosion, or gemstone damage.\n2. **Maintain sparkle:** Keep your jewelry looking its best by staying on top of cleaning and polishing schedules.\n3. **Identify potential issues:** Catch any potential problems early, such as loose prongs or worn-out clasps, before they become major issues.\n4. **Save time and money:** Regular maintenance can help prevent the need for costly repairs or even replacement.\n\nConsider adding the following columns to track maintenance and cleaning:\n\n* **Last Cleaned:** Date of last cleaning or maintenance\n* **Next Cleaning Due:** Date when the piece is due for its next cleaning or maintenance\n* **Cleaning Notes:** Any specific cleaning instructions or notes, such as \"use gentle soap and water\" or \"avoid harsh chemicals\"\n* **Maintenance History:** A record of any maintenance or repairs performed, including dates and descriptions\n\nYou can also set reminders or notifications to ensure you stay on top of your maintenance and cleaning schedules. This will help you develop a routine and keep your jewelry collection looking its best.\n\nBy incorporating these columns into your spreadsheet, you'll be able to take your jewelry collection management to the next level. You'll be able to track your pieces, plan your outfits, and maintain your jewelry in top condition.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:9d25d4e0",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:befeebef44a32a7776db2c6a9bac2450"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User plans to use Google Sheets for the jewelry inventory spreadsheet.\",\"User wants the jewelry inventory spreadsheet to include occasion/event worn, storage location, wear count, and cleaning/maintenance tracking columns.\"],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll use Google Sheets so I can access it from anywhere and it's easy to share with others if needed. I also want to add a column for the occasion or event I wore each piece to\",\"evidence_reason\":\"The quote directly states the chosen spreadsheet tool and one customization goal; later target-message turns add storage location, wear count, and cleaning/maintenance columns.\",\"importance\":4,\"keywords\":[\"jewelry inventory spreadsheet\",\"Google Sheets\",\"occasion event worn\",\"storage location\",\"wear count\",\"cleaning maintenance\"],\"note_type\":\"plan\",\"rationale\":\"This captures a reusable design/workflow direction for a personal inventory document, including multiple related field decisions and rationale, rather than a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Applies to the user's jewelry inventory spreadsheet structure and ongoing jewelry documentation workflow.\"},\"summary\":\"The user chose Google Sheets for the jewelry inventory because it is cloud-accessible and easy to share, and planned to customize it with fields for occasion/event worn, storage location, wear count, and cleaning/maintenance tracking.\",\"tags\":[\"jewelry_inventory\",\"spreadsheet_design\",\"google_sheets\"],\"title\":\"Jewelry inventory spreadsheet design direction\",\"valid_from\":\"2023-05-29T00:16:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User wants to track when each jewelry piece needs cleaning or maintenance.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll also add a column to track when I need to clean or maintain each piece.\",\"evidence_reason\":\"The quote directly states the user's intent to include cleaning/maintenance scheduling in the inventory; the assistant's response elaborates concrete reusable fields and workflow rationale.\",\"importance\":3,\"keywords\":[\"Last Cleaned\",\"Next Cleaning Due\",\"Cleaning Notes\",\"Maintenance History\",\"jewelry maintenance\",\"cleaning schedule\"],\"note_type\":\"direction\",\"rationale\":\"This is a reusable workflow/design note about how to structure maintenance tracking, not just the atomic preference to add one column.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Applies to the maintenance and cleaning-tracking portion of the user's jewelry inventory spreadsheet.\"},\"summary\":\"The jewelry inventory should support care routines by recording last/next cleaning dates, cleaning notes, and maintenance history, with reminders or notifications considered to keep pieces in good condition and catch issues early.\",\"tags\":[\"jewelry_care\",\"maintenance_tracking\",\"spreadsheet_fields\"],\"title\":\"Maintenance-oriented jewelry inventory workflow\",\"valid_from\":\"2023-05-29T00:16:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5969,
+                "completionTokens": 754,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
