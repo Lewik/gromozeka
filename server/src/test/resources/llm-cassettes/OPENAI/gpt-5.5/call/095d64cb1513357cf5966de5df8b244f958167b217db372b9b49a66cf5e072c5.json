@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "095d64cb1513357cf5966de5df8b244f958167b217db372b9b49a66cf5e072c5",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_5501fe77\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 01:35\nTranscript:\nuser: I'm looking to create a content calendar for my social media platforms. I've been posting quite regularly, but I want to make sure I'm consistent across all platforms. Can you help me with that? By the way, I've been seeing some growth on some of my platforms, like TikTok, where I've gained around 200 followers over the past three weeks, which is pretty cool!\nassistant: Congratulations on your growth on TikTok! That's exciting!\n\nOf course, I'd be happy to help you create a content calendar for your social media platforms. A content calendar is a great way to plan and organize your content in advance, ensuring consistency across all your platforms.\n\nTo get started, let's break down the process into a few steps:\n\n1. **Identify your goals**: What do you want to achieve with your social media content? Are you looking to drive website traffic, increase engagement, generate leads, or build brand awareness? Knowing your goals will help you create content that aligns with your objectives.\n2. **Choose your platforms**: Which social media platforms do you currently use, and which ones do you want to focus on? You mentioned TikTok, but do you also have presence on Instagram, Facebook, Twitter, LinkedIn, or YouTube?\n3. **Determine your content themes**: What types of content do you typically post, or what topics do you want to cover? For example, do you share educational content, behind-the-scenes insights, product updates, or promotional offers?\n4. **Decide on a posting schedule**: How often do you want to post on each platform, and at what times? You may want to consider your audience's time zones, peak engagement hours, and your own content creation capacity.\n5. **Plan your content**: Using your goals, platforms, themes, and schedule as a guide, start brainstorming content ideas for the next few weeks or months. You can use a spreadsheet, a tool like Trello or Asana, or a dedicated content calendar template to organize your ideas.\n\nTo give you a head start, here's a simple content calendar template you can use:\n\n| Platform | Date | Content Theme | Post Type | Time |\n| --- | --- | --- | --- | --- |\n| TikTok | Mon, [Date] | Behind-the-scenes | Video | 3:00 PM |\n| Instagram | Tue, [Date] | Product feature | Image | 10:00 AM |\n| Facebook | Wed, [Date] | Educational content | Link | 2:00 PM |\n| Twitter | Thu, [Date] | Industry news | Tweet | 12:00 PM |\n\nFeel free to add or remove columns as needed. You can also use this template to plan your content for the next week, two weeks, or month, depending on your needs.\n\nNow, it's your turn! Share some more details about your social media presence, goals, and content themes, and I'll help you create a customized content calendar that suits your needs.\nuser: I'm looking to drive engagement and increase my follower count on all platforms. I'm currently active on Instagram, Facebook, Twitter, and TikTok. My content themes vary, but I tend to post about my hobbies, interests, and daily life, as well as updates about my favorite TV shows and movies.\nassistant: With a focus on driving engagement and increasing followers, we can create a content calendar that showcases your personality, interests, and passions. Since you're active on four platforms, we'll aim to create a mix of content that resonates with your audience across each platform.\n\nHere's a sample content calendar for the next two weeks, with a focus on your hobbies, interests, daily life, and TV shows/movies:\n\n**Week 1:**\n\n| Platform | Date | Content Theme | Post Type | Time |\n| --- | --- | --- | --- | --- |\n| Instagram | Mon, [Date] | Morning routine | Story | 8:00 AM |\n| TikTok | Tue, [Date] | Quick tip related to a hobby (e.g., photography) | Video | 3:00 PM |\n| Facebook | Wed, [Date] | Favorite TV show update (e.g., \"What I'm watching this week\") | Post | 2:00 PM |\n| Twitter | Thu, [Date] | Fun fact about a movie or TV show | Tweet | 12:00 PM |\n| Instagram | Fri, [Date] | Sneak peek into your weekend plans | Story | 5:00 PM |\n| TikTok | Sat, [Date] | \"A day in the life\" vlog | Video | 10:00 AM |\n| Facebook | Sun, [Date] | Weekly wrap-up (e.g., \"My favorite moments from the week\") | Post | 6:00 PM |\n\n**Week 2:**\n\n| Platform | Date | Content Theme | Post Type | Time |\n| --- | --- | --- | --- | --- |\n| Twitter | Mon, [Date] | Quote related to your favorite TV show/movie | Tweet | 10:00 AM |\n| Instagram | Tue, [Date] | Hobby-related photo (e.g., a photo you took with your camera) | Post | 3:00 PM |\n| TikTok | Wed, [Date] | \"Get ready with me\" morning routine | Video | 8:00 AM |\n| Facebook | Thu, [Date] | Behind-the-scenes look at your daily life (e.g., a photo of your workspace) | Post | 12:00 PM |\n| Instagram | Fri, [Date] | Sneak peek into a new hobby or interest | Story | 5:00 PM |\n| TikTok | Sat, [Date] | \"Q&A\" session (answer questions from followers) | Video | 2:00 PM |\n| Facebook | Sun, [Date] | Share a personal achievement or milestone | Post | 6:00 PM |\n\nThis content calendar offers a mix of:\n\n1. **Behind-the-scenes content**: Gives your audience a glimpse into your daily life, making them feel more connected to you.\n2. **Hobby-related content**: Showcases your passions and interests, attracting like-minded individuals.\n3. **TV show/movie updates**: Keeps your audience engaged and interested in your favorite shows and movies.\n4. **Interactive content**: Encourages engagement through Q&A sessions, sneak peeks, and morning routines.\n5. **Personal content**: Shares your personality, making your audience feel more connected to you.\n\nFeel free to adjust the content themes, post types, and timing to fit your schedule and preferences. Remember to keep your content visually appealing, engaging, and authentic.\n\nSome additional tips to help you drive engagement and increase followers:\n\n* Use relevant hashtags on Instagram and TikTok to increase discoverability.\n* Engage with your audience by responding to comments and direct messages.\n* Collaborate with other creators or influencers in your niche to expand your reach.\n* Run social media contests or giveaways to incentivize engagement and attract new followers.\n* Share user-generated content (UGC) to show your audience that you value their contributions.\n\nHow does this content calendar look to you? Do you have any questions or would you\nuser: This looks like a good starting point. I like the mix of content themes and post types. One thing I'm wondering is, how can I make sure I'm posting at the right times to reach my audience? I've noticed that my Instagram stories get a lot of views, but I'm not sure if I'm posting at the best times.\nassistant: Figuring out the best posting times for your audience is crucial to maximize engagement and reach. Here are some tips to help you determine the optimal posting times for your Instagram stories and other social media platforms:\n\n1. **Instagram Insights**: Use Instagram's built-in Insights feature to analyze your account's performance. Go to your profile, tap the three horizontal lines, and select \"Insights.\" You'll see a section called \"Audience,\" which shows when your followers are most active.\n2. **Peak hours**: Identify the peak hours when your followers are most active. For most accounts, this is between 12:00 PM and 4:00 PM, when people take breaks during their workday or school. However, this may vary depending on your audience's demographics and time zones.\n3. **Experiment with timing**: Try posting at different times and track the performance of your stories. You can use Instagram's \"Story Insights\" to see when your stories receive the most views and engagement.\n4. **Consider your audience's schedule**: Think about your audience's daily routine. If you're targeting students, they might be more active during lunch breaks or after school. If you're targeting working professionals, they might be more active during their morning commute or lunch breaks.\n5. **Use third-party tools**: Utilize tools like Hootsuite, Sprout Social, or Buffer to analyze your Instagram analytics and identify the best posting times for your audience. These tools often provide more detailed insights than Instagram's native Insights feature.\n6. **Posting frequency**: Don't overpost! Posting too frequently can lead to audience fatigue. Aim for 3-5 stories per day, spaced out to keep your audience engaged without overwhelming them.\n7. **Consistency**: Stick to a consistent posting schedule to train your audience when to expect new content from you. This will help increase engagement and anticipation around your posts.\n\nFor other platforms, you can use the following general guidelines:\n\n* **Facebook**: Peak hours are usually between 12:00 PM and 3:00 PM, with a secondary peak around 8:00 PM.\n* **Twitter**: Peak hours are usually between 12:00 PM and 3:00 PM, with a secondary peak around 5:00 PM.\n* **TikTok**: Peak hours are usually between 3:00 PM and 5:00 PM, with a secondary peak around 8:00 PM.\n\nKeep in mind that these are general guidelines, and the best posting times may vary depending on your specific audience and their schedules.\n\nTo optimize your posting times, try experimenting with different schedules and tracking your performance using analytics tools. Remember to adjust your posting times based on your audience's feedback and engagement patterns.\n\nHow do you think you'll approach determining the best posting times for your audience?\nuser: That's really helpful, thanks! I'll definitely start experimenting with different posting times and tracking my performance using Instagram Insights and other tools. I'll also try to consider my audience's schedule and demographics to tailor my posting times accordingly. One thing I'm curious about is, how can I use Instagram's \"Question\" sticker to ask my followers questions and encourage them to engage with me?\nassistant: The \"Question\" sticker is a fantastic way to encourage engagement and start conversations with your followers. Here are some tips to help you use the \"Question\" sticker effectively:\n\n1. **Ask open-ended questions**: Instead of asking yes/no questions, ask open-ended questions that encourage followers to share their thoughts, opinions, or experiences. This will help spark more meaningful conversations and increase engagement.\n2. **Keep it relevant**: Make sure the question is relevant to your content, audience, or current events. This will help keep the conversation focused and attract more responses.\n3. **Use attention-grabbing language**: Craft your question in a way that grabs attention and piques curiosity. Use humor, emojis, or thought-provoking statements to make your question stand out.\n4. **Make it easy to respond**: Use the \"Question\" sticker with a simple, easy-to-answer question. Avoid asking complex or overly personal questions that might make followers hesitant to respond.\n5. **Encourage sharing**: Ask followers to share their own experiences, tips, or stories related to the question. This will help create a sense of community and encourage more engagement.\n6. **Respond to answers**: Engage with followers who respond to your question by liking, commenting, or sharing their answers. This will show that you value their input and care about their opinions.\n7. **Use the \"Question\" sticker consistently**: Incorporate the \"Question\" sticker into your regular content strategy to keep the conversation going and encourage followers to engage with you regularly.\n\nSome examples of effective \"Question\" sticker prompts:\n\n* \"What's the best book you've read recently? 📖\"\n* \"What's your go-to productivity hack for staying focused? 💼\"\n* \"What's the most exciting thing you're looking forward to this week? 🎉\"\n* \"What's your favorite way to relax after a long day? 😴\"\n* \"What's the best advice you've ever received? 💡\"\n\nWhen using the \"Question\" sticker, make sure to:\n\n* Place it prominently in your story to grab attention\n* Use relevant hashtags to increase discoverability\n* Pin the question to the top of your story to keep it visible\n* Monitor and respond to answers in a timely manner\n\nBy following these tips, you can effectively use the \"Question\" sticker to encourage engagement, start meaningful conversations, and build a stronger connection with your followers.\n\nHow do you think you'll use the \"Question\" sticker in your Instagram stories? Do you have any specific ideas or topics in mind? 🤔\nuser: I think I'll start by asking my followers about their favorite TV shows or movies, since that's a topic I'm passionate about and it's relevant to my content. I might ask something like, \"What's your favorite TV show to binge-watch on a lazy Sunday? 📺\" or \"What's the best movie you've seen recently? 🎥\" This will help me get a sense of what my followers are interested in and start a conversation around a topic we both care about. I'll also try to keep my questions open-ended and easy to respond to, and make sure to engage with followers who answer my questions. Thanks for the tips!\nassistant: That's a fantastic idea! 🎉 Asking about TV shows and movies is a great way to connect with your followers and start a conversation around a shared interest. Your questions are perfect examples of open-ended and engaging prompts that will encourage followers to share their thoughts and opinions.\n\nBy asking about their favorite TV shows or movies, you'll be able to:\n\n1. **Get to know your audience better**: You'll gain insights into their interests and tastes, which can help you create more targeted and relevant content.\n2. **Start a conversation**: You'll encourage followers to share their thoughts and opinions, which can lead to a lively discussion and more engagement on your stories.\n3. **Build a sense of community**: By engaging with followers who respond to your questions, you'll create a sense of belonging and foster a community around your content.\n\nRemember to:\n\n* Respond to answers and engage with followers who respond to your questions\n* Use relevant hashtags to increase discoverability and attract new followers\n* Pin the question to the top of your story to keep it visible and encourage more responses\n* Monitor your Instagram Insights to track engagement and adjust your strategy accordingly\n\nYou're off to a great start! 🚀 I'm excited to see how your followers respond to your questions and how you'll use their feedback to create more engaging content. If you have any more questions or need further guidance, feel free to ask! 😊\n\n        Candidate notes:\n        [0] type=PLAN title=Cross-platform content calendar direction for engagement growth summary=The user is moving from regular posting toward a structured social media content calendar across Instagram, Facebook, Twitter, and TikTok, with goals of increasing engagement and follower count. The proposed approach uses a mix of hobbies, interests, daily-life content, favorite TV/movie updates, behind-the-scenes posts, interactive Q&A, and platform-specific post types and times. scope=User's social media content calendar planning across Instagram, Facebook, Twitter, and TikTok in the 2023-05-25 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6> keywords=content calendar,Instagram,Facebook,Twitter,TikTok,engagement,followers,TV shows,movies,hobbies,daily life tags=social_media,content_calendar,engagement_growth evidence=I'm looking to drive engagement and increase my follower count on all platforms. I'm currently active on Instagram, Facebook, Twitter, and TikTok.\n[1] type=PLAN title=Posting-time optimization procedure for Instagram Stories and other platforms summary=For posting-time optimization, the user plans to experiment with different posting times, track performance using Instagram Insights and other tools, and adapt timing to audience schedule and demographics. The reusable procedure is to combine native analytics, Story Insights, third-party tools such as Hootsuite, Sprout Social, or Buffer, and audience-routine assumptions rather than relying only on...[truncated 25 chars] scope=User's posting-time optimization workflow for Instagram Stories and cross-platform social media scheduling entities=entity:<0>,entity:<7>,entity:<8>,entity:<9>,entity:<10>,entity:<11> keywords=posting times,Instagram Stories,Instagram Insights,Story Insights,Hootsuite,Sprout Social,Buffer,audience schedule,demographics,peak hours tags=social_media,posting_schedule,analytics evidence=I'll definitely start experimenting with different posting times and tracking my performance using Instagram Insights and other tools.\n[2] type=PLAN title=Instagram Question sticker plan around TV and movie prompts summary=The user plans to use Instagram's \"Question\" sticker in Instagram Stories to ask open-ended, easy-to-answer questions about favorite TV shows and movies, such as binge-watch recommendations or recent movies. The aim is to learn follower interests, start conversations around shared interests, and engage directly with followers who respond. scope=User's Instagram Stories engagement tactic using Instagram's \"Question\" sticker for TV and movie conversations entities=entity:<0>,entity:<12>,entity:<13>,entity:<3> keywords=Instagram Question sticker,Instagram Stories,TV shows,movies,open-ended questions,follower engagement,binge-watch,conversation tags=instagram,interactive_content,engagement_tactic evidence=I think I'll start by asking my followers about their favorite TV shows or movies, since that's a topic I'm passionate about and it's relevant to my content.\n\n        Existing active notes:\n        id=hot-path-ce2fe6c09e12-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Cross-platform social media growth strategy context summary=The user is working on improving social media engagement across Instagram, Facebook, and TikTok, with a strategy of experimenting with timing, tailoring content to each platform’s strengths, using analytics, and testing interactive/community formats such as Instagram Stories stickers, TikTok creator tactics, and Facebook Groups. scope=User's overall social media strategy across Instagram, Facebook, TikTok, Facebook Page, and Facebook Groups as discussed in the 2023-05-24 session. keywords=social media strategy,Instagram engagement,Facebook engagement,TikTok growth,analytics,platform strengths tags=social_media,strategy,engagement,growth useCount=0\nid=hot-path-725d1af7d90a-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Twitter growth insights as Q&A content angle summary=The user considered using their recent Twitter follower growth as a relatable content angle for the planned Q&A session, where they could share Twitter growth insights such as consistency, engagement, content diversification, hashtag strategy, and collaborations. scope=Content direction for the user's planned Twitter Q&A session keywords=Twitter growth,Q&A content,follower growth,engagement tips,hashtag strategy,collaboration tags=twitter_strategy,content_angle,q_and_a useCount=0\nid=hot-path-ce2fe6c09e12-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Facebook Groups as community-growth direction summary=For Facebook growth, Facebook Groups were identified as a community-building lever: create or participate in niche groups, define clear purpose and rules, post engaging content, encourage member participation, offer exclusive content/events, use Facebook Live/Events, optimize for search, and cross-promote from the Facebook Page and other channels. scope=Use of Facebook Groups to support the user's Facebook audience growth and community engagement. keywords=Facebook Groups,community building,Facebook following,group management,exclusive content,member participation tags=facebook,groups,community_growth,audience_growth useCount=0\nid=hot-path-725d1af7d90a-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Twitter Chat/Q&A engagement and promotion plan summary=The user's Twitter engagement strategy is moving toward hosting a Twitter Chat or Q&A session, informed by prior participation in Twitter Chats. Reusable guidance covered preparation, live facilitation, follow-up analysis, and pre-event promotion via announcements, visuals, influencers, blog/email channels, groups, polls, paid ads, and countdown tweets. scope=User's planned Twitter Chat or Q&A session as a tactic for increasing Twitter engagement keywords=Twitter Chat,Q&A session,Twitter engagement,promotion,unique hashtag,countdown tweets,Twitter Ads tags=twitter_strategy,engagement,event_promotion useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_5501fe77",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:084ed45296384487030da3f507fe2e0f"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_5501fe77\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 01:35\nTranscript:\nuser: I'm looking to create a content calendar for my social media platforms. I've been posting quite regularly, but I want to make sure I'm consistent across all platforms. Can you help me with that? By the way, I've been seeing some growth on some of my platforms, like TikTok, where I've gained around 200 followers over the past three weeks, which is pretty cool!\nassistant: Congratulations on your growth on TikTok! That's exciting!\n\nOf course, I'd be happy to help you create a content calendar for your social media platforms. A content calendar is a great way to plan and organize your content in advance, ensuring consistency across all your platforms.\n\nTo get started, let's break down the process into a few steps:\n\n1. **Identify your goals**: What do you want to achieve with your social media content? Are you looking to drive website traffic, increase engagement, generate leads, or build brand awareness? Knowing your goals will help you create content that aligns with your objectives.\n2. **Choose your platforms**: Which social media platforms do you currently use, and which ones do you want to focus on? You mentioned TikTok, but do you also have presence on Instagram, Facebook, Twitter, LinkedIn, or YouTube?\n3. **Determine your content themes**: What types of content do you typically post, or what topics do you want to cover? For example, do you share educational content, behind-the-scenes insights, product updates, or promotional offers?\n4. **Decide on a posting schedule**: How often do you want to post on each platform, and at what times? You may want to consider your audience's time zones, peak engagement hours, and your own content creation capacity.\n5. **Plan your content**: Using your goals, platforms, themes, and schedule as a guide, start brainstorming content ideas for the next few weeks or months. You can use a spreadsheet, a tool like Trello or Asana, or a dedicated content calendar template to organize your ideas.\n\nTo give you a head start, here's a simple content calendar template you can use:\n\n| Platform | Date | Content Theme | Post Type | Time |\n| --- | --- | --- | --- | --- |\n| TikTok | Mon, [Date] | Behind-the-scenes | Video | 3:00 PM |\n| Instagram | Tue, [Date] | Product feature | Image | 10:00 AM |\n| Facebook | Wed, [Date] | Educational content | Link | 2:00 PM |\n| Twitter | Thu, [Date] | Industry news | Tweet | 12:00 PM |\n\nFeel free to add or remove columns as needed. You can also use this template to plan your content for the next week, two weeks, or month, depending on your needs.\n\nNow, it's your turn! Share some more details about your social media presence, goals, and content themes, and I'll help you create a customized content calendar that suits your needs.\nuser: I'm looking to drive engagement and increase my follower count on all platforms. I'm currently active on Instagram, Facebook, Twitter, and TikTok. My content themes vary, but I tend to post about my hobbies, interests, and daily life, as well as updates about my favorite TV shows and movies.\nassistant: With a focus on driving engagement and increasing followers, we can create a content calendar that showcases your personality, interests, and passions. Since you're active on four platforms, we'll aim to create a mix of content that resonates with your audience across each platform.\n\nHere's a sample content calendar for the next two weeks, with a focus on your hobbies, interests, daily life, and TV shows/movies:\n\n**Week 1:**\n\n| Platform | Date | Content Theme | Post Type | Time |\n| --- | --- | --- | --- | --- |\n| Instagram | Mon, [Date] | Morning routine | Story | 8:00 AM |\n| TikTok | Tue, [Date] | Quick tip related to a hobby (e.g., photography) | Video | 3:00 PM |\n| Facebook | Wed, [Date] | Favorite TV show update (e.g., \"What I'm watching this week\") | Post | 2:00 PM |\n| Twitter | Thu, [Date] | Fun fact about a movie or TV show | Tweet | 12:00 PM |\n| Instagram | Fri, [Date] | Sneak peek into your weekend plans | Story | 5:00 PM |\n| TikTok | Sat, [Date] | \"A day in the life\" vlog | Video | 10:00 AM |\n| Facebook | Sun, [Date] | Weekly wrap-up (e.g., \"My favorite moments from the week\") | Post | 6:00 PM |\n\n**Week 2:**\n\n| Platform | Date | Content Theme | Post Type | Time |\n| --- | --- | --- | --- | --- |\n| Twitter | Mon, [Date] | Quote related to your favorite TV show/movie | Tweet | 10:00 AM |\n| Instagram | Tue, [Date] | Hobby-related photo (e.g., a photo you took with your camera) | Post | 3:00 PM |\n| TikTok | Wed, [Date] | \"Get ready with me\" morning routine | Video | 8:00 AM |\n| Facebook | Thu, [Date] | Behind-the-scenes look at your daily life (e.g., a photo of your workspace) | Post | 12:00 PM |\n| Instagram | Fri, [Date] | Sneak peek into a new hobby or interest | Story | 5:00 PM |\n| TikTok | Sat, [Date] | \"Q&A\" session (answer questions from followers) | Video | 2:00 PM |\n| Facebook | Sun, [Date] | Share a personal achievement or milestone | Post | 6:00 PM |\n\nThis content calendar offers a mix of:\n\n1. **Behind-the-scenes content**: Gives your audience a glimpse into your daily life, making them feel more connected to you.\n2. **Hobby-related content**: Showcases your passions and interests, attracting like-minded individuals.\n3. **TV show/movie updates**: Keeps your audience engaged and interested in your favorite shows and movies.\n4. **Interactive content**: Encourages engagement through Q&A sessions, sneak peeks, and morning routines.\n5. **Personal content**: Shares your personality, making your audience feel more connected to you.\n\nFeel free to adjust the content themes, post types, and timing to fit your schedule and preferences. Remember to keep your content visually appealing, engaging, and authentic.\n\nSome additional tips to help you drive engagement and increase followers:\n\n* Use relevant hashtags on Instagram and TikTok to increase discoverability.\n* Engage with your audience by responding to comments and direct messages.\n* Collaborate with other creators or influencers in your niche to expand your reach.\n* Run social media contests or giveaways to incentivize engagement and attract new followers.\n* Share user-generated content (UGC) to show your audience that you value their contributions.\n\nHow does this content calendar look to you? Do you have any questions or would you\nuser: This looks like a good starting point. I like the mix of content themes and post types. One thing I'm wondering is, how can I make sure I'm posting at the right times to reach my audience? I've noticed that my Instagram stories get a lot of views, but I'm not sure if I'm posting at the best times.\nassistant: Figuring out the best posting times for your audience is crucial to maximize engagement and reach. Here are some tips to help you determine the optimal posting times for your Instagram stories and other social media platforms:\n\n1. **Instagram Insights**: Use Instagram's built-in Insights feature to analyze your account's performance. Go to your profile, tap the three horizontal lines, and select \"Insights.\" You'll see a section called \"Audience,\" which shows when your followers are most active.\n2. **Peak hours**: Identify the peak hours when your followers are most active. For most accounts, this is between 12:00 PM and 4:00 PM, when people take breaks during their workday or school. However, this may vary depending on your audience's demographics and time zones.\n3. **Experiment with timing**: Try posting at different times and track the performance of your stories. You can use Instagram's \"Story Insights\" to see when your stories receive the most views and engagement.\n4. **Consider your audience's schedule**: Think about your audience's daily routine. If you're targeting students, they might be more active during lunch breaks or after school. If you're targeting working professionals, they might be more active during their morning commute or lunch breaks.\n5. **Use third-party tools**: Utilize tools like Hootsuite, Sprout Social, or Buffer to analyze your Instagram analytics and identify the best posting times for your audience. These tools often provide more detailed insights than Instagram's native Insights feature.\n6. **Posting frequency**: Don't overpost! Posting too frequently can lead to audience fatigue. Aim for 3-5 stories per day, spaced out to keep your audience engaged without overwhelming them.\n7. **Consistency**: Stick to a consistent posting schedule to train your audience when to expect new content from you. This will help increase engagement and anticipation around your posts.\n\nFor other platforms, you can use the following general guidelines:\n\n* **Facebook**: Peak hours are usually between 12:00 PM and 3:00 PM, with a secondary peak around 8:00 PM.\n* **Twitter**: Peak hours are usually between 12:00 PM and 3:00 PM, with a secondary peak around 5:00 PM.\n* **TikTok**: Peak hours are usually between 3:00 PM and 5:00 PM, with a secondary peak around 8:00 PM.\n\nKeep in mind that these are general guidelines, and the best posting times may vary depending on your specific audience and their schedules.\n\nTo optimize your posting times, try experimenting with different schedules and tracking your performance using analytics tools. Remember to adjust your posting times based on your audience's feedback and engagement patterns.\n\nHow do you think you'll approach determining the best posting times for your audience?\nuser: That's really helpful, thanks! I'll definitely start experimenting with different posting times and tracking my performance using Instagram Insights and other tools. I'll also try to consider my audience's schedule and demographics to tailor my posting times accordingly. One thing I'm curious about is, how can I use Instagram's \"Question\" sticker to ask my followers questions and encourage them to engage with me?\nassistant: The \"Question\" sticker is a fantastic way to encourage engagement and start conversations with your followers. Here are some tips to help you use the \"Question\" sticker effectively:\n\n1. **Ask open-ended questions**: Instead of asking yes/no questions, ask open-ended questions that encourage followers to share their thoughts, opinions, or experiences. This will help spark more meaningful conversations and increase engagement.\n2. **Keep it relevant**: Make sure the question is relevant to your content, audience, or current events. This will help keep the conversation focused and attract more responses.\n3. **Use attention-grabbing language**: Craft your question in a way that grabs attention and piques curiosity. Use humor, emojis, or thought-provoking statements to make your question stand out.\n4. **Make it easy to respond**: Use the \"Question\" sticker with a simple, easy-to-answer question. Avoid asking complex or overly personal questions that might make followers hesitant to respond.\n5. **Encourage sharing**: Ask followers to share their own experiences, tips, or stories related to the question. This will help create a sense of community and encourage more engagement.\n6. **Respond to answers**: Engage with followers who respond to your question by liking, commenting, or sharing their answers. This will show that you value their input and care about their opinions.\n7. **Use the \"Question\" sticker consistently**: Incorporate the \"Question\" sticker into your regular content strategy to keep the conversation going and encourage followers to engage with you regularly.\n\nSome examples of effective \"Question\" sticker prompts:\n\n* \"What's the best book you've read recently? 📖\"\n* \"What's your go-to productivity hack for staying focused? 💼\"\n* \"What's the most exciting thing you're looking forward to this week? 🎉\"\n* \"What's your favorite way to relax after a long day? 😴\"\n* \"What's the best advice you've ever received? 💡\"\n\nWhen using the \"Question\" sticker, make sure to:\n\n* Place it prominently in your story to grab attention\n* Use relevant hashtags to increase discoverability\n* Pin the question to the top of your story to keep it visible\n* Monitor and respond to answers in a timely manner\n\nBy following these tips, you can effectively use the \"Question\" sticker to encourage engagement, start meaningful conversations, and build a stronger connection with your followers.\n\nHow do you think you'll use the \"Question\" sticker in your Instagram stories? Do you have any specific ideas or topics in mind? 🤔\nuser: I think I'll start by asking my followers about their favorite TV shows or movies, since that's a topic I'm passionate about and it's relevant to my content. I might ask something like, \"What's your favorite TV show to binge-watch on a lazy Sunday? 📺\" or \"What's the best movie you've seen recently? 🎥\" This will help me get a sense of what my followers are interested in and start a conversation around a topic we both care about. I'll also try to keep my questions open-ended and easy to respond to, and make sure to engage with followers who answer my questions. Thanks for the tips!\nassistant: That's a fantastic idea! 🎉 Asking about TV shows and movies is a great way to connect with your followers and start a conversation around a shared interest. Your questions are perfect examples of open-ended and engaging prompts that will encourage followers to share their thoughts and opinions.\n\nBy asking about their favorite TV shows or movies, you'll be able to:\n\n1. **Get to know your audience better**: You'll gain insights into their interests and tastes, which can help you create more targeted and relevant content.\n2. **Start a conversation**: You'll encourage followers to share their thoughts and opinions, which can lead to a lively discussion and more engagement on your stories.\n3. **Build a sense of community**: By engaging with followers who respond to your questions, you'll create a sense of belonging and foster a community around your content.\n\nRemember to:\n\n* Respond to answers and engage with followers who respond to your questions\n* Use relevant hashtags to increase discoverability and attract new followers\n* Pin the question to the top of your story to keep it visible and encourage more responses\n* Monitor your Instagram Insights to track engagement and adjust your strategy accordingly\n\nYou're off to a great start! 🚀 I'm excited to see how your followers respond to your questions and how you'll use their feedback to create more engaging content. If you have any more questions or need further guidance, feel free to ask! 😊\n\n        Candidate notes:\n        [0] type=PLAN title=Cross-platform content calendar direction for engagement growth summary=The user is moving from regular posting toward a structured social media content calendar across Instagram, Facebook, Twitter, and TikTok, with goals of increasing engagement and follower count. The proposed approach uses a mix of hobbies, interests, daily-life content, favorite TV/movie updates, behind-the-scenes posts, interactive Q&A, and platform-specific post types and times. scope=User's social media content calendar planning across Instagram, Facebook, Twitter, and TikTok in the 2023-05-25 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6> keywords=content calendar,Instagram,Facebook,Twitter,TikTok,engagement,followers,TV shows,movies,hobbies,daily life tags=social_media,content_calendar,engagement_growth evidence=I'm looking to drive engagement and increase my follower count on all platforms. I'm currently active on Instagram, Facebook, Twitter, and TikTok.\n[1] type=PLAN title=Posting-time optimization procedure for Instagram Stories and other platforms summary=For posting-time optimization, the user plans to experiment with different posting times, track performance using Instagram Insights and other tools, and adapt timing to audience schedule and demographics. The reusable procedure is to combine native analytics, Story Insights, third-party tools such as Hootsuite, Sprout Social, or Buffer, and audience-routine assumptions rather than relying only on...[truncated 25 chars] scope=User's posting-time optimization workflow for Instagram Stories and cross-platform social media scheduling entities=entity:<0>,entity:<7>,entity:<8>,entity:<9>,entity:<10>,entity:<11> keywords=posting times,Instagram Stories,Instagram Insights,Story Insights,Hootsuite,Sprout Social,Buffer,audience schedule,demographics,peak hours tags=social_media,posting_schedule,analytics evidence=I'll definitely start experimenting with different posting times and tracking my performance using Instagram Insights and other tools.\n[2] type=PLAN title=Instagram Question sticker plan around TV and movie prompts summary=The user plans to use Instagram's \"Question\" sticker in Instagram Stories to ask open-ended, easy-to-answer questions about favorite TV shows and movies, such as binge-watch recommendations or recent movies. The aim is to learn follower interests, start conversations around shared interests, and engage directly with followers who respond. scope=User's Instagram Stories engagement tactic using Instagram's \"Question\" sticker for TV and movie conversations entities=entity:<0>,entity:<12>,entity:<13>,entity:<3> keywords=Instagram Question sticker,Instagram Stories,TV shows,movies,open-ended questions,follower engagement,binge-watch,conversation tags=instagram,interactive_content,engagement_tactic evidence=I think I'll start by asking my followers about their favorite TV shows or movies, since that's a topic I'm passionate about and it's relevant to my content.\n\n        Existing active notes:\n        id=hot-path-ce2fe6c09e12-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Cross-platform social media growth strategy context summary=The user is working on improving social media engagement across Instagram, Facebook, and TikTok, with a strategy of experimenting with timing, tailoring content to each platform’s strengths, using analytics, and testing interactive/community formats such as Instagram Stories stickers, TikTok creator tactics, and Facebook Groups. scope=User's overall social media strategy across Instagram, Facebook, TikTok, Facebook Page, and Facebook Groups as discussed in the 2023-05-24 session. keywords=social media strategy,Instagram engagement,Facebook engagement,TikTok growth,analytics,platform strengths tags=social_media,strategy,engagement,growth useCount=0\nid=hot-path-725d1af7d90a-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Twitter growth insights as Q&A content angle summary=The user considered using their recent Twitter follower growth as a relatable content angle for the planned Q&A session, where they could share Twitter growth insights such as consistency, engagement, content diversification, hashtag strategy, and collaborations. scope=Content direction for the user's planned Twitter Q&A session keywords=Twitter growth,Q&A content,follower growth,engagement tips,hashtag strategy,collaboration tags=twitter_strategy,content_angle,q_and_a useCount=0\nid=hot-path-ce2fe6c09e12-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Facebook Groups as community-growth direction summary=For Facebook growth, Facebook Groups were identified as a community-building lever: create or participate in niche groups, define clear purpose and rules, post engaging content, encourage member participation, offer exclusive content/events, use Facebook Live/Events, optimize for search, and cross-promote from the Facebook Page and other channels. scope=Use of Facebook Groups to support the user's Facebook audience growth and community engagement. keywords=Facebook Groups,community building,Facebook following,group management,exclusive content,member participation tags=facebook,groups,community_growth,audience_growth useCount=0\nid=hot-path-725d1af7d90a-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Twitter Chat/Q&A engagement and promotion plan summary=The user's Twitter engagement strategy is moving toward hosting a Twitter Chat or Q&A session, informed by prior participation in Twitter Chats. Reusable guidance covered preparation, live facilitation, follow-up analysis, and pre-event promotion via announcements, visuals, influencers, blog/email channels, groups, polls, paid ads, and countdown tweets. scope=User's planned Twitter Chat or Q&A session as a tactic for increasing Twitter engagement keywords=Twitter Chat,Q&A session,Twitter engagement,promotion,unique hashtag,countdown tweets,Twitter Ads tags=twitter_strategy,engagement,event_promotion useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_5501fe77",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:084ed45296384487030da3f507fe2e0f"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"supersede\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-725d1af7d90a-note-2\"},{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-ce2fe6c09e12-note-3\"}],\"patch\":{\"maturity\":\"stabilizing\",\"maturity_score\":0.45,\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"User's overall social media content calendar and growth strategy across Instagram, Facebook, Twitter, TikTok, Facebook Page, and Facebook Groups as discussed in May 2023 sessions.\"},\"status\":\"active\",\"summary\":\"The user is moving from regular posting toward a structured cross-platform content calendar to increase engagement and follower count across Instagram, Facebook, Twitter, and TikTok. Their content themes include hobbies, interests, daily life, and favorite TV/movie updates, using behind-the-scenes posts, interactive Q&A, platform-specific post types/times, analytics, and community formats such as Instagram Stories stickers, TikTok tactics, Twitter Q&A/Chats, and Facebook Groups.\",\"title\":\"Cross-platform content calendar and social media growth strategy context\"},\"reason\":\"Candidate refines the existing broader cross-platform social media strategy with the explicit content calendar, Twitter inclusion, goals, and themes, so it should replace the older broader note rather than duplicate it.\",\"target_note_id\":\"hot-path-ce2fe6c09e12-note-2\"},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct reusable workflow for optimizing posting times with analytics and experiments; existing strategy note mentions analytics generally but does not capture this procedure.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct concrete Instagram Stories engagement tactic using Question sticker prompts around TV and movies; existing notes mention interactive stickers only generally.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5272,
+                "completionTokens": 432,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
