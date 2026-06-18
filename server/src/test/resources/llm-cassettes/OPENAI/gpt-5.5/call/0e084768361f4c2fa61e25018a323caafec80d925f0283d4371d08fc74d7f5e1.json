@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "0e084768361f4c2fa61e25018a323caafec80d925f0283d4371d08fc74d7f5e1",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:18bc8abd\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/06/30 (Fri) 12:37\nTranscript:\nuser: I'm thinking of hosting another backyard BBQ soon and I want to try out some new recipes. Can you give me some tips on how to make smoked brisket? By the way, I've been loving my new Weber gas grill for quick weeknight dinners, and I'm currently obsessed with Kansas City Masterpiece BBQ sauce on my ribs.\nassistant: Smoked brisket is a fantastic choice for your next BBQ! It's a classic Texas-style BBQ favorite that's sure to impress your guests. I'd be happy to help you with tips on how to make a deliciously tender and flavorful smoked brisket.\n\n**Smoked Brisket Basics**\n\nBefore we dive into the details, here are some essential things to know:\n\n1. **Choose the right cut**: Look for a whole brisket (around 10-12 pounds) or a flat cut brisket (around 5-6 pounds). The flat cut is leaner and easier to handle, but the whole brisket will give you more flavor and texture.\n2. **Low and slow**: Smoked brisket is all about cooking low and slow. You'll need to cook it at a temperature between 225°F and 250°F (110°C to 120°C) for 10-12 hours.\n3. **Wood smoke**: You'll need a smoker or a charcoal grill with a smoker attachment to infuse that rich, smoky flavor. Popular wood options for brisket include post oak, mesquite, and apple wood.\n\n**Smoked Brisket Recipe and Tips**\n\nHere's a basic recipe and some additional tips to get you started:\n\n**Ingredients:**\n\n* 1 whole or flat cut brisket\n* 1 cup of your favorite dry rub (see below for a simple recipe)\n* 1 cup of wood chips (your chosen type)\n* Kansas City Masterpiece BBQ sauce (or your favorite BBQ sauce) for serving\n\n**Simple Dry Rub Recipe:**\n\n* 2 tablespoons brown sugar\n* 2 tablespoons smoked paprika\n* 2 tablespoons chili powder\n* 1 tablespoon garlic powder\n* 1 tablespoon onion powder\n* 1 tablespoon salt\n* 1 tablespoon black pepper\n\n**Instructions:**\n\n1. **Preparation**: Trim any excess fat from the brisket, if necessary. Apply the dry rub evenly to both sides of the brisket, making sure to coat it thoroughly.\n2. **Setup your smoker**: Set up your smoker or charcoal grill with a smoker attachment to run at 225°F (110°C). Add your wood chips to the smoker or grill.\n3. **Add the brisket**: Place the brisket in the smoker or grill, fat side up. Close the lid and let the magic begin.\n4. **Smoke for 4-5 hours**: Smoke the brisket for 4-5 hours, or until it reaches an internal temperature of 160°F (71°C).\n5. **Wrap and rest**: Wrap the brisket in foil and let it rest for 2-3 hours. This step is crucial, as it allows the juices to redistribute and the meat to tenderize.\n6. **Finish with BBQ sauce**: After the resting period, remove the brisket from the foil and brush it with your favorite BBQ sauce (like Kansas City Masterpiece!). Return the brisket to the smoker or grill for an additional 30 minutes to set the sauce.\n7. **Slice and serve**: Slice the brisket against the grain and serve with your favorite sides, such as coleslaw, baked beans, or grilled vegetables.\n\n**Additional Tips:**\n\n* **Monitor the temperature**: Keep an eye on the internal temperature of the brisket to ensure it reaches a safe minimum of 160°F (71°C).\n* **Keep it moist**: You can add a water pan to the smoker or grill to maintain a humid environment and keep the brisket moist.\n* **Be patient**: Smoked brisket is a low-and-slow process. Don't rush it, and be prepared to spend the day tending to your smoker or grill.\n\nI hope these tips help you create an amazing smoked brisket for your backyard BBQ! Enjoy, and don't hesitate to reach out if you have any more questions.\nuser: What are some good sides that would go well with the smoked brisket, and do you have any recipes for a good coleslaw that would cut the richness of the meat?\nassistant: **Sides that pair well with Smoked Brisket:**\n\n1. **Coleslaw**: A creamy coleslaw with a tangy dressing helps cut the richness of the brisket. I've got a recipe for you below!\n2. **Baked Beans**: Sweet and smoky baked beans are a classic BBQ side dish that pairs perfectly with brisket.\n3. **Grilled Vegetables**: Grilled bell peppers, zucchini, and onions add a nice contrast in texture and flavor to the meal.\n4. **Cornbread**: A warm, crumbly cornbread is a staple in Texas BBQ joints and pairs beautifully with smoked brisket.\n5. **Mac and Cheese**: For a comforting, indulgent side, macaroni and cheese is a great option.\n6. **Potato Salad**: A creamy potato salad with diced potatoes, eggs, and pickles provides a nice contrast to the tender brisket.\n\n**Coleslaw Recipe:**\n\nThis recipe makes about 4 cups of coleslaw, which should serve 8-10 people.\n\n**Ingredients:**\n\n* 2 cups shredded cabbage\n* 1 cup shredded carrots\n* 1/2 cup mayonnaise\n* 2 tablespoons apple cider vinegar\n* 1 tablespoon Dijon mustard\n* 1 teaspoon sugar\n* Salt and pepper to taste\n* 2 tablespoons chopped fresh parsley\n\n**Instructions:**\n\n1. In a large bowl, combine the shredded cabbage and carrots.\n2. In a separate bowl, whisk together the mayonnaise, apple cider vinegar, Dijon mustard, sugar, salt, and pepper until smooth.\n3. Pour the dressing over the cabbage mixture and toss until the slaw is well coated.\n4. Stir in the chopped parsley.\n5. Chill the slaw in the refrigerator for at least 30 minutes to allow the flavors to meld.\n\n**Tips:**\n\n* Use a mandoline or food processor to shred the cabbage and carrots for a more uniform texture.\n* Adjust the amount of vinegar to your taste. If you prefer a sweeter slaw, reduce the vinegar to 1 tablespoon.\n* Add some heat to the slaw by incorporating diced jalapeños or red pepper flakes.\n* For a creamier slaw, add 1-2 tablespoons of sour cream or Greek yogurt to the dressing.\n\nThis coleslaw recipe has a nice balance of tanginess and creaminess, which helps cut the richness of the smoked brisket. The apple cider vinegar adds a subtle sweetness, while the parsley provides a fresh, herbaceous note. Feel free to adjust the recipe to your taste preferences!\nuser: I'm thinking of also making some grilled pineapple for my BBQ, like my friend Emily brought to my birthday party. Do you have any tips on how to grill pineapple and what type of pineapple is best for grilling?\nassistant: Grilled pineapple is an amazing addition to any BBQ! It's a sweet, caramelized, and refreshing twist on traditional grilled fruits. I'd be happy to help you with tips on how to grill pineapple and recommend the best type of pineapple for grilling.\n\n**Choosing the Right Pineapple:**\n\nFor grilling, you'll want to choose a ripe, sweet, and firm pineapple. Look for:\n\n1. **Sweetness**: A ripe pineapple should be sweet and slightly soft to the touch.\n2. **Firmness**: A firm pineapple will hold its shape better when grilled.\n3. **Variety**: You can use any variety of pineapple, but **Hawaiian Gold** or **Smooth Cayenne** are popular choices for grilling due to their sweetness and firm texture.\n\n**Grilling Pineapple Tips:**\n\n1. **Preheat**: Preheat your grill to medium-high heat (around 375°F to 400°F or 190°C to 200°C).\n2. **Cut**: Cut the pineapple into wedges or slices, depending on your desired serving size. Remove any leaves or tough outer skin.\n3. **Brush with oil**: Brush both sides of the pineapple with a neutral oil like canola or grapeseed oil to prevent sticking.\n4. **Season**: Sprinkle both sides with a pinch of salt and any other desired spices (e.g., cinnamon, nutmeg, or brown sugar).\n5. **Grill**: Place the pineapple slices or wedges on the grill and cook for 2-3 minutes per side, or until caramelized and slightly charred.\n6. **Flip**: Flip the pineapple frequently to achieve even grilling and prevent burning.\n7. **Serve**: Serve warm or at room temperature, garnished with fresh mint, basil, or a dollop of whipped cream, if desired.\n\n**Additional Tips:**\n\n* **Don't overgrill**: Pineapple can quickly go from caramelized to burnt, so keep an eye on the heat and grill time.\n* **Use a grill mat**: If you have a grill mat, use it to prevent the pineapple from sticking to the grates.\n* **Add flavor with wood chips**: You can add wood chips like mesquite or apple to your grill to infuse a smoky flavor into the pineapple.\n\nNow you're all set to grill some delicious pineapple for your BBQ! I hope your guests enjoy it as much as you do.\nuser: That's a great tip about the pineapple! I was thinking of making some burgers and hot dogs as well. Can you give me some suggestions on how to make them more interesting? Maybe some unique toppings or ways to prepare them?\nassistant: Burgers and hot dogs are classic BBQ favorites! I'd be happy to help you take them to the next level with some unique toppings and preparation ideas.\n\n**Burger Ideas:**\n\n1. **Gourmet Toppings**:\n\t* Caramelized onions, mushrooms, or bell peppers\n\t* Crispy bacon, grilled pineapple, or applewood-smoked bacon\n\t* Fried eggs, goat cheese, or truffle aioli\n\t* Grilled jalapeños or pepper jack cheese for a spicy kick\n2. **International Inspiration**:\n\t* **Korean BBQ Burger**: Marinate beef in a Korean-inspired sauce (e.g., gochujang, soy sauce, brown sugar) and top with kimchi slaw and cilantro.\n\t* **Greek Burger**: Top with feta cheese, kalamata olives, and a drizzle of tzatziki sauce.\n\t* **Mexican Burger**: Add pepper jack cheese, sliced avocado, and a spicy chipotle mayo.\n3. **Creative Patty Mix-ins**:\n\t* **Bacon and Cheddar**: Mix crumbled bacon and shredded cheddar into the patty for added flavor.\n\t* **Mushroom and Onion**: Sautéed mushrooms and onions mixed into the patty for added moisture and flavor.\n\t* **Spicy Southwestern**: Mix in diced jalapeños, chili powder, and cumin for a spicy kick.\n\n**Hot Dog Ideas:**\n\n1. **Gourmet Toppings**:\n\t* **Chili and Cheese**: Top with chili, shredded cheese, and diced onions.\n\t* **Chicago-Style**: Add relish, onions, tomatoes, sport peppers, and a dash of celery salt.\n\t* **Southwestern**: Top with chipotle peppers, sliced avocado, and sour cream.\n2. **Creative Condiments**:\n\t* **Bacon Jam**: A sweet and smoky jam made with bacon, onions, and brown sugar.\n\t* **Spicy Mustard**: Mix mustard with hot sauce (e.g., sriracha, hot sauce) for an added kick.\n\t* **Chili-Lime Aioli**: A creamy aioli infused with chili flakes and lime juice.\n3. **Unique Cooking Methods**:\n\t* **Grilled Hot Dogs**: Grill hot dogs for a caramelized, crispy exterior.\n\t* **Smoked Hot Dogs**: Smoke hot dogs over low heat for 30 minutes to an hour for a deep, smoky flavor.\n\n**Additional Tips:**\n\n* **Use high-quality ingredients**: Fresh, never frozen beef and premium hot dogs will elevate the flavor and texture of your BBQ.\n* **Don't overcook**: Cook burgers and hot dogs to the recommended internal temperature (160°F for burgers, 165°F for hot dogs) to ensure food safety and prevent overcooking.\n* **Get creative with buns**: Offer artisanal buns, pretzel buns, or even lettuce wraps for a low-carb option.\n\nThese ideas should help you take your burgers and hot dogs to the next level!\nuser: I'm thinking of making some BBQ pulled pork as well. Do you have any tips on how to make delicious pulled pork and what type of wood is good for smoking it?\nassistant: BBQ pulled pork is a crowd-pleaser! I'd be happy to share some tips on how to make delicious pulled pork and recommend some great wood options for smoking.\n\n**Tips for Delicious Pulled Pork:**\n\n1. **Choose the right cut**: Look for a boneless pork shoulder or Boston butt (around 2-3 pounds). This cut is ideal for slow-cooking and will yield tender, juicy meat.\n2. **Seasoning**: Apply a dry rub or marinade to the pork shoulder the night before or at least 2 hours before smoking. This will help the seasonings penetrate the meat and enhance flavor.\n3. **Low and slow**: Smoke the pork shoulder at a low temperature (225-250°F) for 8-10 hours. This will break down the connective tissues and make the meat tender and easy to shred.\n4. **Wood smoke**: Use a mild wood like apple, cherry, or hickory to add flavor to the pork. Avoid strong woods like mesquite or oak, as they can overpower the meat.\n5. **Resting**: Once the pork is cooked, let it rest for 30 minutes to 1 hour before shredding. This allows the juices to redistribute, making the meat even more tender and flavorful.\n6. **Shredding**: Use two forks to shred the pork into bite-sized pieces. You can also use a meat claw or a stand mixer with a paddle attachment to make the process easier.\n\n**Recommended Woods for Smoking Pulled Pork:**\n\n1. **Apple wood**: A mild, sweet wood that pairs well with pork. It adds a fruity flavor and a hint of sweetness.\n2. **Cherry wood**: Similar to apple wood, cherry wood provides a mild, fruity flavor that complements the pork nicely.\n3. **Hickory wood**: A classic choice for BBQ, hickory wood adds a strong, smoky flavor to the pork. Use it sparingly, as it can overpower the meat.\n4. **Pecan wood**: A mild, nutty wood that adds depth and complexity to the pork.\n\n**Additional Tips:**\n\n* **Monitor the temperature**: Keep an eye on the internal temperature of the pork shoulder, which should reach 190-195°F for tender, pulled pork.\n* **Add some fat**: You can add some fat like bacon, sausage, or even butter to the pork shoulder during the last hour of smoking to add flavor and moisture.\n* **Experiment with flavors**: Try adding different spices, herbs, or sauces to the pork during the last hour of smoking to give it a unique flavor profile.\n\nBy following these tips and using the right wood, you'll be on your way to making delicious, tender, and flavorful pulled pork that's sure to please your BBQ guests!\nuser: I'm thinking of serving my BBQ pulled pork on a bun with some coleslaw and pickles. Do you have any recommendations for a good BBQ sauce to serve with it? Currently, my favourite is Kansas City Masterpiece BBQ sauce, but I'm open to trying other options.\nassistant: Serving BBQ pulled pork on a bun with coleslaw and pickles is a classic combination! \n\n**BBQ Sauce Recommendations:**\n\nWhile Kansas City Masterpiece BBQ sauce is a great choice, I'd be happy to suggest some other options to consider:\n\n1. **Sweet Baby Ray's BBQ Sauce**: A sweet and tangy sauce with a thick, velvety texture. It's a popular choice for BBQ and pairs well with pulled pork.\n2. **Franklin Barbecue BBQ Sauce**: A Texas-style BBQ sauce with a thinner, more vinegar-based consistency. It's great for those who prefer a tangier BBQ sauce.\n3. **Bone Suckin' BBQ Sauce**: A sweet and smoky sauce with a thick, syrupy texture. It's made with a blend of spices and has a nice balance of sweet and tangy flavors.\n4. **Stubb's BBQ Sauce**: A Texas-style BBQ sauce with a thick, sweet, and smoky flavor profile. It's great for those who prefer a sweeter BBQ sauce.\n5. **Dinosaur Bar-B-Que BBQ Sauce**: A sweet and tangy sauce with a thick, syrupy texture. It's made with a blend of spices and has a nice balance of sweet and tangy flavors.\n\n**Tips for Choosing a BBQ Sauce:**\n\n1. **Consider the flavor profile**: Think about the flavor profile you want to achieve with your BBQ sauce. Do you prefer sweet, tangy, smoky, or spicy?\n2. **Think about the type of meat**: Different meats pair better with certain BBQ sauces. For pulled pork, a sweet and tangy sauce is often a good choice.\n3. **Experiment with different brands**: Try out different brands and flavor profiles to find the one that you enjoy the most.\n4. **Make your own BBQ sauce**: If you're feeling adventurous, try making your own BBQ sauce from scratch. This will allow you to customize the flavor to your liking.\n\n**Additional Tips:**\n\n* **Use it as a finishing sauce**: Apply the BBQ sauce to the pulled pork during the last 10-15 minutes of cooking to give it a nice glaze.\n* **Offer options**: Consider offering multiple BBQ sauce options for your guests to choose from. This will allow them to customize their pulled pork sandwiches to their taste.\n\nI hope these recommendations and tips help you find the perfect BBQ sauce to serve with your pulled pork!\n\n        Candidate notes:\n        [0] type=PLAN title=Expanded backyard BBQ menu with pulled pork, grilled pineapple, burgers, and hot dogs summary=For the user's backyard BBQ planning from 2023-06-30, the menu expanded beyond smoked brisket to include BBQ pulled pork served on a bun with coleslaw and pickles, grilled pineapple inspired by Emily's birthday-party dish, plus burgers and hot dogs with more interesting toppings or preparation styles. Kansas City Masterpiece BBQ sauce is the current preferred sauce for ribs and pulled pork explora...[truncated 50 chars] scope=User's backyard BBQ menu planning context from the 2023-06-30 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=backyard BBQ,BBQ pulled pork,grilled pineapple,burgers,hot dogs,coleslaw,pickles,Kansas City Masterpiece BBQ sauce,Emily,birthday party tags=bbq,menu_plan,party_planning evidence=I'm thinking of serving my BBQ pulled pork on a bun with some coleslaw and pickles.\n[1] type=LESSON title=Pulled pork smoking procedure and wood direction summary=For BBQ pulled pork, the discussed approach is to use pork shoulder or Boston butt, season it ahead of smoking, cook low and slow at 225–250°F for 8–10 hours, rest 30–60 minutes, then shred. Recommended smoking woods are mild options such as apple, cherry, hickory used sparingly, or pecan, with mesquite and oak avoided because they can overpower pork. scope=Reusable pulled pork smoking guidance from the user's 2023-06-30 BBQ planning session entities=entity:<6>,entity:<1> keywords=BBQ pulled pork,pork shoulder,Boston butt,225-250°F,8-10 hours,apple wood,cherry wood,hickory wood,pecan wood,mesquite,oak tags=bbq,pulled_pork,smoking_procedure evidence=Use a mild wood like apple, cherry, or hickory to add flavor to the pork. Avoid strong woods like mesquite or oak, as they can overpower the meat.\n[2] type=LESSON title=Grilled pineapple method for the backyard BBQ summary=For the user's BBQ grilled pineapple, the discussed method is to choose a ripe, sweet, firm pineapple—especially Hawaiian Gold or Smooth Cayenne—cut into wedges or slices, oil and season it, then grill at 375–400°F for 2–3 minutes per side until caramelized and lightly charred while avoiding overgrilling. scope=Reusable grilled pineapple preparation guidance from the user's BBQ planning session entities=entity:<0>,entity:<1>,entity:<4>,entity:<5> keywords=grilled pineapple,Hawaiian Gold,Smooth Cayenne,375°F,400°F,2-3 minutes,Emily,birthday party tags=bbq,grilled_pineapple,recipe_tip evidence=I'm thinking of also making some grilled pineapple for my BBQ, like my friend Emily brought to my birthday party.\n\n        Existing active notes:\n        id=hot-path-2b987f8c1247-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Backyard BBQ menu and brisket approach summary=For the user's upcoming backyard BBQ, the emerging menu centers on ribs, Low and Slow Smoked Brisket, mac and cheese as a favored side, and Sweet Baby Ray's BBQ sauce. The selected brisket direction uses post oak wood chips and Killer Hogs BBQ Rub, with prep including trimming excess fat and removing silver skin before applying the rub. scope=User's backyard BBQ planning context and selected BBQ menu/brisket approach from the 2023-04-16 session keywords=backyard BBQ,Low and Slow Smoked Brisket,mac and cheese,Sweet Baby Ray's,post oak,Killer Hogs BBQ Rub,silver skin tags=bbq_planning,brisket,menu_plan useCount=0\nid=hot-path-2b987f8c1247-note-3 type=LESSON status=ACTIVE maturity=FRESH title=Low and Slow Smoked Brisket smoker setup procedure summary=For the Low and Slow Smoked Brisket, set the smoker to 225°F, use post oak wood chips or chunks, add a water pan for moisture/temperature regulation, place the brisket fat side up, maintain roughly 225–250°F, add wood as needed, check hourly, and wrap the brisket in foil after 4–5 hours to prevent drying and promote tenderization. scope=Reusable procedure for setting up the user's smoker for the selected Low and Slow Smoked Brisket recipe keywords=smoker setup,Low and Slow Smoked Brisket,225°F,post oak wood chips,water pan,fat side up,wrap in foil tags=bbq_procedure,smoker,brisket useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:18bc8abd",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:6b29fbfa0e2247a9700d1d7f4e71a146"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:18bc8abd\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/06/30 (Fri) 12:37\nTranscript:\nuser: I'm thinking of hosting another backyard BBQ soon and I want to try out some new recipes. Can you give me some tips on how to make smoked brisket? By the way, I've been loving my new Weber gas grill for quick weeknight dinners, and I'm currently obsessed with Kansas City Masterpiece BBQ sauce on my ribs.\nassistant: Smoked brisket is a fantastic choice for your next BBQ! It's a classic Texas-style BBQ favorite that's sure to impress your guests. I'd be happy to help you with tips on how to make a deliciously tender and flavorful smoked brisket.\n\n**Smoked Brisket Basics**\n\nBefore we dive into the details, here are some essential things to know:\n\n1. **Choose the right cut**: Look for a whole brisket (around 10-12 pounds) or a flat cut brisket (around 5-6 pounds). The flat cut is leaner and easier to handle, but the whole brisket will give you more flavor and texture.\n2. **Low and slow**: Smoked brisket is all about cooking low and slow. You'll need to cook it at a temperature between 225°F and 250°F (110°C to 120°C) for 10-12 hours.\n3. **Wood smoke**: You'll need a smoker or a charcoal grill with a smoker attachment to infuse that rich, smoky flavor. Popular wood options for brisket include post oak, mesquite, and apple wood.\n\n**Smoked Brisket Recipe and Tips**\n\nHere's a basic recipe and some additional tips to get you started:\n\n**Ingredients:**\n\n* 1 whole or flat cut brisket\n* 1 cup of your favorite dry rub (see below for a simple recipe)\n* 1 cup of wood chips (your chosen type)\n* Kansas City Masterpiece BBQ sauce (or your favorite BBQ sauce) for serving\n\n**Simple Dry Rub Recipe:**\n\n* 2 tablespoons brown sugar\n* 2 tablespoons smoked paprika\n* 2 tablespoons chili powder\n* 1 tablespoon garlic powder\n* 1 tablespoon onion powder\n* 1 tablespoon salt\n* 1 tablespoon black pepper\n\n**Instructions:**\n\n1. **Preparation**: Trim any excess fat from the brisket, if necessary. Apply the dry rub evenly to both sides of the brisket, making sure to coat it thoroughly.\n2. **Setup your smoker**: Set up your smoker or charcoal grill with a smoker attachment to run at 225°F (110°C). Add your wood chips to the smoker or grill.\n3. **Add the brisket**: Place the brisket in the smoker or grill, fat side up. Close the lid and let the magic begin.\n4. **Smoke for 4-5 hours**: Smoke the brisket for 4-5 hours, or until it reaches an internal temperature of 160°F (71°C).\n5. **Wrap and rest**: Wrap the brisket in foil and let it rest for 2-3 hours. This step is crucial, as it allows the juices to redistribute and the meat to tenderize.\n6. **Finish with BBQ sauce**: After the resting period, remove the brisket from the foil and brush it with your favorite BBQ sauce (like Kansas City Masterpiece!). Return the brisket to the smoker or grill for an additional 30 minutes to set the sauce.\n7. **Slice and serve**: Slice the brisket against the grain and serve with your favorite sides, such as coleslaw, baked beans, or grilled vegetables.\n\n**Additional Tips:**\n\n* **Monitor the temperature**: Keep an eye on the internal temperature of the brisket to ensure it reaches a safe minimum of 160°F (71°C).\n* **Keep it moist**: You can add a water pan to the smoker or grill to maintain a humid environment and keep the brisket moist.\n* **Be patient**: Smoked brisket is a low-and-slow process. Don't rush it, and be prepared to spend the day tending to your smoker or grill.\n\nI hope these tips help you create an amazing smoked brisket for your backyard BBQ! Enjoy, and don't hesitate to reach out if you have any more questions.\nuser: What are some good sides that would go well with the smoked brisket, and do you have any recipes for a good coleslaw that would cut the richness of the meat?\nassistant: **Sides that pair well with Smoked Brisket:**\n\n1. **Coleslaw**: A creamy coleslaw with a tangy dressing helps cut the richness of the brisket. I've got a recipe for you below!\n2. **Baked Beans**: Sweet and smoky baked beans are a classic BBQ side dish that pairs perfectly with brisket.\n3. **Grilled Vegetables**: Grilled bell peppers, zucchini, and onions add a nice contrast in texture and flavor to the meal.\n4. **Cornbread**: A warm, crumbly cornbread is a staple in Texas BBQ joints and pairs beautifully with smoked brisket.\n5. **Mac and Cheese**: For a comforting, indulgent side, macaroni and cheese is a great option.\n6. **Potato Salad**: A creamy potato salad with diced potatoes, eggs, and pickles provides a nice contrast to the tender brisket.\n\n**Coleslaw Recipe:**\n\nThis recipe makes about 4 cups of coleslaw, which should serve 8-10 people.\n\n**Ingredients:**\n\n* 2 cups shredded cabbage\n* 1 cup shredded carrots\n* 1/2 cup mayonnaise\n* 2 tablespoons apple cider vinegar\n* 1 tablespoon Dijon mustard\n* 1 teaspoon sugar\n* Salt and pepper to taste\n* 2 tablespoons chopped fresh parsley\n\n**Instructions:**\n\n1. In a large bowl, combine the shredded cabbage and carrots.\n2. In a separate bowl, whisk together the mayonnaise, apple cider vinegar, Dijon mustard, sugar, salt, and pepper until smooth.\n3. Pour the dressing over the cabbage mixture and toss until the slaw is well coated.\n4. Stir in the chopped parsley.\n5. Chill the slaw in the refrigerator for at least 30 minutes to allow the flavors to meld.\n\n**Tips:**\n\n* Use a mandoline or food processor to shred the cabbage and carrots for a more uniform texture.\n* Adjust the amount of vinegar to your taste. If you prefer a sweeter slaw, reduce the vinegar to 1 tablespoon.\n* Add some heat to the slaw by incorporating diced jalapeños or red pepper flakes.\n* For a creamier slaw, add 1-2 tablespoons of sour cream or Greek yogurt to the dressing.\n\nThis coleslaw recipe has a nice balance of tanginess and creaminess, which helps cut the richness of the smoked brisket. The apple cider vinegar adds a subtle sweetness, while the parsley provides a fresh, herbaceous note. Feel free to adjust the recipe to your taste preferences!\nuser: I'm thinking of also making some grilled pineapple for my BBQ, like my friend Emily brought to my birthday party. Do you have any tips on how to grill pineapple and what type of pineapple is best for grilling?\nassistant: Grilled pineapple is an amazing addition to any BBQ! It's a sweet, caramelized, and refreshing twist on traditional grilled fruits. I'd be happy to help you with tips on how to grill pineapple and recommend the best type of pineapple for grilling.\n\n**Choosing the Right Pineapple:**\n\nFor grilling, you'll want to choose a ripe, sweet, and firm pineapple. Look for:\n\n1. **Sweetness**: A ripe pineapple should be sweet and slightly soft to the touch.\n2. **Firmness**: A firm pineapple will hold its shape better when grilled.\n3. **Variety**: You can use any variety of pineapple, but **Hawaiian Gold** or **Smooth Cayenne** are popular choices for grilling due to their sweetness and firm texture.\n\n**Grilling Pineapple Tips:**\n\n1. **Preheat**: Preheat your grill to medium-high heat (around 375°F to 400°F or 190°C to 200°C).\n2. **Cut**: Cut the pineapple into wedges or slices, depending on your desired serving size. Remove any leaves or tough outer skin.\n3. **Brush with oil**: Brush both sides of the pineapple with a neutral oil like canola or grapeseed oil to prevent sticking.\n4. **Season**: Sprinkle both sides with a pinch of salt and any other desired spices (e.g., cinnamon, nutmeg, or brown sugar).\n5. **Grill**: Place the pineapple slices or wedges on the grill and cook for 2-3 minutes per side, or until caramelized and slightly charred.\n6. **Flip**: Flip the pineapple frequently to achieve even grilling and prevent burning.\n7. **Serve**: Serve warm or at room temperature, garnished with fresh mint, basil, or a dollop of whipped cream, if desired.\n\n**Additional Tips:**\n\n* **Don't overgrill**: Pineapple can quickly go from caramelized to burnt, so keep an eye on the heat and grill time.\n* **Use a grill mat**: If you have a grill mat, use it to prevent the pineapple from sticking to the grates.\n* **Add flavor with wood chips**: You can add wood chips like mesquite or apple to your grill to infuse a smoky flavor into the pineapple.\n\nNow you're all set to grill some delicious pineapple for your BBQ! I hope your guests enjoy it as much as you do.\nuser: That's a great tip about the pineapple! I was thinking of making some burgers and hot dogs as well. Can you give me some suggestions on how to make them more interesting? Maybe some unique toppings or ways to prepare them?\nassistant: Burgers and hot dogs are classic BBQ favorites! I'd be happy to help you take them to the next level with some unique toppings and preparation ideas.\n\n**Burger Ideas:**\n\n1. **Gourmet Toppings**:\n\t* Caramelized onions, mushrooms, or bell peppers\n\t* Crispy bacon, grilled pineapple, or applewood-smoked bacon\n\t* Fried eggs, goat cheese, or truffle aioli\n\t* Grilled jalapeños or pepper jack cheese for a spicy kick\n2. **International Inspiration**:\n\t* **Korean BBQ Burger**: Marinate beef in a Korean-inspired sauce (e.g., gochujang, soy sauce, brown sugar) and top with kimchi slaw and cilantro.\n\t* **Greek Burger**: Top with feta cheese, kalamata olives, and a drizzle of tzatziki sauce.\n\t* **Mexican Burger**: Add pepper jack cheese, sliced avocado, and a spicy chipotle mayo.\n3. **Creative Patty Mix-ins**:\n\t* **Bacon and Cheddar**: Mix crumbled bacon and shredded cheddar into the patty for added flavor.\n\t* **Mushroom and Onion**: Sautéed mushrooms and onions mixed into the patty for added moisture and flavor.\n\t* **Spicy Southwestern**: Mix in diced jalapeños, chili powder, and cumin for a spicy kick.\n\n**Hot Dog Ideas:**\n\n1. **Gourmet Toppings**:\n\t* **Chili and Cheese**: Top with chili, shredded cheese, and diced onions.\n\t* **Chicago-Style**: Add relish, onions, tomatoes, sport peppers, and a dash of celery salt.\n\t* **Southwestern**: Top with chipotle peppers, sliced avocado, and sour cream.\n2. **Creative Condiments**:\n\t* **Bacon Jam**: A sweet and smoky jam made with bacon, onions, and brown sugar.\n\t* **Spicy Mustard**: Mix mustard with hot sauce (e.g., sriracha, hot sauce) for an added kick.\n\t* **Chili-Lime Aioli**: A creamy aioli infused with chili flakes and lime juice.\n3. **Unique Cooking Methods**:\n\t* **Grilled Hot Dogs**: Grill hot dogs for a caramelized, crispy exterior.\n\t* **Smoked Hot Dogs**: Smoke hot dogs over low heat for 30 minutes to an hour for a deep, smoky flavor.\n\n**Additional Tips:**\n\n* **Use high-quality ingredients**: Fresh, never frozen beef and premium hot dogs will elevate the flavor and texture of your BBQ.\n* **Don't overcook**: Cook burgers and hot dogs to the recommended internal temperature (160°F for burgers, 165°F for hot dogs) to ensure food safety and prevent overcooking.\n* **Get creative with buns**: Offer artisanal buns, pretzel buns, or even lettuce wraps for a low-carb option.\n\nThese ideas should help you take your burgers and hot dogs to the next level!\nuser: I'm thinking of making some BBQ pulled pork as well. Do you have any tips on how to make delicious pulled pork and what type of wood is good for smoking it?\nassistant: BBQ pulled pork is a crowd-pleaser! I'd be happy to share some tips on how to make delicious pulled pork and recommend some great wood options for smoking.\n\n**Tips for Delicious Pulled Pork:**\n\n1. **Choose the right cut**: Look for a boneless pork shoulder or Boston butt (around 2-3 pounds). This cut is ideal for slow-cooking and will yield tender, juicy meat.\n2. **Seasoning**: Apply a dry rub or marinade to the pork shoulder the night before or at least 2 hours before smoking. This will help the seasonings penetrate the meat and enhance flavor.\n3. **Low and slow**: Smoke the pork shoulder at a low temperature (225-250°F) for 8-10 hours. This will break down the connective tissues and make the meat tender and easy to shred.\n4. **Wood smoke**: Use a mild wood like apple, cherry, or hickory to add flavor to the pork. Avoid strong woods like mesquite or oak, as they can overpower the meat.\n5. **Resting**: Once the pork is cooked, let it rest for 30 minutes to 1 hour before shredding. This allows the juices to redistribute, making the meat even more tender and flavorful.\n6. **Shredding**: Use two forks to shred the pork into bite-sized pieces. You can also use a meat claw or a stand mixer with a paddle attachment to make the process easier.\n\n**Recommended Woods for Smoking Pulled Pork:**\n\n1. **Apple wood**: A mild, sweet wood that pairs well with pork. It adds a fruity flavor and a hint of sweetness.\n2. **Cherry wood**: Similar to apple wood, cherry wood provides a mild, fruity flavor that complements the pork nicely.\n3. **Hickory wood**: A classic choice for BBQ, hickory wood adds a strong, smoky flavor to the pork. Use it sparingly, as it can overpower the meat.\n4. **Pecan wood**: A mild, nutty wood that adds depth and complexity to the pork.\n\n**Additional Tips:**\n\n* **Monitor the temperature**: Keep an eye on the internal temperature of the pork shoulder, which should reach 190-195°F for tender, pulled pork.\n* **Add some fat**: You can add some fat like bacon, sausage, or even butter to the pork shoulder during the last hour of smoking to add flavor and moisture.\n* **Experiment with flavors**: Try adding different spices, herbs, or sauces to the pork during the last hour of smoking to give it a unique flavor profile.\n\nBy following these tips and using the right wood, you'll be on your way to making delicious, tender, and flavorful pulled pork that's sure to please your BBQ guests!\nuser: I'm thinking of serving my BBQ pulled pork on a bun with some coleslaw and pickles. Do you have any recommendations for a good BBQ sauce to serve with it? Currently, my favourite is Kansas City Masterpiece BBQ sauce, but I'm open to trying other options.\nassistant: Serving BBQ pulled pork on a bun with coleslaw and pickles is a classic combination! \n\n**BBQ Sauce Recommendations:**\n\nWhile Kansas City Masterpiece BBQ sauce is a great choice, I'd be happy to suggest some other options to consider:\n\n1. **Sweet Baby Ray's BBQ Sauce**: A sweet and tangy sauce with a thick, velvety texture. It's a popular choice for BBQ and pairs well with pulled pork.\n2. **Franklin Barbecue BBQ Sauce**: A Texas-style BBQ sauce with a thinner, more vinegar-based consistency. It's great for those who prefer a tangier BBQ sauce.\n3. **Bone Suckin' BBQ Sauce**: A sweet and smoky sauce with a thick, syrupy texture. It's made with a blend of spices and has a nice balance of sweet and tangy flavors.\n4. **Stubb's BBQ Sauce**: A Texas-style BBQ sauce with a thick, sweet, and smoky flavor profile. It's great for those who prefer a sweeter BBQ sauce.\n5. **Dinosaur Bar-B-Que BBQ Sauce**: A sweet and tangy sauce with a thick, syrupy texture. It's made with a blend of spices and has a nice balance of sweet and tangy flavors.\n\n**Tips for Choosing a BBQ Sauce:**\n\n1. **Consider the flavor profile**: Think about the flavor profile you want to achieve with your BBQ sauce. Do you prefer sweet, tangy, smoky, or spicy?\n2. **Think about the type of meat**: Different meats pair better with certain BBQ sauces. For pulled pork, a sweet and tangy sauce is often a good choice.\n3. **Experiment with different brands**: Try out different brands and flavor profiles to find the one that you enjoy the most.\n4. **Make your own BBQ sauce**: If you're feeling adventurous, try making your own BBQ sauce from scratch. This will allow you to customize the flavor to your liking.\n\n**Additional Tips:**\n\n* **Use it as a finishing sauce**: Apply the BBQ sauce to the pulled pork during the last 10-15 minutes of cooking to give it a nice glaze.\n* **Offer options**: Consider offering multiple BBQ sauce options for your guests to choose from. This will allow them to customize their pulled pork sandwiches to their taste.\n\nI hope these recommendations and tips help you find the perfect BBQ sauce to serve with your pulled pork!\n\n        Candidate notes:\n        [0] type=PLAN title=Expanded backyard BBQ menu with pulled pork, grilled pineapple, burgers, and hot dogs summary=For the user's backyard BBQ planning from 2023-06-30, the menu expanded beyond smoked brisket to include BBQ pulled pork served on a bun with coleslaw and pickles, grilled pineapple inspired by Emily's birthday-party dish, plus burgers and hot dogs with more interesting toppings or preparation styles. Kansas City Masterpiece BBQ sauce is the current preferred sauce for ribs and pulled pork explora...[truncated 50 chars] scope=User's backyard BBQ menu planning context from the 2023-06-30 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=backyard BBQ,BBQ pulled pork,grilled pineapple,burgers,hot dogs,coleslaw,pickles,Kansas City Masterpiece BBQ sauce,Emily,birthday party tags=bbq,menu_plan,party_planning evidence=I'm thinking of serving my BBQ pulled pork on a bun with some coleslaw and pickles.\n[1] type=LESSON title=Pulled pork smoking procedure and wood direction summary=For BBQ pulled pork, the discussed approach is to use pork shoulder or Boston butt, season it ahead of smoking, cook low and slow at 225–250°F for 8–10 hours, rest 30–60 minutes, then shred. Recommended smoking woods are mild options such as apple, cherry, hickory used sparingly, or pecan, with mesquite and oak avoided because they can overpower pork. scope=Reusable pulled pork smoking guidance from the user's 2023-06-30 BBQ planning session entities=entity:<6>,entity:<1> keywords=BBQ pulled pork,pork shoulder,Boston butt,225-250°F,8-10 hours,apple wood,cherry wood,hickory wood,pecan wood,mesquite,oak tags=bbq,pulled_pork,smoking_procedure evidence=Use a mild wood like apple, cherry, or hickory to add flavor to the pork. Avoid strong woods like mesquite or oak, as they can overpower the meat.\n[2] type=LESSON title=Grilled pineapple method for the backyard BBQ summary=For the user's BBQ grilled pineapple, the discussed method is to choose a ripe, sweet, firm pineapple—especially Hawaiian Gold or Smooth Cayenne—cut into wedges or slices, oil and season it, then grill at 375–400°F for 2–3 minutes per side until caramelized and lightly charred while avoiding overgrilling. scope=Reusable grilled pineapple preparation guidance from the user's BBQ planning session entities=entity:<0>,entity:<1>,entity:<4>,entity:<5> keywords=grilled pineapple,Hawaiian Gold,Smooth Cayenne,375°F,400°F,2-3 minutes,Emily,birthday party tags=bbq,grilled_pineapple,recipe_tip evidence=I'm thinking of also making some grilled pineapple for my BBQ, like my friend Emily brought to my birthday party.\n\n        Existing active notes:\n        id=hot-path-2b987f8c1247-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Backyard BBQ menu and brisket approach summary=For the user's upcoming backyard BBQ, the emerging menu centers on ribs, Low and Slow Smoked Brisket, mac and cheese as a favored side, and Sweet Baby Ray's BBQ sauce. The selected brisket direction uses post oak wood chips and Killer Hogs BBQ Rub, with prep including trimming excess fat and removing silver skin before applying the rub. scope=User's backyard BBQ planning context and selected BBQ menu/brisket approach from the 2023-04-16 session keywords=backyard BBQ,Low and Slow Smoked Brisket,mac and cheese,Sweet Baby Ray's,post oak,Killer Hogs BBQ Rub,silver skin tags=bbq_planning,brisket,menu_plan useCount=0\nid=hot-path-2b987f8c1247-note-3 type=LESSON status=ACTIVE maturity=FRESH title=Low and Slow Smoked Brisket smoker setup procedure summary=For the Low and Slow Smoked Brisket, set the smoker to 225°F, use post oak wood chips or chunks, add a water pan for moisture/temperature regulation, place the brisket fat side up, maintain roughly 225–250°F, add wood as needed, check hourly, and wrap the brisket in foil after 4–5 hours to prevent drying and promote tenderization. scope=Reusable procedure for setting up the user's smoker for the selected Low and Slow Smoked Brisket recipe keywords=smoker setup,Low and Slow Smoked Brisket,225°F,post oak wood chips,water pan,fat side up,wrap in foil tags=bbq_procedure,smoker,brisket useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:18bc8abd",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:6b29fbfa0e2247a9700d1d7f4e71a146"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"supersede\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":{\"maturity\":\"stabilizing\",\"maturity_score\":0.55,\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"User's backyard BBQ planning context across 2023-04-16 and 2023-06-30 sessions\"},\"status\":\"active\",\"summary\":\"For the user's backyard BBQ planning, the menu expanded from ribs and Low and Slow Smoked Brisket to also include BBQ pulled pork served on buns with coleslaw and pickles, grilled pineapple inspired by Emily's birthday-party dish, plus burgers and hot dogs with more interesting toppings or preparation styles. The user has used or liked sauces including Sweet Baby Ray's earlier and currently favors Kansas City Masterpiece BBQ sauce, especially for ribs and pulled pork exploration. The selected brisket direction from prior planning used post oak wood chips and Killer Hogs BBQ Rub, with prep including trimming excess fat and removing silver skin before applying the rub.\",\"title\":\"Expanded backyard BBQ menu with brisket, pulled pork, grilled pineapple, burgers, and hot dogs\"},\"reason\":\"Candidate refines and expands the existing BBQ menu plan rather than being a separate plan; superseding preserves prior brisket decisions while adding the newer menu items and current sauce preference.\",\"target_note_id\":\"hot-path-2b987f8c1247-note-2\"},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-2b987f8c1247-note-3\"}],\"patch\":null,\"reason\":\"Pulled pork smoking procedure is distinct reusable guidance not covered by the existing brisket smoker setup note.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Grilled pineapple preparation guidance is a distinct reusable recipe tip not captured by existing BBQ notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5728,
+                "completionTokens": 425,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

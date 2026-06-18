@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "85ef52b066dd18877209cb2c152c3e1ea92281a9fd20efe45e367482c033be30",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about the fusion breakthrough at Lawrence Livermore National Laboratory. Can you remind me who is the President's Chief Advisor for Science and Technology mentioned in the article?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:32\n\n                                Noisy expected-answer label:\n                                Dr. Arati Prabhakar\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 22:58\nTranscript:\nuser: predict the entities of this article one sentence by a time:\nFor First Time, Researchers Produce More Energy from Fusion Than Was Used to Drive It, Promising Further Discovery in Clean Power and Nuclear Weapons Stewardship\n\nWASHINGTON, D.C. — The U.S. Department of Energy (DOE) and DOE’s National Nuclear Security Administration (NNSA) today announced the achievement of fusion ignition at Lawrence Livermore National Laboratory (LLNL)—a major scientific breakthrough decades in the making that will pave the way for advancements in national defense and the future of clean power. On December 5, a team at LLNL’s National Ignition Facility (NIF) conducted the first controlled fusion experiment in history to reach this milestone, also known as scientific energy breakeven, meaning it produced more energy from fusion than the laser energy used to drive it. This historic, first-of-its kind achievement will provide unprecedented capability to support NNSA’s Stockpile Stewardship Program and will provide invaluable insights into the prospects of clean fusion energy, which would be a game-changer for efforts to achieve President Biden’s goal of a net-zero carbon economy.\n\n“This is a landmark achievement for the researchers and staff at the National Ignition Facility who have dedicated their careers to seeing fusion ignition become a reality, and this milestone will undoubtedly spark even more discovery,” said U.S. Secretary of Energy Jennifer M. Granholm. “The Biden-Harris Administration is committed to supporting our world-class scientists—like the team at NIF—whose work will help us solve humanity’s most complex and pressing problems, like providing clean power to combat climate change and maintaining a nuclear deterrent without nuclear testing.”\n\n“We have had a theoretical understanding of fusion for over a century, but the journey from knowing to doing can be long and arduous. Today’s milestone shows what we can do with perseverance,” said Dr. Arati Prabhakar, the President’s Chief Advisor for Science and Technology and Director of the White House Office of Science and Technology Policy.\n\n“Monday, December 5, 2022, was a historic day in science thanks to the incredible people at Livermore Lab and the National Ignition Facility. In making this breakthrough, they have opened a new chapter in NNSA’s Stockpile Stewardship Program,” said NNSA Administrator Jill Hruby. “I would like to thank the members of Congress who have supported the National Ignition Facility because their belief in the promise of visionary science has been critical for our mission. Our team from around the DOE national laboratories and our international partners have shown us the power of collaboration.”\n\n“The pursuit of fusion ignition in the laboratory is one of the most significant scientific challenges ever tackled by humanity, and achieving it is a triumph of science, engineering, and most of all, people,” LLNL Director Dr. Kim Budil said. “Crossing this threshold is the vision that has driven 60 years of dedicated pursuit—a continual process of learning, building, expanding knowledge and capability, and then finding ways to overcome the new challenges that emerged. These are the problems that the U.S. national laboratories were created to solve.”\nassistant: * First Time\n* Researchers\n* Fusion\n* Energy\n* Used to Drive It\n* Promising Further Discovery\n* Clean Power\n* Nuclear Weapons Stewardship\n* U.S. Department of Energy (DOE)\n* DOE's National Nuclear Security Administration (NNSA)\n* Lawrence Livermore National Laboratory (LLNL)\n* Scientific Breakthrough\n* National Defense\n* Future of Clean Power\n* Controlled Fusion Experiment\n* Scientific Energy Breakeven\n* Laser Energy\n* National Ignition Facility (NIF)\n* U.S. Secretary of Energy Jennifer M. Granholm\n* Biden-Harris Administration\n* Scientists\n* Climate Change\n* Nuclear Deterrent\n* Nuclear Testing\n* Theoretical Understanding of Fusion\n* Dr. Arati Prabhakar\n* President's Chief Advisor for Science and Technology\n* Director of the White House Office of Science and Technology Policy\n* NNSA Administrator Jill Hruby\n* Members of Congress\n* National Ignition Facility\n* DOE National Laboratories\n* International Partners\n* LLNL Director Dr. Kim Budil\n* Scientific Challenges\n* Science\n* Engineering\n* People\n* 60 Years\n* Dedicated Pursuit\n* Learning\n* Building\n* Expanding Knowledge\n* Capability\n* Overcoming New Challenges\n* U.S. National Laboratories\n                                ```\n\n                                Candidate answer:\n                                The article named Dr. Arati Prabhakar as the President’s Chief Advisor for Science and Technology; it also identified her as Director of the White House Office of Science and Technology Policy.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "e3fc4d6e",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about the fusion breakthrough at Lawrence Livermore National Laboratory. Can you remind me who is the President's Chief Advisor for Science and Technology mentioned in the article?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:32\n\n                                Noisy expected-answer label:\n                                Dr. Arati Prabhakar\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 22:58\nTranscript:\nuser: predict the entities of this article one sentence by a time:\nFor First Time, Researchers Produce More Energy from Fusion Than Was Used to Drive It, Promising Further Discovery in Clean Power and Nuclear Weapons Stewardship\n\nWASHINGTON, D.C. — The U.S. Department of Energy (DOE) and DOE’s National Nuclear Security Administration (NNSA) today announced the achievement of fusion ignition at Lawrence Livermore National Laboratory (LLNL)—a major scientific breakthrough decades in the making that will pave the way for advancements in national defense and the future of clean power. On December 5, a team at LLNL’s National Ignition Facility (NIF) conducted the first controlled fusion experiment in history to reach this milestone, also known as scientific energy breakeven, meaning it produced more energy from fusion than the laser energy used to drive it. This historic, first-of-its kind achievement will provide unprecedented capability to support NNSA’s Stockpile Stewardship Program and will provide invaluable insights into the prospects of clean fusion energy, which would be a game-changer for efforts to achieve President Biden’s goal of a net-zero carbon economy.\n\n“This is a landmark achievement for the researchers and staff at the National Ignition Facility who have dedicated their careers to seeing fusion ignition become a reality, and this milestone will undoubtedly spark even more discovery,” said U.S. Secretary of Energy Jennifer M. Granholm. “The Biden-Harris Administration is committed to supporting our world-class scientists—like the team at NIF—whose work will help us solve humanity’s most complex and pressing problems, like providing clean power to combat climate change and maintaining a nuclear deterrent without nuclear testing.”\n\n“We have had a theoretical understanding of fusion for over a century, but the journey from knowing to doing can be long and arduous. Today’s milestone shows what we can do with perseverance,” said Dr. Arati Prabhakar, the President’s Chief Advisor for Science and Technology and Director of the White House Office of Science and Technology Policy.\n\n“Monday, December 5, 2022, was a historic day in science thanks to the incredible people at Livermore Lab and the National Ignition Facility. In making this breakthrough, they have opened a new chapter in NNSA’s Stockpile Stewardship Program,” said NNSA Administrator Jill Hruby. “I would like to thank the members of Congress who have supported the National Ignition Facility because their belief in the promise of visionary science has been critical for our mission. Our team from around the DOE national laboratories and our international partners have shown us the power of collaboration.”\n\n“The pursuit of fusion ignition in the laboratory is one of the most significant scientific challenges ever tackled by humanity, and achieving it is a triumph of science, engineering, and most of all, people,” LLNL Director Dr. Kim Budil said. “Crossing this threshold is the vision that has driven 60 years of dedicated pursuit—a continual process of learning, building, expanding knowledge and capability, and then finding ways to overcome the new challenges that emerged. These are the problems that the U.S. national laboratories were created to solve.”\nassistant: * First Time\n* Researchers\n* Fusion\n* Energy\n* Used to Drive It\n* Promising Further Discovery\n* Clean Power\n* Nuclear Weapons Stewardship\n* U.S. Department of Energy (DOE)\n* DOE's National Nuclear Security Administration (NNSA)\n* Lawrence Livermore National Laboratory (LLNL)\n* Scientific Breakthrough\n* National Defense\n* Future of Clean Power\n* Controlled Fusion Experiment\n* Scientific Energy Breakeven\n* Laser Energy\n* National Ignition Facility (NIF)\n* U.S. Secretary of Energy Jennifer M. Granholm\n* Biden-Harris Administration\n* Scientists\n* Climate Change\n* Nuclear Deterrent\n* Nuclear Testing\n* Theoretical Understanding of Fusion\n* Dr. Arati Prabhakar\n* President's Chief Advisor for Science and Technology\n* Director of the White House Office of Science and Technology Policy\n* NNSA Administrator Jill Hruby\n* Members of Congress\n* National Ignition Facility\n* DOE National Laboratories\n* International Partners\n* LLNL Director Dr. Kim Budil\n* Scientific Challenges\n* Science\n* Engineering\n* People\n* 60 Years\n* Dedicated Pursuit\n* Learning\n* Building\n* Expanding Knowledge\n* Capability\n* Overcoming New Challenges\n* U.S. National Laboratories\n                                ```\n\n                                Candidate answer:\n                                The article named Dr. Arati Prabhakar as the President’s Chief Advisor for Science and Technology; it also identified her as Director of the White House Office of Science and Technology Policy.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "e3fc4d6e",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The candidate correctly identifies Dr. Arati Prabhakar and includes her additional evidenced title.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1746,
+                "completionTokens": 39,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
