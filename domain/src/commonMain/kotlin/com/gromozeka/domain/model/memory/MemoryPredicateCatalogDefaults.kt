@@ -184,6 +184,16 @@ object MemoryPredicateCatalogDefaults {
             defaultImportance = 8,
         ),
         definition(
+            predicate = "metric_observation",
+            description = "Explicit observed value of a named metric in a specific event, attempt, condition, measurement, or historical observation",
+            objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,
+            cardinality = MemoryPredicateDefinition.Cardinality.MULTI,
+            temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED,
+            conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.COEXIST,
+            semanticKinds = setOf(SemanticKind.AGGREGATE_VALUE),
+            defaultImportance = 7,
+        ),
+        definition(
             predicate = "aggregate_increase",
             description = "Explicit positive numeric delta applied to a named countable aggregate, inventory, or collection; object is the positive amount added",
             objectKind = MemoryPredicateDefinition.ObjectValueKind.NUMBER,

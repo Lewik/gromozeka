@@ -22,7 +22,9 @@ import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
 
 class LlmMemoryClaimReconciler(
     private val runtime: AiRuntime,
@@ -179,7 +181,8 @@ class LlmMemoryClaimReconciler(
         - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as "is_described_as", "has_property", "is_a", or "defined_as". Choose a specific durable relation or return noop.
         - For ordinary positive preferences, use catalog predicate "prefers"; do not keep category-specific variants such as "prefers_car_brand" unless they represent a named current/default slot.
         - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.
-        - For named metric, record, score, benchmark, quota, threshold, or personal-best values, use catalog predicate "current_metric_value" when present. Preserve the metric/domain in scope or qualifiers so unrelated metrics do not replace each other.
+        - For explicit observed metric values tied to a specific attempt, event, condition, measurement, historical observation, or completed item, use catalog predicate "metric_observation" when present. Metric observations coexist unless the target source explicitly says the previous observation was wrong or replaced.
+        - For current/latest/default/baseline totals, record values, quota, threshold, personal-best, or other named values that the source presents as the current value of a slot, use catalog predicate "current_metric_value" when present. Preserve the metric/domain in scope or qualifiers so unrelated metrics do not replace each other.
         - For explicit countable aggregate changes, use catalog predicate "aggregate_increase" or "aggregate_decrease" when present. object_kind must be number, object_value must be the positive numeric amount, and aggregate_effect must match the catalog predicate.
         - For current place, residence, base, or relocation-result values, use catalog predicate "current_location" when present. It is a status-like single-value slot for the same subject and scope; newer explicit current-location values replace older active values.
         - For concrete details inside imported generated artifacts, use catalog predicate "generated_artifact_detail" when no more specific catalog predicate fits. These details usually coexist unless a later artifact version explicitly supersedes an earlier version.
@@ -191,8 +194,8 @@ class LlmMemoryClaimReconciler(
         - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.
         - Runtime processing time is not evidence that a pending obligation has expired, completed, or become stale. For catalog pending_* claims and other independently completeable duties, insert the explicit pending fact unless the target source or existing active memory explicitly says it was completed, cancelled, returned, picked up, superseded, or otherwise no longer pending.
         - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.
-        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.
-        - If predicate policy says coexist, insert the candidate unless it is a duplicate.
+        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim only when the target source presents the candidate as the new current value, correction, or replacement for that same measurement slot.
+        - If predicate policy says coexist, insert the candidate unless it is a duplicate. Do not supersede coexist-policy claims unless the candidate has qualifiers_json.replaces_previous=true or the target source explicitly retracts the old claim.
         - If predicate policy says range_split, insert the candidate and supersede only an old current-state claim that should no longer be retrieved as current.
         - Attributed viewpoints, independent owners, independent events, and historical facts usually coexist unless the target source explicitly retracts them.
         - Use catalog predicate "believes" for third-party viewpoints such as "Alice thinks X"; do not canonicalize those claims to "prefers" or "avoids" unless the source explicitly asserts preference or avoidance.
@@ -289,6 +292,21 @@ class LlmMemoryClaimReconciler(
                 "supersede" -> {
                     if (target == null || candidate == null) return null
                     val targetClaim = existingClaims.firstOrNull { it.id == target } ?: return null
+                    if (candidate.isEquivalentToCoexistingTargetForMemoryReconciliation(targetClaim)) {
+                        return MemoryClaimReconciliationOp(
+                            action = MemoryReconciliationAction.NOOP,
+                            targetClaimId = target,
+                            candidate = candidate,
+                            reason = reason.trim().ifBlank { "Coexisting candidate duplicates target" },
+                        )
+                    }
+                    if (candidate.shouldPreserveCoexistingTargetForMemoryReconciliation(targetClaim)) {
+                        return MemoryClaimReconciliationOp(
+                            action = MemoryReconciliationAction.INSERT,
+                            candidate = candidate,
+                            reason = reason.trim().ifBlank { "Coexisting predicate policy preserves independent target" },
+                        )
+                    }
                     if (candidate.shouldCoexistWithTemporalTargetForMemoryReconciliation(targetClaim)) {
                         return MemoryClaimReconciliationOp(
                             action = MemoryReconciliationAction.INSERT,
@@ -456,6 +474,37 @@ internal fun MemoryClaimCandidate.shouldCoexistWithTemporalTargetForMemoryReconc
     return targetPolicy.temporalPolicy == MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED &&
         candidatePolicy.temporalPolicy != MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED
 }
+
+internal fun MemoryClaimCandidate.shouldPreserveCoexistingTargetForMemoryReconciliation(target: MemoryClaim): Boolean {
+    if (explicitlyReplacesPrevious()) return false
+    val candidatePolicy = predicatePolicy ?: return false
+    val targetPolicy = target.predicatePolicy
+    return candidatePolicy.conflictPolicy == MemoryPredicateDefinition.ConflictPolicy.COEXIST ||
+        targetPolicy?.conflictPolicy == MemoryPredicateDefinition.ConflictPolicy.COEXIST
+}
+
+internal fun MemoryClaimCandidate.isEquivalentToCoexistingTargetForMemoryReconciliation(target: MemoryClaim): Boolean {
+    val candidatePolicy = predicatePolicy ?: return false
+    val targetPolicy = target.predicatePolicy ?: return false
+    if (candidatePolicy.conflictPolicy != MemoryPredicateDefinition.ConflictPolicy.COEXIST &&
+        targetPolicy.conflictPolicy != MemoryPredicateDefinition.ConflictPolicy.COEXIST
+    ) {
+        return false
+    }
+    return (predicateFamily ?: predicate).normalizedClaimKey() == (target.predicateFamily ?: target.predicate).normalizedClaimKey() &&
+        objectEntityId == target.objectEntityId &&
+        objectValue == target.objectValue &&
+        normalizedText.normalizedClaimKey() == target.normalizedText.normalizedClaimKey() &&
+        scope.text.normalizedClaimKey() == target.scope.text.normalizedClaimKey()
+}
+
+private fun MemoryClaimCandidate.explicitlyReplacesPrevious(): Boolean =
+    qualifiers["replaces_previous"]?.jsonPrimitive?.booleanOrNull == true
+
+private fun String.normalizedClaimKey(): String =
+    Regex("[A-Za-z0-9]+")
+        .findAll(trim().lowercase())
+        .joinToString(" ") { it.value }
 
 private fun MemoryClaimCandidate.renderForReconciler(index: Int): String =
     "- candidate[$index] subject=${subjectEntityId.value} predicate=$predicate object=${objectEntityId?.value ?: objectValue} " +

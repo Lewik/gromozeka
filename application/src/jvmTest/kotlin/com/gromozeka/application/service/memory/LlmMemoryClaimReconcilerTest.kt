@@ -87,6 +87,83 @@ class LlmMemoryClaimReconcilerTest {
         assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
     }
 
+    @Test
+    fun protectsCoexistingClaimsFromDestructiveSupersedeWithoutExplicitReplacement() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "supersede",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "metric_observation",
+                        conflictPolicy = "coexist",
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("My hard-mode run took 30 hours."),
+            ),
+            claimCandidates = listOf(metricObservationCandidate()),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingMetricObservationClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.INSERT, ops.single().action)
+        assertEquals(null, ops.single().targetClaimId)
+        assertEquals("metric_observation", ops.single().candidate?.predicate)
+    }
+
+    @Test
+    fun allowsCoexistingClaimSupersedeWhenReplacementIsExplicit() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "supersede",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "metric_observation",
+                        conflictPolicy = "coexist",
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("Correction: that hard-mode run took 30 hours, not 25."),
+            ),
+            claimCandidates = listOf(
+                metricObservationCandidate(
+                    qualifiers = JsonObject(mapOf("replaces_previous" to JsonPrimitive(true))),
+                )
+            ),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingMetricObservationClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.SUPERSEDE, ops.single().action)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, ops.single().updatedClaim?.status)
+    }
+
     private class SequencedJsonRuntime(
         private val responses: ArrayDeque<String>,
     ) : AiRuntime {
@@ -134,6 +211,26 @@ class LlmMemoryClaimReconcilerTest {
                 reason = "This is a durable answer style preference.",
             )
 
+        fun metricObservationCandidate(
+            qualifiers: JsonObject = JsonObject(emptyMap()),
+        ): MemoryClaimCandidate =
+            MemoryClaimCandidate(
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "metric_observation",
+                objectValue = JsonPrimitive("30 hours"),
+                normalizedText = "The user's hard-mode run took 30 hours.",
+                scope = MemoryScope.Global(
+                    text = "Hard-mode run duration",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                qualifiers = qualifiers,
+                confidence = 0.99,
+                importance = 7,
+                evidenceQuote = "hard-mode run took 30 hours",
+                evidenceReason = "The target explicitly states the observed duration.",
+                reason = "This is a historical metric observation.",
+            )
+
         fun existingClaim(): MemoryClaim =
             MemoryClaim(
                 id = MemoryClaim.Id("claim-existing"),
@@ -157,6 +254,29 @@ class LlmMemoryClaimReconcilerTest {
                 updatedAt = NOW,
             )
 
+        fun existingMetricObservationClaim(): MemoryClaim =
+            MemoryClaim(
+                id = MemoryClaim.Id("claim-existing"),
+                namespace = TEST_NAMESPACE,
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "metric_observation",
+                predicateFamily = "metric_observation",
+                predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE)
+                    .first { it.predicate == "metric_observation" },
+                objectValue = JsonPrimitive("25 hours"),
+                normalizedText = "The user's normal-mode run took 25 hours.",
+                scope = MemoryScope.Global(
+                    text = "Normal-mode run duration",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                confidence = 0.99,
+                importance = 7,
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                createdAt = NOW,
+                updatedAt = NOW,
+            )
+
         fun source(text: String): MemorySource =
             MemorySource.ChatTurn(
                 id = MemorySource.Id("source"),
@@ -171,21 +291,26 @@ class LlmMemoryClaimReconcilerTest {
                 createdAt = NOW,
             )
 
-        fun operationJson(canonicalPredicate: String): String =
+        fun operationJson(
+            canonicalPredicate: String,
+            action: String = "insert",
+            targetClaimId: String? = null,
+            conflictPolicy: String = "coexist",
+        ): String =
             """
             {
               "operations": [
                 {
-                  "action": "insert",
+                  "action": "$action",
                   "candidate_index": 0,
-                  "target_claim_id": null,
+                  "target_claim_id": ${targetClaimId?.let { "\"$it\"" } ?: "null"},
                   "canonical_predicate": "$canonicalPredicate",
                   "predicate_family": "$canonicalPredicate",
                   "predicate_description": "Test predicate",
                   "object_kind": "string",
                   "cardinality": "multi",
                   "temporal_policy": "status_like",
-                  "conflict_policy": "coexist",
+                  "conflict_policy": "$conflictPolicy",
                   "semantic_kinds": ["constraint"],
                   "aggregate_effect": "none",
                   "reason": "Test operation."

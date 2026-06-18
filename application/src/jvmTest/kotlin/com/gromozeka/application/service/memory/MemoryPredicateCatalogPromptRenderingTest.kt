@@ -15,6 +15,8 @@ class MemoryPredicateCatalogPromptRenderingTest {
         assertTrue(rendered.contains("current_metric_value:"))
         assertTrue(rendered.contains("semantics=aggregate_value"))
         assertTrue(rendered.contains("aggregate_effect=set_current_value"))
+        assertTrue(rendered.contains("metric_observation:"))
+        assertTrue(rendered.contains("conflict=COEXIST"))
         assertTrue(rendered.contains("aggregate_increase:"))
         assertTrue(rendered.contains("aggregate_effect=increase"))
         assertTrue(rendered.contains("aggregate_decrease:"))
