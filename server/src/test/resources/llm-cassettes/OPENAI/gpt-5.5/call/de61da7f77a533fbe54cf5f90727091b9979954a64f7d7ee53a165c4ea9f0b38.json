@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "de61da7f77a533fbe54cf5f90727091b9979954a64f7d7ee53a165c4ea9f0b38",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:7a8d0b71\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains durable project/campaign facts plus reusable campaign rationale and example email drafts.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=DHL Wellness Retreats; action=CREATE_NEW; id=entity:<0>; type=PROJECT; name=DHL Wellness Retreats; reason=Repeatedly discussed as the central retreat/brand/campaign subject; no existing candidate entity available.\n- mention=current project; action=CREATE_NEW; id=entity:<1>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=DHL Wellness Retreats\n        text_queries=DHL Wellness Retreats influencer marketing campaign email marketing campaign retreats|WELCOME20 DHL Wellness Retreats example emails\n        predicate_hints=has_goal|has_constraint|generated_artifact_detail\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:d679deaa50b4ed390bc739840be0894c] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:7a8d0b71:session:1; title=LongMemEval 7a8d0b71 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 21:15\nTranscript:\nassistant: Sure, here's a detailed influencer marketing campaign plan for the DHL Wellness Retreats that starts on May 1st:\n\nInfluencer Marketing Campaign Plan for DHL Wellness Retreats\n\nObjective:\n\n* To leverage the influence of wellness and lifestyle influencers to promote the DHL Wellness Retreats\n* To drive traffic to the website and increase registrations for the retreats\n\nTarget audience:\n\n* Health-conscious individuals looking for unique wellness experiences\n* Yoga enthusiasts and practitioners\n* People interested in exploring different wellness practices\n* Individuals seeking to connect with like-minded individuals\n\nPlatforms:\n\n* Instagram and blogs\n\nTactics:\n\n1. Influencer Outreach\n* Research and identify relevant wellness and lifestyle influencers with a significant following and engagement on Instagram and blogs.\n* Reach out to these influencers with an offer to attend the retreats for free in exchange for social media posts and blog reviews.\n* Provide influencers with clear guidelines and expectations for the posts, including hashtags, mentions, and content themes.\n1. Influencer Content\n* Encourage influencers to share high-quality images and videos of the retreat location, activities, and wellness programming.\n* Encourage influencers to share their own wellness stories and experiences, as well as testimonials from previous attendees.\n* Offer incentives, such as a discount code for their followers or a free upgrade to a future retreat, to encourage influencers to create high-quality content.\n1. Influencer Engagement\n* Monitor influencer posts and engage with their content by commenting, liking, and sharing.\n* Repost influencer content on the DHL Wellness Retreats social media channels.\n* Feature influencer testimonials and reviews on the DHL Wellness Retreats website and social media channels.\n1. Influencer Partnerships\n* Develop long-term partnerships with select influencers to promote the DHL Wellness Retreats on an ongoing basis.\n* Offer exclusive benefits and perks, such as early access to registration or personalized retreat experiences, to these influencers.\n* Encourage influencers to provide feedback and insights to improve the retreat experiences and marketing efforts.\n\nBudget:\n\n* Influencer marketing: $2,000\n\nTimeline:\n\n* May 1st - May 31st: Influencer marketing campaign\n\nMeasurement:\n\n* Monitor influencer engagement, such as likes, comments, shares, and follower growth.\n* Track website traffic and registrations generated from influencer marketing.\n* Use participant surveys and feedback to improve future influencer marketing campaigns and retreat experiences.\n\nConclusion:\nBy leveraging the influence of relevant wellness and lifestyle influencers, we can generate interest and registrations for the DHL Wellness Retreats, establish a strong brand presence on social media, and attract repeat attendees for future retreats.\nuser: Great!! Can you write a detailed email marketing campaign that includes email examples for the retreats?\nassistant: Sure, here's a detailed email marketing campaign plan for the DHL Wellness Retreats that includes email examples:\n\nEmail Marketing Campaign Plan for DHL Wellness Retreats\n\nObjective:\n\n* To build relationships with potential attendees and encourage them to register for the DHL Wellness Retreats\n* To provide valuable information and insights about the retreats and wellness practices\n\nTarget audience:\n\n* Health-conscious individuals looking for unique wellness experiences\n* Yoga enthusiasts and practitioners\n* People interested in exploring different wellness practices\n* Individuals seeking to connect with like-minded individuals\n\nTactics:\n\n1. Email List Building\n* Create a landing page on the DHL Wellness Retreats website with a clear call-to-action to join the email list.\n* Offer a free wellness guide, meditation audio, or other valuable content in exchange for email addresses.\n* Use pop-ups, exit-intent offers, and social media ads to drive traffic to the landing page.\n1. Welcome Email\n* Send a welcome email to new subscribers, introducing the DHL Wellness Retreats and highlighting the benefits of attending.\n* Include a call-to-action to register for the retreats and a discount code for first-time attendees.\n* Provide valuable wellness tips and insights related to the retreats.\n1. Retreat Announcement Email\n* Send an email to announce the first DHL Wellness Retreat and provide more details about the location, activities, and wellness programming.\n* Include testimonials and photos from previous attendees.\n* Highlight the early bird discount and limited availability to create urgency.\n1. Wellness Tips Email\n* Send an email with tips and insights related to wellness practices, such as yoga, meditation, nutrition, and stress management.\n* Include a call-to-action to register for the retreats and a discount code for the first 20 registrations.\n* Provide valuable information and resources related to the retreats.\n1. Countdown Email\n* Send a series of countdown emails leading up to the first retreat, highlighting the activities and wellness programming.\n* Include testimonials and photos from previous attendees.\n* Encourage attendees to pack and prepare for the retreats.\n1. Follow-Up Email\n* Send a follow-up email after the retreats to thank attendees for their participation and provide a survey to gather feedback.\n* Include testimonials and photos from the retreats.\n* Encourage attendees to register for future retreats and share their experiences on social media.\n\nExample Emails:\n\nWelcome Email\nSubject Line: Welcome to DHL Wellness Retreats!\n\nDear [Name],\n\nThank you for joining the DHL Wellness Retreats email list! We are thrilled to have you as part of our community of health-conscious individuals looking for unique wellness experiences.\n\nOur retreats offer a range of wellness activities and experiences to help you improve your physical and mental health, connect with others, and cultivate a greater sense of well-being. We believe that everyone deserves to prioritize their health and happiness, and we are committed to creating immersive and transformative retreat experiences.\n\nAs a welcome gift, we'd like to offer you a discount code for your first DHL Wellness Retreat. Simply enter WELCOME20 at checkout to receive 20% off your registration fee.\n\nWe look forward to staying in touch and providing you with valuable wellness insights and resources. If you have any questions or suggestions, please don't hesitate to reach out.\n\nBest regards,\n\nThe DHL Wellness Retreats Team\n\nRetreat Announcement Email\nSubject Line: Join us for the first DHL Wellness Retreat!\n\nDear [Name],\n\nWe are excited to announce the first DHL Wellness Retreat, taking place from [Date] to [Date] at [Location]. This retreat will provide a range of wellness activities and experiences to help you improve your physical and mental health, connect with others, and cultivate a greater sense of well-being.\n\nHere are just a few highlights of what you can expect at the retreat:\n\n* Daily\nuser: Can you write example emails for the retreats?\nassistant: Certainly, here are some examples of emails that could be sent to promote the DHL Wellness Retreats:\n\nCountdown Email #1:\nSubject Line: Only One Week Until the DHL Wellness Retreat!\n\nDear [Name],\n\nWe're excited to announce that the first DHL Wellness Retreat is just one week away! We can't wait to welcome you to our immersive and transformative retreat experience.\n\nIn preparation for the retreat, we wanted to provide you with a few reminders:\n\n* Pack comfortable clothing and shoes for yoga and outdoor activities\n* Bring any necessary medication or supplements\n* Consider bringing a journal or notebook to record your insights and reflections\n* Make sure to bring a reusable water bottle to stay hydrated throughout the day\n\nWe can't wait to see you soon and provide you with a range of wellness activities and experiences to help you improve your physical and mental health, connect with others, and cultivate a greater sense of well-being.\n\nIf you have any questions or concerns, please don't hesitate to reach out. We're here to support you on your wellness journey.\n\nBest regards,\n\nThe DHL Wellness Retreats Team\n\nWellness Tips Email:\nSubject Line: Boost Your Wellness Practice with These Simple Tips\n\nDear [Name],\n\nAt DHL Wellness Retreats, we believe that wellness is a journey, not a destination. It's about making small, sustainable changes in your daily life that can have a big impact on your physical and mental health.\n\nHere are a few simple tips to boost your wellness practice:\n\n1. Move your body every day: Whether it's a yoga class, a walk in nature, or a dance party in your living room, find a way to move your body every day.\n2. Practice mindfulness: Take a few minutes each day to practice mindfulness meditation. Focus on your breath, observe your thoughts and feelings without judgment, and cultivate a greater sense of awareness and presence.\n3. Nourish your body with whole foods: Choose foods that are whole, fresh, and nutrient-dense, such as fruits, vegetables, whole grains, and lean protein. Avoid processed and packaged foods that are high in sugar, salt, and artificial ingredients.\n4. Prioritize sleep: Aim to get 7-9 hours of sleep each night. Create a sleep-friendly environment by reducing noise and light, and avoid screens for at least an hour before bedtime.\n\nWe hope these tips will inspire you to prioritize your health and well-being. If you're ready to take the next step on your wellness journey, we invite you to join us for the DHL Wellness Retreats. Our retreats offer a range of wellness activities and experiences to help you connect with others, cultivate a greater sense of well-being, and transform your life.\n\nBest regards,\n\nThe DHL Wellness Retreats Team\n\nFollow-Up Email:\nSubject Line: Thank You for Joining Us at the DHL Wellness Retreat!\n\nDear [Name],\n\nWe want to extend a heartfelt thank you for joining us at the DHL Wellness Retreat. It was an honor and a privilege to share this transformative experience with you.\n\nWe hope that you found the retreat to be immersive, inspiring, and empowering. We'd love to hear your feedback and insights about the retreat, so we can continue to improve and provide the best possible experience for our attendees.\n\nPlease take a few minutes to fill out our feedback survey. Your feedback is incredibly valuable to us, and we'll use it to shape future retreats and wellness programs.\n\n[Include link to feedback survey]\n\nWe also wanted to share a few photos and testimonials from the retreat. We're so grateful to have had the opportunity to connect with so many amazing individuals and create a community of wellness seekers.\n\n[Include photos and testimonials]\n\nThank you again for joining us on this journey. We hope to see you at a future DHL Wellness Retreat",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:7a8d0b71",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:d679deaa50b4ed390bc739840be0894c"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:7a8d0b71\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains durable project/campaign facts plus reusable campaign rationale and example email drafts.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=DHL Wellness Retreats; action=CREATE_NEW; id=entity:<0>; type=PROJECT; name=DHL Wellness Retreats; reason=Repeatedly discussed as the central retreat/brand/campaign subject; no existing candidate entity available.\n- mention=current project; action=CREATE_NEW; id=entity:<1>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=DHL Wellness Retreats\n        text_queries=DHL Wellness Retreats influencer marketing campaign email marketing campaign retreats|WELCOME20 DHL Wellness Retreats example emails\n        predicate_hints=has_goal|has_constraint|generated_artifact_detail\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:d679deaa50b4ed390bc739840be0894c] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:7a8d0b71:session:1; title=LongMemEval 7a8d0b71 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 21:15\nTranscript:\nassistant: Sure, here's a detailed influencer marketing campaign plan for the DHL Wellness Retreats that starts on May 1st:\n\nInfluencer Marketing Campaign Plan for DHL Wellness Retreats\n\nObjective:\n\n* To leverage the influence of wellness and lifestyle influencers to promote the DHL Wellness Retreats\n* To drive traffic to the website and increase registrations for the retreats\n\nTarget audience:\n\n* Health-conscious individuals looking for unique wellness experiences\n* Yoga enthusiasts and practitioners\n* People interested in exploring different wellness practices\n* Individuals seeking to connect with like-minded individuals\n\nPlatforms:\n\n* Instagram and blogs\n\nTactics:\n\n1. Influencer Outreach\n* Research and identify relevant wellness and lifestyle influencers with a significant following and engagement on Instagram and blogs.\n* Reach out to these influencers with an offer to attend the retreats for free in exchange for social media posts and blog reviews.\n* Provide influencers with clear guidelines and expectations for the posts, including hashtags, mentions, and content themes.\n1. Influencer Content\n* Encourage influencers to share high-quality images and videos of the retreat location, activities, and wellness programming.\n* Encourage influencers to share their own wellness stories and experiences, as well as testimonials from previous attendees.\n* Offer incentives, such as a discount code for their followers or a free upgrade to a future retreat, to encourage influencers to create high-quality content.\n1. Influencer Engagement\n* Monitor influencer posts and engage with their content by commenting, liking, and sharing.\n* Repost influencer content on the DHL Wellness Retreats social media channels.\n* Feature influencer testimonials and reviews on the DHL Wellness Retreats website and social media channels.\n1. Influencer Partnerships\n* Develop long-term partnerships with select influencers to promote the DHL Wellness Retreats on an ongoing basis.\n* Offer exclusive benefits and perks, such as early access to registration or personalized retreat experiences, to these influencers.\n* Encourage influencers to provide feedback and insights to improve the retreat experiences and marketing efforts.\n\nBudget:\n\n* Influencer marketing: $2,000\n\nTimeline:\n\n* May 1st - May 31st: Influencer marketing campaign\n\nMeasurement:\n\n* Monitor influencer engagement, such as likes, comments, shares, and follower growth.\n* Track website traffic and registrations generated from influencer marketing.\n* Use participant surveys and feedback to improve future influencer marketing campaigns and retreat experiences.\n\nConclusion:\nBy leveraging the influence of relevant wellness and lifestyle influencers, we can generate interest and registrations for the DHL Wellness Retreats, establish a strong brand presence on social media, and attract repeat attendees for future retreats.\nuser: Great!! Can you write a detailed email marketing campaign that includes email examples for the retreats?\nassistant: Sure, here's a detailed email marketing campaign plan for the DHL Wellness Retreats that includes email examples:\n\nEmail Marketing Campaign Plan for DHL Wellness Retreats\n\nObjective:\n\n* To build relationships with potential attendees and encourage them to register for the DHL Wellness Retreats\n* To provide valuable information and insights about the retreats and wellness practices\n\nTarget audience:\n\n* Health-conscious individuals looking for unique wellness experiences\n* Yoga enthusiasts and practitioners\n* People interested in exploring different wellness practices\n* Individuals seeking to connect with like-minded individuals\n\nTactics:\n\n1. Email List Building\n* Create a landing page on the DHL Wellness Retreats website with a clear call-to-action to join the email list.\n* Offer a free wellness guide, meditation audio, or other valuable content in exchange for email addresses.\n* Use pop-ups, exit-intent offers, and social media ads to drive traffic to the landing page.\n1. Welcome Email\n* Send a welcome email to new subscribers, introducing the DHL Wellness Retreats and highlighting the benefits of attending.\n* Include a call-to-action to register for the retreats and a discount code for first-time attendees.\n* Provide valuable wellness tips and insights related to the retreats.\n1. Retreat Announcement Email\n* Send an email to announce the first DHL Wellness Retreat and provide more details about the location, activities, and wellness programming.\n* Include testimonials and photos from previous attendees.\n* Highlight the early bird discount and limited availability to create urgency.\n1. Wellness Tips Email\n* Send an email with tips and insights related to wellness practices, such as yoga, meditation, nutrition, and stress management.\n* Include a call-to-action to register for the retreats and a discount code for the first 20 registrations.\n* Provide valuable information and resources related to the retreats.\n1. Countdown Email\n* Send a series of countdown emails leading up to the first retreat, highlighting the activities and wellness programming.\n* Include testimonials and photos from previous attendees.\n* Encourage attendees to pack and prepare for the retreats.\n1. Follow-Up Email\n* Send a follow-up email after the retreats to thank attendees for their participation and provide a survey to gather feedback.\n* Include testimonials and photos from the retreats.\n* Encourage attendees to register for future retreats and share their experiences on social media.\n\nExample Emails:\n\nWelcome Email\nSubject Line: Welcome to DHL Wellness Retreats!\n\nDear [Name],\n\nThank you for joining the DHL Wellness Retreats email list! We are thrilled to have you as part of our community of health-conscious individuals looking for unique wellness experiences.\n\nOur retreats offer a range of wellness activities and experiences to help you improve your physical and mental health, connect with others, and cultivate a greater sense of well-being. We believe that everyone deserves to prioritize their health and happiness, and we are committed to creating immersive and transformative retreat experiences.\n\nAs a welcome gift, we'd like to offer you a discount code for your first DHL Wellness Retreat. Simply enter WELCOME20 at checkout to receive 20% off your registration fee.\n\nWe look forward to staying in touch and providing you with valuable wellness insights and resources. If you have any questions or suggestions, please don't hesitate to reach out.\n\nBest regards,\n\nThe DHL Wellness Retreats Team\n\nRetreat Announcement Email\nSubject Line: Join us for the first DHL Wellness Retreat!\n\nDear [Name],\n\nWe are excited to announce the first DHL Wellness Retreat, taking place from [Date] to [Date] at [Location]. This retreat will provide a range of wellness activities and experiences to help you improve your physical and mental health, connect with others, and cultivate a greater sense of well-being.\n\nHere are just a few highlights of what you can expect at the retreat:\n\n* Daily\nuser: Can you write example emails for the retreats?\nassistant: Certainly, here are some examples of emails that could be sent to promote the DHL Wellness Retreats:\n\nCountdown Email #1:\nSubject Line: Only One Week Until the DHL Wellness Retreat!\n\nDear [Name],\n\nWe're excited to announce that the first DHL Wellness Retreat is just one week away! We can't wait to welcome you to our immersive and transformative retreat experience.\n\nIn preparation for the retreat, we wanted to provide you with a few reminders:\n\n* Pack comfortable clothing and shoes for yoga and outdoor activities\n* Bring any necessary medication or supplements\n* Consider bringing a journal or notebook to record your insights and reflections\n* Make sure to bring a reusable water bottle to stay hydrated throughout the day\n\nWe can't wait to see you soon and provide you with a range of wellness activities and experiences to help you improve your physical and mental health, connect with others, and cultivate a greater sense of well-being.\n\nIf you have any questions or concerns, please don't hesitate to reach out. We're here to support you on your wellness journey.\n\nBest regards,\n\nThe DHL Wellness Retreats Team\n\nWellness Tips Email:\nSubject Line: Boost Your Wellness Practice with These Simple Tips\n\nDear [Name],\n\nAt DHL Wellness Retreats, we believe that wellness is a journey, not a destination. It's about making small, sustainable changes in your daily life that can have a big impact on your physical and mental health.\n\nHere are a few simple tips to boost your wellness practice:\n\n1. Move your body every day: Whether it's a yoga class, a walk in nature, or a dance party in your living room, find a way to move your body every day.\n2. Practice mindfulness: Take a few minutes each day to practice mindfulness meditation. Focus on your breath, observe your thoughts and feelings without judgment, and cultivate a greater sense of awareness and presence.\n3. Nourish your body with whole foods: Choose foods that are whole, fresh, and nutrient-dense, such as fruits, vegetables, whole grains, and lean protein. Avoid processed and packaged foods that are high in sugar, salt, and artificial ingredients.\n4. Prioritize sleep: Aim to get 7-9 hours of sleep each night. Create a sleep-friendly environment by reducing noise and light, and avoid screens for at least an hour before bedtime.\n\nWe hope these tips will inspire you to prioritize your health and well-being. If you're ready to take the next step on your wellness journey, we invite you to join us for the DHL Wellness Retreats. Our retreats offer a range of wellness activities and experiences to help you connect with others, cultivate a greater sense of well-being, and transform your life.\n\nBest regards,\n\nThe DHL Wellness Retreats Team\n\nFollow-Up Email:\nSubject Line: Thank You for Joining Us at the DHL Wellness Retreat!\n\nDear [Name],\n\nWe want to extend a heartfelt thank you for joining us at the DHL Wellness Retreat. It was an honor and a privilege to share this transformative experience with you.\n\nWe hope that you found the retreat to be immersive, inspiring, and empowering. We'd love to hear your feedback and insights about the retreat, so we can continue to improve and provide the best possible experience for our attendees.\n\nPlease take a few minutes to fill out our feedback survey. Your feedback is incredibly valuable to us, and we'll use it to shape future retreats and wellness programs.\n\n[Include link to feedback survey]\n\nWe also wanted to share a few photos and testimonials from the retreat. We're so grateful to have had the opportunity to connect with so many amazing individuals and create a community of wellness seekers.\n\n[Include photos and testimonials]\n\nThank you again for joining us on this journey. We hope to see you at a future DHL Wellness Retreat",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:7a8d0b71",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:d679deaa50b4ed390bc739840be0894c"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"Influencer marketing campaign budget: $2,000\",\"Campaign timeline: May 1st - May 31st\",\"Platforms: Instagram and blogs\"],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Influencer Marketing Campaign Plan for DHL Wellness Retreats\",\"evidence_reason\":\"The target transcript contains a complete titled campaign plan with objectives, platforms, tactics, budget, timeline, measurement, and conclusion.\",\"importance\":4,\"keywords\":[\"DHL Wellness Retreats\",\"influencer marketing\",\"Instagram\",\"blogs\",\"May 1\",\"May 31\",\"$2,000\",\"registrations\",\"wellness influencers\"],\"note_type\":\"plan\",\"rationale\":\"This is a reusable multi-part campaign plan with rationale, tactics, measurement, and tradeoffs; it is not a single atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"DHL Wellness Retreats influencer marketing campaign planning from the provided 2023-05-25 session\"},\"summary\":\"DHL Wellness Retreats had an influencer marketing campaign plan for May 1–May 31 focused on wellness and lifestyle influencers on Instagram and blogs, offering free retreat attendance for posts/reviews, reposting and featuring influencer content, and developing long-term influencer partnerships. The rationale was to drive website traffic, retreat registrations, social presence, and repeat attendance, with a $2,000 influencer marketing budget and measurement via engagement, website traffic, registrations, and participant feedback.\",\"tags\":[\"marketing_plan\",\"influencer_campaign\",\"wellness_retreats\"],\"title\":\"DHL Wellness Retreats influencer campaign plan\",\"valid_from\":\"2023-05-25T21:15:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Welcome discount code WELCOME20 gives 20% off registration\",\"Email list building offer ideas include a free wellness guide or meditation audio\"],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Email Marketing Campaign Plan for DHL Wellness Retreats\",\"evidence_reason\":\"The target transcript includes a titled email campaign plan with objectives, target audience, and six tactic categories covering the funnel.\",\"importance\":4,\"keywords\":[\"DHL Wellness Retreats\",\"email marketing\",\"welcome email\",\"retreat announcement\",\"wellness tips\",\"countdown email\",\"follow-up email\",\"survey\",\"registration\"],\"note_type\":\"plan\",\"rationale\":\"This captures a reusable campaign/funnel design and sequencing rationale rather than a single precise fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"DHL Wellness Retreats email marketing campaign planning and funnel structure from the provided 2023-05-25 session\"},\"summary\":\"The DHL Wellness Retreats email marketing approach was structured around list building, a welcome email with first-time attendee discount, a retreat announcement with urgency, wellness tips emails, countdown emails before the retreat, and follow-up emails with surveys, testimonials, photos, and future registration/social sharing prompts. The campaign aimed to build relationships with potential attendees, provide wellness value, and encourage retreat registration.\",\"tags\":[\"email_campaign\",\"marketing_funnel\",\"wellness_retreats\"],\"title\":\"DHL Wellness Retreats email marketing campaign structure\",\"valid_from\":\"2023-05-25T21:15:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"WELCOME20 discount code gives 20% off first registration\",\"Countdown email subject: Only One Week Until the DHL Wellness Retreat!\",\"Wellness tips subject: Boost Your Wellness Practice with These Simple Tips\",\"Follow-up subject: Thank You for Joining Us at the DHL Wellness Retreat!\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Simply enter WELCOME20 at checkout to receive 20% off your registration fee.\",\"evidence_reason\":\"The transcript provides concrete example email drafts and reusable copy details, including the discount code, subject lines, content themes, and follow-up survey language.\",\"importance\":3,\"keywords\":[\"DHL Wellness Retreats\",\"example emails\",\"WELCOME20\",\"welcome email\",\"countdown email\",\"wellness tips email\",\"follow-up email\",\"feedback survey\",\"testimonials\"],\"note_type\":\"doc_digest\",\"rationale\":\"The target contains generated marketing copy templates and reusable messaging patterns; a digest note is more useful than many small atomic claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"Reusable example email copy assets generated for DHL Wellness Retreats in the provided 2023-05-25 session\"},\"summary\":\"Example email assets for DHL Wellness Retreats used a warm wellness-community tone and included templates for a welcome email, retreat announcement, countdown reminder, wellness tips, and post-retreat follow-up. Reusable copy elements included the first-time discount code WELCOME20, preparation reminders, wellness tips around movement/mindfulness/whole foods/sleep, and follow-up requests for feedback surveys plus photos/testimonials.\",\"tags\":[\"email_templates\",\"copy_assets\",\"campaign_examples\"],\"title\":\"DHL Wellness Retreats example email assets\",\"valid_from\":\"2023-05-25T21:15:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5923,
+                "completionTokens": 1140,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
