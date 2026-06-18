@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "f50b667cc5440b07fc43dfc2e192413c5db9a50bbe36d3433a90e6627d867dcf",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I remember you provided a list of 100 prompt parameters that I can specify to influence your output. Can you remind me what was the 27th parameter on that list?\n\n                                Question date:\n                                2023/05/29 (Mon) 17:24\n\n                                Noisy expected-answer label:\n                                The 27th parameter was 'Sound effects (e.g., ambient, diegetic, non-diegetic, etc.)'.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 01:25\nTranscript:\nuser: Give me 100 prompt parameters that I can specify that will influence your output, e.g. voice, tone, register, style, audience etc.\nassistant: Sure, here are 100 prompt parameters that you can specify to influence my output:\n\n1. Voice (e.g., male or female)\n2. Tone (e.g., serious, sarcastic, humorous, etc.)\n3. Register (e.g., formal, informal, academic, conversational, etc.)\n4. Style (e.g., narrative, descriptive, expository, persuasive, etc.)\n5. Audience (e.g., children, adults, experts, non-experts, etc.)\n6. Genre (e.g., fiction, non-fiction, poetry, drama, etc.)\n7. Language (e.g., English, French, Spanish, etc.)\n8. Dialect (e.g., American English, British English, etc.)\n9. Purpose (e.g., informative, instructive, entertaining, etc.)\n10. Mood (e.g., happy, sad, angry, etc.)\n11. Point of view (e.g., first person, third person, etc.)\n12. Setting (e.g., time period, location, etc.)\n13. Characterization (e.g., flat, round, static, dynamic, etc.)\n14. Conflict (e.g., internal, external, etc.)\n15. Plot (e.g., exposition, rising action, climax, etc.)\n16. Theme (e.g., love, friendship, betrayal, etc.)\n17. Symbolism (e.g., colors, objects, etc.)\n18. Imagery (e.g., visual, auditory, olfactory, etc.)\n19. Figurative language (e.g., simile, metaphor, hyperbole, etc.)\n20. Allusion (e.g., historical, cultural, literary, etc.)\n21. Irony (e.g., verbal, situational, dramatic, etc.)\n22. Foreshadowing (e.g., subtle, explicit, etc.)\n23. Flashback (e.g., chronological, non-chronological, etc.)\n24. Dialogue (e.g., realistic, stylized, etc.)\n25. Monologue (e.g., internal, external, etc.)\n26. Soliloquy (e.g., dramatic, introspective, etc.)\n27. Sound effects (e.g., ambient, diegetic, non-diegetic, etc.)\n28. Music (e.g., genre, tempo, etc.)\n29. Visual effects (e.g., lighting, color, etc.)\n30. Camera angles (e.g., low, high, close-up, etc.)\n31. Shot composition (e.g., rule of thirds, symmetry, etc.)\n32. Editing (e.g., cuts, fades, transitions, etc.)\n33. Pacing (e.g., fast, slow, steady, etc.)\n34. Structure (e.g., chronological, non-chronological, etc.)\n35. Tone of voice (e.g., serious, angry, sad, etc.)\n36. Accent (e.g., regional, international, etc.)\n37. Syntax (e.g., simple, complex, compound, etc.)\n38. Vocabulary (e.g., formal, informal, technical, etc.)\n39. Grammar (e.g., correct, incorrect, etc.)\n40. Spelling (e.g., American, British, etc.)\n41. Pronunciation (e.g., clear, mumbled, etc.)\n42. Enunciation (e.g., precise, slurred, etc.)\n43. Volume (e.g., loud, soft, etc.)\n44. Inflection (e.g., rising, falling, etc.)\n45. Pitch (e.g., high, low, etc.)\n46. Speed (e.g., fast, slow, etc.)\n47. Diction (e.g., clear, mumbled, etc.)\n48. Rhythm (e.g., staccato, legato, etc.)\n49. Timing (\nuser: Continue\nassistant: 49. Timing (e.g., pacing, pauses, etc.)\n50. Emphasis (e.g., stress, intonation, etc.)\n51. Emotion (e.g., happy, sad, angry, etc.)\n52. Attitude (e.g., positive, negative, neutral, etc.)\n53. Knowledge level (e.g., basic, intermediate, advanced, etc.)\n54. Educational background (e.g., high school, college, graduate school, etc.)\n55. Professional background (e.g., medicine, law, engineering, etc.)\n56. Cultural background (e.g., Western, Eastern, etc.)\n57. Geographic location (e.g., North America, Asia, Europe, etc.)\n58. Age (e.g., young adult, middle-aged, senior, etc.)\n59. Gender (e.g., male, female, non-binary, etc.)\n60. Religion (e.g., Christianity, Islam, Judaism, etc.)\n61. Political affiliation (e.g., conservative, liberal, moderate, etc.)\n62. Social status (e.g., wealthy, middle-class, low-income, etc.)\n63. Interpersonal relationships (e.g., parent-child, romantic, etc.)\n64. Career goals (e.g., entrepreneurship, academia, etc.)\n65. Life goals (e.g., travel, family, etc.)\n66. Hobbies/interests (e.g., sports, music, art, etc.)\n67. Personality traits (e.g., extroverted, introverted, etc.)\n68. Learning style (e.g., visual, auditory, kinesthetic, etc.)\n69. Communication style (e.g., direct, indirect, assertive, etc.)\n70. Sensory preferences (e.g., visual, auditory, tactile, etc.)\n71. Learning environment (e.g., classroom, online, etc.)\n72. Communication medium (e.g., email, phone, in-person, etc.)\n73. Learning objectives (e.g., mastery, exploration, etc.)\n74. Learning outcome (e.g., knowledge acquisition, skill development, etc.)\n75. Learning pace (e.g., accelerated, self-paced, etc.)\n76. Learning format (e.g., lecture, discussion, hands-on, etc.)\n77. Learning method (e.g., traditional, experiential, etc.)\n78. Learning tools (e.g., textbooks, videos, software, etc.)\n79. Learning resources (e.g., library, online databases, etc.)\n80. Learning environment (e.g., quiet, collaborative, etc.)\n81. Learning motivation (e.g., intrinsic, extrinsic, etc.)\n82. Learning obstacles (e.g., lack of resources, time constraints, etc.)\n83. Learning preferences (e.g., self-directed, group-oriented, etc.)\n84. Learning feedback (e.g., formative, summative, etc.)\n85. Learning assessment (e.g., quizzes, exams, etc.)\n86. Learning evaluation (e.g., self-evaluation, peer evaluation, etc.)\n87. Learning reflection (e.g., journaling, discussion, etc.)\n88. Learning feedback (e.g., written, oral, etc.)\n89. Learning environment (e.g., physical, virtual, etc.)\n90. Learning support (e.g., tutoring, counseling, etc.)\n91. Learning goals (e.g., cognitive, affective, etc.)\n92. Learning objectives (e.g., knowledge, skills, attitudes, etc.)\n93. Learning outcomes (e.g., competence, proficiency, etc.)\n94. Learning activities (e.g., problem-solving, critical thinking, etc.)\n95. Learning strategies (e.g., memorization, repetition, etc.)\n96. Learning styles (e.g., visual, auditory, kinesthetic, etc.)\n97. Learning theories (e.g., behaviorism, constructivism,\nuser: Continue\nassistant: 97. Learning theories (e.g., behaviorism, constructivism, etc.)\n98. Learning models (e.g., ADDIE, SAM, etc.)\n99. Learning technology (e.g., LMS, authoring tools, etc.)\n100. Learning trends (e.g., gamification, microlearning, etc.)\n\nI hope these prompt parameters help you specify the output you're looking for. Let me know if you have any other questions or if there's anything else I can assist you with.\n                                ```\n\n                                Candidate answer:\n                                The 27th parameter was **Sound effects** (e.g., ambient, diegetic, non-diegetic, etc.).",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "8752c811",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I remember you provided a list of 100 prompt parameters that I can specify to influence your output. Can you remind me what was the 27th parameter on that list?\n\n                                Question date:\n                                2023/05/29 (Mon) 17:24\n\n                                Noisy expected-answer label:\n                                The 27th parameter was 'Sound effects (e.g., ambient, diegetic, non-diegetic, etc.)'.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 01:25\nTranscript:\nuser: Give me 100 prompt parameters that I can specify that will influence your output, e.g. voice, tone, register, style, audience etc.\nassistant: Sure, here are 100 prompt parameters that you can specify to influence my output:\n\n1. Voice (e.g., male or female)\n2. Tone (e.g., serious, sarcastic, humorous, etc.)\n3. Register (e.g., formal, informal, academic, conversational, etc.)\n4. Style (e.g., narrative, descriptive, expository, persuasive, etc.)\n5. Audience (e.g., children, adults, experts, non-experts, etc.)\n6. Genre (e.g., fiction, non-fiction, poetry, drama, etc.)\n7. Language (e.g., English, French, Spanish, etc.)\n8. Dialect (e.g., American English, British English, etc.)\n9. Purpose (e.g., informative, instructive, entertaining, etc.)\n10. Mood (e.g., happy, sad, angry, etc.)\n11. Point of view (e.g., first person, third person, etc.)\n12. Setting (e.g., time period, location, etc.)\n13. Characterization (e.g., flat, round, static, dynamic, etc.)\n14. Conflict (e.g., internal, external, etc.)\n15. Plot (e.g., exposition, rising action, climax, etc.)\n16. Theme (e.g., love, friendship, betrayal, etc.)\n17. Symbolism (e.g., colors, objects, etc.)\n18. Imagery (e.g., visual, auditory, olfactory, etc.)\n19. Figurative language (e.g., simile, metaphor, hyperbole, etc.)\n20. Allusion (e.g., historical, cultural, literary, etc.)\n21. Irony (e.g., verbal, situational, dramatic, etc.)\n22. Foreshadowing (e.g., subtle, explicit, etc.)\n23. Flashback (e.g., chronological, non-chronological, etc.)\n24. Dialogue (e.g., realistic, stylized, etc.)\n25. Monologue (e.g., internal, external, etc.)\n26. Soliloquy (e.g., dramatic, introspective, etc.)\n27. Sound effects (e.g., ambient, diegetic, non-diegetic, etc.)\n28. Music (e.g., genre, tempo, etc.)\n29. Visual effects (e.g., lighting, color, etc.)\n30. Camera angles (e.g., low, high, close-up, etc.)\n31. Shot composition (e.g., rule of thirds, symmetry, etc.)\n32. Editing (e.g., cuts, fades, transitions, etc.)\n33. Pacing (e.g., fast, slow, steady, etc.)\n34. Structure (e.g., chronological, non-chronological, etc.)\n35. Tone of voice (e.g., serious, angry, sad, etc.)\n36. Accent (e.g., regional, international, etc.)\n37. Syntax (e.g., simple, complex, compound, etc.)\n38. Vocabulary (e.g., formal, informal, technical, etc.)\n39. Grammar (e.g., correct, incorrect, etc.)\n40. Spelling (e.g., American, British, etc.)\n41. Pronunciation (e.g., clear, mumbled, etc.)\n42. Enunciation (e.g., precise, slurred, etc.)\n43. Volume (e.g., loud, soft, etc.)\n44. Inflection (e.g., rising, falling, etc.)\n45. Pitch (e.g., high, low, etc.)\n46. Speed (e.g., fast, slow, etc.)\n47. Diction (e.g., clear, mumbled, etc.)\n48. Rhythm (e.g., staccato, legato, etc.)\n49. Timing (\nuser: Continue\nassistant: 49. Timing (e.g., pacing, pauses, etc.)\n50. Emphasis (e.g., stress, intonation, etc.)\n51. Emotion (e.g., happy, sad, angry, etc.)\n52. Attitude (e.g., positive, negative, neutral, etc.)\n53. Knowledge level (e.g., basic, intermediate, advanced, etc.)\n54. Educational background (e.g., high school, college, graduate school, etc.)\n55. Professional background (e.g., medicine, law, engineering, etc.)\n56. Cultural background (e.g., Western, Eastern, etc.)\n57. Geographic location (e.g., North America, Asia, Europe, etc.)\n58. Age (e.g., young adult, middle-aged, senior, etc.)\n59. Gender (e.g., male, female, non-binary, etc.)\n60. Religion (e.g., Christianity, Islam, Judaism, etc.)\n61. Political affiliation (e.g., conservative, liberal, moderate, etc.)\n62. Social status (e.g., wealthy, middle-class, low-income, etc.)\n63. Interpersonal relationships (e.g., parent-child, romantic, etc.)\n64. Career goals (e.g., entrepreneurship, academia, etc.)\n65. Life goals (e.g., travel, family, etc.)\n66. Hobbies/interests (e.g., sports, music, art, etc.)\n67. Personality traits (e.g., extroverted, introverted, etc.)\n68. Learning style (e.g., visual, auditory, kinesthetic, etc.)\n69. Communication style (e.g., direct, indirect, assertive, etc.)\n70. Sensory preferences (e.g., visual, auditory, tactile, etc.)\n71. Learning environment (e.g., classroom, online, etc.)\n72. Communication medium (e.g., email, phone, in-person, etc.)\n73. Learning objectives (e.g., mastery, exploration, etc.)\n74. Learning outcome (e.g., knowledge acquisition, skill development, etc.)\n75. Learning pace (e.g., accelerated, self-paced, etc.)\n76. Learning format (e.g., lecture, discussion, hands-on, etc.)\n77. Learning method (e.g., traditional, experiential, etc.)\n78. Learning tools (e.g., textbooks, videos, software, etc.)\n79. Learning resources (e.g., library, online databases, etc.)\n80. Learning environment (e.g., quiet, collaborative, etc.)\n81. Learning motivation (e.g., intrinsic, extrinsic, etc.)\n82. Learning obstacles (e.g., lack of resources, time constraints, etc.)\n83. Learning preferences (e.g., self-directed, group-oriented, etc.)\n84. Learning feedback (e.g., formative, summative, etc.)\n85. Learning assessment (e.g., quizzes, exams, etc.)\n86. Learning evaluation (e.g., self-evaluation, peer evaluation, etc.)\n87. Learning reflection (e.g., journaling, discussion, etc.)\n88. Learning feedback (e.g., written, oral, etc.)\n89. Learning environment (e.g., physical, virtual, etc.)\n90. Learning support (e.g., tutoring, counseling, etc.)\n91. Learning goals (e.g., cognitive, affective, etc.)\n92. Learning objectives (e.g., knowledge, skills, attitudes, etc.)\n93. Learning outcomes (e.g., competence, proficiency, etc.)\n94. Learning activities (e.g., problem-solving, critical thinking, etc.)\n95. Learning strategies (e.g., memorization, repetition, etc.)\n96. Learning styles (e.g., visual, auditory, kinesthetic, etc.)\n97. Learning theories (e.g., behaviorism, constructivism,\nuser: Continue\nassistant: 97. Learning theories (e.g., behaviorism, constructivism, etc.)\n98. Learning models (e.g., ADDIE, SAM, etc.)\n99. Learning technology (e.g., LMS, authoring tools, etc.)\n100. Learning trends (e.g., gamification, microlearning, etc.)\n\nI hope these prompt parameters help you specify the output you're looking for. Let me know if you have any other questions or if there's anything else I can assist you with.\n                                ```\n\n                                Candidate answer:\n                                The 27th parameter was **Sound effects** (e.g., ambient, diegetic, non-diegetic, etc.).",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "8752c811",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The candidate exactly matches the evidence-backed 27th parameter, Sound effects with the same examples.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2527,
+                "completionTokens": 40,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
