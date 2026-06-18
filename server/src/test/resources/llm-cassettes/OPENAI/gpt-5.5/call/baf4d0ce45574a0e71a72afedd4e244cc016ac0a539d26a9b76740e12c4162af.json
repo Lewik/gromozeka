@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "baf4d0ce45574a0e71a72afedd4e244cc016ac0a539d26a9b76740e12c4162af",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did it take to move to the new apartment?\n\n                                Question date:\n                                2023/05/29 (Mon) 07:44\n\n                                Noisy expected-answer label:\n                                5 hours\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 08:53\nTranscript:\nuser: I'm looking for some recommendations on good coffee shops near my new apartment. I just moved in a few weeks ago and still exploring the area.\nassistant: Congratulations on your new apartment! I'd be happy to help you discover some great coffee shops in your new neighborhood. However, I need a bit more information from you to give you the most relevant recommendations.\n\nCould you please provide me with the following details:\n\n1. What city and neighborhood are you in?\n2. Do you have a preferred type of coffee shop (e.g. quiet and cozy, busy and lively, specialty coffee, budget-friendly)?\n3. Are you open to trying unique or independent coffee shops, or do you prefer well-known chains?\n4. Do you have any specific amenities in mind (e.g. free Wi-Fi, outdoor seating, food options)?\n5. How far are you willing to travel for a good cup of coffee (e.g. within walking distance, short drive, willing to take public transportation)?\n\nOnce I have this information, I can give you some personalized recommendations for great coffee shops in your area!\nuser: It's in the city, near my new apartment which is about 20 minutes away from my old place. I'm open to trying unique or independent coffee shops, and would prefer ones with free Wi-Fi and outdoor seating.\nassistant: I'd be happy to help you discover some unique and independent coffee shops near your new apartment. Since you didn't mention a specific city, I'll provide you with some general tips to find great coffee shops in your area.\n\n1. **Online Search**: Try searching online for \"best coffee shops near me\" or \"independent coffee shops in [your city/neighborhood]\" to get a list of options.\n2. **Yelp**: Yelp is a great resource to find highly-rated coffee shops in your area. You can filter your search by rating, distance, and amenities like free Wi-Fi and outdoor seating.\n3. **Google Maps**: Google Maps can help you discover coffee shops near your apartment. You can filter your search by rating, hours of operation, and amenities.\n4. **Ask Locals**: Ask your neighbors, coworkers, or friends who live in the area for their favorite coffee shop recommendations.\n5. **Coffee Shop Apps**: Apps like Coffee Shop Finder or Cafe Finder can help you discover coffee shops near your location.\n\nTo give you a better idea, here are some popular independent coffee shop chains that might be in your area:\n\n* Blue Bottle Coffee\n* Intelligentsia Coffee\n* La Colombe Coffee\n* Stumptown Coffee Roasters\n* Verve Coffee Roasters\n\nSome popular coffee shop features to look for:\n\n* Specialty coffee drinks made with high-quality beans\n* Cozy atmosphere with comfortable seating\n* Outdoor seating areas for nice days\n* Free Wi-Fi and power outlets for remote work or study\n* Delicious pastries and food options\n* Friendly and knowledgeable baristas\n\nOnce you find a few coffee shops that catch your eye, I recommend visiting each one to see which one becomes your new favorite spot!\nuser: I actually drove to my parents' house last weekend and it took around 2 hours. The drive back was quite tiring, especially since I had a long day at work on Monday.\nassistant: It sounds like you're getting settled into your new place, and it's taking some time to adjust to the commute.\n\nSince you mentioned the drive to your parents' house took around 2 hours, I'm going to take a wild guess that you're not in a super urban area, and your new apartment might be in a suburb or a smaller city.\n\nAssuming that's the case, I'd recommend checking out online review sites like Yelp or Google Maps to find coffee shops in your area. You can filter your search by rating, distance, and amenities like free Wi-Fi and outdoor seating.\n\nYou might also want to ask your coworkers or neighbors for recommendations. They might have some insider knowledge on the best coffee spots in the area.\n\nIf you're willing to share, what's the general area or region you're living in? I can try to give you more tailored advice or even suggest some popular coffee shops in your area.\nuser: I'm actually in the city, and my new apartment is about 20 minutes away from my old place. I've been trying to explore the area, and I found a few decent restaurants and coffee shops nearby when I went to finalize the paperwork and pick up the keys a week before the move.\nassistant: So you're still in the city, and your new apartment is relatively close to your old place. That's great! It's always exciting to explore a new neighborhood and discover new hidden gems.\n\nIt's awesome that you've already started exploring the area and found some decent restaurants and coffee shops. I'm sure you'll continue to stumble upon more great spots as you get to know the area better.\n\nIn that case, I'd recommend building on what you've already discovered. Try to visit those coffee shops again and get a feel for the atmosphere, the coffee, and the service. You might find that one of them becomes your new go-to spot.\n\nYou could also try asking the baristas or staff at those coffee shops for recommendations on other great coffee spots in the area. They might have some insider knowledge on lesser-known gems that are worth checking out.\n\nAdditionally, you could try using online review sites like Yelp or Google Maps to discover more coffee shops in your area. You can filter your search by rating, distance, and amenities like free Wi-Fi and outdoor seating.\n\nDo you have a favorite type of coffee drink or a specific atmosphere you're looking for in a coffee shop? That might help me give you more targeted recommendations.\nuser: I didn't think about asking the baristas for recommendations. That's a great idea! By the way, it took me and my friends around 5 hours to move everything into the new apartment, but it was worth it to be closer to work and save on commute time.\nassistant: That's a great idea! Baristas often have a deep knowledge of the local coffee scene and can give you personalized recommendations.\n\nWow, 5 hours is a long time to move, but it's great that you and your friends were able to get everything done! It's definitely worth it to be closer to work and save on commute time. You'll appreciate the extra time you'll have in the morning, and it'll make a big difference in your daily routine.\n\nNow that you're all settled in, you can start enjoying your new neighborhood and exploring all it has to offer. Remember to take breaks and grab a cup of coffee at one of the local shops you've been wanting to try.\n\nBy the way, have you noticed any other benefits of living in your new apartment, aside from the shorter commute? Are there any new amenities or services that you're enjoying?\nuser: I've been trying to incorporate more walking into my daily routine, and I've started taking the stairs instead of the elevator at work.\nassistant: That's a great start! Incorporating more physical activity into your daily routine can have a significant impact on your overall health and wellbeing. Taking the stairs instead of the elevator is a fantastic way to get some extra exercise, and it's great that you're making a conscious effort to do so.\n\nNow that you're living closer to work, you might find that you have more opportunities to walk or engage in other physical activities during your daily commute. Maybe you could try walking to work one day a week, or exploring nearby parks or trails during your lunch break.\n\nIt's also awesome that you're making an effort to prioritize your health and fitness. Remember to celebrate your small victories along the way, like taking the stairs instead of the elevator. Those small changes can add up to make a big difference over time!\n\nHow's your new apartment complex? Are there any amenities like a gym or fitness center that you're taking advantage of?\n                                ```\n\n                                Candidate answer:\n                                It took you and your friends around 5 hours to move everything into the new apartment.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "caf9ead2",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did it take to move to the new apartment?\n\n                                Question date:\n                                2023/05/29 (Mon) 07:44\n\n                                Noisy expected-answer label:\n                                5 hours\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 08:53\nTranscript:\nuser: I'm looking for some recommendations on good coffee shops near my new apartment. I just moved in a few weeks ago and still exploring the area.\nassistant: Congratulations on your new apartment! I'd be happy to help you discover some great coffee shops in your new neighborhood. However, I need a bit more information from you to give you the most relevant recommendations.\n\nCould you please provide me with the following details:\n\n1. What city and neighborhood are you in?\n2. Do you have a preferred type of coffee shop (e.g. quiet and cozy, busy and lively, specialty coffee, budget-friendly)?\n3. Are you open to trying unique or independent coffee shops, or do you prefer well-known chains?\n4. Do you have any specific amenities in mind (e.g. free Wi-Fi, outdoor seating, food options)?\n5. How far are you willing to travel for a good cup of coffee (e.g. within walking distance, short drive, willing to take public transportation)?\n\nOnce I have this information, I can give you some personalized recommendations for great coffee shops in your area!\nuser: It's in the city, near my new apartment which is about 20 minutes away from my old place. I'm open to trying unique or independent coffee shops, and would prefer ones with free Wi-Fi and outdoor seating.\nassistant: I'd be happy to help you discover some unique and independent coffee shops near your new apartment. Since you didn't mention a specific city, I'll provide you with some general tips to find great coffee shops in your area.\n\n1. **Online Search**: Try searching online for \"best coffee shops near me\" or \"independent coffee shops in [your city/neighborhood]\" to get a list of options.\n2. **Yelp**: Yelp is a great resource to find highly-rated coffee shops in your area. You can filter your search by rating, distance, and amenities like free Wi-Fi and outdoor seating.\n3. **Google Maps**: Google Maps can help you discover coffee shops near your apartment. You can filter your search by rating, hours of operation, and amenities.\n4. **Ask Locals**: Ask your neighbors, coworkers, or friends who live in the area for their favorite coffee shop recommendations.\n5. **Coffee Shop Apps**: Apps like Coffee Shop Finder or Cafe Finder can help you discover coffee shops near your location.\n\nTo give you a better idea, here are some popular independent coffee shop chains that might be in your area:\n\n* Blue Bottle Coffee\n* Intelligentsia Coffee\n* La Colombe Coffee\n* Stumptown Coffee Roasters\n* Verve Coffee Roasters\n\nSome popular coffee shop features to look for:\n\n* Specialty coffee drinks made with high-quality beans\n* Cozy atmosphere with comfortable seating\n* Outdoor seating areas for nice days\n* Free Wi-Fi and power outlets for remote work or study\n* Delicious pastries and food options\n* Friendly and knowledgeable baristas\n\nOnce you find a few coffee shops that catch your eye, I recommend visiting each one to see which one becomes your new favorite spot!\nuser: I actually drove to my parents' house last weekend and it took around 2 hours. The drive back was quite tiring, especially since I had a long day at work on Monday.\nassistant: It sounds like you're getting settled into your new place, and it's taking some time to adjust to the commute.\n\nSince you mentioned the drive to your parents' house took around 2 hours, I'm going to take a wild guess that you're not in a super urban area, and your new apartment might be in a suburb or a smaller city.\n\nAssuming that's the case, I'd recommend checking out online review sites like Yelp or Google Maps to find coffee shops in your area. You can filter your search by rating, distance, and amenities like free Wi-Fi and outdoor seating.\n\nYou might also want to ask your coworkers or neighbors for recommendations. They might have some insider knowledge on the best coffee spots in the area.\n\nIf you're willing to share, what's the general area or region you're living in? I can try to give you more tailored advice or even suggest some popular coffee shops in your area.\nuser: I'm actually in the city, and my new apartment is about 20 minutes away from my old place. I've been trying to explore the area, and I found a few decent restaurants and coffee shops nearby when I went to finalize the paperwork and pick up the keys a week before the move.\nassistant: So you're still in the city, and your new apartment is relatively close to your old place. That's great! It's always exciting to explore a new neighborhood and discover new hidden gems.\n\nIt's awesome that you've already started exploring the area and found some decent restaurants and coffee shops. I'm sure you'll continue to stumble upon more great spots as you get to know the area better.\n\nIn that case, I'd recommend building on what you've already discovered. Try to visit those coffee shops again and get a feel for the atmosphere, the coffee, and the service. You might find that one of them becomes your new go-to spot.\n\nYou could also try asking the baristas or staff at those coffee shops for recommendations on other great coffee spots in the area. They might have some insider knowledge on lesser-known gems that are worth checking out.\n\nAdditionally, you could try using online review sites like Yelp or Google Maps to discover more coffee shops in your area. You can filter your search by rating, distance, and amenities like free Wi-Fi and outdoor seating.\n\nDo you have a favorite type of coffee drink or a specific atmosphere you're looking for in a coffee shop? That might help me give you more targeted recommendations.\nuser: I didn't think about asking the baristas for recommendations. That's a great idea! By the way, it took me and my friends around 5 hours to move everything into the new apartment, but it was worth it to be closer to work and save on commute time.\nassistant: That's a great idea! Baristas often have a deep knowledge of the local coffee scene and can give you personalized recommendations.\n\nWow, 5 hours is a long time to move, but it's great that you and your friends were able to get everything done! It's definitely worth it to be closer to work and save on commute time. You'll appreciate the extra time you'll have in the morning, and it'll make a big difference in your daily routine.\n\nNow that you're all settled in, you can start enjoying your new neighborhood and exploring all it has to offer. Remember to take breaks and grab a cup of coffee at one of the local shops you've been wanting to try.\n\nBy the way, have you noticed any other benefits of living in your new apartment, aside from the shorter commute? Are there any new amenities or services that you're enjoying?\nuser: I've been trying to incorporate more walking into my daily routine, and I've started taking the stairs instead of the elevator at work.\nassistant: That's a great start! Incorporating more physical activity into your daily routine can have a significant impact on your overall health and wellbeing. Taking the stairs instead of the elevator is a fantastic way to get some extra exercise, and it's great that you're making a conscious effort to do so.\n\nNow that you're living closer to work, you might find that you have more opportunities to walk or engage in other physical activities during your daily commute. Maybe you could try walking to work one day a week, or exploring nearby parks or trails during your lunch break.\n\nIt's also awesome that you're making an effort to prioritize your health and fitness. Remember to celebrate your small victories along the way, like taking the stairs instead of the elevator. Those small changes can add up to make a big difference over time!\n\nHow's your new apartment complex? Are there any amenities like a gym or fitness center that you're taking advantage of?\n                                ```\n\n                                Candidate answer:\n                                It took you and your friends around 5 hours to move everything into the new apartment.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "caf9ead2",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The evidence explicitly says it took the user and friends around 5 hours to move everything into the new apartment.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2364,
+                "completionTokens": 43,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
