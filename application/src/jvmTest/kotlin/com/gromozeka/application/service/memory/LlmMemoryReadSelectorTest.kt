@@ -382,6 +382,11 @@ class LlmMemoryReadSelectorTest {
         val prompt = runtime.prompts.single()
         assertTrue(prompt.contains("For named-date or relative-date questions"), prompt)
         assertTrue(prompt.contains("source/session date matches the target"), prompt)
+        assertTrue(prompt.contains("derive the target interval from the current/question date"), prompt)
+        assertTrue(prompt.contains("Do not smear one relative date cue"), prompt)
+        assertTrue(prompt.contains("Missing date evidence is uncertainty"), prompt)
+        assertTrue(prompt.contains("target-period lifecycle variants"), prompt)
+        assertTrue(prompt.contains("outside-period completed actions"), prompt)
         assertTrue(prompt.contains("Do not infer that an unrelated explicit date satisfies a named date"), prompt)
     }
 
