@@ -201,6 +201,7 @@ class LlmMemoryWriteRetrievalPlanner(
             - Do not invent predicate synonyms in predicate_hints when an existing catalog predicate captures the same relation.
             - Include notes when the material looks rationale-heavy or plan-heavy.
             - Include claims when preferences, status, or factual updates are likely.
+            - For recurring schedule or routine slot values, such as usual wake time, bedtime, work hours, exercise time, meal time, medication time, default start time, or cadence, include claim retrieval and the "current_metric_value" predicate hint. These values may be phrased as habits or preferences, not only as measurements.
             - Include action_items when TARGET_MESSAGE may create, update, close, cancel, deduplicate, or discuss an explicit remembered follow-up/action item/deadline.
             - Include action_items when TARGET_MESSAGE says a remembered follow-up is done, finished, completed, closed, cancelled, no longer needed, blocked, unblocked, reprioritized, or changed.
             - Include entity retrieval for concrete people, products, projects, repos, files, technologies, and the stable user subject.

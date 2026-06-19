@@ -543,6 +543,53 @@ class LlmMemoryClaimExtractorTest {
         assertTrue(prompt.contains("worked up to Y after 2 years and 4 months"))
     }
 
+    @Test
+    fun promptTreatsRecurringRoutineSlotsAsCurrentMetricValues() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(listOf("""{"claims":[]}"""))
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        extractor.extract(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("I usually start my Saturday run after coffee."),
+            ),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target contains a durable routine slot update.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("current_metric_value"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(entityOp("I", userEntityId, MemoryEntity.Type.USER)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        val prompt = runtime.requests.single().messages.joinToString("\n") { message ->
+            message.content.joinToString("\n") { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.UserMessage -> item.text
+                    is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                    else -> item.toString()
+                }
+            }
+        }
+        assertTrue(prompt.contains("recurring schedule or routine slots"), prompt)
+        assertTrue(prompt.contains("current_metric_value"), prompt)
+        assertTrue(prompt.contains("a later same-slot value can replace an older current value"), prompt)
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {
