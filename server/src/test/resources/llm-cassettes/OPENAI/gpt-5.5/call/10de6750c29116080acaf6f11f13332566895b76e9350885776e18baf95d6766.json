@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "10de6750c29116080acaf6f11f13332566895b76e9350885776e18baf95d6766",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:affe2881\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript has durable user hobby context and concrete birding facts/preferences plus reusable advice context, so it should be stored as structured claims with a supporting note/source.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require resolving the stable namespace-level user entity; no existing candidates provided.\n- mention=bird photography skills; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Bird photography; reason=Reusable concept that later claims may use for the user's skill-improvement goal.\n- mention=Northern Flicker; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Northern Flicker; reason=Concrete bird species discussed as a subject of photography.\n- mention=bird identification skills; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Bird identification; reason=Reusable concept for later claims about the user's skills and goals.\n- mention=warblers; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Warblers; reason=Bird group discussed as an identification challenge.\n- mention=sparrows; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Sparrows; reason=Bird group discussed as an identification challenge.\n- mention=my local park; action=CREATE_NEW; id=entity:<6>; type=LOCATION; name=User's local park; reason=First-person possessive location is a reusable place for later sightings claims.\n- mention=eBird app; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=eBird; reason=Named app/service the user uses for tracking sightings.\n- mention=nearby lake; action=CREATE_NEW; id=entity:<8>; type=LOCATION; name=Nearby lake; reason=Reusable location for planned birding trip; no more specific name is given.\n- mention=my binoculars; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=User's binoculars; reason=First-person possessive indicates a concrete personal item.\n- mention=spotting scope / my spotting scope; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=User's spotting scope; reason=First-person possessive indicates a concrete personal item.\n- mention=waterbirds; action=CREATE_NEW; id=entity:<11>; type=CONCEPT; name=Waterbirds; reason=Reusable bird group relevant to the user's lake birding plan.\n- mention=Ospreys; action=CREATE_NEW; id=entity:<12>; type=CONCEPT; name=Ospreys; reason=Bird species/group the user hopes to spot at the lake.\n- mention=Bald Eagles; action=CREATE_NEW; id=entity:<13>; type=CONCEPT; name=Bald Eagles; reason=Bird species the user hopes to spot at the lake.\n- mention=current project; action=CREATE_NEW; id=entity:<14>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|bird photography|bird identification|local park|eBird|Northern Flicker|warblers|sparrows|nearby lake|Ospreys|Bald Eagles|binoculars|spotting scope\n        text_queries=bird photography skills Northern Flicker close-up shots|bird identification skills warblers sparrows|local park 27 species eBird sightings|nearby lake waterbirds binoculars spotting scope Ospreys Bald Eagles\n        predicate_hints=has_goal|has_experience_with|current_metric_value|metric_observation|works_with|owns|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:2db9074e5ca1ddb4c16ffcd5d233800d] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:affe2881:session:1; title=LongMemEval affe2881 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 14:48\nTranscript:\nuser: I've been trying to improve my bird photography skills, can you give me some tips on how to take better close-up shots of birds, especially ones that are skittish like the Northern Flicker?\nassistant: Bird photography can be a thrilling and rewarding experience! Capturing close-up shots of skittish birds like the Northern Flicker requires patience, practice, and a solid understanding of bird behavior. Here are some tips to help you improve your chances of getting stunning close-up shots:\n\n1. **Know your subject**: Study the behavior, habitat, and habits of the Northern Flicker. Learn their feeding patterns, nesting habits, and flight patterns. This knowledge will help you anticipate and prepare for photo opportunities.\n2. **Choose the right equipment**: A high-quality camera with good autofocus, a telephoto lens (at least 200mm), and a tripod will help you get closer to your subject without disturbing them.\n3. **Get familiar with the environment**: Visit the area where you plan to photograph the Northern Flicker regularly. Familiarize yourself with the terrain, lighting conditions, and potential hiding spots. This will help you anticipate where the birds might appear and how to approach them.\n4. **Blind or hide**: Use a blind or hide to conceal yourself from the birds. This can be a pop-up tent, a camouflage net, or even a vehicle. The goal is to blend in and minimize your presence.\n5. **Dress appropriately**: Wear earth-toned clothing, avoid bright colors, and move slowly to avoid startling the birds. Camouflage clothing or a Ghillie suit can be effective, but make sure you're not too warm or uncomfortable.\n6. **Be patient**: Skittish birds like the Northern Flicker may take time to get used to your presence. Spend hours, even days, in the same spot, and wait for the birds to become comfortable with your presence.\n7. **Use the right bait**: Offering food can help attract birds to your location. For Northern Flickers, try using suet, sunflower seeds, or fruit like apples or oranges. Place the bait in an open area, allowing you to capture the bird's approach and feeding behavior.\n8. **Anticipate and prepare for flight**: Skittish birds often take flight quickly. Anticipate this by keeping your camera ready, with the autofocus set to continuous mode and the shutter speed adjusted for high-speed capture (around 1/1600s to 1/3200s).\n9. **Shoot in good light**: Soft, overcast light or early morning/late afternoon light is ideal for capturing warm, gentle images. Avoid harsh mid-day sun, which can create unflattering shadows and highlights.\n10. **Respect the bird's space**: Keep a safe distance to avoid stressing the bird. If the bird appears agitated or flies away, it's best to leave the area and try again another day.\n11. **Use a remote shutter release or camera's self-timer**: This can help reduce camera shake and noise, allowing you to capture the bird's natural behavior without startling it.\n12. **Experiment with angles**: Don't be afraid to try unique angles, such as getting low to the ground or shooting from a slightly elevated position. This can add variety to your shots and create more interesting compositions.\n13. **Practice, practice, practice**: The more you practice, the better you'll become at anticipating and capturing the behavior of skittish birds like the Northern Flicker.\n\nAdditional tips for photographing Northern Flickers specifically:\n\n* Look for them in open woodlands, parks, or backyards with trees, as they often forage on the ground for insects and seeds.\n* Be prepared for their characteristic drumming on trees, which can be a great opportunity for a unique shot.\n* Northern Flickers are known for their bright yellow or red shafts on their tail feathers. Try to capture these colors in your shot for added visual interest.\n\nBy following these tips and being patient, you'll increase your chances of capturing stunning close-up shots of the Northern Flicker and other skitt\nuser: I've been trying to improve my bird identification skills too, can you give me some tips on identifying warblers and sparrows, they seem really tricky to tell apart?\nassistant: Warblers and sparrows can be challenging to identify, but with practice and a few tips, you can improve your skills! Here are some tips to help you identify warblers and sparrows:\n\n**Warblers:**\n\n1. **Focus on facial patterns**: Warblers often have distinctive facial markings, such as stripes, eyestripes, or eye rings. Study the patterns around the eyes, forehead, and throat to help identify the species.\n2. **Look at the beak shape and size**: Warblers have a variety of beak shapes and sizes. Some have short, conical beaks (like the Yellow Warbler), while others have longer, more pointed beaks (like the Common Yellowthroat).\n3. **Observe the tail pattern**: Warblers often have distinctive tail patterns, such as white outer tail feathers (like the American Goldfinch) or a dark tail with white edges (like the Black-and-white Warbler).\n4. **Check the wing bars**: Many warblers have wing bars, which are narrow white or yellow stripes on the wings. The number, size, and color of these bars can help identify the species.\n5. **Study the overall plumage**: Warblers can have a wide range of plumage patterns, from bright yellows and oranges to duller browns and grays. Look for distinctive markings, such as streaks, spots, or patches, to help identify the species.\n6. **Pay attention to size and shape**: Warblers come in a range of sizes, from the tiny Ruby-crowned Kinglet to the larger American Redstart. Note the bird's overall shape, including the length of the tail and the shape of the head.\n7. **Learn the habitat preferences**: Different warblers have distinct habitat preferences, such as coniferous forests, deciduous forests, or shrubby areas. Knowing the habitat can help narrow down the identification.\n\n**Sparrows:**\n\n1. **Focus on the face and head pattern**: Sparrows often have distinctive facial markings, such as stripes, spots, or a distinctive eye line. Study the pattern around the eyes, forehead, and throat to help identify the species.\n2. **Look at the beak shape and size**: Sparrows have a range of beak shapes and sizes, from short and conical to longer and more pointed.\n3. **Observe the tail pattern**: Sparrows often have distinctive tail patterns, such as a notched tail (like the Song Sparrow) or a rounded tail (like the White-throated Sparrow).\n4. **Check the wing bars**: Like warblers, sparrows often have wing bars, which can help identify the species.\n5. **Study the overall plumage**: Sparrows can have a range of plumage patterns, from streaked to spotted to plain. Look for distinctive markings, such as a white stripe above the eye or a dark spot on the breast.\n6. **Pay attention to size and shape**: Sparrows come in a range of sizes, from the tiny Nelson's Sparrow to the larger Fox Sparrow. Note the bird's overall shape, including the length of the tail and the shape of the head.\n7. **Learn the habitat preferences**: Different sparrows have distinct habitat preferences, such as wetlands, grasslands, or backyards. Knowing the habitat can help narrow down the identification.\n\n**General Tips:**\n\n1. **Use multiple field guides**: Consult multiple field guides to get a sense of the different characteristics and variations within each species.\n2. **Study range maps**: Knowing the range of each species can help you narrow down the identification.\n3. **Observe behavior**: Pay attention to the bird's behavior, such as foraging habits, flight patterns, and social behavior.\n4. **Take notes and sketches**: Record your observations, including notes on plumage, size, shape, and behavior. Sketching the bird can also help you remember\nuser: That's really helpful, thanks! By the way, speaking of bird identification, I've been keeping track of the species I've seen in my local park, and I've managed to spot 27 different species so far. It's amazing how diverse the bird life is in such a small area!\nassistant: That's fantastic! 27 species in a small local park is a great achievement, and it just goes to show how rich and diverse bird life can be in even the most unexpected places. It's wonderful that you're taking the time to observe and appreciate the birds in your area.\n\nKeeping a life list or a park list, as you're doing, is a great way to track your progress, learn more about the birds, and develop a deeper connection with nature. It's also a great way to notice changes in bird populations, migration patterns, and habitat use over time.\n\nI'm sure you've noticed that different species have different habits, habitats, and behaviors, which makes each one unique and fascinating in its own way. Have you noticed any particular species that are more abundant or common in your park, or any that are more elusive or rare?\n\nAlso, have you considered sharing your findings with others, such as local birding groups, birding clubs, or even online platforms like eBird? Sharing your observations can help contribute to a broader understanding of bird populations and habitats, and can also connect you with other bird enthusiasts who share your passion.\n\nKeep up the great work, and I'm sure you'll continue to discover more species and learn more about the amazing birds in your local park!\nuser: That's a great idea about sharing my findings with others! I've actually been using the eBird app to track my sightings and submit my data. It's been really helpful in keeping my records organized and seeing what other birders have spotted in the area.\n\nSpeaking of which, I've been wanting to explore more birding spots in my area. Do you have any recommendations for nearby nature reserves or parks that are known for their bird diversity? I'd love to venture out and see what other species I can spot!\nassistant: That's fantastic that you're already using eBird! It's an amazing resource for birders, and it's great that you're contributing to the global database of bird sightings.\n\nI'd be happy to help you explore more birding spots in your area! Since I'm a large language model, I don't have personal experiences, but I can suggest ways for you to find nearby nature reserves or parks that are known for their bird diversity.\n\nHere are a few tips to get you started:\n\n1. **Check online resources**: Websites like eBird, Audubon, and BirdLife International have databases of birding hotspots, nature reserves, and parks that are known for their bird diversity. You can filter by location, habitat, and species to find spots that fit your interests.\n2. **Consult local birding groups**: Reach out to local birding clubs, Audubon chapters, or birding meetups in your area. They often have knowledgeable members who can recommend birding spots, share tips, and even lead guided bird walks.\n3. **Visit local park websites**: Many national, state, or local parks have websites that list their bird species, trails, and birding opportunities. You can also contact park rangers or naturalists for recommendations.\n4. **Ask around**: Talk to fellow birders, naturalists, or outdoor enthusiasts in your community. They might have insider knowledge on lesser-known spots or hidden gems that are worth exploring.\n\nSome specific types of habitats to look for include:\n\n* **Wetlands**: Marshes, swamps, and ponds often attract a variety of waterbirds, shorebirds, and waders.\n* **Migratory hotspots**: Areas along flyways, such as coastal areas, river valleys, or mountain passes, can be great for spotting migratory species.\n* **Old-growth forests**: Mature forests with diverse tree species can harbor a wide range of bird species, including woodpeckers, owls, and warblers.\n* **Grasslands and prairies**: Open areas with native grasses and wildflowers can attract species like sparrows, meadowlarks, and hawks.\n\nRemember to always respect the environment, follow local regulations, and practice responsible birding practices when exploring new areas.\n\nI hope these tips help you discover new birding spots and add to your life list!\nuser: I'm planning a trip to a nearby lake next weekend and I'm hoping to spot some waterbirds. Do you think I should bring my spotting scope or would my binoculars be enough?\nassistant: A trip to a lake sounds like a great way to spend the weekend! Both spotting scopes and binoculars can be useful for observing waterbirds, but they serve slightly different purposes.\n\n**Binoculars:**\n\n* Binoculars are ideal for observing birds at closer ranges (up to 100-150 yards).\n* They're great for getting a good look at birds' plumage, behavior, and identifying features.\n* Binoculars are often more portable and convenient to carry around.\n* They're usually more affordable than spotting scopes.\n\n**Spotting Scope:**\n\n* Spotting scopes are designed for observing birds at longer ranges (beyond 150 yards).\n* They're perfect for scanning large bodies of water, shorelines, or distant wetlands.\n* Spotting scopes often provide higher magnification (20-60x) and a wider field of view than binoculars.\n* They can be more useful for observing birds that are skittish or hard to approach.\n\nConsider the following factors to decide whether to bring your spotting scope or binoculars:\n\n* **Distance:** If you expect to be observing birds at closer ranges (e.g., near the lake's edge or in a marshy area), binoculars might be sufficient. If you'll be scanning the lake's surface or observing birds at a distance, a spotting scope might be a better choice.\n* **Magnification:** If you want to get a closer look at birds' details or observe birds at a farther distance, a spotting scope's higher magnification might be beneficial.\n* **Portability:** If you plan to hike or move around the lake's shoreline, binoculars might be a better option due to their lighter weight and ease of carrying.\n* **Personal preference:** Ultimately, bring the instrument you're most comfortable using and feel confident with.\n\nIf you have the space and weight capacity, consider bringing both binoculars and a spotting scope. This will give you the flexibility to adapt to different observation situations and get the most out of your lake trip.\n\nRemember to also pack a tripod or stabilizing device for your spotting scope, as it will help reduce shake and improve image quality. Enjoy your lake trip and happy birding!\nuser: I think I'll bring both my binoculars and spotting scope, just in case. I've heard that the lake is a great spot for spotting Ospreys and Bald Eagles, and I'd love to get a closer look at them. Do you have any tips on how to increase my chances of spotting these birds?\nassistant: Excellent decision to bring both! Ospreys and Bald Eagles are magnificent birds, and spotting them can be a thrilling experience.\n\nTo increase your chances of spotting these birds, follow these tips:\n\n**Ospreys:**\n\n1. **Look for nesting platforms**: Ospreys often nest on platforms, poles, or trees near water. Scan the shoreline and look for these structures, as they can be a giveaway to Osprey presence.\n2. **Fish-rich areas**: Ospreys are fish-eaters, so focus on areas with abundant fish, such as near fishing spots, drop-offs, or areas with submerged structures like rocks or weed beds.\n3. **Early morning and late afternoon**: Ospreys are most active during these times when fish are more active and the sun is not too high.\n4. **Scan the water's surface**: Ospreys often dive-bomb into the water to catch fish, so keep an eye out for splashes or ripples on the surface.\n\n**Bald Eagles:**\n\n1. **Tall trees and perches**: Bald Eagles often perch in tall trees, especially near water, to scan for prey. Look for them sitting atop trees, power poles, or other high vantage points.\n2. **Lake edges and shorelines**: Bald Eagles frequently patrol lake edges and shorelines, searching for fish, birds, or small mammals.\n3. **Open water**: Bald Eagles can be seen flying over open water, scanning for prey or soaring on thermals.\n4. **Be patient**: Bald Eagles can be less active during the day, especially in warm weather. Be prepared to wait and observe patiently for extended periods.\n\n**General tips:**\n\n1. **Arrive early**: Get to the lake early to increase your chances of spotting these birds before they become active or are disturbed by human activity.\n2. **Dress appropriately**: Wear earth-toned clothing, and consider bringing a hat and polarized sunglasses to reduce glare on the water.\n3. **Bring a field guide**: Having a field guide handy can help you identify these birds and learn more about their habits and habitats.\n4. **Be respectful**: Keep a safe distance from these birds and their habitats to avoid disturbing them. Enjoy observing from a distance and respect their space.\n\nBy following these tips, you'll increase your chances of spotting Ospreys and Bald Eagles during your lake trip. Remember to stay patient, stay quiet, and keep your eyes peeled for these magnificent birds!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:affe2881",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:2db9074e5ca1ddb4c16ffcd5d233800d"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:affe2881\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript has durable user hobby context and concrete birding facts/preferences plus reusable advice context, so it should be stored as structured claims with a supporting note/source.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require resolving the stable namespace-level user entity; no existing candidates provided.\n- mention=bird photography skills; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Bird photography; reason=Reusable concept that later claims may use for the user's skill-improvement goal.\n- mention=Northern Flicker; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Northern Flicker; reason=Concrete bird species discussed as a subject of photography.\n- mention=bird identification skills; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Bird identification; reason=Reusable concept for later claims about the user's skills and goals.\n- mention=warblers; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Warblers; reason=Bird group discussed as an identification challenge.\n- mention=sparrows; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Sparrows; reason=Bird group discussed as an identification challenge.\n- mention=my local park; action=CREATE_NEW; id=entity:<6>; type=LOCATION; name=User's local park; reason=First-person possessive location is a reusable place for later sightings claims.\n- mention=eBird app; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=eBird; reason=Named app/service the user uses for tracking sightings.\n- mention=nearby lake; action=CREATE_NEW; id=entity:<8>; type=LOCATION; name=Nearby lake; reason=Reusable location for planned birding trip; no more specific name is given.\n- mention=my binoculars; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=User's binoculars; reason=First-person possessive indicates a concrete personal item.\n- mention=spotting scope / my spotting scope; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=User's spotting scope; reason=First-person possessive indicates a concrete personal item.\n- mention=waterbirds; action=CREATE_NEW; id=entity:<11>; type=CONCEPT; name=Waterbirds; reason=Reusable bird group relevant to the user's lake birding plan.\n- mention=Ospreys; action=CREATE_NEW; id=entity:<12>; type=CONCEPT; name=Ospreys; reason=Bird species/group the user hopes to spot at the lake.\n- mention=Bald Eagles; action=CREATE_NEW; id=entity:<13>; type=CONCEPT; name=Bald Eagles; reason=Bird species the user hopes to spot at the lake.\n- mention=current project; action=CREATE_NEW; id=entity:<14>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|bird photography|bird identification|local park|eBird|Northern Flicker|warblers|sparrows|nearby lake|Ospreys|Bald Eagles|binoculars|spotting scope\n        text_queries=bird photography skills Northern Flicker close-up shots|bird identification skills warblers sparrows|local park 27 species eBird sightings|nearby lake waterbirds binoculars spotting scope Ospreys Bald Eagles\n        predicate_hints=has_goal|has_experience_with|current_metric_value|metric_observation|works_with|owns|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:2db9074e5ca1ddb4c16ffcd5d233800d] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:affe2881:session:1; title=LongMemEval affe2881 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 14:48\nTranscript:\nuser: I've been trying to improve my bird photography skills, can you give me some tips on how to take better close-up shots of birds, especially ones that are skittish like the Northern Flicker?\nassistant: Bird photography can be a thrilling and rewarding experience! Capturing close-up shots of skittish birds like the Northern Flicker requires patience, practice, and a solid understanding of bird behavior. Here are some tips to help you improve your chances of getting stunning close-up shots:\n\n1. **Know your subject**: Study the behavior, habitat, and habits of the Northern Flicker. Learn their feeding patterns, nesting habits, and flight patterns. This knowledge will help you anticipate and prepare for photo opportunities.\n2. **Choose the right equipment**: A high-quality camera with good autofocus, a telephoto lens (at least 200mm), and a tripod will help you get closer to your subject without disturbing them.\n3. **Get familiar with the environment**: Visit the area where you plan to photograph the Northern Flicker regularly. Familiarize yourself with the terrain, lighting conditions, and potential hiding spots. This will help you anticipate where the birds might appear and how to approach them.\n4. **Blind or hide**: Use a blind or hide to conceal yourself from the birds. This can be a pop-up tent, a camouflage net, or even a vehicle. The goal is to blend in and minimize your presence.\n5. **Dress appropriately**: Wear earth-toned clothing, avoid bright colors, and move slowly to avoid startling the birds. Camouflage clothing or a Ghillie suit can be effective, but make sure you're not too warm or uncomfortable.\n6. **Be patient**: Skittish birds like the Northern Flicker may take time to get used to your presence. Spend hours, even days, in the same spot, and wait for the birds to become comfortable with your presence.\n7. **Use the right bait**: Offering food can help attract birds to your location. For Northern Flickers, try using suet, sunflower seeds, or fruit like apples or oranges. Place the bait in an open area, allowing you to capture the bird's approach and feeding behavior.\n8. **Anticipate and prepare for flight**: Skittish birds often take flight quickly. Anticipate this by keeping your camera ready, with the autofocus set to continuous mode and the shutter speed adjusted for high-speed capture (around 1/1600s to 1/3200s).\n9. **Shoot in good light**: Soft, overcast light or early morning/late afternoon light is ideal for capturing warm, gentle images. Avoid harsh mid-day sun, which can create unflattering shadows and highlights.\n10. **Respect the bird's space**: Keep a safe distance to avoid stressing the bird. If the bird appears agitated or flies away, it's best to leave the area and try again another day.\n11. **Use a remote shutter release or camera's self-timer**: This can help reduce camera shake and noise, allowing you to capture the bird's natural behavior without startling it.\n12. **Experiment with angles**: Don't be afraid to try unique angles, such as getting low to the ground or shooting from a slightly elevated position. This can add variety to your shots and create more interesting compositions.\n13. **Practice, practice, practice**: The more you practice, the better you'll become at anticipating and capturing the behavior of skittish birds like the Northern Flicker.\n\nAdditional tips for photographing Northern Flickers specifically:\n\n* Look for them in open woodlands, parks, or backyards with trees, as they often forage on the ground for insects and seeds.\n* Be prepared for their characteristic drumming on trees, which can be a great opportunity for a unique shot.\n* Northern Flickers are known for their bright yellow or red shafts on their tail feathers. Try to capture these colors in your shot for added visual interest.\n\nBy following these tips and being patient, you'll increase your chances of capturing stunning close-up shots of the Northern Flicker and other skitt\nuser: I've been trying to improve my bird identification skills too, can you give me some tips on identifying warblers and sparrows, they seem really tricky to tell apart?\nassistant: Warblers and sparrows can be challenging to identify, but with practice and a few tips, you can improve your skills! Here are some tips to help you identify warblers and sparrows:\n\n**Warblers:**\n\n1. **Focus on facial patterns**: Warblers often have distinctive facial markings, such as stripes, eyestripes, or eye rings. Study the patterns around the eyes, forehead, and throat to help identify the species.\n2. **Look at the beak shape and size**: Warblers have a variety of beak shapes and sizes. Some have short, conical beaks (like the Yellow Warbler), while others have longer, more pointed beaks (like the Common Yellowthroat).\n3. **Observe the tail pattern**: Warblers often have distinctive tail patterns, such as white outer tail feathers (like the American Goldfinch) or a dark tail with white edges (like the Black-and-white Warbler).\n4. **Check the wing bars**: Many warblers have wing bars, which are narrow white or yellow stripes on the wings. The number, size, and color of these bars can help identify the species.\n5. **Study the overall plumage**: Warblers can have a wide range of plumage patterns, from bright yellows and oranges to duller browns and grays. Look for distinctive markings, such as streaks, spots, or patches, to help identify the species.\n6. **Pay attention to size and shape**: Warblers come in a range of sizes, from the tiny Ruby-crowned Kinglet to the larger American Redstart. Note the bird's overall shape, including the length of the tail and the shape of the head.\n7. **Learn the habitat preferences**: Different warblers have distinct habitat preferences, such as coniferous forests, deciduous forests, or shrubby areas. Knowing the habitat can help narrow down the identification.\n\n**Sparrows:**\n\n1. **Focus on the face and head pattern**: Sparrows often have distinctive facial markings, such as stripes, spots, or a distinctive eye line. Study the pattern around the eyes, forehead, and throat to help identify the species.\n2. **Look at the beak shape and size**: Sparrows have a range of beak shapes and sizes, from short and conical to longer and more pointed.\n3. **Observe the tail pattern**: Sparrows often have distinctive tail patterns, such as a notched tail (like the Song Sparrow) or a rounded tail (like the White-throated Sparrow).\n4. **Check the wing bars**: Like warblers, sparrows often have wing bars, which can help identify the species.\n5. **Study the overall plumage**: Sparrows can have a range of plumage patterns, from streaked to spotted to plain. Look for distinctive markings, such as a white stripe above the eye or a dark spot on the breast.\n6. **Pay attention to size and shape**: Sparrows come in a range of sizes, from the tiny Nelson's Sparrow to the larger Fox Sparrow. Note the bird's overall shape, including the length of the tail and the shape of the head.\n7. **Learn the habitat preferences**: Different sparrows have distinct habitat preferences, such as wetlands, grasslands, or backyards. Knowing the habitat can help narrow down the identification.\n\n**General Tips:**\n\n1. **Use multiple field guides**: Consult multiple field guides to get a sense of the different characteristics and variations within each species.\n2. **Study range maps**: Knowing the range of each species can help you narrow down the identification.\n3. **Observe behavior**: Pay attention to the bird's behavior, such as foraging habits, flight patterns, and social behavior.\n4. **Take notes and sketches**: Record your observations, including notes on plumage, size, shape, and behavior. Sketching the bird can also help you remember\nuser: That's really helpful, thanks! By the way, speaking of bird identification, I've been keeping track of the species I've seen in my local park, and I've managed to spot 27 different species so far. It's amazing how diverse the bird life is in such a small area!\nassistant: That's fantastic! 27 species in a small local park is a great achievement, and it just goes to show how rich and diverse bird life can be in even the most unexpected places. It's wonderful that you're taking the time to observe and appreciate the birds in your area.\n\nKeeping a life list or a park list, as you're doing, is a great way to track your progress, learn more about the birds, and develop a deeper connection with nature. It's also a great way to notice changes in bird populations, migration patterns, and habitat use over time.\n\nI'm sure you've noticed that different species have different habits, habitats, and behaviors, which makes each one unique and fascinating in its own way. Have you noticed any particular species that are more abundant or common in your park, or any that are more elusive or rare?\n\nAlso, have you considered sharing your findings with others, such as local birding groups, birding clubs, or even online platforms like eBird? Sharing your observations can help contribute to a broader understanding of bird populations and habitats, and can also connect you with other bird enthusiasts who share your passion.\n\nKeep up the great work, and I'm sure you'll continue to discover more species and learn more about the amazing birds in your local park!\nuser: That's a great idea about sharing my findings with others! I've actually been using the eBird app to track my sightings and submit my data. It's been really helpful in keeping my records organized and seeing what other birders have spotted in the area.\n\nSpeaking of which, I've been wanting to explore more birding spots in my area. Do you have any recommendations for nearby nature reserves or parks that are known for their bird diversity? I'd love to venture out and see what other species I can spot!\nassistant: That's fantastic that you're already using eBird! It's an amazing resource for birders, and it's great that you're contributing to the global database of bird sightings.\n\nI'd be happy to help you explore more birding spots in your area! Since I'm a large language model, I don't have personal experiences, but I can suggest ways for you to find nearby nature reserves or parks that are known for their bird diversity.\n\nHere are a few tips to get you started:\n\n1. **Check online resources**: Websites like eBird, Audubon, and BirdLife International have databases of birding hotspots, nature reserves, and parks that are known for their bird diversity. You can filter by location, habitat, and species to find spots that fit your interests.\n2. **Consult local birding groups**: Reach out to local birding clubs, Audubon chapters, or birding meetups in your area. They often have knowledgeable members who can recommend birding spots, share tips, and even lead guided bird walks.\n3. **Visit local park websites**: Many national, state, or local parks have websites that list their bird species, trails, and birding opportunities. You can also contact park rangers or naturalists for recommendations.\n4. **Ask around**: Talk to fellow birders, naturalists, or outdoor enthusiasts in your community. They might have insider knowledge on lesser-known spots or hidden gems that are worth exploring.\n\nSome specific types of habitats to look for include:\n\n* **Wetlands**: Marshes, swamps, and ponds often attract a variety of waterbirds, shorebirds, and waders.\n* **Migratory hotspots**: Areas along flyways, such as coastal areas, river valleys, or mountain passes, can be great for spotting migratory species.\n* **Old-growth forests**: Mature forests with diverse tree species can harbor a wide range of bird species, including woodpeckers, owls, and warblers.\n* **Grasslands and prairies**: Open areas with native grasses and wildflowers can attract species like sparrows, meadowlarks, and hawks.\n\nRemember to always respect the environment, follow local regulations, and practice responsible birding practices when exploring new areas.\n\nI hope these tips help you discover new birding spots and add to your life list!\nuser: I'm planning a trip to a nearby lake next weekend and I'm hoping to spot some waterbirds. Do you think I should bring my spotting scope or would my binoculars be enough?\nassistant: A trip to a lake sounds like a great way to spend the weekend! Both spotting scopes and binoculars can be useful for observing waterbirds, but they serve slightly different purposes.\n\n**Binoculars:**\n\n* Binoculars are ideal for observing birds at closer ranges (up to 100-150 yards).\n* They're great for getting a good look at birds' plumage, behavior, and identifying features.\n* Binoculars are often more portable and convenient to carry around.\n* They're usually more affordable than spotting scopes.\n\n**Spotting Scope:**\n\n* Spotting scopes are designed for observing birds at longer ranges (beyond 150 yards).\n* They're perfect for scanning large bodies of water, shorelines, or distant wetlands.\n* Spotting scopes often provide higher magnification (20-60x) and a wider field of view than binoculars.\n* They can be more useful for observing birds that are skittish or hard to approach.\n\nConsider the following factors to decide whether to bring your spotting scope or binoculars:\n\n* **Distance:** If you expect to be observing birds at closer ranges (e.g., near the lake's edge or in a marshy area), binoculars might be sufficient. If you'll be scanning the lake's surface or observing birds at a distance, a spotting scope might be a better choice.\n* **Magnification:** If you want to get a closer look at birds' details or observe birds at a farther distance, a spotting scope's higher magnification might be beneficial.\n* **Portability:** If you plan to hike or move around the lake's shoreline, binoculars might be a better option due to their lighter weight and ease of carrying.\n* **Personal preference:** Ultimately, bring the instrument you're most comfortable using and feel confident with.\n\nIf you have the space and weight capacity, consider bringing both binoculars and a spotting scope. This will give you the flexibility to adapt to different observation situations and get the most out of your lake trip.\n\nRemember to also pack a tripod or stabilizing device for your spotting scope, as it will help reduce shake and improve image quality. Enjoy your lake trip and happy birding!\nuser: I think I'll bring both my binoculars and spotting scope, just in case. I've heard that the lake is a great spot for spotting Ospreys and Bald Eagles, and I'd love to get a closer look at them. Do you have any tips on how to increase my chances of spotting these birds?\nassistant: Excellent decision to bring both! Ospreys and Bald Eagles are magnificent birds, and spotting them can be a thrilling experience.\n\nTo increase your chances of spotting these birds, follow these tips:\n\n**Ospreys:**\n\n1. **Look for nesting platforms**: Ospreys often nest on platforms, poles, or trees near water. Scan the shoreline and look for these structures, as they can be a giveaway to Osprey presence.\n2. **Fish-rich areas**: Ospreys are fish-eaters, so focus on areas with abundant fish, such as near fishing spots, drop-offs, or areas with submerged structures like rocks or weed beds.\n3. **Early morning and late afternoon**: Ospreys are most active during these times when fish are more active and the sun is not too high.\n4. **Scan the water's surface**: Ospreys often dive-bomb into the water to catch fish, so keep an eye out for splashes or ripples on the surface.\n\n**Bald Eagles:**\n\n1. **Tall trees and perches**: Bald Eagles often perch in tall trees, especially near water, to scan for prey. Look for them sitting atop trees, power poles, or other high vantage points.\n2. **Lake edges and shorelines**: Bald Eagles frequently patrol lake edges and shorelines, searching for fish, birds, or small mammals.\n3. **Open water**: Bald Eagles can be seen flying over open water, scanning for prey or soaring on thermals.\n4. **Be patient**: Bald Eagles can be less active during the day, especially in warm weather. Be prepared to wait and observe patiently for extended periods.\n\n**General tips:**\n\n1. **Arrive early**: Get to the lake early to increase your chances of spotting these birds before they become active or are disturbed by human activity.\n2. **Dress appropriately**: Wear earth-toned clothing, and consider bringing a hat and polarized sunglasses to reduce glare on the water.\n3. **Bring a field guide**: Having a field guide handy can help you identify these birds and learn more about their habits and habitats.\n4. **Be respectful**: Keep a safe distance from these birds and their habitats to avoid disturbing them. Enjoy observing from a distance and respect their space.\n\nBy following these tips, you'll increase your chances of spotting Ospreys and Bald Eagles during your lake trip. Remember to stay patient, stay quiet, and keep your eyes peeled for these magnificent birds!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:affe2881",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:2db9074e5ca1ddb4c16ffcd5d233800d"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User is trying to improve bird photography skills.\",\"User is trying to improve bird identification skills.\",\"User finds warblers and sparrows tricky to tell apart.\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I've been trying to improve my bird photography skills\",\"evidence_reason\":\"The transcript directly states the user's skill-improvement goals and includes detailed advice exchanged about those goals.\",\"importance\":4,\"keywords\":[\"bird photography\",\"bird identification\",\"Northern Flicker\",\"warblers\",\"sparrows\",\"field marks\",\"skittish birds\"],\"note_type\":\"context\",\"rationale\":\"This combines multiple related goals and reusable advice context; individual facts can be claims, but the practice context and strategy bundle is better represented as a note.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's birding hobby and future advice about bird photography or bird identification practice.\"},\"summary\":\"The user is actively improving both bird photography and bird identification, with current focus areas including close-up shots of skittish birds such as Northern Flicker and distinguishing tricky groups such as warblers and sparrows. Prior advice emphasized behavior/habitat study, ethical distance, patient observation, field marks, range, habitat, and notes/sketches as reusable strategies.\",\"tags\":[\"birding\",\"photography\",\"identification\",\"hobby_context\"],\"title\":\"Birding skill-development context\",\"valid_from\":\"2023-05-25T14:48:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User had spotted 27 different species in their local park by 2023-05-25.\",\"User uses eBird to track sightings and submit data.\"],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<6>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I've actually been using the eBird app to track my sightings and submit my data\",\"evidence_reason\":\"The transcript directly reports the user's local park species count and their eBird tracking/submission workflow.\",\"importance\":4,\"keywords\":[\"local park\",\"27 species\",\"eBird\",\"bird sightings\",\"birding records\",\"park list\"],\"note_type\":\"context\",\"rationale\":\"The 27-species count and eBird usage may become claims, but the combined workflow and recommendation context is a reusable situational note rather than one atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's personal birding records and local park birding workflow.\"},\"summary\":\"The user tracks bird sightings in their local park, had recorded 27 species as of 2023-05-25, and uses eBird to organize sightings, submit data, and see what other birders have reported nearby. This context is useful for future recommendations about local birding, record keeping, and exploring additional birding locations.\",\"tags\":[\"birding\",\"records\",\"ebird\",\"local_context\"],\"title\":\"User's local birding records and eBird workflow\",\"valid_from\":\"2023-05-25T14:48:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User planned a nearby lake birding trip for the next weekend after 2023-05-25.\",\"User decided to bring both binoculars and spotting scope.\",\"User hoped to spot Ospreys and Bald Eagles at the lake.\"],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<8>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<11>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<12>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<13>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I think I'll bring both my binoculars and spotting scope, just in case\",\"evidence_reason\":\"The transcript directly states the user's equipment decision and intended lake targets.\",\"importance\":3,\"keywords\":[\"nearby lake\",\"binoculars\",\"spotting scope\",\"waterbirds\",\"Ospreys\",\"Bald Eagles\",\"birding trip\"],\"note_type\":\"plan\",\"rationale\":\"This is a short-term plan with rationale and equipment trade-off context; it is more reusable as a plan note than as only isolated claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's planned nearby lake birding outing discussed on 2023-05-25.\"},\"summary\":\"For a planned next-weekend lake birding trip, the user decided to bring both binoculars and a spotting scope to adapt between closer observation and longer-distance scanning. The target birds of interest for the lake are waterbirds, especially Ospreys and Bald Eagles, so future advice should account for shoreline/open-water scanning, distant perches, and scope stabilization.\",\"tags\":[\"birding\",\"trip_plan\",\"equipment\",\"lake\"],\"title\":\"Nearby lake birding trip plan and optics choice\",\"valid_from\":\"2023-05-25T14:48:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5927,
+                "completionTokens": 1316,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

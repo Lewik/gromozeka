@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "21d60a605eaf8ede9918ec01cc2e9daeea1da7350b4ac7a7ce221c0cb7f7e185",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:affe2881\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write requires non-noop; the transcript includes durable user birding activity/species-count facts and richer reusable context from the picnic planning discussion.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path-481d133a70c3-claim-7: current_metric_value; The user's current local-park bird species count is 27 different species spotted so far.; scope=User's bird species list for their local park\n- profile benchmark:longmemeval:affe2881:profile:<0> Profile for User (USER).\nStable facts:\n- The user is trying to improve their bird photography skills, especially close-up shots of skittish birds like the Northern Flicker.\n- The user is trying to improve their bird identification skills, especially for warblers and sparrows.\n- The user uses the eBird app to track bird sightings and submit data.\n- The user planned a trip to a nearby lake the next weekend to spot waterbirds.\n- The user owns binoculars.\n- The user owns a spotting scope.\n- The user hopes to spot Ospreys and Bald Eagles at the nearby lake and get a closer look at them.\n- The user wants to explore more birding spots in their area, including nature reserves or parks known for bird diversity.\n- The user decided to bring both binoculars and a spotting scope on the nearby lake birding trip.\n- note hot-path-481d133a70c3-note-3: CONTEXT; User's local birding records and eBird workflow; The user tracks bird sightings in their local park, had recorded 27 species as of 2023-05-25, and uses eBird to organize sightings, submit data, and see what other birders have reported nearby. This context is useful for future recommendations about local birding, record keeping, and exploring additional birding locations.; scope=Applies to the user's personal birding records and local park birding workflow.\n- claim hot-path-481d133a70c3-claim-5: has_goal; The user is trying to improve their bird photography skills, especially close-up shots of skittish birds like the Northern Flicker.; scope=User's birding and bird photography activities\n- note hot-path-481d133a70c3-note-2: CONTEXT; Birding skill-development context; The user is actively improving both bird photography and bird identification, with current focus areas including close-up shots of skittish birds such as Northern Flicker and distinguishing tricky groups such as warblers and sparrows. Prior advice emphasized behavior/habitat study, ethical distance, patient observation, field marks, range, habitat, and notes/sketches as reusable strategies.; scope=Applies to the user's birding hobby and future advice about bird photography or bird identification practice.\n- claim hot-path-481d133a70c3-claim-9: has_goal; The user wants to explore more birding spots in their area, including nature reserves or parks known for bird diversity.; scope=User's birding exploration plans\n- claim hot-path-481d133a70c3-claim-13: has_goal; The user decided to bring both binoculars and a spotting scope on the nearby lake birding trip.; scope=Equipment decision for the planned nearby lake birding trip\n- claim hot-path-481d133a70c3-claim-8: works_with; The user uses the eBird app to track bird sightings and submit data.; scope=User's birding record-keeping tools\n- claim hot-path-481d133a70c3-claim-6: has_goal; The user is trying to improve their bird identification skills, especially for warblers and sparrows.; scope=User's birding and bird identification activities\n- claim hot-path-481d133a70c3-claim-11: owns; The user owns binoculars.; scope=User's birding equipment\n- note hot-path-481d133a70c3-note-4: PLAN; Nearby lake birding trip plan and optics choice; For a planned next-weekend lake birding trip, the user decided to bring both binoculars and a spotting scope to adapt between closer observation and longer-distance scanning. The target birds of interest for the lake are waterbirds, especially Ospreys and Bald Eagles, so future advice should account for shoreline/open-water scanning, distant perches, and scope stabilization.; scope=Applies to the user's planned nearby lake birding outing discussed on 2023-05-25.\n- claim hot-path-481d133a70c3-claim-12: owns; The user owns a spotting scope.; scope=User's birding equipment\n- claim hot-path-481d133a70c3-claim-10: has_goal; The user planned a trip to a nearby lake the next weekend to spot waterbirds.; scope=Birding trip plan discussed in the 2023-05-25 session\n- claim hot-path-481d133a70c3-claim-14: has_goal; The user hopes to spot Ospreys and Bald Eagles at the nearby lake and get a closer look at them.; scope=Species goals for the planned nearby lake birding trip\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=my local park; action=LINK_EXISTING; id=entity:<1>; type=existing; name=my local park; reason=Candidate entity exactly represents the user's local park.\n- mention=Northern Flicker; action=LINK_EXISTING; id=entity:<2>; type=existing; name=Northern Flicker; reason=Existing concept entity exactly matches the bird species mention.\n- mention=my binoculars; action=LINK_EXISTING; id=entity:<3>; type=existing; name=my binoculars; reason=Candidate product entity exactly represents the user's binoculars.\n- mention=birdbath; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=User's birdbath; reason=The user says they are planning to bring a birdbath; this is a concrete reusable personal item absent from candidates.\n- mention=eBird app; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=eBird app; reason=Relevant context contains durable facts about the app and no candidate entity exists; creating supports later claims if needed.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Northern Flicker|local park|species count|birding|picnic\n        text_queries=Northern Flicker local park species count 32|birding species count|picnic local park bird-friendly food sunflower seeds suet birdbath binoculars\n        predicate_hints=metric_observation|current_metric_value|has_experience_with|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:e1c52cc99598420589ac4f54549fc0da] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:affe2881:session:2; title=LongMemEval affe2881 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 16:16\nTranscript:\nuser: I'm planning a picnic in my local park this weekend and I'm wondering if you can suggest some bird-friendly food that I can bring to attract some of the birds I've been seeing lately.\nassistant: What a lovely idea! Attracting birds to your picnic can add to the joy and magic of the experience. While it's essential to prioritize not littering and respecting the park's rules, you can bring some bird-friendly food to entice your feathered friends to visit. Here are some suggestions:\n\n1. **Suet**: A high-energy food made from animal fat, suet is a favorite among woodpeckers, nuthatches, and chickadees. You can purchase suet cakes or make your own by melting down beef fat and mixing it with birdseed, nuts, and dried fruits.\n2. **Sunflower seeds**: These are a popular choice among many bird species, including cardinals, finches, and sparrows. Opt for black oil sunflower seeds, which are easier for birds to crack open.\n3. **Fresh fruits**: Sliced apples, grapes, berries, and oranges are all attractive to birds like robins, blue jays, and woodpeckers. Be sure to remove any seeds or pits, as they can be harmful to birds.\n4. **Nuts**: Almonds, walnuts, and hazelnuts are all bird-friendly options. Just be sure to chop them into smaller pieces to prevent choking hazards.\n5. **Dried mealworms**: These are a great option for attracting birds like bluebirds, wrens, and sparrows. You can find dried mealworms at most pet stores or online.\n6. **Nyjer seed**: Also known as thistle seed, Nyjer seed is a favorite among finches, sparrows, and goldfinches. Its small size and high oil content make it an excellent energy source.\n\nRemember to:\n\n* Place the food on a clean, flat surface or a bird-friendly feeder to prevent mess and waste.\n* Keep the food fresh and replenish it regularly to avoid attracting unwanted pests.\n* Be mindful of park rules and regulations regarding bird feeding. Some parks may have specific guidelines or restrictions.\n* Enjoy observing the birds from a safe distance to avoid disturbing them or disrupting their natural behavior.\n\nHave a wonderful picnic, and I hope you attract some delightful bird visitors!\nuser: I'll definitely bring some sunflower seeds and suet to attract the woodpeckers. By the way, speaking of woodpeckers, I just saw a Northern Flicker in my local park last weekend, which brings my total species count to 32. Do you think the suet will attract any other woodpecker species as well?\nassistant: Congratulations on spotting the Northern Flicker and reaching 32 species on your count!\n\nSuet is an excellent choice to attract woodpeckers, and it's likely to draw in other species beyond just Northern Flickers. Here are some woodpecker species that might visit your suet feeder:\n\n1. **Downy Woodpeckers**: These are one of the most common woodpeckers in North America, and they love suet. They're small, black-and-white birds with a distinctive downy tuft on their heads.\n2. **Hairy Woodpeckers**: Similar to Downy Woodpeckers but larger, Hairy Woodpeckers are also frequent visitors to suet feeders.\n3. **Red-bellied Woodpeckers**: These woodpeckers have a distinctive red cap and are known for their loud, rolling calls. They're common in many parks and woodlands.\n4. **Pileated Woodpeckers**: While less common, Pileated Woodpeckers might visit your suet feeder, especially if you're in an area with mature trees. They're the largest woodpeckers in North America, with a distinctive red crest and loud drumming.\n\nKeep in mind that the types of woodpeckers you'll attract will depend on the specific species found in your region and the time of year. It's always exciting to see which species will visit your feeder!\n\nRemember to place the suet feeder in a spot that's easy for the woodpeckers to access, such as a tree trunk or a branch. You can also try adding some peanut butter or jelly to the suet to make it even more appealing.\n\nEnjoy your picnic and happy birding!\nuser: I'm also planning to bring some water and a birdbath to attract more birds. Do you think the birds will prefer running water or stagnant water?\nassistant: What a great idea! Providing water is an excellent way to attract birds to your picnic spot. When it comes to water, birds generally prefer running water over stagnant water. Here's why:\n\n1. **Movement and sound**: Running water creates movement and sound, which can attract birds from a distance. The gentle gurgling or bubbling noise can signal to birds that water is available and inviting.\n2. **Freshness**: Running water is more likely to be fresh and oxygenated, which is important for birds' health. Stagnant water can become a breeding ground for bacteria and algae, making it less appealing to birds.\n3. **Cooling and drinking**: Birds need water for drinking and cooling themselves. Running water is more effective at providing a cooling effect, as it allows birds to splash and bathe in the moving water.\n\nThat being said, it's not always possible to provide running water, especially in a picnic setting. If you can't bring a portable fountain or bubbler, a shallow birdbath with fresh, clean water will still be appreciated by the birds.\n\nHere are some tips for creating an attractive birdbath:\n\n1. **Shallow water**: Use a shallow birdbath or dish with a maximum depth of 2-3 inches (5-7.5 cm). This allows birds to easily access the water and reduces the risk of drowning.\n2. **Fresh water**: Change the water frequently to keep it clean and fresh. You can add a few rocks or twigs to the birdbath to provide perches and help birds access the water.\n3. **Location**: Place the birdbath in a spot that receives partial shade and is protected from strong winds.\n4. **Maintenance**: Clean the birdbath regularly to prevent the growth of algae and bacteria.\n\nBy providing a clean, fresh water source, you'll increase the chances of attracting a variety of bird species to your picnic spot. Enjoy your bird-friendly picnic!\nuser: I'm also thinking of bringing some fresh fruits like apples and oranges to attract some birds. Do you think the birds will prefer them sliced or whole?\nassistant: What a great idea! Fresh fruits like apples and oranges are a wonderful way to attract birds to your picnic spot. When it comes to offering fruits to birds, the answer to your question is: it depends on the bird species!\n\n**Whole fruits**: Some birds, like cardinals, blue jays, and woodpeckers, prefer whole fruits. They'll often pick them up and fly away to eat them or cache them for later. Whole fruits are also a great option for birds that have strong beaks, like woodpeckers, which can easily pierce the skin.\n\n**Sliced fruits**: Other birds, like robins, doves, and sparrows, might prefer sliced fruits. Slicing the fruits makes them more accessible and easier to eat, especially for birds with smaller beaks. Sliced fruits are also a great option for birds that prefer to eat from the ground, like robins and doves.\n\n**Tips**:\n\n1. **Cut into manageable pieces**: If you do choose to slice the fruits, cut them into manageable pieces to prevent choking hazards.\n2. **Remove seeds and pits**: Be sure to remove seeds and pits from fruits like apples and oranges, as they can be toxic to birds.\n3. **Offer a variety**: Provide a mix of whole and sliced fruits to cater to different bird species and preferences.\n4. **Place them strategically**: Position the fruits in an open area, like a picnic blanket or a tray, to make them easily accessible to the birds.\n\nBy offering a variety of fresh fruits, you'll increase the chances of attracting a range of bird species to your picnic spot. Enjoy your bird-friendly feast!\nuser: I'm thinking of bringing some peanut butter to attract birds like woodpeckers and nuthatches. Do you think I should bring creamy or crunchy peanut butter?\nassistant: What a great idea! Peanut butter is a fantastic attractant for birds like woodpeckers and nuthatches. When it comes to peanut butter, the answer to your question is: it doesn't matter!\n\n**Creamy or crunchy, both are fine**: Birds don't have a preference for creamy or crunchy peanut butter. What they care about is the high protein and fat content, which provides them with a quick energy boost. Both creamy and crunchy peanut butter offer these benefits, so you can't go wrong with either one.\n\n**Tips for offering peanut butter to birds**:\n\n1. **Spread it on a log or branch**: Spread a small amount of peanut butter on a log, branch, or even a pinecone. This will allow the birds to easily access the peanut butter and enjoy it in a natural setting.\n2. **Mix with seeds or nuts**: Consider mixing peanut butter with some birdseed or nuts to create a tasty and nutritious blend.\n3. **Offer it in a feeder**: You can also offer peanut butter in a specialized feeder designed for woodpeckers and nuthatches. These feeders usually have small openings and perches that allow the birds to access the peanut butter safely.\n\nBy offering peanut butter, you'll increase the chances of attracting woodpeckers, nuthatches, and other birds to your picnic spot. Enjoy your bird-friendly treat!\nuser: I'm also planning to bring my binoculars to get a closer look at the birds. Do you think I'll be able to spot any warblers or sparrows with them?\nassistant: What a great idea! Binoculars are an excellent tool for getting a closer look at birds without disturbing them. Warblers and sparrows can be challenging to spot, but with a good pair of binoculars, you might be able to get a glimpse of them.\n\n**Warblers**: Warblers are small, active birds that often flit between branches, making them tricky to spot. However, with binoculars, you might be able to catch a glimpse of their bright plumage or distinctive markings. Look for warblers in areas with dense foliage, like shrubs or trees with leaves. Some common warbler species you might spot include the Yellow Warbler, American Goldfinch, or the Common Yellowthroat.\n\n**Sparrows**: Sparrows are often found in open areas with grasses and weeds, and they can be easier to spot than warblers. With binoculars, you might be able to get a good look at their streaked breasts, distinctive head markings, or their behavior, like scratching in the dirt for seeds. Some common sparrow species you might spot include the Song Sparrow, White-throated Sparrow, or the Savannah Sparrow.\n\n**Tips for spotting warblers and sparrows with binoculars**:\n\n1. **Know your birding basics**: Familiarize yourself with the basic characteristics of warblers and sparrows, such as their size, shape, plumage, and behavior.\n2. **Look for movement**: Warblers and sparrows are often active, so look for movement in the vegetation. Follow the movement with your binoculars to get a closer look.\n3. **Scan the habitat**: Scan the area thoroughly, focusing on the right habitat for the species you're looking for. For example, warblers often prefer dense foliage, while sparrows like open areas with grasses and weeds.\n4. **Be patient**: Spotting warblers and sparrows can take time, so be patient and take your time to observe the area.\n5. **Practice your skills**: The more you practice using your binoculars, the more comfortable you'll become with them, and the better you'll be at spotting birds.\n\nBy bringing your binoculars and following these tips, you'll increase your chances of spotting warblers and sparrows during your picnic. Enjoy your birding adventure!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:affe2881",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:e1c52cc99598420589ac4f54549fc0da"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:affe2881\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write requires non-noop; the transcript includes durable user birding activity/species-count facts and richer reusable context from the picnic planning discussion.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path-481d133a70c3-claim-7: current_metric_value; The user's current local-park bird species count is 27 different species spotted so far.; scope=User's bird species list for their local park\n- profile benchmark:longmemeval:affe2881:profile:<0> Profile for User (USER).\nStable facts:\n- The user is trying to improve their bird photography skills, especially close-up shots of skittish birds like the Northern Flicker.\n- The user is trying to improve their bird identification skills, especially for warblers and sparrows.\n- The user uses the eBird app to track bird sightings and submit data.\n- The user planned a trip to a nearby lake the next weekend to spot waterbirds.\n- The user owns binoculars.\n- The user owns a spotting scope.\n- The user hopes to spot Ospreys and Bald Eagles at the nearby lake and get a closer look at them.\n- The user wants to explore more birding spots in their area, including nature reserves or parks known for bird diversity.\n- The user decided to bring both binoculars and a spotting scope on the nearby lake birding trip.\n- note hot-path-481d133a70c3-note-3: CONTEXT; User's local birding records and eBird workflow; The user tracks bird sightings in their local park, had recorded 27 species as of 2023-05-25, and uses eBird to organize sightings, submit data, and see what other birders have reported nearby. This context is useful for future recommendations about local birding, record keeping, and exploring additional birding locations.; scope=Applies to the user's personal birding records and local park birding workflow.\n- claim hot-path-481d133a70c3-claim-5: has_goal; The user is trying to improve their bird photography skills, especially close-up shots of skittish birds like the Northern Flicker.; scope=User's birding and bird photography activities\n- note hot-path-481d133a70c3-note-2: CONTEXT; Birding skill-development context; The user is actively improving both bird photography and bird identification, with current focus areas including close-up shots of skittish birds such as Northern Flicker and distinguishing tricky groups such as warblers and sparrows. Prior advice emphasized behavior/habitat study, ethical distance, patient observation, field marks, range, habitat, and notes/sketches as reusable strategies.; scope=Applies to the user's birding hobby and future advice about bird photography or bird identification practice.\n- claim hot-path-481d133a70c3-claim-9: has_goal; The user wants to explore more birding spots in their area, including nature reserves or parks known for bird diversity.; scope=User's birding exploration plans\n- claim hot-path-481d133a70c3-claim-13: has_goal; The user decided to bring both binoculars and a spotting scope on the nearby lake birding trip.; scope=Equipment decision for the planned nearby lake birding trip\n- claim hot-path-481d133a70c3-claim-8: works_with; The user uses the eBird app to track bird sightings and submit data.; scope=User's birding record-keeping tools\n- claim hot-path-481d133a70c3-claim-6: has_goal; The user is trying to improve their bird identification skills, especially for warblers and sparrows.; scope=User's birding and bird identification activities\n- claim hot-path-481d133a70c3-claim-11: owns; The user owns binoculars.; scope=User's birding equipment\n- note hot-path-481d133a70c3-note-4: PLAN; Nearby lake birding trip plan and optics choice; For a planned next-weekend lake birding trip, the user decided to bring both binoculars and a spotting scope to adapt between closer observation and longer-distance scanning. The target birds of interest for the lake are waterbirds, especially Ospreys and Bald Eagles, so future advice should account for shoreline/open-water scanning, distant perches, and scope stabilization.; scope=Applies to the user's planned nearby lake birding outing discussed on 2023-05-25.\n- claim hot-path-481d133a70c3-claim-12: owns; The user owns a spotting scope.; scope=User's birding equipment\n- claim hot-path-481d133a70c3-claim-10: has_goal; The user planned a trip to a nearby lake the next weekend to spot waterbirds.; scope=Birding trip plan discussed in the 2023-05-25 session\n- claim hot-path-481d133a70c3-claim-14: has_goal; The user hopes to spot Ospreys and Bald Eagles at the nearby lake and get a closer look at them.; scope=Species goals for the planned nearby lake birding trip\n\n        Resolved entities:\n        - mention=I / my; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I / my; reason=First-person statements refer to the stable namespace-level User entity.\n- mention=my local park; action=LINK_EXISTING; id=entity:<1>; type=existing; name=my local park; reason=Candidate entity exactly represents the user's local park.\n- mention=Northern Flicker; action=LINK_EXISTING; id=entity:<2>; type=existing; name=Northern Flicker; reason=Existing concept entity exactly matches the bird species mention.\n- mention=my binoculars; action=LINK_EXISTING; id=entity:<3>; type=existing; name=my binoculars; reason=Candidate product entity exactly represents the user's binoculars.\n- mention=birdbath; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=User's birdbath; reason=The user says they are planning to bring a birdbath; this is a concrete reusable personal item absent from candidates.\n- mention=eBird app; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=eBird app; reason=Relevant context contains durable facts about the app and no candidate entity exists; creating supports later claims if needed.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Northern Flicker|local park|species count|birding|picnic\n        text_queries=Northern Flicker local park species count 32|birding species count|picnic local park bird-friendly food sunflower seeds suet birdbath binoculars\n        predicate_hints=metric_observation|current_metric_value|has_experience_with|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:e1c52cc99598420589ac4f54549fc0da] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:affe2881:session:2; title=LongMemEval affe2881 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 16:16\nTranscript:\nuser: I'm planning a picnic in my local park this weekend and I'm wondering if you can suggest some bird-friendly food that I can bring to attract some of the birds I've been seeing lately.\nassistant: What a lovely idea! Attracting birds to your picnic can add to the joy and magic of the experience. While it's essential to prioritize not littering and respecting the park's rules, you can bring some bird-friendly food to entice your feathered friends to visit. Here are some suggestions:\n\n1. **Suet**: A high-energy food made from animal fat, suet is a favorite among woodpeckers, nuthatches, and chickadees. You can purchase suet cakes or make your own by melting down beef fat and mixing it with birdseed, nuts, and dried fruits.\n2. **Sunflower seeds**: These are a popular choice among many bird species, including cardinals, finches, and sparrows. Opt for black oil sunflower seeds, which are easier for birds to crack open.\n3. **Fresh fruits**: Sliced apples, grapes, berries, and oranges are all attractive to birds like robins, blue jays, and woodpeckers. Be sure to remove any seeds or pits, as they can be harmful to birds.\n4. **Nuts**: Almonds, walnuts, and hazelnuts are all bird-friendly options. Just be sure to chop them into smaller pieces to prevent choking hazards.\n5. **Dried mealworms**: These are a great option for attracting birds like bluebirds, wrens, and sparrows. You can find dried mealworms at most pet stores or online.\n6. **Nyjer seed**: Also known as thistle seed, Nyjer seed is a favorite among finches, sparrows, and goldfinches. Its small size and high oil content make it an excellent energy source.\n\nRemember to:\n\n* Place the food on a clean, flat surface or a bird-friendly feeder to prevent mess and waste.\n* Keep the food fresh and replenish it regularly to avoid attracting unwanted pests.\n* Be mindful of park rules and regulations regarding bird feeding. Some parks may have specific guidelines or restrictions.\n* Enjoy observing the birds from a safe distance to avoid disturbing them or disrupting their natural behavior.\n\nHave a wonderful picnic, and I hope you attract some delightful bird visitors!\nuser: I'll definitely bring some sunflower seeds and suet to attract the woodpeckers. By the way, speaking of woodpeckers, I just saw a Northern Flicker in my local park last weekend, which brings my total species count to 32. Do you think the suet will attract any other woodpecker species as well?\nassistant: Congratulations on spotting the Northern Flicker and reaching 32 species on your count!\n\nSuet is an excellent choice to attract woodpeckers, and it's likely to draw in other species beyond just Northern Flickers. Here are some woodpecker species that might visit your suet feeder:\n\n1. **Downy Woodpeckers**: These are one of the most common woodpeckers in North America, and they love suet. They're small, black-and-white birds with a distinctive downy tuft on their heads.\n2. **Hairy Woodpeckers**: Similar to Downy Woodpeckers but larger, Hairy Woodpeckers are also frequent visitors to suet feeders.\n3. **Red-bellied Woodpeckers**: These woodpeckers have a distinctive red cap and are known for their loud, rolling calls. They're common in many parks and woodlands.\n4. **Pileated Woodpeckers**: While less common, Pileated Woodpeckers might visit your suet feeder, especially if you're in an area with mature trees. They're the largest woodpeckers in North America, with a distinctive red crest and loud drumming.\n\nKeep in mind that the types of woodpeckers you'll attract will depend on the specific species found in your region and the time of year. It's always exciting to see which species will visit your feeder!\n\nRemember to place the suet feeder in a spot that's easy for the woodpeckers to access, such as a tree trunk or a branch. You can also try adding some peanut butter or jelly to the suet to make it even more appealing.\n\nEnjoy your picnic and happy birding!\nuser: I'm also planning to bring some water and a birdbath to attract more birds. Do you think the birds will prefer running water or stagnant water?\nassistant: What a great idea! Providing water is an excellent way to attract birds to your picnic spot. When it comes to water, birds generally prefer running water over stagnant water. Here's why:\n\n1. **Movement and sound**: Running water creates movement and sound, which can attract birds from a distance. The gentle gurgling or bubbling noise can signal to birds that water is available and inviting.\n2. **Freshness**: Running water is more likely to be fresh and oxygenated, which is important for birds' health. Stagnant water can become a breeding ground for bacteria and algae, making it less appealing to birds.\n3. **Cooling and drinking**: Birds need water for drinking and cooling themselves. Running water is more effective at providing a cooling effect, as it allows birds to splash and bathe in the moving water.\n\nThat being said, it's not always possible to provide running water, especially in a picnic setting. If you can't bring a portable fountain or bubbler, a shallow birdbath with fresh, clean water will still be appreciated by the birds.\n\nHere are some tips for creating an attractive birdbath:\n\n1. **Shallow water**: Use a shallow birdbath or dish with a maximum depth of 2-3 inches (5-7.5 cm). This allows birds to easily access the water and reduces the risk of drowning.\n2. **Fresh water**: Change the water frequently to keep it clean and fresh. You can add a few rocks or twigs to the birdbath to provide perches and help birds access the water.\n3. **Location**: Place the birdbath in a spot that receives partial shade and is protected from strong winds.\n4. **Maintenance**: Clean the birdbath regularly to prevent the growth of algae and bacteria.\n\nBy providing a clean, fresh water source, you'll increase the chances of attracting a variety of bird species to your picnic spot. Enjoy your bird-friendly picnic!\nuser: I'm also thinking of bringing some fresh fruits like apples and oranges to attract some birds. Do you think the birds will prefer them sliced or whole?\nassistant: What a great idea! Fresh fruits like apples and oranges are a wonderful way to attract birds to your picnic spot. When it comes to offering fruits to birds, the answer to your question is: it depends on the bird species!\n\n**Whole fruits**: Some birds, like cardinals, blue jays, and woodpeckers, prefer whole fruits. They'll often pick them up and fly away to eat them or cache them for later. Whole fruits are also a great option for birds that have strong beaks, like woodpeckers, which can easily pierce the skin.\n\n**Sliced fruits**: Other birds, like robins, doves, and sparrows, might prefer sliced fruits. Slicing the fruits makes them more accessible and easier to eat, especially for birds with smaller beaks. Sliced fruits are also a great option for birds that prefer to eat from the ground, like robins and doves.\n\n**Tips**:\n\n1. **Cut into manageable pieces**: If you do choose to slice the fruits, cut them into manageable pieces to prevent choking hazards.\n2. **Remove seeds and pits**: Be sure to remove seeds and pits from fruits like apples and oranges, as they can be toxic to birds.\n3. **Offer a variety**: Provide a mix of whole and sliced fruits to cater to different bird species and preferences.\n4. **Place them strategically**: Position the fruits in an open area, like a picnic blanket or a tray, to make them easily accessible to the birds.\n\nBy offering a variety of fresh fruits, you'll increase the chances of attracting a range of bird species to your picnic spot. Enjoy your bird-friendly feast!\nuser: I'm thinking of bringing some peanut butter to attract birds like woodpeckers and nuthatches. Do you think I should bring creamy or crunchy peanut butter?\nassistant: What a great idea! Peanut butter is a fantastic attractant for birds like woodpeckers and nuthatches. When it comes to peanut butter, the answer to your question is: it doesn't matter!\n\n**Creamy or crunchy, both are fine**: Birds don't have a preference for creamy or crunchy peanut butter. What they care about is the high protein and fat content, which provides them with a quick energy boost. Both creamy and crunchy peanut butter offer these benefits, so you can't go wrong with either one.\n\n**Tips for offering peanut butter to birds**:\n\n1. **Spread it on a log or branch**: Spread a small amount of peanut butter on a log, branch, or even a pinecone. This will allow the birds to easily access the peanut butter and enjoy it in a natural setting.\n2. **Mix with seeds or nuts**: Consider mixing peanut butter with some birdseed or nuts to create a tasty and nutritious blend.\n3. **Offer it in a feeder**: You can also offer peanut butter in a specialized feeder designed for woodpeckers and nuthatches. These feeders usually have small openings and perches that allow the birds to access the peanut butter safely.\n\nBy offering peanut butter, you'll increase the chances of attracting woodpeckers, nuthatches, and other birds to your picnic spot. Enjoy your bird-friendly treat!\nuser: I'm also planning to bring my binoculars to get a closer look at the birds. Do you think I'll be able to spot any warblers or sparrows with them?\nassistant: What a great idea! Binoculars are an excellent tool for getting a closer look at birds without disturbing them. Warblers and sparrows can be challenging to spot, but with a good pair of binoculars, you might be able to get a glimpse of them.\n\n**Warblers**: Warblers are small, active birds that often flit between branches, making them tricky to spot. However, with binoculars, you might be able to catch a glimpse of their bright plumage or distinctive markings. Look for warblers in areas with dense foliage, like shrubs or trees with leaves. Some common warbler species you might spot include the Yellow Warbler, American Goldfinch, or the Common Yellowthroat.\n\n**Sparrows**: Sparrows are often found in open areas with grasses and weeds, and they can be easier to spot than warblers. With binoculars, you might be able to get a good look at their streaked breasts, distinctive head markings, or their behavior, like scratching in the dirt for seeds. Some common sparrow species you might spot include the Song Sparrow, White-throated Sparrow, or the Savannah Sparrow.\n\n**Tips for spotting warblers and sparrows with binoculars**:\n\n1. **Know your birding basics**: Familiarize yourself with the basic characteristics of warblers and sparrows, such as their size, shape, plumage, and behavior.\n2. **Look for movement**: Warblers and sparrows are often active, so look for movement in the vegetation. Follow the movement with your binoculars to get a closer look.\n3. **Scan the habitat**: Scan the area thoroughly, focusing on the right habitat for the species you're looking for. For example, warblers often prefer dense foliage, while sparrows like open areas with grasses and weeds.\n4. **Be patient**: Spotting warblers and sparrows can take time, so be patient and take your time to observe the area.\n5. **Practice your skills**: The more you practice using your binoculars, the more comfortable you'll become with them, and the better you'll be at spotting birds.\n\nBy bringing your binoculars and following these tips, you'll increase your chances of spotting warblers and sparrows during your picnic. Enjoy your birding adventure!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:affe2881",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:e1c52cc99598420589ac4f54549fc0da"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user planned a bird-friendly picnic in their local park for the weekend of 2023-05-29.\",\"The user intended to bring sunflower seeds and suet to attract woodpeckers.\",\"The user intended to bring water and a birdbath to attract more birds.\",\"The user intended to bring fresh fruits like apples and oranges to attract birds.\",\"The user intended to bring peanut butter to attract birds like woodpeckers and nuthatches.\",\"The user intended to bring binoculars to get a closer look at birds during the picnic.\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm planning a picnic in my local park this weekend\",\"evidence_reason\":\"The transcript repeatedly states the user's weekend local-park picnic plan and the items they planned to bring for bird attraction and observation.\",\"importance\":4,\"keywords\":[\"bird-friendly picnic\",\"local park\",\"sunflower seeds\",\"suet\",\"birdbath\",\"peanut butter\",\"binoculars\"],\"note_type\":\"plan\",\"rationale\":\"This is a reusable plan with multiple coordinated choices and safety/ethics considerations, not a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's bird-friendly picnic plan in their local park discussed on 2023-05-29.\"},\"summary\":\"For a planned weekend picnic in the user's local park, the user intended to attract and observe birds by bringing sunflower seeds, suet, water/a birdbath, fresh fruits such as apples and oranges, peanut butter, and binoculars. Advice in the session emphasized respecting park rules, keeping food and water clean, using shallow fresh water, offering mixed fruit formats, and observing birds from a safe distance.\",\"tags\":[\"birding\",\"picnic_plan\",\"local_park\"],\"title\":\"Bird-friendly local park picnic plan\",\"valid_from\":\"2023-05-29T16:16:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user's current local-park bird species count is 32 as of 2023-05-29.\",\"The user saw a Northern Flicker in their local park the weekend before 2023-05-29.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I just saw a Northern Flicker in my local park last weekend, which brings my total species count to 32\",\"evidence_reason\":\"The user directly states both the Northern Flicker sighting and the resulting total species count.\",\"importance\":4,\"keywords\":[\"Northern Flicker\",\"local park\",\"species count\",\"32\",\"woodpecker\"],\"note_type\":\"context\",\"rationale\":\"Although the species count itself is a claim candidate, the combined context links a notable sighting, location, updated progress, and future woodpecker-related discussions.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"entity\",\"text\":\"Applies to the user's local park birding records and species-count progress as of the 2023-05-29 session.\"},\"summary\":\"During the 2023-05-29 bird-friendly picnic discussion, the user reported seeing a Northern Flicker in their local park the previous weekend and said this brought their local species count to 32. This updates earlier local-park birding context and is useful when discussing the user's birding progress or woodpecker-focused observations.\",\"tags\":[\"birding\",\"species_count\",\"local_park\"],\"title\":\"Northern Flicker raised local park species count to 32\",\"valid_from\":\"2023-05-29T16:16:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7729,
+                "completionTokens": 900,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
