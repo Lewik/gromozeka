@@ -231,6 +231,77 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
+    fun runtimePromptDoesNotAnswerWithAdjacentObjectValue() = runBlocking {
+        val source = source(
+            id = "source-adjacent-object",
+            text = "The user's laptop backpack was bought on January 15 and arrived on January 20.",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need exact purchase and arrival evidence for the requested item.",
+                            query = "iPad case bought arrived",
+                            topK = 1,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("How many days did it take for my iPad case to arrive after I bought it?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("Do not answer with a value for a different object"), prompt)
+        assertTrue(prompt.contains("a caveat that the qualifier differs is not enough"), prompt)
+        assertTrue(prompt.contains("do not compute or include the mismatched value"), prompt)
+    }
+
+    @Test
+    fun runtimePromptDoesNotTreatConditionalRoleBridgeAsEvidence() = runBlocking {
+        val source = source(
+            id = "source-conditional-role",
+            text = "The user's sister-in-law's twins were born on February 12.",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need explicit parenthood evidence for both named alternatives.",
+                            query = "Tom Alex became parent first",
+                            topK = 1,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("Who became a parent first, Tom or Alex?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("A conditional bridge in a selected reason"), prompt)
+        assertTrue(prompt.contains("Do not map an unnamed role or relative to a named person"), prompt)
+    }
+
+    @Test
     fun runtimePromptDoesNotTreatPlainProjectAssociationAsLeadership() = runBlocking {
         val source = source(
             id = "source-project-association",
