@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "38176d0d51c60a55fc14dd64edb25e83b8bccb8d4ae86670a48de52044e91064",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:c7cf7dfd\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true; transcript contains durable interest/preference signals plus reusable recommendation history and learning path context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements about interests and goals need the stable namespace-level user entity as subject; no existing user candidate is available.\n- mention=traditional tailoring and embroidery techniques of India; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Traditional Indian embroidery and tailoring techniques; reason=Central reusable concept discussed throughout the session; no existing candidate is available.\n- mention=traditional Indian clothes and embroideries; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Traditional Indian clothes and embroideries; reason=The user states a goal to make these items; it is a reusable object concept for later claims, distinct from techniques.\n- mention=Indian Embroideries; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Indian Embroideries; reason=Specific recommended book; no existing candidate is available.\n- mention=John Irwin; action=CREATE_NEW; id=entity:<4>; type=PERSON; name=John Irwin; reason=Named author of the recommended book Indian Embroideries; no existing candidate is available.\n- mention=Margaret Halliday; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=Margaret Halliday; reason=Named author of the recommended book Indian Embroideries; no existing candidate is available.\n- mention=The Art of Indian Asia: Its Mythology and Transformations; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=The Art of Indian Asia: Its Mythology and Transformations; reason=Specific recommended book; no existing candidate is available.\n- mention=Heinrich Zimmer; action=CREATE_NEW; id=entity:<7>; type=PERSON; name=Heinrich Zimmer; reason=Named author of the recommended book The Art of Indian Asia: Its Mythology and Transformations; no existing candidate is available.\n- mention=The Fabric of India; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=The Fabric of India; reason=Specific recommended book; no existing candidate is available.\n- mention=Rosemary Crill; action=CREATE_NEW; id=entity:<9>; type=PERSON; name=Rosemary Crill; reason=Named author of the recommended book The Fabric of India; no existing candidate is available.\n- mention=Craft Village; action=CREATE_NEW; id=entity:<10>; type=ORGANIZATION; name=Craft Village; reason=Specific recommended workshop provider; no existing candidate is available.\n- mention=Delhi, India; action=CREATE_NEW; id=entity:<11>; type=LOCATION; name=Delhi, India; reason=Specific location of Craft Village; no existing candidate is available.\n- mention=Kantha; action=CREATE_NEW; id=entity:<12>; type=CONCEPT; name=Kantha; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Chikankari; action=CREATE_NEW; id=entity:<13>; type=CONCEPT; name=Chikankari; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Phulkari; action=CREATE_NEW; id=entity:<14>; type=CONCEPT; name=Phulkari; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=The Block Printing Company; action=CREATE_NEW; id=entity:<15>; type=ORGANIZATION; name=The Block Printing Company; reason=Specific recommended workshop provider; no existing candidate is available.\n- mention=Jaipur, India; action=CREATE_NEW; id=entity:<16>; type=LOCATION; name=Jaipur, India; reason=Specific location of The Block Printing Company; no existing candidate is available.\n- mention=traditional block printing techniques used in Indian textiles; action=CREATE_NEW; id=entity:<17>; type=CONCEPT; name=Traditional Indian textile block printing techniques; reason=Specific reusable technique concept discussed as workshop subject; no existing candidate is available.\n- mention=The Stitching Project; action=CREATE_NEW; id=entity:<18>; type=ORGANIZATION; name=The Stitching Project; reason=Specific recommended workshop provider; no existing candidate is available.\n- mention=Pushkar, India; action=CREATE_NEW; id=entity:<19>; type=LOCATION; name=Pushkar, India; reason=Specific location of The Stitching Project; no existing candidate is available.\n- mention=Zardozi; action=CREATE_NEW; id=entity:<20>; type=CONCEPT; name=Zardozi; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Gota Patti; action=CREATE_NEW; id=entity:<21>; type=CONCEPT; name=Gota Patti; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Mirror Work; action=CREATE_NEW; id=entity:<22>; type=CONCEPT; name=Mirror Work; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Dharma Trading Co.; action=CREATE_NEW; id=entity:<23>; type=ORGANIZATION; name=Dharma Trading Co.; reason=Specific recommended supplier of materials and tools; no existing candidate is available.\n- mention=Fabriclore; action=CREATE_NEW; id=entity:<24>; type=ORGANIZATION; name=Fabriclore; reason=Specific recommended supplier of fabrics; no existing candidate is available.\n- mention=EmbroideryCentral; action=CREATE_NEW; id=entity:<25>; type=ORGANIZATION; name=EmbroideryCentral; reason=Specific recommended supplier of embroidery supplies; no existing candidate is available.\n- mention=Nostalgia; action=CREATE_NEW; id=entity:<26>; type=ORGANIZATION; name=Nostalgia (Indian textile store); reason=Specific recommended store, but the name is ambiguous, so canonical name is disambiguated.\n- mention=Amazon; action=CREATE_NEW; id=entity:<27>; type=ORGANIZATION; name=Amazon; reason=Specific recommended marketplace; no existing candidate is available.\n- mention=Joann; action=CREATE_NEW; id=entity:<28>; type=ORGANIZATION; name=JOANN; reason=Specific recommended crafting and fabrics store; no existing candidate is available.\n- mention=sarees; action=CREATE_NEW; id=entity:<29>; type=CONCEPT; name=Sarees; reason=Reusable garment concept recommended as design inspiration; no existing candidate is available.\n- mention=lehengas; action=CREATE_NEW; id=entity:<30>; type=CONCEPT; name=Lehengas; reason=Reusable garment concept recommended as design inspiration; no existing candidate is available.\n- mention=dupattas; action=CREATE_NEW; id=entity:<31>; type=CONCEPT; name=Dupattas; reason=Reusable garment concept recommended as design inspiration; no existing candidate is available.\n- mention=Holi; action=CREATE_NEW; id=entity:<32>; type=CONCEPT; name=Holi; reason=Specific festival mentioned as a source of design inspiration; no existing candidate is available.\n- mention=Diwali; action=CREATE_NEW; id=entity:<33>; type=CONCEPT; name=Diwali; reason=Specific festival mentioned as a source of design inspiration; no existing candidate is available.\n- mention=Navratri; action=CREATE_NEW; id=entity:<34>; type=CONCEPT; name=Navratri; reason=Specific festival mentioned as a source of design inspiration; no existing candidate is available.\n- mention=Pinterest; action=CREATE_NEW; id=entity:<35>; type=SERVICE; name=Pinterest; reason=Specific online service recommended for design inspiration; no existing candidate is available.\n- mention=Instagram; action=CREATE_NEW; id=entity:<36>; type=SERVICE; name=Instagram; reason=Specific online service recommended for design inspiration; no existing candidate is available.\n- mention=Embroidery Network; action=CREATE_NEW; id=entity:<37>; type=ORGANIZATION; name=Embroidery Network; reason=Specific recommended online community; no existing candidate is available.\n- mention=The Embroidery Resource Forum; action=CREATE_NEW; id=entity:<38>; type=SERVICE; name=The Embroidery Resource Forum; reason=Specific recommended online forum; no existing candidate is available.\n- mention=Reddit; action=CREATE_NEW; id=entity:<39>; type=SERVICE; name=Reddit; reason=Specific online platform recommended for communities; no existing candidate is available.\n- mention=Craftsy; action=CREATE_NEW; id=entity:<40>; type=SERVICE; name=Craftsy; reason=Specific online craft learning platform recommended for communities; no existing candidate is available.\n- mention=Bluprint; action=CREATE_NEW; id=entity:<41>; type=SERVICE; name=Bluprint; reason=Named as Craftsy's later name in the transcript; no existing candidate is available.\n- mention=current project; action=CREATE_NEW; id=entity:<42>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|traditional Indian embroidery|traditional Indian tailoring|Indian embroidery and tailoring techniques|Craft Village|The Stitching Project|Fabriclore|Dharma Trading Co.|Embroidery Network\n        text_queries=traditional Indian embroidery and tailoring techniques learning recommendations books workshops materials communities|user interest in traditional Indian embroidery tailoring making traditional Indian clothes embroideries|Indian embroidery tailoring recommendation history books workshops online communities\n        predicate_hints=has_goal|prefers|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:7c4e06a6612bfe72236d059f537089c6] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:c7cf7dfd:session:1; title=LongMemEval c7cf7dfd session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 20:54\nTranscript:\nuser: How can I learn more about the traditional tailoring and embroidery techniques of India?\nassistant: There are several ways to learn more about traditional tailoring and embroidery techniques of India:\n\n1. Take a course or workshop: Search for courses or workshops on traditional Indian embroidery and tailoring techniques offered in your area or consider traveling to India for a more immersive experience.\n\n2. Read books and articles: There are several books on the market that provide detailed information about traditional Indian embroidery and tailoring techniques. You can also read articles and blogs related to Indian fashion and embroidery.\n\n3. Visit museums and exhibitions: Visit museums and exhibitions that showcase traditional Indian textile art and embroidery. This can give you an opportunity to see the intricate work up close.\n\n4. Talk to experts: Connect with experts in the field of traditional Indian embroidery and tailoring. You can get in touch with them through online forums, social media, or by attending industry events.\n\n5. Online resources: There are several online resources available that provide detailed information on the traditional techniques, such as YouTube tutorials, blogs, and websites specialized in Indian textiles.\nuser: Do you have any recommendations for specific books or workshops I should look into for learning about traditional Indian embroidery and tailoring techniques?\nassistant: Sure, here are some recommendations for books and workshops related to traditional Indian embroidery and tailoring techniques:\n\nBooks:\n1. Indian Embroideries by John Irwin and Margaret Halliday\n2. The Art of Indian Asia: Its Mythology and Transformations by Heinrich Zimmer\n3. The Fabric of India by Rosemary Crill\n\nWorkshops:\n1. Craft Village: Located in Delhi, India, Craft Village offers workshops and courses on traditional Indian embroidery techniques such as Kantha, Chikankari, and Phulkari.\n2. The Block Printing Company: Based in Jaipur, India, The Block Printing Company offers workshops on traditional block printing techniques used in Indian textiles.\n3. The Stitching Project: Located in Pushkar, India, The Stitching Project offers workshops on Indian hand embroidery techniques such as Zardozi, Gota Patti, and Mirror Work.\n\nNote: Due to the ongoing COVID-19 pandemic, it's important to check whether the workshops are currently operating or have switched to online formats.\nuser: These recommendations sound amazing! I'm really excited to learn more about traditional Indian embroidery and tailoring techniques. Do you have any advice on how I can get started with practicing these techniques on my own?\nassistant: Yes! Here are a few tips that can help you get started with practicing traditional Indian embroidery and tailoring techniques on your own:\n\n1. Start with basic stitches: Most Indian embroidery techniques involve basic stitches like running stitch, chain stitch, and satin stitch. Start by practicing these stitches until you're comfortable with them.\n\n2. Get the right materials: Traditional Indian embroidery and tailoring techniques require specific types of fabrics and threads. Be sure to choose the right materials for your project to ensure the authenticity of the technique you're practicing.\n\n3. Use the right tools: In addition to fabrics and threads, traditional Indian embroidery and tailoring techniques also require specific tools like needles, hoops, and scissors. Make sure you have these tools and use them correctly.\n\n4. Practice regularly: Like any other skill, practicing regularly is key to becoming proficient in traditional Indian embroidery and tailoring techniques.\n\n5. Take inspiration from traditional designs: Traditional Indian embroidery and tailoring techniques are often used to create beautiful designs inspired by nature, animals, and geometric shapes. Take inspiration from traditional designs and try to replicate them in your own work.\n\n6. Join a community: Joining an online or local community of embroidery and tailoring enthusiasts can be a great way to get advice, support, and feedback on your work.\n\nRemember, the most important thing is to have fun! Enjoy the process of learning and experimenting with traditional Indian embroidery and tailoring techniques.\nuser: Wow, these tips are really helpful! I am really excited to start practicing traditional Indian embroidery and tailoring techniques on my own. Do you have any recommendations for where I can find high-quality materials and tools?\nassistant: Yes, absolutely! Here are a few recommendations for where you can find high-quality materials and tools for traditional Indian embroidery and tailoring techniques:\n\n1. Dharma Trading Co. - Dharma Trading Co. specializes in natural dyes, fabrics, and embroidery threads that are perfect for traditional Indian embroidery techniques.\n\n2. Fabriclore - Fabriclore sells a wide range of fabrics like cotton, silk, chiffon, and georgette that can be used for traditional Indian tailoring techniques.\n\n3. EmbroideryCentral - EmbroideryCentral offers a vast selection of embroidery supplies, including embroidery needles, hoops, and frames.\n\n4. Nostalgia - Nostalgia is an online store based in India that offers an expansive collection of traditional Indian fabrics, threads, and embellishments.\n\n5. Amazon - Amazon also offers a wide variety of materials and tools for both Indian embroidery and tailoring, including fabrics, threads, needles, and tools.\n\n6. Joann - Joann is a popular crafting and fabrics store that offers a variety of fabric, thread, and tools suitable for traditional Indian embroidery and tailoring techniques.\n\nRemember to check for materials and tools that are authentic to the technique you're trying to learn, and try to use high-quality materials to ensure the longevity and authenticity of your work!\nuser: I'm so excited to get started! I can't wait to make my own traditional Indian clothes and embroideries. Do you have any suggestions for where I can find inspiration for my designs?\nassistant: Yes, definitely! There is an abundance of inspiration available for traditional Indian embroidery and tailoring designs. Here are a few ideas for where you can find inspiration:\n\n1. Traditional Indian textiles: Look at traditional Indian textiles such as sarees, lehengas, and dupattas to get an idea of the beautiful embroidery and tailoring styles used in India. You can also go through a range of traditional Indian textiles available online which showcase beautiful embroidery, lacework, and prints.\n\n2. Art and architecture: Indian art and architecture incorporate beautiful patterns and motifs that can inspire your embroidery designs. Look for patterns in temples, palaces, and other historical buildings, as well as in paintings and sculptures.\n\n3. Nature: The beautiful scenery and wildlife in India can inspire embroidery designs with beautiful floral or animal motifs. Flowers such as lotus, jasmine, and hibiscus appear in many Indian designs.\n\n4. Social gatherings and festivals: Indian social gatherings and festivals provide an opportunity to see beautiful traditional costumes and embroidered fabrics. Attend festivals and events, such as Holi, Diwali, and Navratri, and take inspiration from the traditional outfits worn by people.\n\n5. Online resources: There are several online resources available that showcase traditional Indian embroidery and tailoring designs. Look at popular websites like Pinterest and Instagram to get ideas and inspiration for your design.\n\nRemember that traditional Indian embroidery and tailoring is all about experimentation and creativity. Play around with different colors, fabrics, and patterns to create your own unique designs!\nuser: I'm really excited to start practicing traditional Indian embroidery and tailoring techniques. Do you have any recommendations for online communities or forums where I can connect with other enthusiasts and get feedback on my work?\nassistant: Yes, definitely! Online communities and forums can be a great way to get feedback and advice on your work and connect with other enthusiasts who share your interest in traditional Indian embroidery and tailoring techniques. Here are a few recommendations for online communities and forums:\n\n1. Embroidery Network - The Embroidery Network is an online community for embroidery enthusiasts, with a specific section dedicated to Indian embroidery techniques. Here, you can connect with like-minded people, share your work and seek feedback on it.\n\n2. The Embroidery Resource Forum - The Embroidery Resource Forum is an active online community that provides insights into different types of embroidery techniques. Here, you can ask questions, share your work, and get feedback.\n\n3. Reddit - There are several subreddits related to embroidery and traditional Indian tailoring techniques where you can connect with other enthusiasts, share your work, and get feedback from others.\n\n4. Craftsy - Craftsy (now Bluprint) offers a variety of online courses and communities for crafters including embroidery, sewing, and quilting.  The course and forums provide an opportunity to connect with others, share your work, and get tips and advice.\n\nRemember to share your work, ask for feedback, and connect with other enthusiasts! It's a great way to grow your skills and enthusiasm for traditional Indian embroidery and tailoring techniques.\nuser: Wow, thank you so much for all of your recommendations and tips! I'm feeling very inspired to start practicing traditional Indian embroidery and tailoring techniques. I can't wait to see where my creativity takes me!\nassistant: You're welcome! I'm glad I could help. Practicing traditional Indian embroidery and tailoring techniques can be a wonderful and enriching experience. Enjoy the process of learning, experimenting, and creating something beautiful! Good luck, and have fun!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:c7cf7dfd",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:7c4e06a6612bfe72236d059f537089c6"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:c7cf7dfd\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true; transcript contains durable interest/preference signals plus reusable recommendation history and learning path context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements about interests and goals need the stable namespace-level user entity as subject; no existing user candidate is available.\n- mention=traditional tailoring and embroidery techniques of India; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Traditional Indian embroidery and tailoring techniques; reason=Central reusable concept discussed throughout the session; no existing candidate is available.\n- mention=traditional Indian clothes and embroideries; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Traditional Indian clothes and embroideries; reason=The user states a goal to make these items; it is a reusable object concept for later claims, distinct from techniques.\n- mention=Indian Embroideries; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Indian Embroideries; reason=Specific recommended book; no existing candidate is available.\n- mention=John Irwin; action=CREATE_NEW; id=entity:<4>; type=PERSON; name=John Irwin; reason=Named author of the recommended book Indian Embroideries; no existing candidate is available.\n- mention=Margaret Halliday; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=Margaret Halliday; reason=Named author of the recommended book Indian Embroideries; no existing candidate is available.\n- mention=The Art of Indian Asia: Its Mythology and Transformations; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=The Art of Indian Asia: Its Mythology and Transformations; reason=Specific recommended book; no existing candidate is available.\n- mention=Heinrich Zimmer; action=CREATE_NEW; id=entity:<7>; type=PERSON; name=Heinrich Zimmer; reason=Named author of the recommended book The Art of Indian Asia: Its Mythology and Transformations; no existing candidate is available.\n- mention=The Fabric of India; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=The Fabric of India; reason=Specific recommended book; no existing candidate is available.\n- mention=Rosemary Crill; action=CREATE_NEW; id=entity:<9>; type=PERSON; name=Rosemary Crill; reason=Named author of the recommended book The Fabric of India; no existing candidate is available.\n- mention=Craft Village; action=CREATE_NEW; id=entity:<10>; type=ORGANIZATION; name=Craft Village; reason=Specific recommended workshop provider; no existing candidate is available.\n- mention=Delhi, India; action=CREATE_NEW; id=entity:<11>; type=LOCATION; name=Delhi, India; reason=Specific location of Craft Village; no existing candidate is available.\n- mention=Kantha; action=CREATE_NEW; id=entity:<12>; type=CONCEPT; name=Kantha; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Chikankari; action=CREATE_NEW; id=entity:<13>; type=CONCEPT; name=Chikankari; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Phulkari; action=CREATE_NEW; id=entity:<14>; type=CONCEPT; name=Phulkari; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=The Block Printing Company; action=CREATE_NEW; id=entity:<15>; type=ORGANIZATION; name=The Block Printing Company; reason=Specific recommended workshop provider; no existing candidate is available.\n- mention=Jaipur, India; action=CREATE_NEW; id=entity:<16>; type=LOCATION; name=Jaipur, India; reason=Specific location of The Block Printing Company; no existing candidate is available.\n- mention=traditional block printing techniques used in Indian textiles; action=CREATE_NEW; id=entity:<17>; type=CONCEPT; name=Traditional Indian textile block printing techniques; reason=Specific reusable technique concept discussed as workshop subject; no existing candidate is available.\n- mention=The Stitching Project; action=CREATE_NEW; id=entity:<18>; type=ORGANIZATION; name=The Stitching Project; reason=Specific recommended workshop provider; no existing candidate is available.\n- mention=Pushkar, India; action=CREATE_NEW; id=entity:<19>; type=LOCATION; name=Pushkar, India; reason=Specific location of The Stitching Project; no existing candidate is available.\n- mention=Zardozi; action=CREATE_NEW; id=entity:<20>; type=CONCEPT; name=Zardozi; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Gota Patti; action=CREATE_NEW; id=entity:<21>; type=CONCEPT; name=Gota Patti; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Mirror Work; action=CREATE_NEW; id=entity:<22>; type=CONCEPT; name=Mirror Work; reason=Specific embroidery technique named in workshop recommendations; no existing candidate is available.\n- mention=Dharma Trading Co.; action=CREATE_NEW; id=entity:<23>; type=ORGANIZATION; name=Dharma Trading Co.; reason=Specific recommended supplier of materials and tools; no existing candidate is available.\n- mention=Fabriclore; action=CREATE_NEW; id=entity:<24>; type=ORGANIZATION; name=Fabriclore; reason=Specific recommended supplier of fabrics; no existing candidate is available.\n- mention=EmbroideryCentral; action=CREATE_NEW; id=entity:<25>; type=ORGANIZATION; name=EmbroideryCentral; reason=Specific recommended supplier of embroidery supplies; no existing candidate is available.\n- mention=Nostalgia; action=CREATE_NEW; id=entity:<26>; type=ORGANIZATION; name=Nostalgia (Indian textile store); reason=Specific recommended store, but the name is ambiguous, so canonical name is disambiguated.\n- mention=Amazon; action=CREATE_NEW; id=entity:<27>; type=ORGANIZATION; name=Amazon; reason=Specific recommended marketplace; no existing candidate is available.\n- mention=Joann; action=CREATE_NEW; id=entity:<28>; type=ORGANIZATION; name=JOANN; reason=Specific recommended crafting and fabrics store; no existing candidate is available.\n- mention=sarees; action=CREATE_NEW; id=entity:<29>; type=CONCEPT; name=Sarees; reason=Reusable garment concept recommended as design inspiration; no existing candidate is available.\n- mention=lehengas; action=CREATE_NEW; id=entity:<30>; type=CONCEPT; name=Lehengas; reason=Reusable garment concept recommended as design inspiration; no existing candidate is available.\n- mention=dupattas; action=CREATE_NEW; id=entity:<31>; type=CONCEPT; name=Dupattas; reason=Reusable garment concept recommended as design inspiration; no existing candidate is available.\n- mention=Holi; action=CREATE_NEW; id=entity:<32>; type=CONCEPT; name=Holi; reason=Specific festival mentioned as a source of design inspiration; no existing candidate is available.\n- mention=Diwali; action=CREATE_NEW; id=entity:<33>; type=CONCEPT; name=Diwali; reason=Specific festival mentioned as a source of design inspiration; no existing candidate is available.\n- mention=Navratri; action=CREATE_NEW; id=entity:<34>; type=CONCEPT; name=Navratri; reason=Specific festival mentioned as a source of design inspiration; no existing candidate is available.\n- mention=Pinterest; action=CREATE_NEW; id=entity:<35>; type=SERVICE; name=Pinterest; reason=Specific online service recommended for design inspiration; no existing candidate is available.\n- mention=Instagram; action=CREATE_NEW; id=entity:<36>; type=SERVICE; name=Instagram; reason=Specific online service recommended for design inspiration; no existing candidate is available.\n- mention=Embroidery Network; action=CREATE_NEW; id=entity:<37>; type=ORGANIZATION; name=Embroidery Network; reason=Specific recommended online community; no existing candidate is available.\n- mention=The Embroidery Resource Forum; action=CREATE_NEW; id=entity:<38>; type=SERVICE; name=The Embroidery Resource Forum; reason=Specific recommended online forum; no existing candidate is available.\n- mention=Reddit; action=CREATE_NEW; id=entity:<39>; type=SERVICE; name=Reddit; reason=Specific online platform recommended for communities; no existing candidate is available.\n- mention=Craftsy; action=CREATE_NEW; id=entity:<40>; type=SERVICE; name=Craftsy; reason=Specific online craft learning platform recommended for communities; no existing candidate is available.\n- mention=Bluprint; action=CREATE_NEW; id=entity:<41>; type=SERVICE; name=Bluprint; reason=Named as Craftsy's later name in the transcript; no existing candidate is available.\n- mention=current project; action=CREATE_NEW; id=entity:<42>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|traditional Indian embroidery|traditional Indian tailoring|Indian embroidery and tailoring techniques|Craft Village|The Stitching Project|Fabriclore|Dharma Trading Co.|Embroidery Network\n        text_queries=traditional Indian embroidery and tailoring techniques learning recommendations books workshops materials communities|user interest in traditional Indian embroidery tailoring making traditional Indian clothes embroideries|Indian embroidery tailoring recommendation history books workshops online communities\n        predicate_hints=has_goal|prefers|has_experience_with\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:7c4e06a6612bfe72236d059f537089c6] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:c7cf7dfd:session:1; title=LongMemEval c7cf7dfd session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 20:54\nTranscript:\nuser: How can I learn more about the traditional tailoring and embroidery techniques of India?\nassistant: There are several ways to learn more about traditional tailoring and embroidery techniques of India:\n\n1. Take a course or workshop: Search for courses or workshops on traditional Indian embroidery and tailoring techniques offered in your area or consider traveling to India for a more immersive experience.\n\n2. Read books and articles: There are several books on the market that provide detailed information about traditional Indian embroidery and tailoring techniques. You can also read articles and blogs related to Indian fashion and embroidery.\n\n3. Visit museums and exhibitions: Visit museums and exhibitions that showcase traditional Indian textile art and embroidery. This can give you an opportunity to see the intricate work up close.\n\n4. Talk to experts: Connect with experts in the field of traditional Indian embroidery and tailoring. You can get in touch with them through online forums, social media, or by attending industry events.\n\n5. Online resources: There are several online resources available that provide detailed information on the traditional techniques, such as YouTube tutorials, blogs, and websites specialized in Indian textiles.\nuser: Do you have any recommendations for specific books or workshops I should look into for learning about traditional Indian embroidery and tailoring techniques?\nassistant: Sure, here are some recommendations for books and workshops related to traditional Indian embroidery and tailoring techniques:\n\nBooks:\n1. Indian Embroideries by John Irwin and Margaret Halliday\n2. The Art of Indian Asia: Its Mythology and Transformations by Heinrich Zimmer\n3. The Fabric of India by Rosemary Crill\n\nWorkshops:\n1. Craft Village: Located in Delhi, India, Craft Village offers workshops and courses on traditional Indian embroidery techniques such as Kantha, Chikankari, and Phulkari.\n2. The Block Printing Company: Based in Jaipur, India, The Block Printing Company offers workshops on traditional block printing techniques used in Indian textiles.\n3. The Stitching Project: Located in Pushkar, India, The Stitching Project offers workshops on Indian hand embroidery techniques such as Zardozi, Gota Patti, and Mirror Work.\n\nNote: Due to the ongoing COVID-19 pandemic, it's important to check whether the workshops are currently operating or have switched to online formats.\nuser: These recommendations sound amazing! I'm really excited to learn more about traditional Indian embroidery and tailoring techniques. Do you have any advice on how I can get started with practicing these techniques on my own?\nassistant: Yes! Here are a few tips that can help you get started with practicing traditional Indian embroidery and tailoring techniques on your own:\n\n1. Start with basic stitches: Most Indian embroidery techniques involve basic stitches like running stitch, chain stitch, and satin stitch. Start by practicing these stitches until you're comfortable with them.\n\n2. Get the right materials: Traditional Indian embroidery and tailoring techniques require specific types of fabrics and threads. Be sure to choose the right materials for your project to ensure the authenticity of the technique you're practicing.\n\n3. Use the right tools: In addition to fabrics and threads, traditional Indian embroidery and tailoring techniques also require specific tools like needles, hoops, and scissors. Make sure you have these tools and use them correctly.\n\n4. Practice regularly: Like any other skill, practicing regularly is key to becoming proficient in traditional Indian embroidery and tailoring techniques.\n\n5. Take inspiration from traditional designs: Traditional Indian embroidery and tailoring techniques are often used to create beautiful designs inspired by nature, animals, and geometric shapes. Take inspiration from traditional designs and try to replicate them in your own work.\n\n6. Join a community: Joining an online or local community of embroidery and tailoring enthusiasts can be a great way to get advice, support, and feedback on your work.\n\nRemember, the most important thing is to have fun! Enjoy the process of learning and experimenting with traditional Indian embroidery and tailoring techniques.\nuser: Wow, these tips are really helpful! I am really excited to start practicing traditional Indian embroidery and tailoring techniques on my own. Do you have any recommendations for where I can find high-quality materials and tools?\nassistant: Yes, absolutely! Here are a few recommendations for where you can find high-quality materials and tools for traditional Indian embroidery and tailoring techniques:\n\n1. Dharma Trading Co. - Dharma Trading Co. specializes in natural dyes, fabrics, and embroidery threads that are perfect for traditional Indian embroidery techniques.\n\n2. Fabriclore - Fabriclore sells a wide range of fabrics like cotton, silk, chiffon, and georgette that can be used for traditional Indian tailoring techniques.\n\n3. EmbroideryCentral - EmbroideryCentral offers a vast selection of embroidery supplies, including embroidery needles, hoops, and frames.\n\n4. Nostalgia - Nostalgia is an online store based in India that offers an expansive collection of traditional Indian fabrics, threads, and embellishments.\n\n5. Amazon - Amazon also offers a wide variety of materials and tools for both Indian embroidery and tailoring, including fabrics, threads, needles, and tools.\n\n6. Joann - Joann is a popular crafting and fabrics store that offers a variety of fabric, thread, and tools suitable for traditional Indian embroidery and tailoring techniques.\n\nRemember to check for materials and tools that are authentic to the technique you're trying to learn, and try to use high-quality materials to ensure the longevity and authenticity of your work!\nuser: I'm so excited to get started! I can't wait to make my own traditional Indian clothes and embroideries. Do you have any suggestions for where I can find inspiration for my designs?\nassistant: Yes, definitely! There is an abundance of inspiration available for traditional Indian embroidery and tailoring designs. Here are a few ideas for where you can find inspiration:\n\n1. Traditional Indian textiles: Look at traditional Indian textiles such as sarees, lehengas, and dupattas to get an idea of the beautiful embroidery and tailoring styles used in India. You can also go through a range of traditional Indian textiles available online which showcase beautiful embroidery, lacework, and prints.\n\n2. Art and architecture: Indian art and architecture incorporate beautiful patterns and motifs that can inspire your embroidery designs. Look for patterns in temples, palaces, and other historical buildings, as well as in paintings and sculptures.\n\n3. Nature: The beautiful scenery and wildlife in India can inspire embroidery designs with beautiful floral or animal motifs. Flowers such as lotus, jasmine, and hibiscus appear in many Indian designs.\n\n4. Social gatherings and festivals: Indian social gatherings and festivals provide an opportunity to see beautiful traditional costumes and embroidered fabrics. Attend festivals and events, such as Holi, Diwali, and Navratri, and take inspiration from the traditional outfits worn by people.\n\n5. Online resources: There are several online resources available that showcase traditional Indian embroidery and tailoring designs. Look at popular websites like Pinterest and Instagram to get ideas and inspiration for your design.\n\nRemember that traditional Indian embroidery and tailoring is all about experimentation and creativity. Play around with different colors, fabrics, and patterns to create your own unique designs!\nuser: I'm really excited to start practicing traditional Indian embroidery and tailoring techniques. Do you have any recommendations for online communities or forums where I can connect with other enthusiasts and get feedback on my work?\nassistant: Yes, definitely! Online communities and forums can be a great way to get feedback and advice on your work and connect with other enthusiasts who share your interest in traditional Indian embroidery and tailoring techniques. Here are a few recommendations for online communities and forums:\n\n1. Embroidery Network - The Embroidery Network is an online community for embroidery enthusiasts, with a specific section dedicated to Indian embroidery techniques. Here, you can connect with like-minded people, share your work and seek feedback on it.\n\n2. The Embroidery Resource Forum - The Embroidery Resource Forum is an active online community that provides insights into different types of embroidery techniques. Here, you can ask questions, share your work, and get feedback.\n\n3. Reddit - There are several subreddits related to embroidery and traditional Indian tailoring techniques where you can connect with other enthusiasts, share your work, and get feedback from others.\n\n4. Craftsy - Craftsy (now Bluprint) offers a variety of online courses and communities for crafters including embroidery, sewing, and quilting.  The course and forums provide an opportunity to connect with others, share your work, and get tips and advice.\n\nRemember to share your work, ask for feedback, and connect with other enthusiasts! It's a great way to grow your skills and enthusiasm for traditional Indian embroidery and tailoring techniques.\nuser: Wow, thank you so much for all of your recommendations and tips! I'm feeling very inspired to start practicing traditional Indian embroidery and tailoring techniques. I can't wait to see where my creativity takes me!\nassistant: You're welcome! I'm glad I could help. Practicing traditional Indian embroidery and tailoring techniques can be a wonderful and enriching experience. Enjoy the process of learning, experimenting, and creating something beautiful! Good luck, and have fun!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:c7cf7dfd",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:7c4e06a6612bfe72236d059f537089c6"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User is interested in learning traditional Indian embroidery and tailoring techniques\",\"User wants to practice traditional Indian embroidery and tailoring techniques independently\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm feeling very inspired to start practicing traditional Indian embroidery and tailoring techniques.\",\"evidence_reason\":\"The transcript repeatedly develops a reusable sequence of recommendations for learning and practicing the techniques, and the quoted user statement confirms the learning/practice context.\",\"importance\":4,\"keywords\":[\"traditional Indian embroidery\",\"Indian tailoring\",\"learning path\",\"basic stitches\",\"authentic materials\",\"community feedback\"],\"note_type\":\"plan\",\"rationale\":\"This captures a reusable multi-step learning approach and practice rationale rather than a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's learning and practice context for traditional Indian embroidery and tailoring techniques\"},\"summary\":\"The user explored a practical learning path for traditional Indian embroidery and tailoring: courses/workshops, books/articles, museums/exhibitions, experts, online resources, then self-practice with basic stitches, authentic materials/tools, regular practice, traditional design inspiration, and community feedback.\",\"tags\":[\"learning_path\",\"indian_embroidery\",\"tailoring\",\"craft_practice\"],\"title\":\"Learning path for traditional Indian embroidery and tailoring\",\"valid_from\":\"2023-05-21T20:54:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Indian Embroideries was recommended to the user\",\"The Fabric of India was recommended to the user\",\"Craft Village was recommended to the user as a workshop provider\",\"Dharma Trading Co. was recommended to the user as a supplier\",\"Embroidery Network was recommended to the user as an online community\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<10>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<15>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<18>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<23>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<24>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<25>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<26>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<27>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<28>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<35>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<36>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<37>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<38>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<39>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<40>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<41>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Here are a few recommendations for online communities and forums:\",\"evidence_reason\":\"The transcript contains multiple assistant recommendation lists across categories; the quote anchors one of the recommendation sections while the note compactly preserves the full recommendation history.\",\"importance\":4,\"keywords\":[\"Indian Embroideries\",\"The Fabric of India\",\"Craft Village\",\"The Stitching Project\",\"Dharma Trading Co.\",\"Fabriclore\",\"Embroidery Network\",\"Craftsy Bluprint\"],\"note_type\":\"context\",\"rationale\":\"This is a compact reusable recommendation-history digest spanning several categories, not a single precise claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Recommendation history for the user's traditional Indian embroidery and tailoring exploration\"},\"summary\":\"Prior recommendations for the user's Indian embroidery/tailoring interest included books (Indian Embroideries, The Art of Indian Asia: Its Mythology and Transformations, The Fabric of India), workshops/providers (Craft Village, The Block Printing Company, The Stitching Project), suppliers (Dharma Trading Co., Fabriclore, EmbroideryCentral, Nostalgia, Amazon, Joann), inspiration sources (sarees, lehengas, dupattas, Indian art/architecture, nature, Holi, Diwali, Navratri, Pinterest, Instagram), and communities (Embroidery Network, The Embroidery Resource Forum, Reddit, Craftsy/Bluprint).\",\"tags\":[\"recommendation_history\",\"books\",\"workshops\",\"suppliers\",\"design_inspiration\",\"communities\"],\"title\":\"Recommendation history for Indian embroidery books, workshops, suppliers, inspiration, and communities\",\"valid_from\":\"2023-05-21T20:54:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5657,
+                "completionTokens": 1187,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
