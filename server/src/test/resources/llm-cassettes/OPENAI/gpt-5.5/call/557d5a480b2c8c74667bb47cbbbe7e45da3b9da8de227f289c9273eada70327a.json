@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "557d5a480b2c8c74667bb47cbbbe7e45da3b9da8de227f289c9273eada70327a",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_a2d1d1f6\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Forced memory write; transcript contains durable personal/project-like facts about the user's herb garden, cooking interests, and composting plans, plus reusable recipe/gardening advice worth preserving as notes.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity as subject; no existing candidates are provided.\n- mention=herb garden kit; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's herb garden kit; reason=The user says they harvested fresh herbs from 'the herb garden kit', indicating a concrete personal item reusable for later claims.\n- mention=herb garden / my garden; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=User's garden; reason=The user refers to 'my garden' as the source of thyme and future compost use. It is a durable personal domain object, though it may overlap with the herb garden kit; kept distinct due to uncertainty.\n- mention=basil; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Basil; reason=Basil is a concrete reusable herb concept discussed across recipe and storage claims.\n- mention=thyme; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Thyme; reason=Thyme is a concrete reusable herb concept discussed as harvested from the user's garden and used in recipes.\n- mention=Basil and Peach Salad; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Basil and Peach Salad; reason=The user selected this recipe from a list and asked follow-up questions about ingredients; it is a reusable recipe concept for later claims.\n- mention=goat cheese; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Goat cheese; reason=Discussed as an ingredient in the selected salad and possible substitution target.\n- mention=feta; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Feta; reason=Discussed as a possible substitute cheese in the selected recipe.\n- mention=ricotta; action=CREATE_NEW; id=entity:<8>; type=CONCEPT; name=Ricotta; reason=Discussed as a possible substitute cheese in the selected recipe.\n- mention=compost bin in my backyard; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=User's backyard compost bin; reason=The user is thinking about creating a compost bin in their backyard; this is a durable personal item/project likely needed as an object for future claims.\n- mention=backyard; action=CREATE_NEW; id=entity:<10>; type=LOCATION; name=User's backyard; reason=The compost bin is specifically located in the user's backyard, a reusable personal location.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|herb garden kit|herb garden|backyard compost bin|basil|thyme\n        text_queries=fresh herbs basil thyme herb garden kit first harvest|Basil and Peach Salad peaches goat cheese feta ricotta|store fresh basil keep fresh longer|using thyme in soups or stews|creating compost bin backyard kitchen scraps nutrient-rich soil garden\n        predicate_hints=owns|has_experience_with|has_goal|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:bc792a0d50dede287de932e8e6dc8fdb] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_a2d1d1f6:session:1; title=LongMemEval gpt4_a2d1d1f6 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 12:59\nTranscript:\nuser: I'm planning to make a salad for dinner tonight and I was wondering if you could give me some recipe suggestions that feature fresh herbs, like basil or thyme. I just harvested my first batch of fresh herbs from the herb garden kit today and I want to use them up!\nassistant: Congratulations on your first harvest! Fresh herbs can elevate any dish, and salads are a great way to showcase their flavors. Here are some delicious salad recipe suggestions that feature fresh basil and thyme:\n\n**Basil-based salads:**\n\n1. **Classic Caprese Salad**: A simple yet elegant salad featuring fresh mozzarella, juicy tomatoes, and fragrant basil leaves, dressed with olive oil and balsamic vinegar.\n2. **Thai Basil Chicken Salad**: A flavorful and refreshing salad with grilled chicken, mixed greens, fresh basil, mint, red bell peppers, and a tangy Thai-inspired dressing.\n3. **Basil and Peach Salad**: A sweet and savory combination of fresh peaches, crumbled goat cheese, mixed greens, and basil, topped with a balsamic vinaigrette.\n\n**Thyme-based salads:**\n\n1. **Grilled Chicken and Thyme Salad**: A hearty salad featuring grilled chicken, mixed greens, roasted vegetables (such as zucchini and bell peppers), crumbled feta cheese, and a sprinkle of fresh thyme.\n2. **Thyme and Lemon Quinoa Salad**: A healthy and flavorful salad with cooked quinoa, roasted chicken, mixed greens, cherry tomatoes, and a zesty lemon-thyme dressing.\n3. **Winter Fruit and Thyme Salad**: A seasonal salad featuring mixed greens, roasted butternut squash, crumbled blue cheese, dried cranberries, and fresh thyme, all tied together with a citrus vinaigrette.\n\n**Other herb-based salads:**\n\n1. **Pesto Chicken Salad**: A creamy and herby salad with grilled chicken, mixed greens, cherry tomatoes, and a generous helping of homemade pesto (made with fresh basil, of course!).\n2. **Cilantro Lime Shrimp Salad**: A light and zesty salad featuring grilled shrimp, mixed greens, diced mango, red onion, and a sprinkle of fresh cilantro, all dressed with a lime-cilantro dressing.\n\nFeel free to get creative and experiment with different herb combinations or add your own favorite ingredients to make the salads your own!\n\nWhich one of these salads caught your eye (or should I say, taste buds)?\nuser: I'm really interested in the Basil and Peach Salad. Can you give me some tips on how to choose the right peaches for this recipe?\nassistant: The Basil and Peach Salad is a refreshing and flavorful combination. Choosing the right peaches is crucial for this recipe, as they're the star of the show. Here are some tips to help you select the perfect peaches:\n\n1. **Seasonal freshness**: Peaches are typically in season from May to October, with the peak season being July to September. Try to choose peaches during this time for the best flavor and texture.\n2. **Variety**: For this salad, you'll want to choose a sweet and juicy peach variety. Some popular options include:\n\t* Yellow peaches (like 'Bartlett' or 'Red Haven'): These have a sweet, slightly tangy flavor and a soft, juicy texture.\n\t* White peaches (like 'Snow Beauty' or 'Arctic Star'): These have a sweet, honey-like flavor and a firm, crunchy texture.\n\t* Donut peaches (like 'Saturn' or 'Galaxy'): These are small, flat peaches with a sweet, juicy flesh and a soft skin.\n3. **Ripeness**: Choose peaches that are slightly soft to the touch, especially around the stem. A ripe peach will have a sweet aroma and a slight give when pressed gently. Avoid peaches that are too hard or too soft, as they may not be ripe or may be overripe.\n4. **Color**: A ripe peach will have a yellow or cream-colored skin, with a slight blush of red or pink. Avoid peaches with green skin, as they may not be ripe yet.\n5. **Squeeze test**: Gently squeeze the peach around the stem. A ripe peach will yield to pressure, while an unripe peach will be hard and unyielding.\n6. **Avoid bruises**: Inspect the peaches for bruises or soft spots, as these can affect the texture and flavor.\n\nWhen choosing peaches for the Basil and Peach Salad, opt for 2-3 ripe peaches, depending on their size. You'll want to slice them into wedges or thin slices, so choose peaches that are large enough to provide decent-sized pieces.\n\nSome additional tips for preparing the peaches:\n\n* Wash the peaches gently in cold water to remove any dirt or bacteria.\n* Pat the peaches dry with a clean towel to remove excess moisture.\n* Remove the pit and slice the peaches just before assembling the salad to prevent browning.\n\nBy following these tips, you'll be able to choose the perfect peaches for your Basil and Peach Salad. Enjoy!\nuser: I've never thought about the variety of peaches before. I usually just grab whatever looks good at the store. Thanks for the tips! For this recipe, do you think I could substitute the goat cheese with feta or ricotta?\nassistant: You're welcome! Choosing the right peach variety can make a big difference in the flavor and texture of your dish.\n\nNow, about substituting the goat cheese: while goat cheese is a great choice for the Basil and Peach Salad, you can definitely experiment with other cheeses to find the combination that you enjoy the most. Here's how feta and ricotta might work in this recipe:\n\n* **Feta**: Feta has a salty, tangy flavor that can complement the sweetness of the peaches and the freshness of the basil. It's a bit stronger than goat cheese, so use it sparingly. Crumbling feta into small pieces will help distribute the flavor evenly throughout the salad. Keep in mind that feta can be quite salty, so you might want to reduce the amount of salt you add to the dressing.\n* **Ricotta**: Ricotta has a lighter, creamier texture than goat cheese, which can add a nice contrast to the crunchy peaches and crispy basil. It's also milder in flavor, so it won't overpower the other ingredients. However, ricotta can be quite soft, so you might need to drain and press it to remove excess moisture before crumbling it into the salad.\n\nIf you decide to substitute the goat cheese, keep the following in mind:\n\n* **Flavor profile**: Goat cheese has a unique, tangy flavor that's a great match for the peaches and basil. Feta and ricotta have different flavor profiles, so the overall taste of the salad will change. Feta will add a salty, tangy flavor, while ricotta will add a creamy, mild flavor.\n* **Texture**: Goat cheese is often crumbly and creamy, which works well with the crunchy peaches and fresh basil. Feta can be crumbly as well, but ricotta is generally softer and more prone to breaking down.\n\nFeel free to experiment with different cheeses to find the combination that you enjoy the most. If you're looking for a similar texture to goat cheese, you could also try other soft-ripened cheeses like brie or burrata.\n\nRemember, the key to this salad is balancing the flavors and textures. So, taste as you go and adjust the ingredients to your liking!\nuser: I've never thought about the differences in texture and flavor between these cheeses. I'll definitely keep that in mind when I'm experimenting with the recipe. By the way, do you have any tips on how to store fresh herbs like basil to keep them fresh for a longer period?\nassistant: Storing fresh herbs like basil can be a bit tricky, but with the right techniques, you can enjoy them for a longer period. Here are some tips to help you keep your fresh basil fresh:\n\n1. **Store in a cool, dry place**: Basil is sensitive to heat, so avoid storing it near a heat source, oven, or direct sunlight. Instead, place it in a cool, dry spot, like a pantry or cupboard.\n2. **Wrap in plastic wrap or aluminum foil**: Wrap the basil leaves tightly in plastic wrap or aluminum foil to prevent moisture from entering. You can also use a zip-top plastic bag or a reusable silicone bag with a tight seal.\n3. **Keep it dry**: Make sure the basil leaves are dry before storing them. Excess moisture can cause the leaves to wilt and turn brown. Gently pat the leaves dry with a paper towel if they're damp.\n4. **Store in the refrigerator**: Place the wrapped basil in the refrigerator to keep it fresh for up to 1 week. Check on it every few days to ensure it's not developing any signs of spoilage.\n5. **Freeze it**: If you won't be using your basil within a week, consider freezing it. Simply chop the leaves, place them in an airtight container or freezer bag, and store them in the freezer for up to 6 months. Frozen basil is perfect for soups, sauces, and cooked dishes.\n6. **Use the \"stem-in-water\" method**: This method involves placing the basil stems in a jar or glass with about 1-2 inches of water. Cover the leaves with a plastic bag or plastic wrap to maintain humidity. Store the jar in the refrigerator, changing the water every few days. This method can keep basil fresh for up to 2 weeks.\n7. **Monitor for spoilage**: Regularly inspect your stored basil for signs of spoilage, such as wilted leaves, sliminess, or an off smell. Remove any affected leaves to prevent the rest of the bunch from spoiling.\n\nBy following these tips, you can enjoy your fresh basil for a longer period and make the most of your herb garden harvest.\n\nDo you have any other questions about storing fresh herbs or using them in recipes?\nuser: I've been thinking about my herb garden and how I can use the herbs in different recipes. I was wondering if you have any suggestions for using thyme in soups or stews. I've been harvesting a lot of thyme from my garden and I want to use it up before it goes bad.\nassistant: Thyme is a fantastic addition to many soups and stews, and it's wonderful that you're looking to use up your fresh harvest. Here are some delicious and creative ways to incorporate thyme into your soups and stews:\n\n1. **Classic French Onion Soup**: Add a sprig of thyme to the pot when caramelizing the onions, and then simmer it with the beef broth and wine. The thyme will infuse a savory, slightly earthy flavor into the soup.\n2. **Creamy Potato and Leek Soup**: Thyme pairs beautifully with potatoes and leeks. Add a few sprigs to the pot when sautéing the leeks and garlic, and then simmer it with the potatoes and chicken or vegetable broth.\n3. **Hearty Beef Stew**: Thyme is a natural pairing with beef, so add it to your stew along with the beef, vegetables, and red wine. You can also add a sprig to the pot when browning the beef for added depth of flavor.\n4. **Roasted Vegetable Soup**: Thyme complements the natural sweetness of roasted vegetables. Add a few sprigs to the pot when simmering the roasted vegetables with chicken or vegetable broth.\n5. **Lentil Soup**: Thyme adds a nice depth to lentil soup. Add it to the pot along with the lentils, onions, and vegetables, and simmer it with a flavorful broth.\n6. **Chicken Noodle Soup**: Thyme is a classic addition to chicken soup. Add a sprig to the pot when simmering the chicken and vegetables, and then serve with noodles or rice.\n7. **Minestrone**: This Italian-inspired soup is a great way to use up a variety of vegetables and herbs, including thyme. Add it to the pot along with the vegetables, beans, and tomatoes, and simmer it with a flavorful broth.\n\nWhen using thyme in soups and stews, remember to:\n\n* Use fresh thyme sprigs or dried thyme leaves, depending on your preference.\n* Add thyme towards the end of cooking time, as it can lose its flavor and aroma if simmered for too long.\n* Taste and adjust as you go, as thyme can be quite potent.\n* Combine thyme with other herbs, like rosemary or bay leaves, for added depth and complexity.\n\nI hope these ideas inspire you to create some delicious soups and stews with your fresh thyme harvest!\nuser: I've been thinking about creating a compost bin in my backyard, and I was wondering if you have any tips on how to get started. I've heard it's a great way to recycle kitchen scraps and create nutrient-rich soil for my garden.\nassistant: Starting a compost bin is a fantastic idea! Composting is an excellent way to reduce waste, create a nutrient-rich soil amendment for your garden, and even help mitigate climate change. I'm more than happy to help you get started.\n\nHere are some tips to help you set up a successful compost bin:\n\n1. **Choose a location**: Select a spot for your compost bin that's well-ventilated, accessible, and out of direct sunlight. It should also be close to a water source.\n2. **Select a bin**: You can either purchase a compost bin or make your own using a wooden pallet or wire mesh enclosure. The bin should have a lid to retain heat and keep pests out.\n3. **Add brown materials**: Brown materials, such as dried leaves, straw, or shredded newspaper, provide carbon and help absorb excess moisture. Aim for a mix of 2/3 brown materials and 1/3 green materials.\n4. **Add green materials**: Green materials, like fruit and vegetable scraps, grass clippings, and fresh leaves, provide nitrogen and help speed up decomposition. Avoid adding meat, dairy, and oily foods as they can attract pests and create unpleasant odors.\n5. **Add water**: The ideal moisture level for composting is like a damp sponge. Add water as needed to maintain this consistency.\n6. **Mix it up**: Every few days, use a pitchfork or shovel to mix the materials together, taking care not to compact the pile.\n7. **Monitor temperature**: Compost piles can get hot, with temperatures reaching up to 160°F (71°C). Check the temperature regularly and turn the pile if it gets too hot.\n8. **Maintain aeration**: Ensure airflow by adding bulking agents like straw or shredded newspaper to the pile.\n9. **Wait and harvest**: After 2-3 months, your compost should be ready. It should be dark, crumbly, and have an earthy aroma. Use it to enrich your soil and support healthy plant growth.\n\nSome additional tips to keep in mind:\n\n* Avoid adding weeds with seeds to your compost, as they can sprout in your garden.\n* Shredding your materials before adding them to the bin can help them break down faster.\n* Keep your compost bin clean and odor-free by adding a layer of brown materials on top.\n* Consider adding a worm composter (vermicomposting) if you want to compost indoors or have limited outdoor space.\n\nStarting a compost bin takes some effort, but the benefits to your garden and the environment are well worth it. Good luck, and happy composting!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_a2d1d1f6",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:bc792a0d50dede287de932e8e6dc8fdb"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_a2d1d1f6\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Forced memory write; transcript contains durable personal/project-like facts about the user's herb garden, cooking interests, and composting plans, plus reusable recipe/gardening advice worth preserving as notes.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity as subject; no existing candidates are provided.\n- mention=herb garden kit; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's herb garden kit; reason=The user says they harvested fresh herbs from 'the herb garden kit', indicating a concrete personal item reusable for later claims.\n- mention=herb garden / my garden; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=User's garden; reason=The user refers to 'my garden' as the source of thyme and future compost use. It is a durable personal domain object, though it may overlap with the herb garden kit; kept distinct due to uncertainty.\n- mention=basil; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Basil; reason=Basil is a concrete reusable herb concept discussed across recipe and storage claims.\n- mention=thyme; action=CREATE_NEW; id=entity:<4>; type=CONCEPT; name=Thyme; reason=Thyme is a concrete reusable herb concept discussed as harvested from the user's garden and used in recipes.\n- mention=Basil and Peach Salad; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Basil and Peach Salad; reason=The user selected this recipe from a list and asked follow-up questions about ingredients; it is a reusable recipe concept for later claims.\n- mention=goat cheese; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Goat cheese; reason=Discussed as an ingredient in the selected salad and possible substitution target.\n- mention=feta; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Feta; reason=Discussed as a possible substitute cheese in the selected recipe.\n- mention=ricotta; action=CREATE_NEW; id=entity:<8>; type=CONCEPT; name=Ricotta; reason=Discussed as a possible substitute cheese in the selected recipe.\n- mention=compost bin in my backyard; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=User's backyard compost bin; reason=The user is thinking about creating a compost bin in their backyard; this is a durable personal item/project likely needed as an object for future claims.\n- mention=backyard; action=CREATE_NEW; id=entity:<10>; type=LOCATION; name=User's backyard; reason=The compost bin is specifically located in the user's backyard, a reusable personal location.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|herb garden kit|herb garden|backyard compost bin|basil|thyme\n        text_queries=fresh herbs basil thyme herb garden kit first harvest|Basil and Peach Salad peaches goat cheese feta ricotta|store fresh basil keep fresh longer|using thyme in soups or stews|creating compost bin backyard kitchen scraps nutrient-rich soil garden\n        predicate_hints=owns|has_experience_with|has_goal|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:bc792a0d50dede287de932e8e6dc8fdb] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_a2d1d1f6:session:1; title=LongMemEval gpt4_a2d1d1f6 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 12:59\nTranscript:\nuser: I'm planning to make a salad for dinner tonight and I was wondering if you could give me some recipe suggestions that feature fresh herbs, like basil or thyme. I just harvested my first batch of fresh herbs from the herb garden kit today and I want to use them up!\nassistant: Congratulations on your first harvest! Fresh herbs can elevate any dish, and salads are a great way to showcase their flavors. Here are some delicious salad recipe suggestions that feature fresh basil and thyme:\n\n**Basil-based salads:**\n\n1. **Classic Caprese Salad**: A simple yet elegant salad featuring fresh mozzarella, juicy tomatoes, and fragrant basil leaves, dressed with olive oil and balsamic vinegar.\n2. **Thai Basil Chicken Salad**: A flavorful and refreshing salad with grilled chicken, mixed greens, fresh basil, mint, red bell peppers, and a tangy Thai-inspired dressing.\n3. **Basil and Peach Salad**: A sweet and savory combination of fresh peaches, crumbled goat cheese, mixed greens, and basil, topped with a balsamic vinaigrette.\n\n**Thyme-based salads:**\n\n1. **Grilled Chicken and Thyme Salad**: A hearty salad featuring grilled chicken, mixed greens, roasted vegetables (such as zucchini and bell peppers), crumbled feta cheese, and a sprinkle of fresh thyme.\n2. **Thyme and Lemon Quinoa Salad**: A healthy and flavorful salad with cooked quinoa, roasted chicken, mixed greens, cherry tomatoes, and a zesty lemon-thyme dressing.\n3. **Winter Fruit and Thyme Salad**: A seasonal salad featuring mixed greens, roasted butternut squash, crumbled blue cheese, dried cranberries, and fresh thyme, all tied together with a citrus vinaigrette.\n\n**Other herb-based salads:**\n\n1. **Pesto Chicken Salad**: A creamy and herby salad with grilled chicken, mixed greens, cherry tomatoes, and a generous helping of homemade pesto (made with fresh basil, of course!).\n2. **Cilantro Lime Shrimp Salad**: A light and zesty salad featuring grilled shrimp, mixed greens, diced mango, red onion, and a sprinkle of fresh cilantro, all dressed with a lime-cilantro dressing.\n\nFeel free to get creative and experiment with different herb combinations or add your own favorite ingredients to make the salads your own!\n\nWhich one of these salads caught your eye (or should I say, taste buds)?\nuser: I'm really interested in the Basil and Peach Salad. Can you give me some tips on how to choose the right peaches for this recipe?\nassistant: The Basil and Peach Salad is a refreshing and flavorful combination. Choosing the right peaches is crucial for this recipe, as they're the star of the show. Here are some tips to help you select the perfect peaches:\n\n1. **Seasonal freshness**: Peaches are typically in season from May to October, with the peak season being July to September. Try to choose peaches during this time for the best flavor and texture.\n2. **Variety**: For this salad, you'll want to choose a sweet and juicy peach variety. Some popular options include:\n\t* Yellow peaches (like 'Bartlett' or 'Red Haven'): These have a sweet, slightly tangy flavor and a soft, juicy texture.\n\t* White peaches (like 'Snow Beauty' or 'Arctic Star'): These have a sweet, honey-like flavor and a firm, crunchy texture.\n\t* Donut peaches (like 'Saturn' or 'Galaxy'): These are small, flat peaches with a sweet, juicy flesh and a soft skin.\n3. **Ripeness**: Choose peaches that are slightly soft to the touch, especially around the stem. A ripe peach will have a sweet aroma and a slight give when pressed gently. Avoid peaches that are too hard or too soft, as they may not be ripe or may be overripe.\n4. **Color**: A ripe peach will have a yellow or cream-colored skin, with a slight blush of red or pink. Avoid peaches with green skin, as they may not be ripe yet.\n5. **Squeeze test**: Gently squeeze the peach around the stem. A ripe peach will yield to pressure, while an unripe peach will be hard and unyielding.\n6. **Avoid bruises**: Inspect the peaches for bruises or soft spots, as these can affect the texture and flavor.\n\nWhen choosing peaches for the Basil and Peach Salad, opt for 2-3 ripe peaches, depending on their size. You'll want to slice them into wedges or thin slices, so choose peaches that are large enough to provide decent-sized pieces.\n\nSome additional tips for preparing the peaches:\n\n* Wash the peaches gently in cold water to remove any dirt or bacteria.\n* Pat the peaches dry with a clean towel to remove excess moisture.\n* Remove the pit and slice the peaches just before assembling the salad to prevent browning.\n\nBy following these tips, you'll be able to choose the perfect peaches for your Basil and Peach Salad. Enjoy!\nuser: I've never thought about the variety of peaches before. I usually just grab whatever looks good at the store. Thanks for the tips! For this recipe, do you think I could substitute the goat cheese with feta or ricotta?\nassistant: You're welcome! Choosing the right peach variety can make a big difference in the flavor and texture of your dish.\n\nNow, about substituting the goat cheese: while goat cheese is a great choice for the Basil and Peach Salad, you can definitely experiment with other cheeses to find the combination that you enjoy the most. Here's how feta and ricotta might work in this recipe:\n\n* **Feta**: Feta has a salty, tangy flavor that can complement the sweetness of the peaches and the freshness of the basil. It's a bit stronger than goat cheese, so use it sparingly. Crumbling feta into small pieces will help distribute the flavor evenly throughout the salad. Keep in mind that feta can be quite salty, so you might want to reduce the amount of salt you add to the dressing.\n* **Ricotta**: Ricotta has a lighter, creamier texture than goat cheese, which can add a nice contrast to the crunchy peaches and crispy basil. It's also milder in flavor, so it won't overpower the other ingredients. However, ricotta can be quite soft, so you might need to drain and press it to remove excess moisture before crumbling it into the salad.\n\nIf you decide to substitute the goat cheese, keep the following in mind:\n\n* **Flavor profile**: Goat cheese has a unique, tangy flavor that's a great match for the peaches and basil. Feta and ricotta have different flavor profiles, so the overall taste of the salad will change. Feta will add a salty, tangy flavor, while ricotta will add a creamy, mild flavor.\n* **Texture**: Goat cheese is often crumbly and creamy, which works well with the crunchy peaches and fresh basil. Feta can be crumbly as well, but ricotta is generally softer and more prone to breaking down.\n\nFeel free to experiment with different cheeses to find the combination that you enjoy the most. If you're looking for a similar texture to goat cheese, you could also try other soft-ripened cheeses like brie or burrata.\n\nRemember, the key to this salad is balancing the flavors and textures. So, taste as you go and adjust the ingredients to your liking!\nuser: I've never thought about the differences in texture and flavor between these cheeses. I'll definitely keep that in mind when I'm experimenting with the recipe. By the way, do you have any tips on how to store fresh herbs like basil to keep them fresh for a longer period?\nassistant: Storing fresh herbs like basil can be a bit tricky, but with the right techniques, you can enjoy them for a longer period. Here are some tips to help you keep your fresh basil fresh:\n\n1. **Store in a cool, dry place**: Basil is sensitive to heat, so avoid storing it near a heat source, oven, or direct sunlight. Instead, place it in a cool, dry spot, like a pantry or cupboard.\n2. **Wrap in plastic wrap or aluminum foil**: Wrap the basil leaves tightly in plastic wrap or aluminum foil to prevent moisture from entering. You can also use a zip-top plastic bag or a reusable silicone bag with a tight seal.\n3. **Keep it dry**: Make sure the basil leaves are dry before storing them. Excess moisture can cause the leaves to wilt and turn brown. Gently pat the leaves dry with a paper towel if they're damp.\n4. **Store in the refrigerator**: Place the wrapped basil in the refrigerator to keep it fresh for up to 1 week. Check on it every few days to ensure it's not developing any signs of spoilage.\n5. **Freeze it**: If you won't be using your basil within a week, consider freezing it. Simply chop the leaves, place them in an airtight container or freezer bag, and store them in the freezer for up to 6 months. Frozen basil is perfect for soups, sauces, and cooked dishes.\n6. **Use the \"stem-in-water\" method**: This method involves placing the basil stems in a jar or glass with about 1-2 inches of water. Cover the leaves with a plastic bag or plastic wrap to maintain humidity. Store the jar in the refrigerator, changing the water every few days. This method can keep basil fresh for up to 2 weeks.\n7. **Monitor for spoilage**: Regularly inspect your stored basil for signs of spoilage, such as wilted leaves, sliminess, or an off smell. Remove any affected leaves to prevent the rest of the bunch from spoiling.\n\nBy following these tips, you can enjoy your fresh basil for a longer period and make the most of your herb garden harvest.\n\nDo you have any other questions about storing fresh herbs or using them in recipes?\nuser: I've been thinking about my herb garden and how I can use the herbs in different recipes. I was wondering if you have any suggestions for using thyme in soups or stews. I've been harvesting a lot of thyme from my garden and I want to use it up before it goes bad.\nassistant: Thyme is a fantastic addition to many soups and stews, and it's wonderful that you're looking to use up your fresh harvest. Here are some delicious and creative ways to incorporate thyme into your soups and stews:\n\n1. **Classic French Onion Soup**: Add a sprig of thyme to the pot when caramelizing the onions, and then simmer it with the beef broth and wine. The thyme will infuse a savory, slightly earthy flavor into the soup.\n2. **Creamy Potato and Leek Soup**: Thyme pairs beautifully with potatoes and leeks. Add a few sprigs to the pot when sautéing the leeks and garlic, and then simmer it with the potatoes and chicken or vegetable broth.\n3. **Hearty Beef Stew**: Thyme is a natural pairing with beef, so add it to your stew along with the beef, vegetables, and red wine. You can also add a sprig to the pot when browning the beef for added depth of flavor.\n4. **Roasted Vegetable Soup**: Thyme complements the natural sweetness of roasted vegetables. Add a few sprigs to the pot when simmering the roasted vegetables with chicken or vegetable broth.\n5. **Lentil Soup**: Thyme adds a nice depth to lentil soup. Add it to the pot along with the lentils, onions, and vegetables, and simmer it with a flavorful broth.\n6. **Chicken Noodle Soup**: Thyme is a classic addition to chicken soup. Add a sprig to the pot when simmering the chicken and vegetables, and then serve with noodles or rice.\n7. **Minestrone**: This Italian-inspired soup is a great way to use up a variety of vegetables and herbs, including thyme. Add it to the pot along with the vegetables, beans, and tomatoes, and simmer it with a flavorful broth.\n\nWhen using thyme in soups and stews, remember to:\n\n* Use fresh thyme sprigs or dried thyme leaves, depending on your preference.\n* Add thyme towards the end of cooking time, as it can lose its flavor and aroma if simmered for too long.\n* Taste and adjust as you go, as thyme can be quite potent.\n* Combine thyme with other herbs, like rosemary or bay leaves, for added depth and complexity.\n\nI hope these ideas inspire you to create some delicious soups and stews with your fresh thyme harvest!\nuser: I've been thinking about creating a compost bin in my backyard, and I was wondering if you have any tips on how to get started. I've heard it's a great way to recycle kitchen scraps and create nutrient-rich soil for my garden.\nassistant: Starting a compost bin is a fantastic idea! Composting is an excellent way to reduce waste, create a nutrient-rich soil amendment for your garden, and even help mitigate climate change. I'm more than happy to help you get started.\n\nHere are some tips to help you set up a successful compost bin:\n\n1. **Choose a location**: Select a spot for your compost bin that's well-ventilated, accessible, and out of direct sunlight. It should also be close to a water source.\n2. **Select a bin**: You can either purchase a compost bin or make your own using a wooden pallet or wire mesh enclosure. The bin should have a lid to retain heat and keep pests out.\n3. **Add brown materials**: Brown materials, such as dried leaves, straw, or shredded newspaper, provide carbon and help absorb excess moisture. Aim for a mix of 2/3 brown materials and 1/3 green materials.\n4. **Add green materials**: Green materials, like fruit and vegetable scraps, grass clippings, and fresh leaves, provide nitrogen and help speed up decomposition. Avoid adding meat, dairy, and oily foods as they can attract pests and create unpleasant odors.\n5. **Add water**: The ideal moisture level for composting is like a damp sponge. Add water as needed to maintain this consistency.\n6. **Mix it up**: Every few days, use a pitchfork or shovel to mix the materials together, taking care not to compact the pile.\n7. **Monitor temperature**: Compost piles can get hot, with temperatures reaching up to 160°F (71°C). Check the temperature regularly and turn the pile if it gets too hot.\n8. **Maintain aeration**: Ensure airflow by adding bulking agents like straw or shredded newspaper to the pile.\n9. **Wait and harvest**: After 2-3 months, your compost should be ready. It should be dark, crumbly, and have an earthy aroma. Use it to enrich your soil and support healthy plant growth.\n\nSome additional tips to keep in mind:\n\n* Avoid adding weeds with seeds to your compost, as they can sprout in your garden.\n* Shredding your materials before adding them to the bin can help them break down faster.\n* Keep your compost bin clean and odor-free by adding a layer of brown materials on top.\n* Consider adding a worm composter (vermicomposting) if you want to compost indoors or have limited outdoor space.\n\nStarting a compost bin takes some effort, but the benefits to your garden and the environment are well worth it. Good luck, and happy composting!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_a2d1d1f6",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:bc792a0d50dede287de932e8e6dc8fdb"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"first harvested herbs from herb garden kit\",\"harvesting a lot of thyme from garden\",\"wants to use herbs before they spoil\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I just harvested my first batch of fresh herbs from the herb garden kit today and I want to use them up!\",\"evidence_reason\":\"The quoted user statement establishes the fresh-herb harvest and intent to use it in recipes; later transcript mentions thyme harvests and spoilage concerns.\",\"importance\":4,\"keywords\":[\"herb garden kit\",\"fresh herbs\",\"basil\",\"thyme\",\"harvest\",\"recipes\"],\"note_type\":\"context\",\"rationale\":\"This captures an ongoing cooking/gardening context and motivation across several turns, rather than a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's herb garden kit and fresh-herb cooking context from the 2023-04-15 session\"},\"summary\":\"The user is actively exploring ways to use fresh herbs from their herb garden kit, especially basil in salads and thyme in soups or stews, to use harvests before they spoil.\",\"tags\":[\"gardening\",\"cooking\",\"fresh_herbs\"],\"title\":\"Herb harvest cooking exploration\",\"valid_from\":\"2023-04-15T12:59:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Feta will add a salty, tangy flavor, while ricotta will add a creamy, mild flavor.\",\"evidence_reason\":\"The quote directly states the key flavor trade-off between the two proposed goat-cheese substitutes.\",\"importance\":3,\"keywords\":[\"Basil and Peach Salad\",\"goat cheese\",\"feta\",\"ricotta\",\"substitution\",\"texture\",\"flavor\"],\"note_type\":\"lesson\",\"rationale\":\"This is reusable culinary guidance involving trade-offs in flavor and texture, not a durable factual claim about the user.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Recipe guidance for Basil and Peach Salad ingredient substitutions\"},\"summary\":\"For Basil and Peach Salad, feta can substitute for goat cheese when a saltier, tangier profile is desired, but should be used sparingly and dressing salt reduced; ricotta gives a milder, creamier result and may need draining/pressing before use.\",\"tags\":[\"recipe_guidance\",\"ingredient_substitution\"],\"title\":\"Basil and Peach Salad substitution guidance\",\"valid_from\":\"2023-04-15T12:59:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.88,\"entity_refs\":[{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Use the \\\"stem-in-water\\\" method\",\"evidence_reason\":\"The quote identifies one of the reusable basil preservation techniques described in the transcript, along with wrapping, refrigeration, drying, and freezing.\",\"importance\":3,\"keywords\":[\"fresh basil\",\"storage\",\"refrigerator\",\"stem-in-water\",\"freeze basil\",\"spoilage\"],\"note_type\":\"lesson\",\"rationale\":\"This is a reusable procedure for preserving herbs, not a single atomic fact or preference.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable storage procedure for fresh basil from the user's herb harvest\"},\"summary\":\"To extend fresh basil life, keep leaves dry and cool, wrap or seal them before refrigeration for about a week, use a stem-in-water method with periodic water changes for up to about two weeks, or freeze chopped basil for longer-term use in cooked dishes.\",\"tags\":[\"food_storage\",\"fresh_herbs\"],\"title\":\"Fresh basil storage procedure\",\"valid_from\":\"2023-04-15T12:59:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"thinking about creating compost bin in backyard\",\"wants nutrient-rich soil for garden\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<9>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I've been thinking about creating a compost bin in my backyard\",\"evidence_reason\":\"The quote directly establishes the user's compost-bin intention; the assistant response supplies the concrete startup procedure summarized in the note.\",\"importance\":4,\"keywords\":[\"compost bin\",\"backyard\",\"kitchen scraps\",\"brown materials\",\"green materials\",\"nutrient-rich soil\",\"garden\"],\"note_type\":\"plan\",\"rationale\":\"This combines an expressed plan with reusable procedural setup guidance and constraints, so it is better represented as a plan note than isolated claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Compost bin startup plan for the user's backyard and garden\"},\"summary\":\"The user is considering a backyard compost bin to recycle kitchen scraps into nutrient-rich soil for their garden; setup guidance centers on a ventilated accessible location, a lidded bin, about 2/3 brown to 1/3 green materials, damp-sponge moisture, regular mixing/aeration, avoiding meat/dairy/oily foods and seeded weeds, and harvesting dark crumbly compost after roughly 2–3 months.\",\"tags\":[\"composting\",\"gardening\",\"plan\"],\"title\":\"Backyard compost bin startup plan\",\"valid_from\":\"2023-04-15T12:59:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5406,
+                "completionTokens": 1394,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
