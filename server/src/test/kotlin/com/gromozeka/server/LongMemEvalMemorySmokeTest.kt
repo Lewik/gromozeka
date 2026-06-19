@@ -25,9 +25,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.exists
@@ -319,16 +316,11 @@ class LongMemEvalMemorySmokeTest {
             "answer_hypothesis_start id=${entry.questionId} memoryContextChars=${memoryContext.length}"
         )
         val answerStartedAt = System.currentTimeMillis()
-        val generatedAnswerHypothesis = generateAnswerHypothesis(
+        val answerHypothesis = generateAnswerHypothesis(
             runtime = judgeRuntime,
             entry = entry,
             selectedRefs = enrichResult.selectedRefs,
             memoryContext = memoryContext,
-        )
-        val answerHypothesis = applyBenchmarkAnswerFallback(
-            entry = entry,
-            memoryContext = memoryContext,
-            generated = generatedAnswerHypothesis,
         )
         val answerDurationMs = System.currentTimeMillis() - answerStartedAt
         appendProgress(
@@ -409,80 +401,6 @@ class LongMemEvalMemorySmokeTest {
             answerDurationMs = answerDurationMs,
             answerJudgeDurationMs = answerJudgeDurationMs,
             durationMs = System.currentTimeMillis() - caseStartedAt,
-        )
-    }
-
-    private fun applyBenchmarkAnswerFallback(
-        entry: LongMemEvalEntry,
-        memoryContext: String,
-        generated: LongMemEvalAnswerHypothesis,
-    ): LongMemEvalAnswerHypothesis {
-        priorCommitmentCountRepair(entry, generated)?.let { repaired -> return repaired }
-        pastWeekendLifecycleFallback(entry, memoryContext)?.let { fallback -> return fallback }
-        if (!generated.answer.looksLikeInsufficientMemoryAnswer()) return generated
-        val requestedPageOperands = entry.question.requestedFinishedPageCountOperands() ?: return generated
-        val operands = extractFinishedPageCountOperands(memoryContext)
-        if (operands.size != requestedPageOperands) return generated
-        val total = operands.sumOf { it.count }
-        return LongMemEvalAnswerHypothesis(
-            answer = total.toString(),
-            reasoning = "Benchmark noisy-date fallback: retrieved memory explicitly contains " +
-                operands.joinToString { "${it.label} (${it.count} pages)" } +
-                ", while the generated answer refused only because the benchmark month labels were absent.",
-            countedItems = operands.map { it.label },
-        )
-    }
-
-    private fun priorCommitmentCountRepair(
-        entry: LongMemEvalEntry,
-        generated: LongMemEvalAnswerHypothesis,
-    ): LongMemEvalAnswerHypothesis? {
-        if (!entry.question.isCountOrListQuestion()) return null
-        val target = entry.question.priorCommitmentTargetPhrase() ?: return null
-        val targetTokens = target.semanticMatchTokens()
-        if (targetTokens.size < 2) return null
-        val countedItems = generated.countedItems.map { it.cleanOperandLabel() }.filter { it.isNotBlank() }
-        if (countedItems.isEmpty()) return null
-        val targetItems = countedItems.filter { it.semanticMatchTokens().isStrongTargetMatch(targetTokens) }
-        if (targetItems.isEmpty()) return null
-        val priorItems = countedItems.filterNot { item -> targetItems.any { it == item } }.distinct()
-        if (priorItems.isEmpty()) return null
-        val countLabel = entry.question.requestedCountLabel() ?: "items"
-        val targetList = targetItems.joinToNaturalLanguageList()
-        val priorList = priorItems.joinToNaturalLanguageList()
-        return LongMemEvalAnswerHypothesis(
-            answer = "The evidence-backed count is ${priorItems.size} $countLabel before the commitment to $target: $priorList. I excluded $targetList because it is the named target of the commitment, not a prior alternative.",
-            reasoning = "Benchmark prior-commitment count repair: counted_items included the commitment target '$target'. Removed $targetList and kept $priorList.",
-            countedItems = priorItems,
-            excludedRankedRefs = generated.excludedRankedRefs + "$targetList: commitment target '$target', not a prior alternative",
-        )
-    }
-
-    private fun pastWeekendLifecycleFallback(
-        entry: LongMemEvalEntry,
-        memoryContext: String,
-    ): LongMemEvalAnswerHypothesis? {
-        val kind = entry.question.whichObjectKind() ?: return null
-        if (!entry.question.contains("past weekend", ignoreCase = true)) return null
-        if (!entry.question.containsLifecycleVerb()) return null
-        val weekendDates = entry.questionDate.previousWeekendDateLabels() ?: return null
-        val candidates = sourceBlocks(memoryContext)
-            .filter { it.date in weekendDates }
-            .filter { it.text.containsLifecycleVerb() }
-            .flatMap { it.text.possessiveObjectCandidates(kind) }
-            .let { candidates ->
-                candidates.takeIf { values -> values.any { it != kind } }
-                    ?.filterNot { it == kind }
-                    ?: candidates
-            }
-            .distinct()
-        if (candidates.size != 1) return null
-        return LongMemEvalAnswerHypothesis(
-            answer = "Your ${candidates.single()}.",
-            reasoning = "Benchmark past-weekend lifecycle fallback: the selected source dated " +
-                "${weekendDates.joinToString(" or ")} contains the only matching '$kind' lifecycle object, " +
-                "while the generated answer chose an outside-period event.",
-            countedItems = candidates,
         )
     }
 
@@ -762,176 +680,6 @@ class LongMemEvalMemorySmokeTest {
     private fun LongMemEvalEntry.answerText(): String =
         runCatching { answer.jsonPrimitive.contentOrNull ?: answer.toString() }
             .getOrElse { answer.toString() }
-
-    private fun String.looksLikeInsufficientMemoryAnswer(): Boolean {
-        val normalized = lowercase()
-        return "insufficient" in normalized ||
-            "not enough" in normalized ||
-            "not available" in normalized ||
-            "cannot identify" in normalized ||
-            "can't identify" in normalized
-    }
-
-    private fun String.isCountOrListQuestion(): Boolean {
-        val normalized = lowercase()
-        return "how many" in normalized ||
-            Regex("""\b(list|which|what)\b""").containsMatchIn(normalized)
-    }
-
-    private fun String.priorCommitmentTargetPhrase(): String? {
-        val patterns = listOf(
-            Regex(
-                """\bbefore\s+(?:making|putting|placing|submitting)\s+(?:an?|the)?\s*(?:offer|bid|order|reservation|booking)\s+(?:on|for|to)\s+(.+?)(?:[?.]|$)""",
-                RegexOption.IGNORE_CASE,
-            ),
-            Regex(
-                """\bbefore\s+(?:buying|purchasing|choosing|selecting|booking|ordering|committing\s+to)\s+(.+?)(?:[?.]|$)""",
-                RegexOption.IGNORE_CASE,
-            ),
-        )
-        return patterns
-            .firstNotNullOfOrNull { pattern -> pattern.find(this)?.groupValues?.get(1) }
-            ?.cleanOperandLabel()
-    }
-
-    private fun String.requestedCountLabel(): String? =
-        Regex("""\bhow\s+many\s+([a-z][a-z-]*)\b""", RegexOption.IGNORE_CASE)
-            .find(this)
-            ?.groupValues
-            ?.get(1)
-            ?.lowercase()
-
-    private fun String.semanticMatchTokens(): Set<String> =
-        Regex("""[a-z0-9]+""", RegexOption.IGNORE_CASE)
-            .findAll(lowercase())
-            .map { it.value.trimEnd('s') }
-            .filter { it.length >= 2 }
-            .filterNot { it in COUNT_REPAIR_STOP_WORDS }
-            .toSet()
-
-    private fun Set<String>.isStrongTargetMatch(targetTokens: Set<String>): Boolean {
-        val sharedTokens = this intersect targetTokens
-        return sharedTokens.size >= minOf(2, targetTokens.size)
-    }
-
-    private fun List<String>.joinToNaturalLanguageList(): String =
-        when (size) {
-            0 -> ""
-            1 -> single()
-            2 -> joinToString(" and ")
-            else -> dropLast(1).joinToString(", ") + ", and " + last()
-        }
-
-    private fun String.requestedFinishedPageCountOperands(): Int? {
-        val normalized = lowercase()
-        if ("page count" !in normalized && "pages" !in normalized) return null
-        if ("finished" !in normalized && "read" !in normalized) return null
-        if ("novel" !in normalized && "book" !in normalized) return null
-        return when {
-            Regex("""\btwo\b""").containsMatchIn(normalized) -> 2
-            Regex("""\bboth\b""").containsMatchIn(normalized) -> 2
-            Regex("""\bthree\b""").containsMatchIn(normalized) -> 3
-            Regex("""\bfour\b""").containsMatchIn(normalized) -> 4
-            else -> Regex("""\b(\d+)\b""").find(normalized)?.groupValues?.get(1)?.toIntOrNull()
-        }
-    }
-
-    private fun extractFinishedPageCountOperands(memoryContext: String): List<LongMemEvalPageCountOperand> {
-        val patterns = listOf(
-            Regex(
-                """\bjust finished\s+(?:reading\s+)?["“]([^"”]+)["”][^.\n]*?\b(?:had|has|with)\s+(\d+)\s+pages\b""",
-                RegexOption.IGNORE_CASE,
-            ) to { match: MatchResult ->
-                LongMemEvalPageCountOperand(
-                    label = match.groupValues[1].cleanOperandLabel(),
-                    count = match.groupValues[2].toInt(),
-                )
-            },
-            Regex(
-                """\bjust finished\s+(?:a|an)\s+[^.\n]*?["“]([^"”]+)["”][^.\n]*?\b(?:had|has|with)\s+(\d+)\s+pages\b""",
-                RegexOption.IGNORE_CASE,
-            ) to { match: MatchResult ->
-                if ("but before that" in match.value.lowercase()) {
-                    null
-                } else {
-                    LongMemEvalPageCountOperand(
-                        label = match.groupValues[1].cleanOperandLabel(),
-                        count = match.groupValues[2].toInt(),
-                    )
-                }
-            },
-            Regex(
-                """\bjust finished\s+(?:a|an)\s+(\d+)[- ]page\s+([^,.\n]+)""",
-                RegexOption.IGNORE_CASE,
-            ) to { match: MatchResult ->
-                LongMemEvalPageCountOperand(
-                    label = "unnamed ${match.groupValues[2].cleanOperandLabel()}",
-                    count = match.groupValues[1].toInt(),
-                )
-            },
-        )
-        return patterns
-            .flatMap { (pattern, mapper) -> pattern.findAll(memoryContext).mapNotNull(mapper).toList() }
-            .distinctBy { it.normalizedKey() }
-    }
-
-    private fun String.cleanOperandLabel(): String =
-        trim()
-            .trim('"', '“', '”', '\'', '`')
-            .replace(Regex("""\s+"""), " ")
-
-    private fun LongMemEvalPageCountOperand.normalizedKey(): String =
-        "${label.lowercase()}:$count"
-
-    private fun String.whichObjectKind(): String? =
-        Regex("""\bwhich\s+([a-z][a-z-]*)\b""", RegexOption.IGNORE_CASE)
-            .find(this)
-            ?.groupValues
-            ?.get(1)
-            ?.lowercase()
-
-    private fun String.containsLifecycleVerb(): Boolean =
-        Regex(
-            """\b(fix|fixed|repair|repaired|service|serviced|maintenance|check|checked|setup|install|installed|appointment|estimate)\b""",
-            RegexOption.IGNORE_CASE,
-        ).containsMatchIn(this)
-
-    private fun String.possessiveObjectCandidates(kind: String): List<String> =
-        Regex("""\bmy\s+((?:[a-z]+[ -]){0,4}${Regex.escape(kind)})\b""", RegexOption.IGNORE_CASE)
-            .findAll(this)
-            .map { it.groupValues[1].cleanOperandLabel().lowercase() }
-            .toList()
-
-    private fun sourceBlocks(memoryContext: String): List<LongMemEvalSourceBlock> =
-        Regex(
-            """Session date:\s*(\d{4}/\d{2}/\d{2})[^\n]*\nTranscript:\s*(.*?)(?=\n\s*-\s*source\s+|\n\s*Retrieved entities:|\z)""",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
-        ).findAll(memoryContext)
-            .map { match ->
-                LongMemEvalSourceBlock(
-                    date = match.groupValues[1],
-                    text = match.groupValues[2],
-                )
-            }
-            .toList()
-
-    private fun String.previousWeekendDateLabels(): Set<String>? {
-        val dateText = Regex("""\b(\d{4}/\d{2}/\d{2})\b""")
-            .find(this)
-            ?.groupValues
-            ?.get(1)
-            ?: return null
-        val questionDate = runCatching { LocalDate.parse(dateText, LONGMEMEVAL_DATE_FORMATTER) }
-            .getOrNull()
-            ?: return null
-        val daysSinceSaturday = ((questionDate.dayOfWeek.value - DayOfWeek.SATURDAY.value) + 7) % 7
-        val saturday = questionDate.minusDays(if (daysSinceSaturday == 0) 7L else daysSinceSaturday.toLong())
-        val sunday = saturday.plusDays(1)
-        return setOf(
-            saturday.format(LONGMEMEVAL_DATE_FORMATTER),
-            sunday.format(LONGMEMEVAL_DATE_FORMATTER),
-        )
-    }
 
     private fun expectedEvidenceSourceIds(
         entry: LongMemEvalEntry,
@@ -1482,25 +1230,6 @@ class LongMemEvalMemorySmokeTest {
         const val DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT_RESOURCE =
             "/eval/default-gromozeka-prompt-snapshot-2026-06-15.md"
 
-        val COUNT_REPAIR_STOP_WORDS = setOf(
-            "the",
-            "and",
-            "for",
-            "with",
-            "from",
-            "that",
-            "this",
-            "itself",
-            "viewed",
-            "seen",
-            "saw",
-            "offer",
-            "bid",
-            "commitment",
-            "target",
-            "named",
-        )
-
         val DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT: String by lazy {
             LongMemEvalMemorySmokeTest::class.java
                 .getResource(DEFAULT_GROMOZEKA_EVAL_PROMPT_SNAPSHOT_RESOURCE)
@@ -1578,8 +1307,6 @@ class LongMemEvalMemorySmokeTest {
             encodeDefaults = true
         }
 
-        val LONGMEMEVAL_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd")
-
         fun systemProperty(primary: String, fallback: String, default: String): String =
             System.getProperty(primary) ?: System.getProperty(fallback) ?: default
     }
@@ -1651,16 +1378,6 @@ private data class LongMemEvalAnswerHypothesis(
     val reasoning: String,
     val countedItems: List<String> = emptyList(),
     val excludedRankedRefs: List<String> = emptyList(),
-)
-
-private data class LongMemEvalPageCountOperand(
-    val label: String,
-    val count: Int,
-)
-
-private data class LongMemEvalSourceBlock(
-    val date: String,
-    val text: String,
 )
 
 private data class LongMemEvalBalancedSample(
