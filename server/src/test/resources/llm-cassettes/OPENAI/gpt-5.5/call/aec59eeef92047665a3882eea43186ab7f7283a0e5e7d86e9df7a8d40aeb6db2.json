@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "aec59eeef92047665a3882eea43186ab7f7283a0e5e7d86e9df7a8d40aeb6db2",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:2311e44b\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains multiple durable user preferences and dated reading status facts plus reusable context about a reading habit/productivity plan, and force_memory_write=true requires non-noop routing.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / me / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity; no existing candidates are available.\n- mention=Sapiens; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Sapiens; reason=Concrete reusable book entity discussed as something the user has been enjoying but finds slow going.\n- mention=Atomic Habits; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=Atomic Habits; reason=Concrete reusable book entity selected by the user and discussed for reading-habit principles.\n- mention=Deep Work; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Deep Work; reason=Concrete reusable book entity selected by the user and discussed for reading-habit principles.\n- mention=The Nightingale by Kristin Hannah; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=The Nightingale; reason=Concrete reusable book entity the user is currently reading.\n- mention=reading goal of 50 books by the end of the year; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=User's 50-book annual reading goal; reason=A durable personal goal likely to receive claims about target and progress.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|The Nightingale by Kristin Hannah|Atomic Habits|Deep Work|Sapiens\n        text_queries=reading goal 50 books end of year read 12 books so far|non-fiction easy to read not too dense evidence-based self-help practical habits productivity|currently on page 250 of The Nightingale|plan to increase reading speed and retention schedule reading sessions eliminate distractions active reading\n        predicate_hints=has_goal|current_metric_value|prefers|avoids|owns\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:ea7a111b6cc879e3d7d74e7c583769e7] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:2311e44b:session:1; title=LongMemEval 2311e44b session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 16:46\nTranscript:\nuser: I'm trying to get back on track with my reading goal, can you help me calculate how many books I need to read per month to reach my goal of 50 books by the end of the year?\nassistant: I'd be happy to help you calculate how many books you need to read per month to reach your goal!\n\nFirst, let's break down the remaining months of the year:\n\n* Since you're currently in [insert current month], you have [insert number of months left in the year] months remaining in the year.\n\nNext, let's calculate how many books you need to read in total to reach your goal:\n\n* You want to read 50 books by the end of the year, and you haven't specified how many you've already read, so let's assume you've read 0 books so far (if you've already read some, you can adjust the calculation accordingly).\n* You need to read 50 books in the remaining [insert number of months left in the year] months.\n\nNow, let's do the math:\n\n* Divide the total number of books you need to read (50) by the number of months you have left in the year: 50 books / [insert number of months left in the year] months = [insert result] books per month.\n\nFor example, if it's currently September and you have 4 months left in the year (September to December), the calculation would be:\n\n* 50 books / 4 months = 12.5 books per month\n\nSo, you would need to read approximately 12-13 books per month for the remaining 4 months to reach your goal of 50 books.\n\nRemember, this calculation is just an estimate, and you can adjust it based on your reading pace and schedule. Good luck with your reading goal, and happy reading!\nuser: I've already read 12 books so far this year, so I'll adjust the calculation accordingly. Also, can you recommend me some non-fiction books that are not too dense and easy to read? I've been enjoying \"Sapiens\" but it's really slow going.\nassistant: With 12 books already under your belt, you've got a good head start.\n\nLet's recalculate your target:\n\n* You want to read 50 books by the end of the year, and you've already read 12, so you need to read: 50 - 12 = 38 books\n* You have [insert number of months left in the year] months remaining in the year. Let's assume it's September, so you have 4 months left.\n* Divide the remaining books you need to read (38) by the number of months you have left: 38 books / 4 months = 9.5 books per month\n\nSo, you'll need to read around 9-10 books per month for the remaining 4 months to reach your goal.\n\nNow, about those non-fiction book recommendations!\n\nSince you're enjoying \"Sapiens\" but finding it slow going, I'll suggest some engaging and accessible non-fiction books that might be up your alley:\n\n1. **\"The Devil in the White City\" by Erik Larson**: A historical true crime book that reads like a thriller. It's about the 1893 World's Fair in Chicago and the serial killer H.H. Holmes.\n2. **\"Bad Blood: Secrets and Lies in a Silicon Valley Startup\" by John Carreyrou**: A fascinating and well-researched book about the rise and fall of Theranos, a biotech startup that claimed to revolutionize healthcare.\n3. **\"The Immortal Life of Henrietta Lacks\" by Rebecca Skloot**: A compelling story about the intersection of medicine, ethics, and humanity, centered around the life of Henrietta Lacks and her immortal cells.\n4. **\"Just Mercy: A Story of Justice and Redemption\" by Bryan Stevenson**: A powerful and thought-provoking book about the US justice system, racial inequality, and the author's work as a lawyer advocating for death row inmates.\n5. **\"The Power of Habit: Why We Do What We Do in Life and Business\" by Charles Duhigg**: A fascinating exploration of habits, how they're formed, and how we can change them. It's a great mix of science, psychology, and real-life examples.\n\nThese books are all well-researched, engaging, and relatively easy to read. They're not too dense or academic, making them perfect for someone who wants to enjoy non-fiction without feeling overwhelmed.\nuser: I'd like to explore more non-fiction books like the ones you mentioned. Can you recommend some books in the self-help or personal development category that are actually backed by scientific research, not just inspirational stories or anecdotes? I'm interested in practical advice that can help me improve my daily habits and productivity.\nassistant: I'm glad you're interested in evidence-based self-help books!\n\nHere are some highly recommended self-help and personal development books that are grounded in scientific research, offering practical advice to improve your daily habits and productivity:\n\n1. **\"Atomic Habits\" by James Clear**: A comprehensive guide to building good habits and breaking bad ones, backed by scientific research in psychology and neuroscience.\n2. **\"Deep Work\" by Cal Newport**: A must-read for anyone looking to improve their productivity and focus in a distracting world. Newport provides strategies for incorporating deep work into your daily routine, backed by research in psychology and neuroscience.\n3. **\"The 7 Habits of Highly Effective People\" by Stephen Covey**: A classic in the self-help space, this book is based on decades of research and provides practical advice for personal and professional development.\n4. **\"Mindset: The New Psychology of Success\" by Carol S. Dweck**: A groundbreaking book on the power of mindset, backed by Dweck's own research on growth mindset and motivation.\n5. **\"The Power of Now\" by Eckhart Tolle**: While not strictly a self-help book, Tolle's spiritual guidebook is rooted in mindfulness and meditation research. It offers practical advice for living in the present moment and reducing stress.\n6. **\"Flow: The Psychology of Optimal Experience\" by Mihaly Csikszentmihalyi**: A seminal work on the concept of flow, which is backed by decades of research in positive psychology. Csikszentmihalyi provides strategies for incorporating more flow into your daily life.\n7. **\"The Happiness Advantage\" by Shawn Achor**: A book that explores the connection between happiness and success, backed by Achor's research in positive psychology.\n8. **\"Mini Habits: Smaller Habits, Bigger Results\" by Stephen Guise**: A unique approach to habit formation, based on Guise's own research and experiments.\n9. **\"The Productivity Project\" by Chris Bailey**: A comprehensive guide to productivity, backed by Bailey's own research and experiments. He provides practical tips and strategies for improving your daily productivity.\n10. **\"The Willpower Instinct\" by Kelly McGonigal**: A book that explores the science of willpower, providing practical strategies for improving self-control and achieving your goals.\n\nThese books offer a great starting point for anyone looking to improve their daily habits and productivity. They're all grounded in scientific research, providing actionable advice and strategies that you can apply to your life.\n\nRemember, the key to getting the most out of these books is to apply the principles and strategies consistently. Start with small changes and build upon them over time. Good luck!\nuser: I'm interested in \"Atomic Habits\" and \"Deep Work\". Can you tell me more about how these books can help me with my reading habits, specifically? I'd like to increase my reading speed and retain more information.\nassistant: Both \"Atomic Habits\" and \"Deep Work\" can help you improve your reading habits, but in different ways.\n\n**\"Atomic Habits\" by James Clear:**\n\nThis book will help you build a consistent reading habit, which is essential for increasing your reading speed and retention. Here are a few ways \"Atomic Habits\" can help:\n\n1. **Create a reading habit stack**: Clear introduces the concept of \"habit stacking,\" which involves building new habits onto existing ones. You can stack your reading habit onto an existing daily routine, like right after breakfast or before bed.\n2. **Make reading a part of your identity**: The book helps you understand how to create an identity-based habit, where you start to see yourself as a \"reader.\" This mindset shift can help you prioritize reading and make it a non-negotiable part of your daily routine.\n3. **Start small and scale up**: Clear emphasizes the importance of starting with small, achievable habits and gradually increasing them over time. You can start with a manageable daily reading goal, like 10-15 minutes, and gradually increase it as you build the habit.\n4. **Use implementation intentions**: The book teaches you how to create implementation intentions, which are specific plans for when and where you'll perform a habit. For example, \"If it's Monday, I'll read for 20 minutes during my lunch break.\"\n\n**\"Deep Work\" by Cal Newport:**\n\nThis book will help you optimize your reading sessions for better retention and comprehension. Here are a few ways \"Deep Work\" can help:\n\n1. **Eliminate distractions**: Newport emphasizes the importance of working in a distraction-free environment. You can apply this principle to your reading habits by finding a quiet, comfortable spot to read without notifications or interruptions.\n2. **Schedule deep reading sessions**: The book introduces the concept of \"deep work\" sessions, which involve focusing on a task without breaks or multitasking. You can schedule dedicated blocks of time for deep reading, allowing you to fully immerse yourself in the material.\n3. **Use the Pomodoro Technique**: Newport suggests using the Pomodoro Technique, which involves working in focused 25-minute increments, followed by a 5-minute break. You can adapt this technique to your reading sessions, taking breaks to process and reflect on what you've read.\n4. **Practice active reading**: \"Deep Work\" encourages you to engage in active reading, which involves taking notes, asking questions, and summarizing the material as you read. This helps you stay focused and retain more information.\n\nBy combining the principles from both books, you can create a consistent reading habit, optimize your reading sessions for better retention, and increase your reading speed over time.\n\nRemember, the key is to be patient, persistent, and kind to yourself as you develop new habits. Good luck!\nuser: I'm currently on page 250 of 'The Nightingale' by Kristin Hannah, and I'm really getting into it. I'd like to apply the principles from 'Atomic Habits' and 'Deep Work' to improve my reading habits. Can you help me create a plan to increase my reading speed and retention? Specifically, I'd like to know how to schedule my reading sessions, eliminate distractions, and practice active reading.\nassistant: I'm thrilled to help you create a plan to improve your reading habits!\n\nGiven your current progress in 'The Nightingale', I'll suggest a plan that's tailored to your reading style and schedule. Feel free to adjust it as needed to suit your lifestyle.\n\n**Scheduling Reading Sessions:**\n\n1. **Set a specific goal**: Commit to reading a certain number of pages or a specific amount of time each day/week. For example, aim to read 30-40 pages or 30-60 minutes daily.\n2. **Choose a consistent time**: Decide on a consistent time of day that works for you, such as:\n\t* Early morning (e.g., 30 minutes before work/school)\n\t* Lunch break (e.g., 30-60 minutes)\n\t* Evening (e.g., 30-60 minutes before bed)\n3. **Schedule it**: Treat your reading sessions as non-negotiable appointments. Write them down in your calendar, planner, or set reminders on your phone.\n\n**Eliminating Distractions:**\n\n1. **Create a conducive environment**: Designate a quiet, comfortable reading spot with minimal distractions. Consider:\n\t* A cozy corner in your home\n\t* A local library or bookstore\n\t* A peaceful outdoor spot (if weather permits)\n2. **Turn off notifications**: Silence your phone, TV, and other electronic devices during your reading sessions. Use apps like Freedom, SelfControl, or Moment to help you stay focused.\n3. **Minimize multitasking**: Avoid reading while doing other activities, like eating, browsing, or chatting. Focus solely on your book.\n\n**Practicing Active Reading:**\n\n1. **Take notes**: Keep a reading journal or use a note-taking app (e.g., Evernote, Simplenote) to record:\n\t* Key quotes or passages\n\t* Character developments\n\t* Themes or motifs\n\t* Questions or thoughts that arise\n2. **Summarize and reflect**: After each reading session, take a few minutes to:\n\t* Summarize the main events or plot points\n\t* Reflect on what you've read (e.g., what resonated with you, what you're looking forward to)\n3. **Ask questions**: As you read, ask yourself questions like:\n\t* What's the author trying to convey?\n\t* How do the characters' actions relate to the plot?\n\t* What themes are emerging?\n\n**Additional Tips:**\n\n1. **Start small**: Begin with a manageable goal, and gradually increase your reading time or page count as you build your habit.\n2. **Track your progress**: Keep a reading log or use a habit-tracking app (e.g., Habitica, HabitBull) to monitor your progress.\n3. **Reward yourself**: Set small rewards for reaching milestones or completing a certain number of reading sessions.\n\nHere's an example plan to get you started:\n\n**Monday to Friday:**\n\n* 30 minutes of reading during lunch break (12:00-12:30 PM)\n* Eliminate distractions by turning off notifications and finding a quiet spot\n* Take notes and summarize the main events after each session\n\n**Weekends:**\n\n* 60 minutes of reading in the morning (9:00-10:00 AM)\n* Practice active reading by asking questions and reflecting on the material\n\nFeel free to adjust this plan to fit your schedule and preferences. Remember to be patient and kind to yourself as you develop your reading habits.\n\nGood luck, and enjoy the rest of 'The Nightingale'!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2311e44b",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:ea7a111b6cc879e3d7d74e7c583769e7"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:2311e44b\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains multiple durable user preferences and dated reading status facts plus reusable context about a reading habit/productivity plan, and force_memory_write=true requires non-noop routing.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / me / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity; no existing candidates are available.\n- mention=Sapiens; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Sapiens; reason=Concrete reusable book entity discussed as something the user has been enjoying but finds slow going.\n- mention=Atomic Habits; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=Atomic Habits; reason=Concrete reusable book entity selected by the user and discussed for reading-habit principles.\n- mention=Deep Work; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Deep Work; reason=Concrete reusable book entity selected by the user and discussed for reading-habit principles.\n- mention=The Nightingale by Kristin Hannah; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=The Nightingale; reason=Concrete reusable book entity the user is currently reading.\n- mention=reading goal of 50 books by the end of the year; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=User's 50-book annual reading goal; reason=A durable personal goal likely to receive claims about target and progress.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|The Nightingale by Kristin Hannah|Atomic Habits|Deep Work|Sapiens\n        text_queries=reading goal 50 books end of year read 12 books so far|non-fiction easy to read not too dense evidence-based self-help practical habits productivity|currently on page 250 of The Nightingale|plan to increase reading speed and retention schedule reading sessions eliminate distractions active reading\n        predicate_hints=has_goal|current_metric_value|prefers|avoids|owns\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:ea7a111b6cc879e3d7d74e7c583769e7] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:2311e44b:session:1; title=LongMemEval 2311e44b session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 16:46\nTranscript:\nuser: I'm trying to get back on track with my reading goal, can you help me calculate how many books I need to read per month to reach my goal of 50 books by the end of the year?\nassistant: I'd be happy to help you calculate how many books you need to read per month to reach your goal!\n\nFirst, let's break down the remaining months of the year:\n\n* Since you're currently in [insert current month], you have [insert number of months left in the year] months remaining in the year.\n\nNext, let's calculate how many books you need to read in total to reach your goal:\n\n* You want to read 50 books by the end of the year, and you haven't specified how many you've already read, so let's assume you've read 0 books so far (if you've already read some, you can adjust the calculation accordingly).\n* You need to read 50 books in the remaining [insert number of months left in the year] months.\n\nNow, let's do the math:\n\n* Divide the total number of books you need to read (50) by the number of months you have left in the year: 50 books / [insert number of months left in the year] months = [insert result] books per month.\n\nFor example, if it's currently September and you have 4 months left in the year (September to December), the calculation would be:\n\n* 50 books / 4 months = 12.5 books per month\n\nSo, you would need to read approximately 12-13 books per month for the remaining 4 months to reach your goal of 50 books.\n\nRemember, this calculation is just an estimate, and you can adjust it based on your reading pace and schedule. Good luck with your reading goal, and happy reading!\nuser: I've already read 12 books so far this year, so I'll adjust the calculation accordingly. Also, can you recommend me some non-fiction books that are not too dense and easy to read? I've been enjoying \"Sapiens\" but it's really slow going.\nassistant: With 12 books already under your belt, you've got a good head start.\n\nLet's recalculate your target:\n\n* You want to read 50 books by the end of the year, and you've already read 12, so you need to read: 50 - 12 = 38 books\n* You have [insert number of months left in the year] months remaining in the year. Let's assume it's September, so you have 4 months left.\n* Divide the remaining books you need to read (38) by the number of months you have left: 38 books / 4 months = 9.5 books per month\n\nSo, you'll need to read around 9-10 books per month for the remaining 4 months to reach your goal.\n\nNow, about those non-fiction book recommendations!\n\nSince you're enjoying \"Sapiens\" but finding it slow going, I'll suggest some engaging and accessible non-fiction books that might be up your alley:\n\n1. **\"The Devil in the White City\" by Erik Larson**: A historical true crime book that reads like a thriller. It's about the 1893 World's Fair in Chicago and the serial killer H.H. Holmes.\n2. **\"Bad Blood: Secrets and Lies in a Silicon Valley Startup\" by John Carreyrou**: A fascinating and well-researched book about the rise and fall of Theranos, a biotech startup that claimed to revolutionize healthcare.\n3. **\"The Immortal Life of Henrietta Lacks\" by Rebecca Skloot**: A compelling story about the intersection of medicine, ethics, and humanity, centered around the life of Henrietta Lacks and her immortal cells.\n4. **\"Just Mercy: A Story of Justice and Redemption\" by Bryan Stevenson**: A powerful and thought-provoking book about the US justice system, racial inequality, and the author's work as a lawyer advocating for death row inmates.\n5. **\"The Power of Habit: Why We Do What We Do in Life and Business\" by Charles Duhigg**: A fascinating exploration of habits, how they're formed, and how we can change them. It's a great mix of science, psychology, and real-life examples.\n\nThese books are all well-researched, engaging, and relatively easy to read. They're not too dense or academic, making them perfect for someone who wants to enjoy non-fiction without feeling overwhelmed.\nuser: I'd like to explore more non-fiction books like the ones you mentioned. Can you recommend some books in the self-help or personal development category that are actually backed by scientific research, not just inspirational stories or anecdotes? I'm interested in practical advice that can help me improve my daily habits and productivity.\nassistant: I'm glad you're interested in evidence-based self-help books!\n\nHere are some highly recommended self-help and personal development books that are grounded in scientific research, offering practical advice to improve your daily habits and productivity:\n\n1. **\"Atomic Habits\" by James Clear**: A comprehensive guide to building good habits and breaking bad ones, backed by scientific research in psychology and neuroscience.\n2. **\"Deep Work\" by Cal Newport**: A must-read for anyone looking to improve their productivity and focus in a distracting world. Newport provides strategies for incorporating deep work into your daily routine, backed by research in psychology and neuroscience.\n3. **\"The 7 Habits of Highly Effective People\" by Stephen Covey**: A classic in the self-help space, this book is based on decades of research and provides practical advice for personal and professional development.\n4. **\"Mindset: The New Psychology of Success\" by Carol S. Dweck**: A groundbreaking book on the power of mindset, backed by Dweck's own research on growth mindset and motivation.\n5. **\"The Power of Now\" by Eckhart Tolle**: While not strictly a self-help book, Tolle's spiritual guidebook is rooted in mindfulness and meditation research. It offers practical advice for living in the present moment and reducing stress.\n6. **\"Flow: The Psychology of Optimal Experience\" by Mihaly Csikszentmihalyi**: A seminal work on the concept of flow, which is backed by decades of research in positive psychology. Csikszentmihalyi provides strategies for incorporating more flow into your daily life.\n7. **\"The Happiness Advantage\" by Shawn Achor**: A book that explores the connection between happiness and success, backed by Achor's research in positive psychology.\n8. **\"Mini Habits: Smaller Habits, Bigger Results\" by Stephen Guise**: A unique approach to habit formation, based on Guise's own research and experiments.\n9. **\"The Productivity Project\" by Chris Bailey**: A comprehensive guide to productivity, backed by Bailey's own research and experiments. He provides practical tips and strategies for improving your daily productivity.\n10. **\"The Willpower Instinct\" by Kelly McGonigal**: A book that explores the science of willpower, providing practical strategies for improving self-control and achieving your goals.\n\nThese books offer a great starting point for anyone looking to improve their daily habits and productivity. They're all grounded in scientific research, providing actionable advice and strategies that you can apply to your life.\n\nRemember, the key to getting the most out of these books is to apply the principles and strategies consistently. Start with small changes and build upon them over time. Good luck!\nuser: I'm interested in \"Atomic Habits\" and \"Deep Work\". Can you tell me more about how these books can help me with my reading habits, specifically? I'd like to increase my reading speed and retain more information.\nassistant: Both \"Atomic Habits\" and \"Deep Work\" can help you improve your reading habits, but in different ways.\n\n**\"Atomic Habits\" by James Clear:**\n\nThis book will help you build a consistent reading habit, which is essential for increasing your reading speed and retention. Here are a few ways \"Atomic Habits\" can help:\n\n1. **Create a reading habit stack**: Clear introduces the concept of \"habit stacking,\" which involves building new habits onto existing ones. You can stack your reading habit onto an existing daily routine, like right after breakfast or before bed.\n2. **Make reading a part of your identity**: The book helps you understand how to create an identity-based habit, where you start to see yourself as a \"reader.\" This mindset shift can help you prioritize reading and make it a non-negotiable part of your daily routine.\n3. **Start small and scale up**: Clear emphasizes the importance of starting with small, achievable habits and gradually increasing them over time. You can start with a manageable daily reading goal, like 10-15 minutes, and gradually increase it as you build the habit.\n4. **Use implementation intentions**: The book teaches you how to create implementation intentions, which are specific plans for when and where you'll perform a habit. For example, \"If it's Monday, I'll read for 20 minutes during my lunch break.\"\n\n**\"Deep Work\" by Cal Newport:**\n\nThis book will help you optimize your reading sessions for better retention and comprehension. Here are a few ways \"Deep Work\" can help:\n\n1. **Eliminate distractions**: Newport emphasizes the importance of working in a distraction-free environment. You can apply this principle to your reading habits by finding a quiet, comfortable spot to read without notifications or interruptions.\n2. **Schedule deep reading sessions**: The book introduces the concept of \"deep work\" sessions, which involve focusing on a task without breaks or multitasking. You can schedule dedicated blocks of time for deep reading, allowing you to fully immerse yourself in the material.\n3. **Use the Pomodoro Technique**: Newport suggests using the Pomodoro Technique, which involves working in focused 25-minute increments, followed by a 5-minute break. You can adapt this technique to your reading sessions, taking breaks to process and reflect on what you've read.\n4. **Practice active reading**: \"Deep Work\" encourages you to engage in active reading, which involves taking notes, asking questions, and summarizing the material as you read. This helps you stay focused and retain more information.\n\nBy combining the principles from both books, you can create a consistent reading habit, optimize your reading sessions for better retention, and increase your reading speed over time.\n\nRemember, the key is to be patient, persistent, and kind to yourself as you develop new habits. Good luck!\nuser: I'm currently on page 250 of 'The Nightingale' by Kristin Hannah, and I'm really getting into it. I'd like to apply the principles from 'Atomic Habits' and 'Deep Work' to improve my reading habits. Can you help me create a plan to increase my reading speed and retention? Specifically, I'd like to know how to schedule my reading sessions, eliminate distractions, and practice active reading.\nassistant: I'm thrilled to help you create a plan to improve your reading habits!\n\nGiven your current progress in 'The Nightingale', I'll suggest a plan that's tailored to your reading style and schedule. Feel free to adjust it as needed to suit your lifestyle.\n\n**Scheduling Reading Sessions:**\n\n1. **Set a specific goal**: Commit to reading a certain number of pages or a specific amount of time each day/week. For example, aim to read 30-40 pages or 30-60 minutes daily.\n2. **Choose a consistent time**: Decide on a consistent time of day that works for you, such as:\n\t* Early morning (e.g., 30 minutes before work/school)\n\t* Lunch break (e.g., 30-60 minutes)\n\t* Evening (e.g., 30-60 minutes before bed)\n3. **Schedule it**: Treat your reading sessions as non-negotiable appointments. Write them down in your calendar, planner, or set reminders on your phone.\n\n**Eliminating Distractions:**\n\n1. **Create a conducive environment**: Designate a quiet, comfortable reading spot with minimal distractions. Consider:\n\t* A cozy corner in your home\n\t* A local library or bookstore\n\t* A peaceful outdoor spot (if weather permits)\n2. **Turn off notifications**: Silence your phone, TV, and other electronic devices during your reading sessions. Use apps like Freedom, SelfControl, or Moment to help you stay focused.\n3. **Minimize multitasking**: Avoid reading while doing other activities, like eating, browsing, or chatting. Focus solely on your book.\n\n**Practicing Active Reading:**\n\n1. **Take notes**: Keep a reading journal or use a note-taking app (e.g., Evernote, Simplenote) to record:\n\t* Key quotes or passages\n\t* Character developments\n\t* Themes or motifs\n\t* Questions or thoughts that arise\n2. **Summarize and reflect**: After each reading session, take a few minutes to:\n\t* Summarize the main events or plot points\n\t* Reflect on what you've read (e.g., what resonated with you, what you're looking forward to)\n3. **Ask questions**: As you read, ask yourself questions like:\n\t* What's the author trying to convey?\n\t* How do the characters' actions relate to the plot?\n\t* What themes are emerging?\n\n**Additional Tips:**\n\n1. **Start small**: Begin with a manageable goal, and gradually increase your reading time or page count as you build your habit.\n2. **Track your progress**: Keep a reading log or use a habit-tracking app (e.g., Habitica, HabitBull) to monitor your progress.\n3. **Reward yourself**: Set small rewards for reaching milestones or completing a certain number of reading sessions.\n\nHere's an example plan to get you started:\n\n**Monday to Friday:**\n\n* 30 minutes of reading during lunch break (12:00-12:30 PM)\n* Eliminate distractions by turning off notifications and finding a quiet spot\n* Take notes and summarize the main events after each session\n\n**Weekends:**\n\n* 60 minutes of reading in the morning (9:00-10:00 AM)\n* Practice active reading by asking questions and reflecting on the material\n\nFeel free to adjust this plan to fit your schedule and preferences. Remember to be patient and kind to yourself as you develop your reading habits.\n\nGood luck, and enjoy the rest of 'The Nightingale'!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2311e44b",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:ea7a111b6cc879e3d7d74e7c583769e7"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user wants to apply principles from Atomic Habits and Deep Work to improve reading speed and retention.\",\"The plan includes scheduling reading sessions, eliminating distractions, and practicing active reading.\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I'd like to apply the principles from 'Atomic Habits' and 'Deep Work' to improve my reading habits.\",\"evidence_reason\":\"The user explicitly requested a plan applying Atomic Habits and Deep Work principles to reading habits, especially speed and retention.\",\"importance\":4,\"keywords\":[\"reading habit\",\"reading speed\",\"retention\",\"Atomic Habits\",\"Deep Work\",\"active reading\",\"distraction-free\",\"schedule\"],\"note_type\":\"plan\",\"rationale\":\"This captures a reusable approach and rationale for a personal productivity/reading habit plan, not just a single atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's personal reading habit and annual reading-goal context\"},\"summary\":\"A reusable plan for improving the user's reading speed and retention: schedule consistent reading sessions as non-negotiable appointments, start with manageable daily goals, create a distraction-free environment, and practice active reading through notes, summaries, reflections, and questions after each session.\",\"tags\":[\"reading_plan\",\"habits\",\"productivity\"],\"title\":\"Reading habit improvement plan using Atomic Habits and Deep Work\",\"valid_from\":\"2023-05-22T16:46:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user was on page 250 of The Nightingale on 2023-05-22.\",\"The user was really getting into The Nightingale.\"],\"confidence\":0.86,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Here's an example plan to get you started:\",\"evidence_reason\":\"The assistant provided a concrete schedule in response to the user's request for scheduling, distraction elimination, and active reading practice.\",\"importance\":3,\"keywords\":[\"The Nightingale\",\"weekly reading schedule\",\"lunch break reading\",\"weekend reading\",\"reading log\",\"active reading\"],\"note_type\":\"plan\",\"rationale\":\"The note preserves the actionable schedule structure and how it supports the reading-habit plan; it is more procedural than a clean claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's current reading plan for The Nightingale and broader reading habit development\"},\"summary\":\"The proposed starting schedule is weekday reading for 30 minutes during lunch, with notifications off and post-session notes/summaries, plus weekend morning reading for 60 minutes with active questioning and reflection. The plan was framed as adjustable to the user's schedule and preferences.\",\"tags\":[\"reading_schedule\",\"current_book\"],\"title\":\"Example weekly reading schedule for The Nightingale\",\"valid_from\":\"2023-05-22T16:46:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4881,
+                "completionTokens": 751,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
