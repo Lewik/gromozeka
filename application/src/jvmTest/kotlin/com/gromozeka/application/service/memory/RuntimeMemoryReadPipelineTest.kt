@@ -196,6 +196,41 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
+    fun runtimePromptDoesNotTreatEmptyCountedSetAsZeroEvidence() = runBlocking {
+        val source = source(
+            id = "source-adjacent-baking",
+            text = "The user baked a chocolate cake and a whole wheat baguette.",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Need complete evidence for baked items.",
+                            query = "baked items egg tarts",
+                            topK = 1,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("How many times did I bake egg tarts?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("An empty counted set is not evidence for zero by itself"), prompt)
+        assertTrue(prompt.contains("retrieved memory explicitly states none/zero"), prompt)
+    }
+
+    @Test
     fun runtimePromptDoesNotTreatPlainProjectAssociationAsLeadership() = runBlocking {
         val source = source(
             id = "source-project-association",
