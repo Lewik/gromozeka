@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "7711601c6dfc8ea324d1c8eef200bdb821ffbde6ef43a5e207eb593b7751c29a",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:81507db6\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/07/21 (Fri) 11:53\nTranscript:\nuser: I'm thinking of pursuing a certification in digital marketing, could you help me compare two programs I'm interested in? By the way, I just attended my best friend Rachel's master's degree graduation ceremony a couple of weeks ago, it was really inspiring.\nassistant: Huge congratulations to Rachel on her achievement! That's definitely something to celebrate!\n\nNow, I'd be happy to help you compare the two digital marketing certification programs you're interested in. Which programs are they? Please share the names, and I'll do my best to provide a comparison of their curriculum, duration, cost, and any other relevant factors to help you make an informed decision.\n\nAlso, what are your goals for pursuing a certification in digital marketing? Are you looking to switch careers, enhance your current role, or start your own business? Knowing your objectives will help me provide more tailored guidance.\nuser: I'm considering the Digital Marketing Certified Associate program from Digital Marketing Institute and the Certified Digital Marketing Professional program from American Marketing Association. My goal is to enhance my current role and maybe move into a more senior position in the future.\nassistant: Both the Digital Marketing Institute (DMI) and the American Marketing Association (AMA) are well-established and reputable organizations in the digital marketing industry. Here's a comparison of the two programs to help you decide:\n\n**Digital Marketing Certified Associate (DMCA) - Digital Marketing Institute:**\n\n1. **Curriculum:** The DMCA program covers a wide range of digital marketing topics, including:\n\t* Digital marketing strategy and planning\n\t* Search engine optimization (SEO)\n\t* Pay-per-click (PPC) advertising\n\t* Social media marketing\n\t* Email marketing\n\t* Analytics and reporting\n\t* Mobile marketing\n\t* Digital marketing metrics and optimization\n2. **Duration:** The program typically takes 3-4 months to complete, with 30 hours of video lessons and 30 hours of study time.\n3. **Cost:** The current cost is around $1,995, with a payment plan option available.\n4. **Exam and Certification:** The program culminates in a 3-hour, 180-question exam. Upon passing, you'll receive the Digital Marketing Certified Associate certification, which is valid for 3 years.\n5. **Industry recognition:** The DMI certification is recognized globally, with over 20,000 certified professionals in 100+ countries.\n\n**Certified Digital Marketing Professional (CDMP) - American Marketing Association:**\n\n1. **Curriculum:** The CDMP program covers:\n\t* Digital marketing strategy and planning\n\t* Search engine optimization (SEO)\n\t* Paid digital media (PPC, social media, email)\n\t* Mobile marketing\n\t* Analytics and reporting\n\t* Digital marketing technology and tools\n2. **Duration:** The program is self-paced, with an estimated 12-15 hours of study time.\n3. **Cost:** The current cost is around $1,495 for AMA members and $1,995 for non-members.\n4. **Exam and Certification:** The program concludes with a 120-question, 2-hour exam. Upon passing, you'll receive the Certified Digital Marketing Professional certification, which is valid for 3 years.\n5. **Industry recognition:** The AMA is a well-established organization with a strong reputation in the marketing industry, and the CDMP certification is recognized across the United States and globally.\n\n**Comparison and Considerations:**\n\n* Both programs cover similar topics, but the DMI program might provide more comprehensive coverage of digital marketing channels and metrics.\n* The DMI program has a more extensive study period, which might be beneficial if you need more time to absorb the material.\n* The AMA program is more affordable for members, but the DMI program offers a payment plan option.\n* Both certifications are industry-recognized and valid for 3 years, but the DMI certification has a stronger global presence.\n* Consider your current role and goals: if you're looking to specialize in digital marketing, the DMI program might be a better fit. If you're looking for a more general marketing certification with a digital focus, the AMA program could be suitable.\n\nUltimately, the decision comes down to your personal preferences, budget, and goals. I recommend reviewing the course outlines and curriculum in more detail to determine which program aligns better with your needs.\n\nHow do you feel about these programs after this comparison? Do you have any specific questions or concerns about either program?\nuser: I'm still undecided, but I think I need to consider my budget and time commitment to each program. Rachel's graduation ceremony reminded me of how important it is to invest in my own education and growth. I'd like to know more about the job prospects and salary ranges for digital marketing professionals with these certifications.\nassistant: Wise decision! Considering your budget and time commitment is crucial. And I'm glad Rachel's graduation ceremony inspired you to invest in your own growth!\n\nRegarding job prospects and salary ranges, I've gathered some information to help you make a more informed decision:\n\n**Job Prospects:**\n\nBoth certifications can open doors to various roles in digital marketing, including:\n\n1. Digital Marketing Specialist\n2. SEO Specialist\n3. PPC Specialist\n4. Social Media Manager\n5. Content Marketing Specialist\n6. Email Marketing Specialist\n7. Digital Marketing Manager\n8. Marketing Automation Specialist\n\nWith the increasing demand for digital marketing professionals, job prospects are promising. According to the Bureau of Labor Statistics, employment of marketing managers is projected to grow 6% from 2020 to 2030, faster than the average for all occupations.\n\n**Salary Ranges:**\n\nSalaries can vary based on factors like location, industry, experience, and company size. However, here are some approximate salary ranges for digital marketing professionals with these certifications:\n\n**Digital Marketing Certified Associate (DMCA) - Digital Marketing Institute:**\n\n* Digital Marketing Specialist: $45,000 - $65,000 per year\n* SEO Specialist: $50,000 - $75,000 per year\n* PPC Specialist: $55,000 - $80,000 per year\n* Digital Marketing Manager: $70,000 - $110,000 per year\n\n**Certified Digital Marketing Professional (CDMP) - American Marketing Association:**\n\n* Digital Marketing Specialist: $40,000 - $60,000 per year\n* Social Media Manager: $45,000 - $70,000 per year\n* Content Marketing Specialist: $50,000 - $75,000 per year\n* Digital Marketing Manager: $65,000 - $100,000 per year\n\nKeep in mind that these are approximate salary ranges, and your actual salary will depend on your location, experience, and other factors.\n\n**Certification Value:**\n\nBoth certifications can demonstrate your expertise and commitment to potential employers. According to a survey by the Digital Marketing Institute, 92% of certified professionals reported an increase in their career prospects, and 80% reported an increase in their salary.\n\nTo give you a better idea, here are some statistics on the certification value:\n\n* DMI certification holders reported an average salary increase of 20% within 6-12 months of certification.\n* AMA certification holders reported an average salary increase of 15% within 6-12 months of certification.\n\nNow that you have a better understanding of the job prospects and salary ranges, how do you think this information will influence your decision? Do you have any other questions or concerns about the certifications or career paths?\nuser: I think I understand the job prospects and salary ranges better now. It's good to know that both certifications can open up more opportunities and potentially increase my salary. Since I'm looking to enhance my current role and maybe move into a more senior position, I'm leaning towards the Digital Marketing Certified Associate program from Digital Marketing Institute. However, I still need to consider my budget and time commitment. Can you help me break down the costs and time required for each program?\nassistant: The Digital Marketing Certified Associate (DMCA) program from Digital Marketing Institute is a well-structured program that can help you enhance your skills and knowledge in digital marketing.\n\nLet's break down the costs and time required for each program to help you make a more informed decision:\n\n**Digital Marketing Certified Associate (DMCA) - Digital Marketing Institute:**\n\n* **Cost:**\n\t+ Program fee: $1,995\n\t+ Study materials (optional): $200 - $500 (depending on the package)\n\t+ Exam fee: included in the program fee\n\t+ Total cost: $1,995 - $2,495\n* **Time commitment:**\n\t+ Study time: 30 hours of video lessons + 30 hours of study time (self-paced)\n\t+ Exam preparation: 1-2 weeks (depending on your pace)\n\t+ Total time commitment: 3-4 months (assuming 5-10 hours of study per week)\n\n**Certified Digital Marketing Professional (CDMP) - American Marketing Association:**\n\n* **Cost:**\n\t+ Program fee (AMA members): $1,495\n\t+ Program fee (non-AMA members): $1,995\n\t+ Study materials (optional): $100 - $300 (depending on the package)\n\t+ Exam fee: included in the program fee\n\t+ Total cost: $1,495 - $2,295 (for AMA members) or $1,995 - $2,995 (for non-AMA members)\n* **Time commitment:**\n\t+ Study time: 12-15 hours of self-paced study\n\t+ Exam preparation: 1-2 weeks (depending on your pace)\n\t+ Total time commitment: 2-3 months (assuming 5-10 hours of study per week)\n\nConsider the following factors when evaluating the costs and time commitment:\n\n* Your current schedule and availability for study\n* Your budget for the program fees and study materials\n* The level of support and resources you need from the program provider\n* The recognition and reputation of the certification in your industry and region\n\nNow that you have a clearer understanding of the costs and time commitment, how do you feel about your decision? Are you leaning more towards the DMCA program, or would you like to explore other options or discuss further?\nuser: I think I'm getting closer to making a decision. I'm still leaning towards the DMCA program, but I want to think more about how I can fit the study time into my schedule. Can you help me come up with a study plan or schedule that would work for me?\nassistant: Creating a study plan or schedule can help you stay on track and make the most of your time.\n\nTo help you develop a study plan, I'll need to know a bit more about your current schedule and availability. Please answer the following questions:\n\n1. What is your current work schedule? Are you working full-time, part-time, or freelancing?\n2. How many hours do you have available for study per week? Consider your daily routine, including work, commuting, exercise, and personal time.\n3. What are your most productive hours of the day? Are you a morning person, afternoon person, or do you focus better in the evening?\n4. Do you have any existing commitments that you need to schedule around, such as family time, hobbies, or other courses?\n5. How many weeks do you want to allocate for studying the DMCA program? The recommended study time is 3-4 months, but you can adjust the pace to fit your needs.\n\nOnce I have this information, I can help you create a personalized study plan or schedule that suits your lifestyle and goals.\n\nRemember, consistency is key when it comes to studying. Aim to set aside a specific time each week, and try to stick to it as much as possible. You can always adjust the plan as needed, but having a schedule will help you stay focused and motivated.\n\nLet me know your answers to these questions, and I'll help you create a study plan that works for you!\nuser: I think I can fit in 5-6 hours of study per week, and I'm most productive in the morning. I work full-time, so I'd like to allocate 3-4 months to complete the program. I'd prefer to study on weekends, so I can dedicate two mornings to studying. I also want to make sure I have some buffer time in case I need it. How can I create a study plan around this?\nassistant: With 5-6 hours of study per week, you can make steady progress on the DMCA program. Given your preferences, I've created a suggested study plan for you:\n\n**Weekend Study Schedule:**\n\n* Saturday morning: 2.5 hours of study (9:00 AM - 11:30 AM)\n* Sunday morning: 2.5 hours of study (9:00 AM - 11:30 AM)\n\nThis schedule allows you to dedicate two mornings to studying, with a break in between to relax and recharge. You can adjust the start time to suit your needs, but try to maintain the 2.5-hour blocks.\n\n**Monthly Breakdown:**\n\nTo help you stay on track, let's break down the 3-4 month study period into smaller chunks:\n\n* Month 1: Complete Modules 1-3 ( approx. 10 hours of study)\n* Month 2: Complete Modules 4-6 (approx. 10 hours of study)\n* Month 3: Complete Modules 7-9 (approx. 10 hours of study)\n* Month 4: Review and prepare for the exam (approx. 10 hours of study)\n\n**Buffer Time:**\n\nTo account for unexpected events or days when you might not feel like studying, let's allocate some buffer time:\n\n* 1-2 weeks of flexibility in the schedule to catch up or take a break\n* 1-2 hours of extra study time per month to review challenging topics or make up for missed study sessions\n\n**Tips to Stay on Track:**\n\n1. Create a dedicated study space to minimize distractions.\n2. Set reminders for your study sessions to stay committed.\n3. Break down each study session into smaller tasks to help you stay focused.\n4. Review the course material regularly to reinforce your understanding.\n5. Take breaks to avoid burnout and maintain your productivity.\n\nFeel free to adjust this plan as needed to suit your learning style and pace. Remember to stay flexible, and don't hesitate to reach out if you need any help or guidance along the way.\n\nHow does this study plan look to you? Is there anything you'd like to change or add?\n\n        Candidate notes:\n        [0] type=CONTEXT title=DMCA vs CDMP certification decision context summary=The user compared the Digital Marketing Certified Associate program from Digital Marketing Institute with the Certified Digital Marketing Professional program from American Marketing Association to enhance their current role and potentially move into a more senior position. The emerging decision leaned toward DMCA because of its stronger fit for deeper digital marketing specialization, but budget ...[truncated 52 chars] scope=Applies to the user's 2023-07-21 comparison of DMCA and CDMP digital marketing certification options. entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=DMCA,CDMP,Digital Marketing Certified Associate,Certified Digital Marketing Professional,Digital Marketing Institute,American Marketing Association,senior position,budget,time commitment tags=digital_marketing,certification_decision,career_growth evidence=I'm still leaning towards the DMCA program, but I want to think more about how I can fit the study time into my schedule.\n[1] type=PLAN title=Proposed weekend morning DMCA study plan summary=For the DMCA program, the proposed study plan was 5 hours per week across two weekend morning blocks: Saturday 9:00 AM–11:30 AM and Sunday 9:00 AM–11:30 AM, over a 3–4 month period. The plan includes monthly module targets, a fourth-month exam review period, 1–2 weeks of schedule flexibility, and 1–2 extra study hours per month for difficult topics or missed sessions. scope=Applies to the user's prospective study schedule for completing the Digital Marketing Certified Associate program. entities=entity:<0>,entity:<1> keywords=DMCA study plan,weekend mornings,Saturday morning,Sunday morning,5-6 hours,3-4 months,buffer time,exam review tags=study_plan,digital_marketing,schedule evidence=Saturday morning: 2.5 hours of study (9:00 AM - 11:30 AM)\n[2] type=CONTEXT title=Rachel's graduation inspired education investment summary=Rachel's master's degree graduation ceremony served as personal motivation for the user to invest in their own education and growth while evaluating digital marketing certifications. scope=Applies to the user's motivation for pursuing digital marketing certification after Rachel's master's degree graduation ceremony. entities=entity:<0>,entity:<5>,entity:<6> keywords=Rachel,master's degree graduation ceremony,education investment,personal growth,digital marketing certification tags=personal_motivation,education,career_growth evidence=Rachel's graduation ceremony reminded me of how important it is to invest in my own education and growth.\n\n        Existing active notes:\n        id=hot-path-f08725a814d8-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=HubSpot vs DMI certification trade-off summary=For the user's digital marketing certification decision, HubSpot is positioned as a free, practical option strongest for inbound marketing, HubSpot tools, agencies, and SMB contexts, while Digital Marketing Institute is positioned as a costly but broader and more globally recognized option with career support and wider industry applicability. The reusable decision lens is budget and practical plat...[truncated 95 chars] scope=Applies to the user's comparison of HubSpot and Digital Marketing Institute digital marketing certification options. keywords=HubSpot,Digital Marketing Institute,DMI,digital marketing certification,budget,industry recognition,career support,ROI tags=certification_decision,digital_marketing,tradeoff,budget useCount=0\nid=hot-path-f08725a814d8-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Alex's graduation prompted user's education reflection summary=The user's attendance at colleague Alex's graduation from a workplace leadership development program a few weeks before 2023-07-21 prompted the user to think about their own educational goals, including digital marketing certification. This event provides personal context for why the user was considering further certification at that time. scope=Applies to the user's motivation for exploring additional education and certification around the July 2023 session. keywords=Alex,graduation,leadership development program,educational goals,digital marketing certification,motivation tags=personal_context,education_motivation,workplace useCount=0\nid=hot-path-f08725a814d8-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=DMI financing and career-support considerations summary=The user explored whether Digital Marketing Institute's roughly $5,000 tuition could be made affordable through payment plans, loans, employer reimbursement, scholarships, discounts, or partnerships, and also investigated career support such as coaching, job placement assistance, job boards, networking events, alumni network, and industry partnerships. These factors are relevant to evaluating whet...[truncated 82 chars] scope=Applies to the user's evaluation of Digital Marketing Institute program affordability and career-return potential. keywords=Digital Marketing Institute,DMI,payment plan,scholarships,career support,job placement,alumni network,tuition,ROI tags=financing,career_support,digital_marketing,certification_decision useCount=0\nid=hot-path-120f43996d07-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Google Digital Garage before HubSpot Inbound Marketing Certification summary=For the user's digital marketing learning path, the selected sequencing is to start with Google Digital Garage to build a broad, free foundation, then decide later whether to pursue more advanced certifications such as HubSpot Inbound Marketing Certification. scope=Applies to the user's digital marketing certification learning path and sequencing decisions. keywords=Google Digital Garage,HubSpot Inbound Marketing Certification,digital marketing,foundational course,certification sequencing tags=digital_marketing,certification_plan,learning_path useCount=0\nid=hot-path-120f43996d07-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Emma preschool graduation context summary=Around May 2023, the user attended little cousin Emma's preschool graduation, and the event remained a meaningful family milestone the user reflected on during this digital marketing certification conversation. scope=Applies to the user's family context involving Emma and the preschool graduation milestone mentioned in the 2023-07-21 session. keywords=Emma,preschool graduation,little cousin,family milestone,May 2023 tags=family_context,dated_event useCount=0\nid=hot-path-120f43996d07-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Foundational certification sequencing rationale for beginner digital marketing summary=The rationale for starting with a foundational digital marketing course is that HubSpot Inbound Marketing Certification may assume prior knowledge of digital marketing concepts, while beginner resources such as Google Digital Garage provide broader introductory coverage at low or no cost. scope=Applies to advice about sequencing beginner digital marketing training before advanced inbound marketing certification. keywords=foundational digital marketing,Google Digital Garage,HubSpot Inbound Marketing Certification,beginner,prior knowledge tags=digital_marketing,learning_strategy,certification_rationale useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:81507db6",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:1c2cb3f10a085183ff483b37186cbd1c"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:81507db6\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/07/21 (Fri) 11:53\nTranscript:\nuser: I'm thinking of pursuing a certification in digital marketing, could you help me compare two programs I'm interested in? By the way, I just attended my best friend Rachel's master's degree graduation ceremony a couple of weeks ago, it was really inspiring.\nassistant: Huge congratulations to Rachel on her achievement! That's definitely something to celebrate!\n\nNow, I'd be happy to help you compare the two digital marketing certification programs you're interested in. Which programs are they? Please share the names, and I'll do my best to provide a comparison of their curriculum, duration, cost, and any other relevant factors to help you make an informed decision.\n\nAlso, what are your goals for pursuing a certification in digital marketing? Are you looking to switch careers, enhance your current role, or start your own business? Knowing your objectives will help me provide more tailored guidance.\nuser: I'm considering the Digital Marketing Certified Associate program from Digital Marketing Institute and the Certified Digital Marketing Professional program from American Marketing Association. My goal is to enhance my current role and maybe move into a more senior position in the future.\nassistant: Both the Digital Marketing Institute (DMI) and the American Marketing Association (AMA) are well-established and reputable organizations in the digital marketing industry. Here's a comparison of the two programs to help you decide:\n\n**Digital Marketing Certified Associate (DMCA) - Digital Marketing Institute:**\n\n1. **Curriculum:** The DMCA program covers a wide range of digital marketing topics, including:\n\t* Digital marketing strategy and planning\n\t* Search engine optimization (SEO)\n\t* Pay-per-click (PPC) advertising\n\t* Social media marketing\n\t* Email marketing\n\t* Analytics and reporting\n\t* Mobile marketing\n\t* Digital marketing metrics and optimization\n2. **Duration:** The program typically takes 3-4 months to complete, with 30 hours of video lessons and 30 hours of study time.\n3. **Cost:** The current cost is around $1,995, with a payment plan option available.\n4. **Exam and Certification:** The program culminates in a 3-hour, 180-question exam. Upon passing, you'll receive the Digital Marketing Certified Associate certification, which is valid for 3 years.\n5. **Industry recognition:** The DMI certification is recognized globally, with over 20,000 certified professionals in 100+ countries.\n\n**Certified Digital Marketing Professional (CDMP) - American Marketing Association:**\n\n1. **Curriculum:** The CDMP program covers:\n\t* Digital marketing strategy and planning\n\t* Search engine optimization (SEO)\n\t* Paid digital media (PPC, social media, email)\n\t* Mobile marketing\n\t* Analytics and reporting\n\t* Digital marketing technology and tools\n2. **Duration:** The program is self-paced, with an estimated 12-15 hours of study time.\n3. **Cost:** The current cost is around $1,495 for AMA members and $1,995 for non-members.\n4. **Exam and Certification:** The program concludes with a 120-question, 2-hour exam. Upon passing, you'll receive the Certified Digital Marketing Professional certification, which is valid for 3 years.\n5. **Industry recognition:** The AMA is a well-established organization with a strong reputation in the marketing industry, and the CDMP certification is recognized across the United States and globally.\n\n**Comparison and Considerations:**\n\n* Both programs cover similar topics, but the DMI program might provide more comprehensive coverage of digital marketing channels and metrics.\n* The DMI program has a more extensive study period, which might be beneficial if you need more time to absorb the material.\n* The AMA program is more affordable for members, but the DMI program offers a payment plan option.\n* Both certifications are industry-recognized and valid for 3 years, but the DMI certification has a stronger global presence.\n* Consider your current role and goals: if you're looking to specialize in digital marketing, the DMI program might be a better fit. If you're looking for a more general marketing certification with a digital focus, the AMA program could be suitable.\n\nUltimately, the decision comes down to your personal preferences, budget, and goals. I recommend reviewing the course outlines and curriculum in more detail to determine which program aligns better with your needs.\n\nHow do you feel about these programs after this comparison? Do you have any specific questions or concerns about either program?\nuser: I'm still undecided, but I think I need to consider my budget and time commitment to each program. Rachel's graduation ceremony reminded me of how important it is to invest in my own education and growth. I'd like to know more about the job prospects and salary ranges for digital marketing professionals with these certifications.\nassistant: Wise decision! Considering your budget and time commitment is crucial. And I'm glad Rachel's graduation ceremony inspired you to invest in your own growth!\n\nRegarding job prospects and salary ranges, I've gathered some information to help you make a more informed decision:\n\n**Job Prospects:**\n\nBoth certifications can open doors to various roles in digital marketing, including:\n\n1. Digital Marketing Specialist\n2. SEO Specialist\n3. PPC Specialist\n4. Social Media Manager\n5. Content Marketing Specialist\n6. Email Marketing Specialist\n7. Digital Marketing Manager\n8. Marketing Automation Specialist\n\nWith the increasing demand for digital marketing professionals, job prospects are promising. According to the Bureau of Labor Statistics, employment of marketing managers is projected to grow 6% from 2020 to 2030, faster than the average for all occupations.\n\n**Salary Ranges:**\n\nSalaries can vary based on factors like location, industry, experience, and company size. However, here are some approximate salary ranges for digital marketing professionals with these certifications:\n\n**Digital Marketing Certified Associate (DMCA) - Digital Marketing Institute:**\n\n* Digital Marketing Specialist: $45,000 - $65,000 per year\n* SEO Specialist: $50,000 - $75,000 per year\n* PPC Specialist: $55,000 - $80,000 per year\n* Digital Marketing Manager: $70,000 - $110,000 per year\n\n**Certified Digital Marketing Professional (CDMP) - American Marketing Association:**\n\n* Digital Marketing Specialist: $40,000 - $60,000 per year\n* Social Media Manager: $45,000 - $70,000 per year\n* Content Marketing Specialist: $50,000 - $75,000 per year\n* Digital Marketing Manager: $65,000 - $100,000 per year\n\nKeep in mind that these are approximate salary ranges, and your actual salary will depend on your location, experience, and other factors.\n\n**Certification Value:**\n\nBoth certifications can demonstrate your expertise and commitment to potential employers. According to a survey by the Digital Marketing Institute, 92% of certified professionals reported an increase in their career prospects, and 80% reported an increase in their salary.\n\nTo give you a better idea, here are some statistics on the certification value:\n\n* DMI certification holders reported an average salary increase of 20% within 6-12 months of certification.\n* AMA certification holders reported an average salary increase of 15% within 6-12 months of certification.\n\nNow that you have a better understanding of the job prospects and salary ranges, how do you think this information will influence your decision? Do you have any other questions or concerns about the certifications or career paths?\nuser: I think I understand the job prospects and salary ranges better now. It's good to know that both certifications can open up more opportunities and potentially increase my salary. Since I'm looking to enhance my current role and maybe move into a more senior position, I'm leaning towards the Digital Marketing Certified Associate program from Digital Marketing Institute. However, I still need to consider my budget and time commitment. Can you help me break down the costs and time required for each program?\nassistant: The Digital Marketing Certified Associate (DMCA) program from Digital Marketing Institute is a well-structured program that can help you enhance your skills and knowledge in digital marketing.\n\nLet's break down the costs and time required for each program to help you make a more informed decision:\n\n**Digital Marketing Certified Associate (DMCA) - Digital Marketing Institute:**\n\n* **Cost:**\n\t+ Program fee: $1,995\n\t+ Study materials (optional): $200 - $500 (depending on the package)\n\t+ Exam fee: included in the program fee\n\t+ Total cost: $1,995 - $2,495\n* **Time commitment:**\n\t+ Study time: 30 hours of video lessons + 30 hours of study time (self-paced)\n\t+ Exam preparation: 1-2 weeks (depending on your pace)\n\t+ Total time commitment: 3-4 months (assuming 5-10 hours of study per week)\n\n**Certified Digital Marketing Professional (CDMP) - American Marketing Association:**\n\n* **Cost:**\n\t+ Program fee (AMA members): $1,495\n\t+ Program fee (non-AMA members): $1,995\n\t+ Study materials (optional): $100 - $300 (depending on the package)\n\t+ Exam fee: included in the program fee\n\t+ Total cost: $1,495 - $2,295 (for AMA members) or $1,995 - $2,995 (for non-AMA members)\n* **Time commitment:**\n\t+ Study time: 12-15 hours of self-paced study\n\t+ Exam preparation: 1-2 weeks (depending on your pace)\n\t+ Total time commitment: 2-3 months (assuming 5-10 hours of study per week)\n\nConsider the following factors when evaluating the costs and time commitment:\n\n* Your current schedule and availability for study\n* Your budget for the program fees and study materials\n* The level of support and resources you need from the program provider\n* The recognition and reputation of the certification in your industry and region\n\nNow that you have a clearer understanding of the costs and time commitment, how do you feel about your decision? Are you leaning more towards the DMCA program, or would you like to explore other options or discuss further?\nuser: I think I'm getting closer to making a decision. I'm still leaning towards the DMCA program, but I want to think more about how I can fit the study time into my schedule. Can you help me come up with a study plan or schedule that would work for me?\nassistant: Creating a study plan or schedule can help you stay on track and make the most of your time.\n\nTo help you develop a study plan, I'll need to know a bit more about your current schedule and availability. Please answer the following questions:\n\n1. What is your current work schedule? Are you working full-time, part-time, or freelancing?\n2. How many hours do you have available for study per week? Consider your daily routine, including work, commuting, exercise, and personal time.\n3. What are your most productive hours of the day? Are you a morning person, afternoon person, or do you focus better in the evening?\n4. Do you have any existing commitments that you need to schedule around, such as family time, hobbies, or other courses?\n5. How many weeks do you want to allocate for studying the DMCA program? The recommended study time is 3-4 months, but you can adjust the pace to fit your needs.\n\nOnce I have this information, I can help you create a personalized study plan or schedule that suits your lifestyle and goals.\n\nRemember, consistency is key when it comes to studying. Aim to set aside a specific time each week, and try to stick to it as much as possible. You can always adjust the plan as needed, but having a schedule will help you stay focused and motivated.\n\nLet me know your answers to these questions, and I'll help you create a study plan that works for you!\nuser: I think I can fit in 5-6 hours of study per week, and I'm most productive in the morning. I work full-time, so I'd like to allocate 3-4 months to complete the program. I'd prefer to study on weekends, so I can dedicate two mornings to studying. I also want to make sure I have some buffer time in case I need it. How can I create a study plan around this?\nassistant: With 5-6 hours of study per week, you can make steady progress on the DMCA program. Given your preferences, I've created a suggested study plan for you:\n\n**Weekend Study Schedule:**\n\n* Saturday morning: 2.5 hours of study (9:00 AM - 11:30 AM)\n* Sunday morning: 2.5 hours of study (9:00 AM - 11:30 AM)\n\nThis schedule allows you to dedicate two mornings to studying, with a break in between to relax and recharge. You can adjust the start time to suit your needs, but try to maintain the 2.5-hour blocks.\n\n**Monthly Breakdown:**\n\nTo help you stay on track, let's break down the 3-4 month study period into smaller chunks:\n\n* Month 1: Complete Modules 1-3 ( approx. 10 hours of study)\n* Month 2: Complete Modules 4-6 (approx. 10 hours of study)\n* Month 3: Complete Modules 7-9 (approx. 10 hours of study)\n* Month 4: Review and prepare for the exam (approx. 10 hours of study)\n\n**Buffer Time:**\n\nTo account for unexpected events or days when you might not feel like studying, let's allocate some buffer time:\n\n* 1-2 weeks of flexibility in the schedule to catch up or take a break\n* 1-2 hours of extra study time per month to review challenging topics or make up for missed study sessions\n\n**Tips to Stay on Track:**\n\n1. Create a dedicated study space to minimize distractions.\n2. Set reminders for your study sessions to stay committed.\n3. Break down each study session into smaller tasks to help you stay focused.\n4. Review the course material regularly to reinforce your understanding.\n5. Take breaks to avoid burnout and maintain your productivity.\n\nFeel free to adjust this plan as needed to suit your learning style and pace. Remember to stay flexible, and don't hesitate to reach out if you need any help or guidance along the way.\n\nHow does this study plan look to you? Is there anything you'd like to change or add?\n\n        Candidate notes:\n        [0] type=CONTEXT title=DMCA vs CDMP certification decision context summary=The user compared the Digital Marketing Certified Associate program from Digital Marketing Institute with the Certified Digital Marketing Professional program from American Marketing Association to enhance their current role and potentially move into a more senior position. The emerging decision leaned toward DMCA because of its stronger fit for deeper digital marketing specialization, but budget ...[truncated 52 chars] scope=Applies to the user's 2023-07-21 comparison of DMCA and CDMP digital marketing certification options. entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=DMCA,CDMP,Digital Marketing Certified Associate,Certified Digital Marketing Professional,Digital Marketing Institute,American Marketing Association,senior position,budget,time commitment tags=digital_marketing,certification_decision,career_growth evidence=I'm still leaning towards the DMCA program, but I want to think more about how I can fit the study time into my schedule.\n[1] type=PLAN title=Proposed weekend morning DMCA study plan summary=For the DMCA program, the proposed study plan was 5 hours per week across two weekend morning blocks: Saturday 9:00 AM–11:30 AM and Sunday 9:00 AM–11:30 AM, over a 3–4 month period. The plan includes monthly module targets, a fourth-month exam review period, 1–2 weeks of schedule flexibility, and 1–2 extra study hours per month for difficult topics or missed sessions. scope=Applies to the user's prospective study schedule for completing the Digital Marketing Certified Associate program. entities=entity:<0>,entity:<1> keywords=DMCA study plan,weekend mornings,Saturday morning,Sunday morning,5-6 hours,3-4 months,buffer time,exam review tags=study_plan,digital_marketing,schedule evidence=Saturday morning: 2.5 hours of study (9:00 AM - 11:30 AM)\n[2] type=CONTEXT title=Rachel's graduation inspired education investment summary=Rachel's master's degree graduation ceremony served as personal motivation for the user to invest in their own education and growth while evaluating digital marketing certifications. scope=Applies to the user's motivation for pursuing digital marketing certification after Rachel's master's degree graduation ceremony. entities=entity:<0>,entity:<5>,entity:<6> keywords=Rachel,master's degree graduation ceremony,education investment,personal growth,digital marketing certification tags=personal_motivation,education,career_growth evidence=Rachel's graduation ceremony reminded me of how important it is to invest in my own education and growth.\n\n        Existing active notes:\n        id=hot-path-f08725a814d8-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=HubSpot vs DMI certification trade-off summary=For the user's digital marketing certification decision, HubSpot is positioned as a free, practical option strongest for inbound marketing, HubSpot tools, agencies, and SMB contexts, while Digital Marketing Institute is positioned as a costly but broader and more globally recognized option with career support and wider industry applicability. The reusable decision lens is budget and practical plat...[truncated 95 chars] scope=Applies to the user's comparison of HubSpot and Digital Marketing Institute digital marketing certification options. keywords=HubSpot,Digital Marketing Institute,DMI,digital marketing certification,budget,industry recognition,career support,ROI tags=certification_decision,digital_marketing,tradeoff,budget useCount=0\nid=hot-path-f08725a814d8-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Alex's graduation prompted user's education reflection summary=The user's attendance at colleague Alex's graduation from a workplace leadership development program a few weeks before 2023-07-21 prompted the user to think about their own educational goals, including digital marketing certification. This event provides personal context for why the user was considering further certification at that time. scope=Applies to the user's motivation for exploring additional education and certification around the July 2023 session. keywords=Alex,graduation,leadership development program,educational goals,digital marketing certification,motivation tags=personal_context,education_motivation,workplace useCount=0\nid=hot-path-f08725a814d8-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=DMI financing and career-support considerations summary=The user explored whether Digital Marketing Institute's roughly $5,000 tuition could be made affordable through payment plans, loans, employer reimbursement, scholarships, discounts, or partnerships, and also investigated career support such as coaching, job placement assistance, job boards, networking events, alumni network, and industry partnerships. These factors are relevant to evaluating whet...[truncated 82 chars] scope=Applies to the user's evaluation of Digital Marketing Institute program affordability and career-return potential. keywords=Digital Marketing Institute,DMI,payment plan,scholarships,career support,job placement,alumni network,tuition,ROI tags=financing,career_support,digital_marketing,certification_decision useCount=0\nid=hot-path-120f43996d07-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Google Digital Garage before HubSpot Inbound Marketing Certification summary=For the user's digital marketing learning path, the selected sequencing is to start with Google Digital Garage to build a broad, free foundation, then decide later whether to pursue more advanced certifications such as HubSpot Inbound Marketing Certification. scope=Applies to the user's digital marketing certification learning path and sequencing decisions. keywords=Google Digital Garage,HubSpot Inbound Marketing Certification,digital marketing,foundational course,certification sequencing tags=digital_marketing,certification_plan,learning_path useCount=0\nid=hot-path-120f43996d07-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Emma preschool graduation context summary=Around May 2023, the user attended little cousin Emma's preschool graduation, and the event remained a meaningful family milestone the user reflected on during this digital marketing certification conversation. scope=Applies to the user's family context involving Emma and the preschool graduation milestone mentioned in the 2023-07-21 session. keywords=Emma,preschool graduation,little cousin,family milestone,May 2023 tags=family_context,dated_event useCount=0\nid=hot-path-120f43996d07-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Foundational certification sequencing rationale for beginner digital marketing summary=The rationale for starting with a foundational digital marketing course is that HubSpot Inbound Marketing Certification may assume prior knowledge of digital marketing concepts, while beginner resources such as Google Digital Garage provide broader introductory coverage at low or no cost. scope=Applies to advice about sequencing beginner digital marketing training before advanced inbound marketing certification. keywords=foundational digital marketing,Google Digital Garage,HubSpot Inbound Marketing Certification,beginner,prior knowledge tags=digital_marketing,learning_strategy,certification_rationale useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:81507db6",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:1c2cb3f10a085183ff483b37186cbd1c"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-f08725a814d8-note-2\"},{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-f08725a814d8-note-3\"}],\"patch\":null,\"reason\":\"Captures a distinct DMCA vs AMA/CDMP decision context and the user's leaning toward DMCA; existing notes cover HubSpot/DMI, DMI financing, or broader sequencing but not this comparison.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-f08725a814d8-note-3\"}],\"patch\":null,\"reason\":\"New reusable schedule plan for completing DMCA; no existing active note captures the user's weekend-morning study availability, timeline, or buffer plan.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"contradicts\",\"link_weight\":0.9,\"to_note_id\":\"hot-path-f08725a814d8-note-4\"},{\"link_type\":\"related\",\"link_weight\":0.4,\"to_note_id\":\"hot-path-120f43996d07-note-4\"}],\"patch\":null,\"reason\":\"Adds distinct source-grounded personal motivation involving best friend Rachel's master's graduation; it conflicts with an existing note that attributes the same July 2023 motivation to colleague Alex's leadership-program graduation.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5287,
+                "completionTokens": 353,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
