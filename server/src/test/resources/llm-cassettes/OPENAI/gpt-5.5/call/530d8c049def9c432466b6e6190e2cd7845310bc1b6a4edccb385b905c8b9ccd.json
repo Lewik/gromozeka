@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "530d8c049def9c432466b6e6190e2cd7845310bc1b6a4edccb385b905c8b9ccd",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:d905b33f\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 12:50\nTranscript:\nuser: I'm looking for some gift ideas for my mom's anniversary. I've narrowed it down to a personalized photo album, customized jewelry, or a gourmet food basket, but I'm still undecided. Can you help me find some options within my budget of $150-$200?\nassistant: What a wonderful gesture! I'd be happy to help you find the perfect gift for your mom's anniversary within your budget of $150-$200. Here are some options for each of the ideas you mentioned:\n\n**Personalized Photo Album:**\n\n1. **Shutterfly**: Create a beautiful, leather-bound photo album with up to 100 photos. ($159)\n2. **Snapfish**: Design a personalized photo book with a custom cover and up to 150 photos. ($149)\n3. **Mixbook**: Make a stunning photo album with a variety of templates and up to 200 photos. ($179)\n\n**Customized Jewelry:**\n\n1. **Etsy**: Find a unique, handmade piece of jewelry with a custom name, initials, or special message. ($150-$200)\n2. **Personalization Mall**: Create a customized necklace with a photo, name, or special message. ($149-$199)\n3. **Zales**: Design a beautiful, engraved necklace or bracelet with a special message. ($150-$200)\n\n**Gourmet Food Basket:**\n\n1. **Harry & David**: Put together a gourmet food basket filled with artisanal cheeses, crackers, and chocolates. ($149)\n2. **Gourmet Gift Baskets**: Create a custom basket with a selection of gourmet foods, teas, or coffees. ($150-$200)\n3. **Dean & DeLuca**: Design a gift basket with specialty foods, such as truffles, jams, and baked goods. ($149-$199)\n\nConsider the following tips to help you make a final decision:\n\n* Think about your mom's interests and hobbies. Does she love cooking? A gourmet food basket might be the way to go. Is she sentimental? A personalized photo album could be the perfect choice.\n* Consider the quality and durability of the gift. Will it last for years to come, or is it a more temporary indulgence?\n* If you're still unsure, you could always combine elements of each idea. For example, create a personalized photo album with a customized cover and include a gourmet food item or two inside.\n\nI hope this helps you find the perfect gift for your mom's anniversary!\nuser: I think I'll go with the customized jewelry option. I've been looking at some online marketplaces and I found a similar necklace that I got for my sister's birthday, which was $75. I'm hoping to find something around that price range or a bit higher. By the way, I've been good about budgeting for gifts lately, except for one impulse buy last week when I saw a sale at my favorite bookstore - I got the book for $24 after a discount.\nassistant: Customized jewelry can make for a thoughtful and unique gift.\n\nIt's great that you have a reference point with the necklace you got for your sister's birthday, and you're looking to stay within a similar price range. You can definitely find some beautiful options within the $75-$150 range.\n\nSince you mentioned you've been good about budgeting for gifts, that impulse buy at the bookstore shouldn't set you back too much. It's okay to treat yourself every now and then, and it sounds like you got a good deal on the book!\n\nFor customized jewelry, you might want to consider the following options:\n\n1. **Etsy**: As I mentioned earlier, Etsy is a great platform for finding unique, handmade jewelry. You can search for keywords like \"custom name necklace,\" \"personalized birthstone necklace,\" or \"monogrammed pendant\" to find relevant listings. Prices vary, but you can often find beautiful pieces within your budget.\n2. **Amazon Handmade**: Similar to Etsy, Amazon Handmade features unique, handmade products, including jewelry. You can search for customized jewelry options and filter by price to find something within your range.\n3. **Zibbet**: Zibbet is another online marketplace that features handmade and unique items, including jewelry. You can search for customized jewelry options and filter by price to find something that fits your budget.\n4. **Local jewelry stores**: If you prefer to shop in-person, consider visiting local jewelry stores in your area. They may offer customization options or have a selection of pre-made pieces that can be personalized.\n\nRemember to check reviews, read descriptions carefully, and ask about production times and shipping if you're shopping online. Good luck in your search, and I hope you find the perfect gift for your mom's anniversary!\nuser: I'm going to check out those online marketplaces, especially Etsy since I've had good experiences with them before. Do you think I could also find a local jewelry store that can help me customize a piece, maybe something with a birthstone or a special message?\nassistant: Etsy is a fantastic platform for finding unique, handmade items, and it's great that you've had good experiences with them before.\n\nAnd absolutely, you can definitely find a local jewelry store that can help you customize a piece! In fact, working with a local jeweler can be a great way to get a one-of-a-kind piece that's tailored exactly to your mom's style and preferences.\n\nHere are some tips for finding a local jewelry store that can help you customize a piece:\n\n1. **Google search**: Simply type in \"custom jewelry near me\" or \"local jewelry stores near me\" and see what comes up. You can also try searching for \"jewelry stores in [your city/state]\" to find options in your area.\n2. **Yelp**: Yelp is a great resource for finding local businesses, including jewelry stores. You can filter your search by rating, price range, and even specific services like \"custom jewelry\" or \"jewelry repair.\"\n3. **Ask around**: Ask friends, family, or coworkers if they know of any good local jewelry stores that offer customization services. Word of mouth can be a great way to find a reputable and skilled jeweler.\n4. **Check online directories**: Websites like JewelersBoard of Trade or the American Gem Trade Association (AGTA) have directories of local jewelers that can help you find a professional in your area.\n\nWhen you visit a local jewelry store, be prepared to discuss the following:\n\n* Your budget: Let them know how much you're willing to spend, and they can work with you to find a piece that fits within your range.\n* Your mom's style: Bring some inspiration photos or describe her personal style to help the jeweler understand what she might like.\n* The customization options: Ask about the types of customization they offer, such as engraving, birthstones, or special messages.\n* The timeline: Find out how long it will take to create the piece and if they can meet your deadline.\n\nBy working with a local jeweler, you can get a truly unique piece that's tailored to your mom's tastes and preferences. Good luck, and I hope you find the perfect gift!\nuser: I'll definitely check out those online marketplaces and local jewelry stores. Do you think it's possible to find a jewelry store that can customize a piece with a special message or birthstone, and also offer a gift receipt in case my mom wants to exchange it?\nassistant: You're thinking ahead! Yes, many jewelry stores, both online and offline, offer customization options with special messages or birthstones, and also provide gift receipts or exchange policies.\n\nWhen shopping online, look for stores that explicitly state their gift receipt and exchange policies. Some online marketplaces, like Etsy, often have sellers who offer gift wrapping and gift receipts, so be sure to check the seller's policies before making a purchase.\n\nFor local jewelry stores, you can simply ask about their gift receipt and exchange policies when you visit. Here are some questions to ask:\n\n* \"Do you offer gift receipts or gift boxes with purchases?\"\n* \"What is your exchange policy? Can my mom exchange the piece if she doesn't like it?\"\n* \"How long do I have to exchange or return the piece?\"\n* \"Are there any restocking fees or exchange fees?\"\n\nReputable jewelry stores will typically have a clear policy in place for gift receipts and exchanges. They may also offer services like free engraving or gift wrapping, which can add a nice touch to your gift.\n\nWhen it comes to customization, be sure to ask about the process and what options are available. Some questions to ask include:\n\n* \"Can you engrave a special message on the piece?\"\n* \"Do you offer birthstone options? Can I choose a specific stone or metal type?\"\n* \"How long does the customization process take?\"\n* \"Can I see a proof or mockup of the design before you create the piece?\"\n\nBy asking these questions, you can ensure that you're working with a jewelry store that can meet your needs and provide a beautiful, customized piece that your mom will love.\nuser: I'll make sure to ask about the gift receipt and exchange policy when I visit the local jewelry stores. That way, I can have peace of mind knowing that my mom can exchange it if she doesn't like it. Do you think I could also ask the jeweler to include a personalized note or message with the gift, like a birthday card or a small note with a special message?\nassistant: What a wonderful idea! Yes, you can definitely ask the jeweler if they can include a personalized note or message with the gift. Many jewelers offer this service, and it can add a thoughtful touch to the gift.\n\nYou can ask the jeweler if they can include a:\n\n* Personalized birthday card with a special message\n* Small note with a heartfelt message or inside joke\n* Gift card with a handwritten message\n* Beautiful packaging with a personalized ribbon or gift tag\n\nSome jewelers might even offer to engrave a small message on the gift box or packaging itself!\n\nWhen you ask about this, you can say something like:\n\n\"Hi, I'm looking for a special gift for my mom's anniversary. I was wondering if you could include a personalized note or message with the gift? Maybe a birthday card or a small note with a special message? It would mean a lot to her.\"\n\nOr:\n\n\"I love this piece, but I'd like to make it extra special. Can you include a personalized gift card or note with a message from me? That would really make it a unique and thoughtful gift.\"\n\nThe jeweler will likely be happy to accommodate your request and make the gift even more special. It's a great way to add a personal touch and make the gift feel more meaningful.\n\nRemember, it's the thought that counts, and the extra effort you're putting into making this gift special will surely be appreciated by your mom!\nuser: I think I'll ask the jeweler if they have any recommendations for a special message or if they can suggest some ideas. Do you think it's a good idea to keep the message short and sweet, or can it be a bit longer and more heartfelt?\nassistant: What a great idea! Asking the jeweler for recommendations can be very helpful, and they might have some wonderful suggestions for you.\n\nWhen it comes to the message, it's really up to you and what you feel comfortable with. However, here are some general guidelines:\n\n* Short and sweet: A brief message can be very effective and to the point. It might be a simple \"I love you, Mom\" or \"Happy Anniversary, Mom and Dad.\" This type of message is great for a more subtle and understated approach.\n* A bit longer and more heartfelt: If you want to express your feelings in a more elaborate way, you could write a short paragraph or a few sentences that convey your love and appreciation. For example: \"To the most amazing mom in the world, thank you for being my rock, my confidante, and my guiding light. I love you more than words can say.\" This type of message is perfect for a more emotional and sentimental gift.\n\nSome things to consider when writing your message:\n\n* Keep it sincere and authentic. Your mom will appreciate the thought and love behind your words.\n* Consider your mom's personality and sense of humor. If she loves puns, for example, you could incorporate a playful message.\n* Think about the occasion. For an anniversary, you might want to focus on the love and commitment between your parents. For a birthday, you could highlight your mom's strengths and accomplishments.\n* Don't worry too much about grammar or spelling. The jeweler will likely help you refine the message, and the imperfections will add a personal touch.\n\nRemember, the most important thing is to speak from your heart and express your feelings in a way that feels true to you and your mom.\n\nWhat do you think? Do you have any ideas for your message already, or do you want to brainstorm some more?\n\n        Candidate notes:\n        [0] type=PLAN title=Gift-selection criteria for mom's anniversary jewelry summary=For the user's mom's anniversary gift, the user narrowed the choice to customized jewelry and is evaluating online marketplaces and local jewelry stores by budget, customization options such as a birthstone or special message, gift receipt/exchange policy, and the possibility of including a personalized note. The practical next step is to ask jewelers about engraving/message ideas, birthstone opti...[truncated 119 chars] scope=Gift planning context for the user's mom's anniversary customized-jewelry gift search entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=mom anniversary gift,customized jewelry,birthstone,special message,gift receipt,exchange policy,personalized note,Etsy,local jewelry stores tags=gift_planning,custom_jewelry,mom_anniversary,decision_criteria evidence=I'll make sure to ask about the gift receipt and exchange policy when I visit the local jewelry stores.\n\n        Existing active notes:\n        id=hot-path-356a412226c1-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Local jeweler strategy for mom's sentimental anniversary gift summary=For the user's mom's anniversary gift, the promising approach is to shop in-store at local jewelers, especially the new jewelry store downtown where the user previously bought their sister's birthday present, and ask about custom messages, birthstones, design process, pricing, materials, and turnaround time. This fits the mom's preference for sentimental gifts and the user's desire for a thoughtfu...[truncated 57 chars] scope=Gift planning context for User's mom and local customized jewelry options keywords=mom anniversary gift,custom jewelry,birthstone,engraved message,new jewelry store downtown,sister birthday present,sentimental gifts tags=gift_planning,custom_jewelry,local_shopping useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d905b33f",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:9d0cbd97e420ed30d58ce6c7339b2773"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:d905b33f\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 12:50\nTranscript:\nuser: I'm looking for some gift ideas for my mom's anniversary. I've narrowed it down to a personalized photo album, customized jewelry, or a gourmet food basket, but I'm still undecided. Can you help me find some options within my budget of $150-$200?\nassistant: What a wonderful gesture! I'd be happy to help you find the perfect gift for your mom's anniversary within your budget of $150-$200. Here are some options for each of the ideas you mentioned:\n\n**Personalized Photo Album:**\n\n1. **Shutterfly**: Create a beautiful, leather-bound photo album with up to 100 photos. ($159)\n2. **Snapfish**: Design a personalized photo book with a custom cover and up to 150 photos. ($149)\n3. **Mixbook**: Make a stunning photo album with a variety of templates and up to 200 photos. ($179)\n\n**Customized Jewelry:**\n\n1. **Etsy**: Find a unique, handmade piece of jewelry with a custom name, initials, or special message. ($150-$200)\n2. **Personalization Mall**: Create a customized necklace with a photo, name, or special message. ($149-$199)\n3. **Zales**: Design a beautiful, engraved necklace or bracelet with a special message. ($150-$200)\n\n**Gourmet Food Basket:**\n\n1. **Harry & David**: Put together a gourmet food basket filled with artisanal cheeses, crackers, and chocolates. ($149)\n2. **Gourmet Gift Baskets**: Create a custom basket with a selection of gourmet foods, teas, or coffees. ($150-$200)\n3. **Dean & DeLuca**: Design a gift basket with specialty foods, such as truffles, jams, and baked goods. ($149-$199)\n\nConsider the following tips to help you make a final decision:\n\n* Think about your mom's interests and hobbies. Does she love cooking? A gourmet food basket might be the way to go. Is she sentimental? A personalized photo album could be the perfect choice.\n* Consider the quality and durability of the gift. Will it last for years to come, or is it a more temporary indulgence?\n* If you're still unsure, you could always combine elements of each idea. For example, create a personalized photo album with a customized cover and include a gourmet food item or two inside.\n\nI hope this helps you find the perfect gift for your mom's anniversary!\nuser: I think I'll go with the customized jewelry option. I've been looking at some online marketplaces and I found a similar necklace that I got for my sister's birthday, which was $75. I'm hoping to find something around that price range or a bit higher. By the way, I've been good about budgeting for gifts lately, except for one impulse buy last week when I saw a sale at my favorite bookstore - I got the book for $24 after a discount.\nassistant: Customized jewelry can make for a thoughtful and unique gift.\n\nIt's great that you have a reference point with the necklace you got for your sister's birthday, and you're looking to stay within a similar price range. You can definitely find some beautiful options within the $75-$150 range.\n\nSince you mentioned you've been good about budgeting for gifts, that impulse buy at the bookstore shouldn't set you back too much. It's okay to treat yourself every now and then, and it sounds like you got a good deal on the book!\n\nFor customized jewelry, you might want to consider the following options:\n\n1. **Etsy**: As I mentioned earlier, Etsy is a great platform for finding unique, handmade jewelry. You can search for keywords like \"custom name necklace,\" \"personalized birthstone necklace,\" or \"monogrammed pendant\" to find relevant listings. Prices vary, but you can often find beautiful pieces within your budget.\n2. **Amazon Handmade**: Similar to Etsy, Amazon Handmade features unique, handmade products, including jewelry. You can search for customized jewelry options and filter by price to find something within your range.\n3. **Zibbet**: Zibbet is another online marketplace that features handmade and unique items, including jewelry. You can search for customized jewelry options and filter by price to find something that fits your budget.\n4. **Local jewelry stores**: If you prefer to shop in-person, consider visiting local jewelry stores in your area. They may offer customization options or have a selection of pre-made pieces that can be personalized.\n\nRemember to check reviews, read descriptions carefully, and ask about production times and shipping if you're shopping online. Good luck in your search, and I hope you find the perfect gift for your mom's anniversary!\nuser: I'm going to check out those online marketplaces, especially Etsy since I've had good experiences with them before. Do you think I could also find a local jewelry store that can help me customize a piece, maybe something with a birthstone or a special message?\nassistant: Etsy is a fantastic platform for finding unique, handmade items, and it's great that you've had good experiences with them before.\n\nAnd absolutely, you can definitely find a local jewelry store that can help you customize a piece! In fact, working with a local jeweler can be a great way to get a one-of-a-kind piece that's tailored exactly to your mom's style and preferences.\n\nHere are some tips for finding a local jewelry store that can help you customize a piece:\n\n1. **Google search**: Simply type in \"custom jewelry near me\" or \"local jewelry stores near me\" and see what comes up. You can also try searching for \"jewelry stores in [your city/state]\" to find options in your area.\n2. **Yelp**: Yelp is a great resource for finding local businesses, including jewelry stores. You can filter your search by rating, price range, and even specific services like \"custom jewelry\" or \"jewelry repair.\"\n3. **Ask around**: Ask friends, family, or coworkers if they know of any good local jewelry stores that offer customization services. Word of mouth can be a great way to find a reputable and skilled jeweler.\n4. **Check online directories**: Websites like JewelersBoard of Trade or the American Gem Trade Association (AGTA) have directories of local jewelers that can help you find a professional in your area.\n\nWhen you visit a local jewelry store, be prepared to discuss the following:\n\n* Your budget: Let them know how much you're willing to spend, and they can work with you to find a piece that fits within your range.\n* Your mom's style: Bring some inspiration photos or describe her personal style to help the jeweler understand what she might like.\n* The customization options: Ask about the types of customization they offer, such as engraving, birthstones, or special messages.\n* The timeline: Find out how long it will take to create the piece and if they can meet your deadline.\n\nBy working with a local jeweler, you can get a truly unique piece that's tailored to your mom's tastes and preferences. Good luck, and I hope you find the perfect gift!\nuser: I'll definitely check out those online marketplaces and local jewelry stores. Do you think it's possible to find a jewelry store that can customize a piece with a special message or birthstone, and also offer a gift receipt in case my mom wants to exchange it?\nassistant: You're thinking ahead! Yes, many jewelry stores, both online and offline, offer customization options with special messages or birthstones, and also provide gift receipts or exchange policies.\n\nWhen shopping online, look for stores that explicitly state their gift receipt and exchange policies. Some online marketplaces, like Etsy, often have sellers who offer gift wrapping and gift receipts, so be sure to check the seller's policies before making a purchase.\n\nFor local jewelry stores, you can simply ask about their gift receipt and exchange policies when you visit. Here are some questions to ask:\n\n* \"Do you offer gift receipts or gift boxes with purchases?\"\n* \"What is your exchange policy? Can my mom exchange the piece if she doesn't like it?\"\n* \"How long do I have to exchange or return the piece?\"\n* \"Are there any restocking fees or exchange fees?\"\n\nReputable jewelry stores will typically have a clear policy in place for gift receipts and exchanges. They may also offer services like free engraving or gift wrapping, which can add a nice touch to your gift.\n\nWhen it comes to customization, be sure to ask about the process and what options are available. Some questions to ask include:\n\n* \"Can you engrave a special message on the piece?\"\n* \"Do you offer birthstone options? Can I choose a specific stone or metal type?\"\n* \"How long does the customization process take?\"\n* \"Can I see a proof or mockup of the design before you create the piece?\"\n\nBy asking these questions, you can ensure that you're working with a jewelry store that can meet your needs and provide a beautiful, customized piece that your mom will love.\nuser: I'll make sure to ask about the gift receipt and exchange policy when I visit the local jewelry stores. That way, I can have peace of mind knowing that my mom can exchange it if she doesn't like it. Do you think I could also ask the jeweler to include a personalized note or message with the gift, like a birthday card or a small note with a special message?\nassistant: What a wonderful idea! Yes, you can definitely ask the jeweler if they can include a personalized note or message with the gift. Many jewelers offer this service, and it can add a thoughtful touch to the gift.\n\nYou can ask the jeweler if they can include a:\n\n* Personalized birthday card with a special message\n* Small note with a heartfelt message or inside joke\n* Gift card with a handwritten message\n* Beautiful packaging with a personalized ribbon or gift tag\n\nSome jewelers might even offer to engrave a small message on the gift box or packaging itself!\n\nWhen you ask about this, you can say something like:\n\n\"Hi, I'm looking for a special gift for my mom's anniversary. I was wondering if you could include a personalized note or message with the gift? Maybe a birthday card or a small note with a special message? It would mean a lot to her.\"\n\nOr:\n\n\"I love this piece, but I'd like to make it extra special. Can you include a personalized gift card or note with a message from me? That would really make it a unique and thoughtful gift.\"\n\nThe jeweler will likely be happy to accommodate your request and make the gift even more special. It's a great way to add a personal touch and make the gift feel more meaningful.\n\nRemember, it's the thought that counts, and the extra effort you're putting into making this gift special will surely be appreciated by your mom!\nuser: I think I'll ask the jeweler if they have any recommendations for a special message or if they can suggest some ideas. Do you think it's a good idea to keep the message short and sweet, or can it be a bit longer and more heartfelt?\nassistant: What a great idea! Asking the jeweler for recommendations can be very helpful, and they might have some wonderful suggestions for you.\n\nWhen it comes to the message, it's really up to you and what you feel comfortable with. However, here are some general guidelines:\n\n* Short and sweet: A brief message can be very effective and to the point. It might be a simple \"I love you, Mom\" or \"Happy Anniversary, Mom and Dad.\" This type of message is great for a more subtle and understated approach.\n* A bit longer and more heartfelt: If you want to express your feelings in a more elaborate way, you could write a short paragraph or a few sentences that convey your love and appreciation. For example: \"To the most amazing mom in the world, thank you for being my rock, my confidante, and my guiding light. I love you more than words can say.\" This type of message is perfect for a more emotional and sentimental gift.\n\nSome things to consider when writing your message:\n\n* Keep it sincere and authentic. Your mom will appreciate the thought and love behind your words.\n* Consider your mom's personality and sense of humor. If she loves puns, for example, you could incorporate a playful message.\n* Think about the occasion. For an anniversary, you might want to focus on the love and commitment between your parents. For a birthday, you could highlight your mom's strengths and accomplishments.\n* Don't worry too much about grammar or spelling. The jeweler will likely help you refine the message, and the imperfections will add a personal touch.\n\nRemember, the most important thing is to speak from your heart and express your feelings in a way that feels true to you and your mom.\n\nWhat do you think? Do you have any ideas for your message already, or do you want to brainstorm some more?\n\n        Candidate notes:\n        [0] type=PLAN title=Gift-selection criteria for mom's anniversary jewelry summary=For the user's mom's anniversary gift, the user narrowed the choice to customized jewelry and is evaluating online marketplaces and local jewelry stores by budget, customization options such as a birthstone or special message, gift receipt/exchange policy, and the possibility of including a personalized note. The practical next step is to ask jewelers about engraving/message ideas, birthstone opti...[truncated 119 chars] scope=Gift planning context for the user's mom's anniversary customized-jewelry gift search entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4> keywords=mom anniversary gift,customized jewelry,birthstone,special message,gift receipt,exchange policy,personalized note,Etsy,local jewelry stores tags=gift_planning,custom_jewelry,mom_anniversary,decision_criteria evidence=I'll make sure to ask about the gift receipt and exchange policy when I visit the local jewelry stores.\n\n        Existing active notes:\n        id=hot-path-356a412226c1-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Local jeweler strategy for mom's sentimental anniversary gift summary=For the user's mom's anniversary gift, the promising approach is to shop in-store at local jewelers, especially the new jewelry store downtown where the user previously bought their sister's birthday present, and ask about custom messages, birthstones, design process, pricing, materials, and turnaround time. This fits the mom's preference for sentimental gifts and the user's desire for a thoughtfu...[truncated 57 chars] scope=Gift planning context for User's mom and local customized jewelry options keywords=mom anniversary gift,custom jewelry,birthstone,engraved message,new jewelry store downtown,sister birthday present,sentimental gifts tags=gift_planning,custom_jewelry,local_shopping useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d905b33f",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:9d0cbd97e420ed30d58ce6c7339b2773"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"supersede\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Candidate covers the same mom anniversary customized-jewelry plan but is a broader, more current version: it retains local jeweler/message/birthstone criteria while adding online marketplaces, gift receipt/exchange policy, and personalized note considerations.\",\"target_note_id\":\"hot-path-356a412226c1-note-2\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6130,
+                "completionTokens": 102,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
