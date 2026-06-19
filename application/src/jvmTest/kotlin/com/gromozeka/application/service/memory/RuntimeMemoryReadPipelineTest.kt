@@ -436,6 +436,45 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(prompt.contains("solo or user-owned project evidence"), prompt)
     }
 
+    @Test
+    fun runtimePromptExplainsMaturedPlansForLaterCurrentStateQuestions() = runBlocking {
+        val source = source(
+            id = "source-planned-location",
+            text = "The user planned a later current storage state.",
+        )
+        val claim = claim(
+            id = "claim-planned-location",
+            sourceId = source.id,
+            text = "The user intends to store a personal item in a specific container inside a broader location.",
+            predicate = "has_goal",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source), claims = listOf(claim)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need possible matured current state.",
+                            query = "where currently stored",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("Where do I currently keep the item?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("can be a matured current state"), prompt)
+        assertTrue(prompt.contains("combine them into the most specific location"), prompt)
+    }
+
     private class FixedMemoryReadPlanner(
         private val plan: MemoryReadPlan,
     ) : MemoryReadPlanner {
