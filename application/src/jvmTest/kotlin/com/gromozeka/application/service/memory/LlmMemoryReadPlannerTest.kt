@@ -84,6 +84,51 @@ class LlmMemoryReadPlannerTest {
     }
 
     @Test
+    fun promptPlansCompleteOperandsForMetricDeltaQuestions() = runBlocking {
+        val runtime = CapturingJsonRuntime(
+            """
+            {
+              "need_memory": true,
+              "answer_mode": "factual",
+              "coverage_mode": "complete_set",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 4,
+                "notes": 0,
+                "action_items": 0,
+                "sources": 2,
+                "episodes": 0
+              },
+              "retrieval_requests": [
+                {
+                  "memory_type": "claim",
+                  "why": "Need baseline and later metric operands.",
+                  "query": "newsletter subscribers increase baseline later value",
+                  "top_k": 4,
+                  "filters": {},
+                  "preferred_claim_predicates": ["current_metric_value", "metric_observation", "aggregate_increase"],
+                  "deprioritized_claim_predicates": []
+                }
+              ],
+              "require_evidence_fallback": true
+            }
+            """.trimIndent()
+        )
+
+        LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(readRequest("What was the increase in newsletter subscribers after two weeks?"))
+
+        val prompt = runtime.requests.single().messages.asText()
+        assertTrue(prompt.contains("baseline/previous value"), prompt)
+        assertTrue(prompt.contains("later/current/final value"), prompt)
+        assertTrue(prompt.contains("Use coverage_mode=\"complete_set\""), prompt)
+    }
+
+    @Test
     fun verifierRequestsSourceForPriorConversationRecallAfterNoMemoryPlan() = runBlocking {
         val runtime = CapturingJsonRuntime(
             """

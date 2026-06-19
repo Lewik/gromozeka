@@ -196,6 +196,54 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
+    fun runtimePromptComputesMetricDeltaFromBaselineAndLaterValue() = runBlocking {
+        val source = source(
+            id = "source-metric-delta",
+            text = "The user had 250 subscribers initially and 350 subscribers after two weeks.",
+        )
+        val baseline = claim(
+            id = "claim-baseline",
+            sourceId = source.id,
+            text = "The user's newsletter had 250 subscribers at the initial baseline.",
+            predicate = "current_metric_value",
+        )
+        val later = claim(
+            id = "claim-later",
+            sourceId = source.id,
+            text = "The user's newsletter had 350 subscribers after two weeks.",
+            predicate = "metric_observation",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source), claims = listOf(baseline, later)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need metric delta operands.",
+                            query = "newsletter subscriber increase baseline later value",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("What was the increase in newsletter subscribers after two weeks?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("compute from compatible explicit numeric operands"), prompt)
+        assertTrue(prompt.contains("baseline/previous value"), prompt)
+        assertTrue(prompt.contains("later/current/final value"), prompt)
+        assertTrue(prompt.contains("Do not answer \"insufficient\" solely because the baseline is phrased as an initial/start value"), prompt)
+    }
+
+    @Test
     fun runtimePromptDoesNotTreatEmptyCountedSetAsZeroEvidence() = runBlocking {
         val source = source(
             id = "source-adjacent-baking",

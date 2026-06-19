@@ -721,6 +721,46 @@ class LlmMemoryReadSelectorTest {
         assertTrue(!prompt.contains(NOW.toString()), prompt)
     }
 
+    @Test
+    fun selectorPromptKeepsBaselineOperandsForMetricDeltaQuestions() = runBlocking {
+        val baseline = claim(
+            id = "claim-baseline",
+            normalizedText = "The user's newsletter had 250 subscribers at the initial baseline.",
+            predicate = "current_metric_value",
+        )
+        val later = claim(
+            id = "claim-later",
+            normalizedText = "The user's newsletter had 350 subscribers after two weeks.",
+            predicate = "metric_observation",
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf(baseline.id.value, later.id.value))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("What was the increase in newsletter subscribers after two weeks?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                ),
+                candidateHits = listOf(
+                    MemoryStore.SearchHit.ClaimHit(later, score = 1.0),
+                    MemoryStore.SearchHit.ClaimHit(baseline, score = 0.8),
+                ),
+                snapshot = MemoryNamespaceSnapshot(claims = listOf(baseline, later)),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(prompt.contains("baseline/previous and later/current/final numeric operands"), prompt)
+        assertTrue(prompt.contains("rejecting it can make the arithmetic impossible"), prompt)
+    }
+
     private class SelectingRuntime(
         private val intermediateSelectedIds: Set<String> = emptySet(),
         private val finalSelectedIds: Set<String> = intermediateSelectedIds,
