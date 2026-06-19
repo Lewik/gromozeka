@@ -290,9 +290,13 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(prompt.contains("Use the current/question date only when no separate anchor event is named or retrieved"), prompt)
         assertTrue(prompt.contains("compute from the explicit start/begin/first-participation date"), prompt)
         assertTrue(prompt.contains("Do not add an as-of duration or tenure value"), prompt)
+        assertTrue(prompt.contains("relative month-count questions such as \"two months ago\""), prompt)
+        assertTrue(prompt.contains("one month ago is not two months ago"), prompt)
         assertTrue(prompt.contains("derive the target interval from the current/question date"), prompt)
         assertTrue(prompt.contains("do not smear one relative date cue"), prompt)
         assertTrue(prompt.contains("missing date evidence is uncertainty"), prompt)
+        assertTrue(prompt.contains("place-visit questions"), prompt)
+        assertTrue(prompt.contains("user-attended venue events such as lectures"), prompt)
     }
 
     @Test
