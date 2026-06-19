@@ -170,6 +170,8 @@ class LlmMemoryReadPlannerTest {
         val prompt = runtime.requests.single().messages.asText()
         assertTrue(prompt.contains("relative-duration questions that name an anchor event"), prompt)
         assertTrue(prompt.contains("question date alone may be the wrong endpoint"), prompt)
+        assertTrue(prompt.contains("explicit start/begin/first-participation evidence"), prompt)
+        assertTrue(prompt.contains("not a substitute for the start-date operand"), prompt)
     }
 
     @Test

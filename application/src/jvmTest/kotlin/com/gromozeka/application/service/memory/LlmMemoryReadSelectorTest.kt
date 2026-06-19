@@ -799,6 +799,8 @@ class LlmMemoryReadSelectorTest {
         val prompt = runtime.prompts.single()
         assertTrue(prompt.contains("relative-duration questions that name an anchor event"), prompt)
         assertTrue(prompt.contains("Do not default to the current/question date"), prompt)
+        assertTrue(prompt.contains("keep explicit start/begin/first-participation evidence"), prompt)
+        assertTrue(prompt.contains("Do not reject the start event as less direct"), prompt)
     }
 
     private class SelectingRuntime(

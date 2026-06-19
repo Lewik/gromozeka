@@ -288,6 +288,8 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(prompt.contains("relative-duration questions that name an anchor event"), prompt)
         assertTrue(prompt.contains("compute the interval from event X to the anchor event Y"), prompt)
         assertTrue(prompt.contains("Use the current/question date only when no separate anchor event is named or retrieved"), prompt)
+        assertTrue(prompt.contains("compute from the explicit start/begin/first-participation date"), prompt)
+        assertTrue(prompt.contains("Do not add an as-of duration or tenure value"), prompt)
     }
 
     @Test
