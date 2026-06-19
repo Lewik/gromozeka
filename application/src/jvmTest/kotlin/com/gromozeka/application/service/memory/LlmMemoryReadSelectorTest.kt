@@ -761,6 +761,46 @@ class LlmMemoryReadSelectorTest {
         assertTrue(prompt.contains("rejecting it can make the arithmetic impossible"), prompt)
     }
 
+    @Test
+    fun selectorPromptKeepsAnchorEventForRelativeDurationQuestions() = runBlocking {
+        val earlierEvent = claim(
+            id = "claim-workshop",
+            normalizedText = "The user attended the workshop on 2024-02-01.",
+            predicate = "attended_event",
+        )
+        val anchorEvent = claim(
+            id = "claim-launch",
+            normalizedText = "The product launch happened on 2024-02-10.",
+            predicate = "attended_event",
+        )
+        val runtime = SelectingRuntime(finalSelectedIds = setOf(earlierEvent.id.value, anchorEvent.id.value))
+
+        LlmMemoryReadSelector(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).select(
+            MemoryReadSelectionRequest(
+                readRequest = readRequest("How many days ago did I attend the workshop when the product launch happened?"),
+                plan = MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                ),
+                candidateHits = listOf(
+                    MemoryStore.SearchHit.ClaimHit(earlierEvent, score = 1.0),
+                    MemoryStore.SearchHit.ClaimHit(anchorEvent, score = 0.8),
+                ),
+                snapshot = MemoryNamespaceSnapshot(claims = listOf(earlierEvent, anchorEvent)),
+            )
+        )
+
+        val prompt = runtime.prompts.single()
+        assertTrue(prompt.contains("relative-duration questions that name an anchor event"), prompt)
+        assertTrue(prompt.contains("Do not default to the current/question date"), prompt)
+    }
+
     private class SelectingRuntime(
         private val intermediateSelectedIds: Set<String> = emptySet(),
         private val finalSelectedIds: Set<String> = intermediateSelectedIds,

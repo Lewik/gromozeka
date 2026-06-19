@@ -244,6 +244,53 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
+    fun runtimePromptComputesRelativeDurationAgainstNamedAnchorEvent() = runBlocking {
+        val source = source(
+            id = "source-anchor-duration",
+            text = "The user attended the workshop on 2024-02-01 and the product launch happened on 2024-02-10.",
+        )
+        val earlierEvent = claim(
+            id = "claim-workshop",
+            sourceId = source.id,
+            text = "The user attended the workshop on 2024-02-01.",
+            predicate = "attended_event",
+        )
+        val anchorEvent = claim(
+            id = "claim-launch",
+            sourceId = source.id,
+            text = "The product launch happened on 2024-02-10.",
+            predicate = "attended_event",
+        )
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source), claims = listOf(earlierEvent, anchorEvent)))
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need both event dates.",
+                            query = "workshop product launch dates",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+        )
+
+        val result = pipeline.read(readRequest("How many days ago did I attend the workshop when the product launch happened?"))
+        val prompt = result.runtimePrompt.orEmpty()
+
+        assertTrue(prompt.contains("relative-duration questions that name an anchor event"), prompt)
+        assertTrue(prompt.contains("compute the interval from event X to the anchor event Y"), prompt)
+        assertTrue(prompt.contains("Use the current/question date only when no separate anchor event is named or retrieved"), prompt)
+    }
+
+    @Test
     fun runtimePromptDoesNotTreatEmptyCountedSetAsZeroEvidence() = runBlocking {
         val source = source(
             id = "source-adjacent-baking",

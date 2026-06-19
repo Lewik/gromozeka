@@ -129,6 +129,50 @@ class LlmMemoryReadPlannerTest {
     }
 
     @Test
+    fun promptPlansAnchorEventForRelativeDurationQuestions() = runBlocking {
+        val runtime = CapturingJsonRuntime(
+            """
+            {
+              "need_memory": true,
+              "answer_mode": "factual",
+              "coverage_mode": "complete_set",
+              "core_blocks": [],
+              "retrieval_budget": {
+                "claims": 4,
+                "notes": 0,
+                "action_items": 0,
+                "sources": 2,
+                "episodes": 0
+              },
+              "retrieval_requests": [
+                {
+                  "memory_type": "claim",
+                  "why": "Need the earlier event date and the anchor event date.",
+                  "query": "workshop attended when product launch happened",
+                  "top_k": 4,
+                  "filters": {},
+                  "preferred_claim_predicates": ["attended_event", "has_experience_with"],
+                  "deprioritized_claim_predicates": []
+                }
+              ],
+              "require_evidence_fallback": true
+            }
+            """.trimIndent()
+        )
+
+        LlmMemoryReadPlanner(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).plan(readRequest("How many days ago did I attend the workshop when the product launch happened?"))
+
+        val prompt = runtime.requests.single().messages.asText()
+        assertTrue(prompt.contains("relative-duration questions that name an anchor event"), prompt)
+        assertTrue(prompt.contains("question date alone may be the wrong endpoint"), prompt)
+    }
+
+    @Test
     fun verifierRequestsSourceForPriorConversationRecallAfterNoMemoryPlan() = runBlocking {
         val runtime = CapturingJsonRuntime(
             """
