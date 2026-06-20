@@ -124,6 +124,9 @@ tasks.withType<Test> {
     System.getProperty("gromozeka.longmemeval.limit")?.let {
         systemProperty("gromozeka.longmemeval.limit", it)
     }
+    System.getProperty("gromozeka.longmemeval.offset")?.let {
+        systemProperty("gromozeka.longmemeval.offset", it)
+    }
     System.getProperty("gromozeka.longmemeval.caseFilter")?.let {
         systemProperty("gromozeka.longmemeval.caseFilter", it)
     }
@@ -147,6 +150,9 @@ tasks.withType<Test> {
     }
     System.getProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs")?.let {
         systemProperty("gromozeka.longmemeval.memoryLlmStageTimeoutMs", it)
+    }
+    System.getProperty("gromozeka.longmemeval.memoryLlmMaxAttempts")?.let {
+        systemProperty("gromozeka.longmemeval.memoryLlmMaxAttempts", it)
     }
     System.getProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms")?.let {
         systemProperty("gromozeka.ai.openai-subscription.websocket-response-timeout-ms", it)

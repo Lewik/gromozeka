@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "022950f2af58dc57d8280acc93135588201fd91f70e07a4132ae4167e14239c3",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:dcfa8644\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past transcript includes extractable durable claims and richer context about shoe purchases, events, care preferences, and future shopping interests; mixed is appropriate rather than noop or note-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable namespace-level USER entity; no existing candidates are available.\n- mention=my shoe collection; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's shoe collection; reason=First-person possessive wording identifies a reusable personal collected-item entity.\n- mention=my Adidas running shoes / new pair of Adidas running shoes; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=User's Adidas running shoes; reason=A concrete personal item repeatedly referenced with possessive wording; no existing candidates are available.\n- mention=my brown leather boots / my boots; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=User's brown leather boots; reason=A concrete personal item referenced with possessive wording and later claims may target it.\n- mention=my sneakers / them; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=User's sneakers; reason=Possessive wording identifies a reusable personal shoe item; context does not safely prove these are the same as the Adidas running shoes because both sneakers and running shoes are mentioned separately.\n- mention=my sister; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=User's sister; reason=A concrete related person mentioned in the target transcript; no name or existing candidate is available.\n- mention=outlet mall; action=CREATE_NEW; id=entity:<6>; type=LOCATION; name=Outlet mall; reason=A reusable location mentioned as the place where the user bought shoes; no more specific name is available.\n- mention=shoe cleaning place near my house; action=CREATE_NEW; id=entity:<7>; type=ORGANIZATION; name=Shoe cleaning place near User's house; reason=A concrete local service provider repeatedly referenced as a possible place to take sneakers; no existing candidate is available.\n- mention=Rachel / my colleague Rachel; action=CREATE_NEW; id=entity:<8>; type=PERSON; name=Rachel; reason=Named person mentioned as the user's colleague; no existing candidates are available.\n- mention=new shoe brand; action=CREATE_NEW; id=entity:<9>; type=ORGANIZATION; name=Shoe brand recommended by Rachel; reason=The brand is unnamed but is a reusable organization/product-brand referent for later claims about Rachel's recommendation and black stilettos.\n- mention=black stilettos; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Black stilettos from Rachel's recommended shoe brand; reason=A specific product type from the recommended shoe brand that the user wants to check out; no existing candidate is available.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Adidas running shoes|brown leather boots|Rachel|sister|outlet mall|shoe cleaning place near my house\n        text_queries=Adidas running shoes January 10 $80 outlet mall sister design|brown leather boots office party February 5 scuffed dance floor cobbler|sneakers basketball February 1 dirty clean at home professional shoe cleaning place|Rachel office party February 5 new shoe brand black stilettos\n        predicate_hints=owns|attended_event|prefers|pending_pickup|has_goal\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:543849b3b1bba2eeba0c6a957ca1daef] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:dcfa8644:session:1; title=LongMemEval dcfa8644 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/02/03 (Fri) 03:08\nTranscript:\nuser: I'm thinking of organizing my shoe collection and I was wondering if you could help me with some shoe care tips, specifically on how to clean my sneakers and boots. By the way, I recently got a new pair of Adidas running shoes on January 10th, and I want to make sure I take good care of them.\nassistant: Congratulations on your new Adidas running shoes! I'd be happy to help you with shoe care tips, especially on how to clean your sneakers and boots.\n\n**General Shoe Care Tips:**\n\n1. **Store them properly**: Keep your shoes in a cool, dry place away from direct sunlight. Use shoe trees or stuff them with paper to maintain their shape.\n2. **Avoid extreme temperatures**: Don't leave your shoes in a hot car or near a heater, as this can cause materials to degrade.\n3. ** Handle with care**: Be gentle when putting on and taking off your shoes to prevent stretching or creasing.\n\n**Cleaning Sneakers:**\n\n1. **Check the label**: Before cleaning, check the care label on your shoes to see if they have specific cleaning instructions.\n2. **Use a soft brush**: Gently remove any dirt or debris from the upper material using a soft-bristled brush.\n3. **Damp cloth**: Dampen a clean cloth with water, and gently wipe away any dirt or stains. Avoid soaking the shoes.\n4. **Mild soap**: If the stain persists, use a mild soap, such as diluted dish soap or a specialized sneaker cleaner. Apply the soap to the cloth, not directly to the shoe.\n5. **Water-resistant spray**: Apply a water-resistant spray to protect the material and make future cleaning easier.\n6. **Air dry**: Allow the shoes to air dry completely, away from direct sunlight.\n\n**Cleaning Boots:**\n\n1. **Remove dirt and debris**: Use a soft-bristled brush to remove any dirt or debris from the upper material.\n2. **Conditioning**: Apply a leather conditioner or boot oil to nourish and protect the leather. Follow the product's instructions.\n3. **Wipe clean**: Use a damp cloth to wipe away any dirt or grime. Avoid soaking the boots.\n4. **Allow to dry**: Let the boots air dry completely, away from direct sunlight.\n5. **Waterproofing**: Apply a waterproofing spray or cream to protect the leather and make future cleaning easier.\n\n**Additional Tips for Your New Adidas Running Shoes:**\n\n1. **Use a gentle cleaning product**: Avoid harsh chemicals or abrasive materials that can damage the materials.\n2. **Avoid machine washing**: Never put your running shoes in the washing machine, as this can damage the materials and affect their performance.\n3. **Dry them naturally**: Air dry your shoes, as heat from a hairdryer or dryer can cause the materials to degrade.\n\nBy following these tips, you'll be able to keep your sneakers and boots clean, protected, and looking their best. Enjoy your new Adidas running shoes, and happy cleaning!\nuser: I'm also looking for a good cobbler to fix my brown leather boots that I wore to the office party on February 5th. I think I might have scuffed them on the dance floor. Do you have any recommendations or tips on how to find a good cobbler?\nassistant: Scuffed boots from a fun night out can be a bummer! Finding a good cobbler can be a challenge, but I've got some tips to help you track one down:\n\n**Ask Around:**\n\n1. **Friends and Family**: Ask friends, family, or colleagues who take care of their shoes if they know a good cobbler.\n2. **Local Shoe Stores**: Visit local shoe stores, especially those that sell high-end or specialty shoes, and ask for recommendations. They might have a in-house cobbler or know a reliable one.\n\n**Online Research:**\n\n1. **Google Search**: Type in \"best cobbler near me\" or \"shoe repair near me\" along with your location to find nearby options.\n2. **Yelp**: Check Yelp reviews to see what customers have to say about local cobblers.\n3. **Facebook Reviews**: Look up cobblers on Facebook and read reviews from their customers.\n\n**Check Credentials:**\n\n1. **Look for Certifications**: Check if the cobbler is certified by organizations like the Shoe Service Institute of America (SSIA) or the National Shoe Repair Association (NSRA).\n2. **Experience**: Ask about their experience working with leather boots and the type of repairs they've done in the past.\n\n**Visit the Cobbler:**\n\n1. **Inspect the Workshop**: Take a look at the cobbler's workshop to ensure it's clean, organized, and well-equipped.\n2. **Ask Questions**: Ask about their process, materials, and turnaround time.\n3. **Get a Quote**: Get a quote for the repair and ask about any additional services they offer (e.g., conditioning, waterproofing).\n\n**Red Flags:**\n\n1. **Unclear Pricing**: Be wary if the cobbler is vague about pricing or doesn't provide a clear estimate.\n2. **Poor Communication**: If the cobbler is unresponsive or uncommunicative, it might be a sign of poor service.\n3. **Unprofessional Workspace**: A cluttered, dirty, or disorganized workshop can be a sign of poor quality work.\n\nBy following these tips, you should be able to find a reliable cobbler to fix your brown leather boots. Remember to ask about their experience with similar repairs and materials to ensure they're a good fit for the job.\n\nGood luck, and I hope your boots are back to their former glory soon!\nuser: I'd also like to know more about leather conditioning and waterproofing for my boots. Do you have any recommendations for good products or methods? And by the way, I spent $80 on my Adidas running shoes, which was a bit more than I had budgeted, but I really liked the design.\nassistant: Investing in a good pair of shoes is always worth it, especially when it comes to quality and design.\n\nNow, about leather conditioning and waterproofing for your boots:\n\n**Leather Conditioning:**\n\n1. **Purpose**: Conditioning helps maintain the leather's natural moisture balance, preventing it from drying out, cracking, or becoming brittle.\n2. **Types of Conditioners**: There are two main types: oil-based and water-based. Oil-based conditioners provide more nourishment, while water-based conditioners are better for waterproofing.\n3. **Popular Brands**: Some well-known leather conditioner brands include:\n\t* Leatherology\n\t* Chamber's Leather Milk\n\t* Bickmore\n\t* Kiwi\n4. **Application**: Apply a small amount to a clean, dry cloth and gently rub it into the leather in circular motions. Avoid over-conditioning, as this can leave a sticky residue.\n\n**Waterproofing:**\n\n1. **Purpose**: Waterproofing helps protect the leather from water, snow, and other liquids, preventing damage and staining.\n2. **Types of Waterproofers**: There are various types, including sprays, creams, and waxes. Sprays are convenient, while creams and waxes provide more protection.\n3. **Popular Brands**: Some well-known waterproofing brands include:\n\t* Nikwax\n\t* Sno-Seal\n\t* Scotchgard\n\t* Kiwi\n4. **Application**: Follow the product's instructions for application. Generally, apply a thin, even layer to the leather, making sure to cover all surfaces.\n\n**Tips:**\n\n1. **Test a small area first**: Before applying any conditioner or waterproofer, test it on a small, inconspicuous area to ensure the product doesn't damage the leather.\n2. **Avoid over-conditioning**: Too much conditioner can leave a sticky residue or attract dirt.\n3. **Reapply regularly**: Conditioning and waterproofing are not one-time treatments. Reapply as needed, depending on the product's instructions and your boots' usage.\n4. **Consider a leather protector**: Leather protectors, like Scotchgard, can provide additional protection against stains and spills.\n\nWhen choosing a product, consider the type of leather your boots are made of, as well as your personal preferences (e.g., natural vs. synthetic ingredients). Always read reviews and follow the product's instructions carefully.\n\nI hope this helps you keep your boots looking their best!\nuser: I'm also thinking of getting my sneakers cleaned, I wore them to play basketball with friends on February 1st and they got really dirty. I've been meaning to take them to the shoe cleaning place near my house, but I haven't had the time. Do you have any recommendations on how to clean sneakers at home, or should I just take them to a professional?\nassistant: Getting your sneakers cleaned can make a big difference in their appearance and longevity.\n\n**Cleaning Sneakers at Home:**\n\n1. **Check the care label**: Before attempting to clean your sneakers, check the care label to see if they have specific cleaning instructions.\n2. **Mild soap and water**: For most sneakers, a mild soap and water can be effective. Use a soft-bristled toothbrush to gently scrub away dirt and stains.\n3. **Damp cloth**: Use a damp cloth to wipe away dirt and soap residue. Avoid soaking the sneakers or using harsh chemicals.\n4. **Baking soda and vinegar**: For tougher stains, mix baking soda and vinegar to create a paste. Apply it to the stain, let it sit for 30 minutes, and then rinse with cold water.\n5. **Let them air dry**: Allow the sneakers to air dry completely, away from direct sunlight.\n\n**When to Take Them to a Professional:**\n\n1. **Tough stains**: If you're dealing with tough stains or scuff marks, a professional cleaner may have the necessary expertise and equipment to remove them.\n2. **Delicate materials**: If your sneakers have delicate materials, such as suede or nubuck, it's best to take them to a professional to avoid damaging the material.\n3. **Specialized cleaning**: Some sneakers, like those with waterproof or Gore-Tex membranes, may require specialized cleaning products and techniques that a professional can provide.\n\n**Tips:**\n\n1. **Act quickly**: The sooner you clean your sneakers, the better. Dirt and stains can set over time, making them harder to remove.\n2. **Use a cleaning solution specifically designed for sneakers**: Avoid using household cleaners, as they can damage the materials or leave residue.\n3. **Test a small area first**: Before cleaning, test a small, inconspicuous area to ensure the cleaning solution or method won't damage the material.\n\nIf you're short on time or unsure about cleaning your sneakers at home, taking them to a professional cleaner can be a good option. They'll have the necessary expertise and equipment to get the job done effectively.\n\nHowever, if you're comfortable cleaning them at home and have the right materials, it can be a cost-effective and convenient way to keep your sneakers looking fresh.\n\nHope this helps, and I'm sure your sneakers will be looking like new in no time!\nuser: I think I'll try cleaning my sneakers at home first, but if the stains are really tough, I might take them to a professional. By the way, my sister and I had a great time at the outlet mall on January 10th when I bought my new Adidas running shoes.\nassistant: It's always a good idea to try cleaning your sneakers at home first, and if the stains are too tough, a professional cleaner can be a great backup option.\n\nAnd that's great to hear that you and your sister had a fun time at the outlet mall on January 10th! Shopping for new shoes can be such a thrill, and it's even better when you get to spend quality time with loved ones. I'm sure you must have been excited to score a great deal on your new Adidas running shoes!\n\nRemember to be gentle when cleaning your sneakers, and don't hesitate to reach out if you have any more questions or need further guidance. Good luck with the cleaning, and I hope your sneakers turn out looking like new again!\nuser: I think I'll also ask my colleague Rachel about the new shoe brand she was telling me about at the office party on February 5th. She said they had some really nice black stilettos, and I've been wanting to check them out.\nassistant: It's always great to get recommendations from friends and colleagues, especially when it comes to shoes! Rachel might have some valuable insights about the brand and the quality of their shoes. And who knows, you might find the perfect pair of black stilettos that you've been looking for!\n\nOffice parties can be a great way to catch up with colleagues and friends, and it's awesome that you and Rachel had a chance to chat about shoes. I'm sure you'll have a great time checking out the brand and possibly finding a new addition to your shoe collection!\n\nRemember to ask Rachel about her experience with the brand, the quality of the materials, and the comfort level of the shoes. You might also want to ask if she has any promo codes or discounts that you could use.\n\nHave fun shoe shopping, and I hope you find the perfect pair!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:dcfa8644",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:543849b3b1bba2eeba0c6a957ca1daef"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:dcfa8644\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past transcript includes extractable durable claims and richer context about shoe purchases, events, care preferences, and future shopping interests; mixed is appropriate rather than noop or note-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable namespace-level USER entity; no existing candidates are available.\n- mention=my shoe collection; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's shoe collection; reason=First-person possessive wording identifies a reusable personal collected-item entity.\n- mention=my Adidas running shoes / new pair of Adidas running shoes; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=User's Adidas running shoes; reason=A concrete personal item repeatedly referenced with possessive wording; no existing candidates are available.\n- mention=my brown leather boots / my boots; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=User's brown leather boots; reason=A concrete personal item referenced with possessive wording and later claims may target it.\n- mention=my sneakers / them; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=User's sneakers; reason=Possessive wording identifies a reusable personal shoe item; context does not safely prove these are the same as the Adidas running shoes because both sneakers and running shoes are mentioned separately.\n- mention=my sister; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=User's sister; reason=A concrete related person mentioned in the target transcript; no name or existing candidate is available.\n- mention=outlet mall; action=CREATE_NEW; id=entity:<6>; type=LOCATION; name=Outlet mall; reason=A reusable location mentioned as the place where the user bought shoes; no more specific name is available.\n- mention=shoe cleaning place near my house; action=CREATE_NEW; id=entity:<7>; type=ORGANIZATION; name=Shoe cleaning place near User's house; reason=A concrete local service provider repeatedly referenced as a possible place to take sneakers; no existing candidate is available.\n- mention=Rachel / my colleague Rachel; action=CREATE_NEW; id=entity:<8>; type=PERSON; name=Rachel; reason=Named person mentioned as the user's colleague; no existing candidates are available.\n- mention=new shoe brand; action=CREATE_NEW; id=entity:<9>; type=ORGANIZATION; name=Shoe brand recommended by Rachel; reason=The brand is unnamed but is a reusable organization/product-brand referent for later claims about Rachel's recommendation and black stilettos.\n- mention=black stilettos; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Black stilettos from Rachel's recommended shoe brand; reason=A specific product type from the recommended shoe brand that the user wants to check out; no existing candidate is available.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Adidas running shoes|brown leather boots|Rachel|sister|outlet mall|shoe cleaning place near my house\n        text_queries=Adidas running shoes January 10 $80 outlet mall sister design|brown leather boots office party February 5 scuffed dance floor cobbler|sneakers basketball February 1 dirty clean at home professional shoe cleaning place|Rachel office party February 5 new shoe brand black stilettos\n        predicate_hints=owns|attended_event|prefers|pending_pickup|has_goal\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:543849b3b1bba2eeba0c6a957ca1daef] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:dcfa8644:session:1; title=LongMemEval dcfa8644 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/02/03 (Fri) 03:08\nTranscript:\nuser: I'm thinking of organizing my shoe collection and I was wondering if you could help me with some shoe care tips, specifically on how to clean my sneakers and boots. By the way, I recently got a new pair of Adidas running shoes on January 10th, and I want to make sure I take good care of them.\nassistant: Congratulations on your new Adidas running shoes! I'd be happy to help you with shoe care tips, especially on how to clean your sneakers and boots.\n\n**General Shoe Care Tips:**\n\n1. **Store them properly**: Keep your shoes in a cool, dry place away from direct sunlight. Use shoe trees or stuff them with paper to maintain their shape.\n2. **Avoid extreme temperatures**: Don't leave your shoes in a hot car or near a heater, as this can cause materials to degrade.\n3. ** Handle with care**: Be gentle when putting on and taking off your shoes to prevent stretching or creasing.\n\n**Cleaning Sneakers:**\n\n1. **Check the label**: Before cleaning, check the care label on your shoes to see if they have specific cleaning instructions.\n2. **Use a soft brush**: Gently remove any dirt or debris from the upper material using a soft-bristled brush.\n3. **Damp cloth**: Dampen a clean cloth with water, and gently wipe away any dirt or stains. Avoid soaking the shoes.\n4. **Mild soap**: If the stain persists, use a mild soap, such as diluted dish soap or a specialized sneaker cleaner. Apply the soap to the cloth, not directly to the shoe.\n5. **Water-resistant spray**: Apply a water-resistant spray to protect the material and make future cleaning easier.\n6. **Air dry**: Allow the shoes to air dry completely, away from direct sunlight.\n\n**Cleaning Boots:**\n\n1. **Remove dirt and debris**: Use a soft-bristled brush to remove any dirt or debris from the upper material.\n2. **Conditioning**: Apply a leather conditioner or boot oil to nourish and protect the leather. Follow the product's instructions.\n3. **Wipe clean**: Use a damp cloth to wipe away any dirt or grime. Avoid soaking the boots.\n4. **Allow to dry**: Let the boots air dry completely, away from direct sunlight.\n5. **Waterproofing**: Apply a waterproofing spray or cream to protect the leather and make future cleaning easier.\n\n**Additional Tips for Your New Adidas Running Shoes:**\n\n1. **Use a gentle cleaning product**: Avoid harsh chemicals or abrasive materials that can damage the materials.\n2. **Avoid machine washing**: Never put your running shoes in the washing machine, as this can damage the materials and affect their performance.\n3. **Dry them naturally**: Air dry your shoes, as heat from a hairdryer or dryer can cause the materials to degrade.\n\nBy following these tips, you'll be able to keep your sneakers and boots clean, protected, and looking their best. Enjoy your new Adidas running shoes, and happy cleaning!\nuser: I'm also looking for a good cobbler to fix my brown leather boots that I wore to the office party on February 5th. I think I might have scuffed them on the dance floor. Do you have any recommendations or tips on how to find a good cobbler?\nassistant: Scuffed boots from a fun night out can be a bummer! Finding a good cobbler can be a challenge, but I've got some tips to help you track one down:\n\n**Ask Around:**\n\n1. **Friends and Family**: Ask friends, family, or colleagues who take care of their shoes if they know a good cobbler.\n2. **Local Shoe Stores**: Visit local shoe stores, especially those that sell high-end or specialty shoes, and ask for recommendations. They might have a in-house cobbler or know a reliable one.\n\n**Online Research:**\n\n1. **Google Search**: Type in \"best cobbler near me\" or \"shoe repair near me\" along with your location to find nearby options.\n2. **Yelp**: Check Yelp reviews to see what customers have to say about local cobblers.\n3. **Facebook Reviews**: Look up cobblers on Facebook and read reviews from their customers.\n\n**Check Credentials:**\n\n1. **Look for Certifications**: Check if the cobbler is certified by organizations like the Shoe Service Institute of America (SSIA) or the National Shoe Repair Association (NSRA).\n2. **Experience**: Ask about their experience working with leather boots and the type of repairs they've done in the past.\n\n**Visit the Cobbler:**\n\n1. **Inspect the Workshop**: Take a look at the cobbler's workshop to ensure it's clean, organized, and well-equipped.\n2. **Ask Questions**: Ask about their process, materials, and turnaround time.\n3. **Get a Quote**: Get a quote for the repair and ask about any additional services they offer (e.g., conditioning, waterproofing).\n\n**Red Flags:**\n\n1. **Unclear Pricing**: Be wary if the cobbler is vague about pricing or doesn't provide a clear estimate.\n2. **Poor Communication**: If the cobbler is unresponsive or uncommunicative, it might be a sign of poor service.\n3. **Unprofessional Workspace**: A cluttered, dirty, or disorganized workshop can be a sign of poor quality work.\n\nBy following these tips, you should be able to find a reliable cobbler to fix your brown leather boots. Remember to ask about their experience with similar repairs and materials to ensure they're a good fit for the job.\n\nGood luck, and I hope your boots are back to their former glory soon!\nuser: I'd also like to know more about leather conditioning and waterproofing for my boots. Do you have any recommendations for good products or methods? And by the way, I spent $80 on my Adidas running shoes, which was a bit more than I had budgeted, but I really liked the design.\nassistant: Investing in a good pair of shoes is always worth it, especially when it comes to quality and design.\n\nNow, about leather conditioning and waterproofing for your boots:\n\n**Leather Conditioning:**\n\n1. **Purpose**: Conditioning helps maintain the leather's natural moisture balance, preventing it from drying out, cracking, or becoming brittle.\n2. **Types of Conditioners**: There are two main types: oil-based and water-based. Oil-based conditioners provide more nourishment, while water-based conditioners are better for waterproofing.\n3. **Popular Brands**: Some well-known leather conditioner brands include:\n\t* Leatherology\n\t* Chamber's Leather Milk\n\t* Bickmore\n\t* Kiwi\n4. **Application**: Apply a small amount to a clean, dry cloth and gently rub it into the leather in circular motions. Avoid over-conditioning, as this can leave a sticky residue.\n\n**Waterproofing:**\n\n1. **Purpose**: Waterproofing helps protect the leather from water, snow, and other liquids, preventing damage and staining.\n2. **Types of Waterproofers**: There are various types, including sprays, creams, and waxes. Sprays are convenient, while creams and waxes provide more protection.\n3. **Popular Brands**: Some well-known waterproofing brands include:\n\t* Nikwax\n\t* Sno-Seal\n\t* Scotchgard\n\t* Kiwi\n4. **Application**: Follow the product's instructions for application. Generally, apply a thin, even layer to the leather, making sure to cover all surfaces.\n\n**Tips:**\n\n1. **Test a small area first**: Before applying any conditioner or waterproofer, test it on a small, inconspicuous area to ensure the product doesn't damage the leather.\n2. **Avoid over-conditioning**: Too much conditioner can leave a sticky residue or attract dirt.\n3. **Reapply regularly**: Conditioning and waterproofing are not one-time treatments. Reapply as needed, depending on the product's instructions and your boots' usage.\n4. **Consider a leather protector**: Leather protectors, like Scotchgard, can provide additional protection against stains and spills.\n\nWhen choosing a product, consider the type of leather your boots are made of, as well as your personal preferences (e.g., natural vs. synthetic ingredients). Always read reviews and follow the product's instructions carefully.\n\nI hope this helps you keep your boots looking their best!\nuser: I'm also thinking of getting my sneakers cleaned, I wore them to play basketball with friends on February 1st and they got really dirty. I've been meaning to take them to the shoe cleaning place near my house, but I haven't had the time. Do you have any recommendations on how to clean sneakers at home, or should I just take them to a professional?\nassistant: Getting your sneakers cleaned can make a big difference in their appearance and longevity.\n\n**Cleaning Sneakers at Home:**\n\n1. **Check the care label**: Before attempting to clean your sneakers, check the care label to see if they have specific cleaning instructions.\n2. **Mild soap and water**: For most sneakers, a mild soap and water can be effective. Use a soft-bristled toothbrush to gently scrub away dirt and stains.\n3. **Damp cloth**: Use a damp cloth to wipe away dirt and soap residue. Avoid soaking the sneakers or using harsh chemicals.\n4. **Baking soda and vinegar**: For tougher stains, mix baking soda and vinegar to create a paste. Apply it to the stain, let it sit for 30 minutes, and then rinse with cold water.\n5. **Let them air dry**: Allow the sneakers to air dry completely, away from direct sunlight.\n\n**When to Take Them to a Professional:**\n\n1. **Tough stains**: If you're dealing with tough stains or scuff marks, a professional cleaner may have the necessary expertise and equipment to remove them.\n2. **Delicate materials**: If your sneakers have delicate materials, such as suede or nubuck, it's best to take them to a professional to avoid damaging the material.\n3. **Specialized cleaning**: Some sneakers, like those with waterproof or Gore-Tex membranes, may require specialized cleaning products and techniques that a professional can provide.\n\n**Tips:**\n\n1. **Act quickly**: The sooner you clean your sneakers, the better. Dirt and stains can set over time, making them harder to remove.\n2. **Use a cleaning solution specifically designed for sneakers**: Avoid using household cleaners, as they can damage the materials or leave residue.\n3. **Test a small area first**: Before cleaning, test a small, inconspicuous area to ensure the cleaning solution or method won't damage the material.\n\nIf you're short on time or unsure about cleaning your sneakers at home, taking them to a professional cleaner can be a good option. They'll have the necessary expertise and equipment to get the job done effectively.\n\nHowever, if you're comfortable cleaning them at home and have the right materials, it can be a cost-effective and convenient way to keep your sneakers looking fresh.\n\nHope this helps, and I'm sure your sneakers will be looking like new in no time!\nuser: I think I'll try cleaning my sneakers at home first, but if the stains are really tough, I might take them to a professional. By the way, my sister and I had a great time at the outlet mall on January 10th when I bought my new Adidas running shoes.\nassistant: It's always a good idea to try cleaning your sneakers at home first, and if the stains are too tough, a professional cleaner can be a great backup option.\n\nAnd that's great to hear that you and your sister had a fun time at the outlet mall on January 10th! Shopping for new shoes can be such a thrill, and it's even better when you get to spend quality time with loved ones. I'm sure you must have been excited to score a great deal on your new Adidas running shoes!\n\nRemember to be gentle when cleaning your sneakers, and don't hesitate to reach out if you have any more questions or need further guidance. Good luck with the cleaning, and I hope your sneakers turn out looking like new again!\nuser: I think I'll also ask my colleague Rachel about the new shoe brand she was telling me about at the office party on February 5th. She said they had some really nice black stilettos, and I've been wanting to check them out.\nassistant: It's always great to get recommendations from friends and colleagues, especially when it comes to shoes! Rachel might have some valuable insights about the brand and the quality of their shoes. And who knows, you might find the perfect pair of black stilettos that you've been looking for!\n\nOffice parties can be a great way to catch up with colleagues and friends, and it's awesome that you and Rachel had a chance to chat about shoes. I'm sure you'll have a great time checking out the brand and possibly finding a new addition to your shoe collection!\n\nRemember to ask Rachel about her experience with the brand, the quality of the materials, and the comfort level of the shoes. You might also want to ask if she has any promo codes or discounts that you could use.\n\nHave fun shoe shopping, and I hope you find the perfect pair!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:dcfa8644",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:543849b3b1bba2eeba0c6a957ca1daef"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"try cleaning sneakers at home first\",\"take sneakers to a professional if stains are really tough\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll try cleaning my sneakers at home first, but if the stains are really tough, I might take them to a professional.\",\"evidence_reason\":\"The quoted sentence directly states the user's intended approach and fallback condition for sneaker cleaning.\",\"importance\":4,\"keywords\":[\"sneakers\",\"cleaning\",\"DIY\",\"professional cleaner\",\"shoe cleaning place\",\"basketball\",\"stains\"],\"note_type\":\"plan\",\"rationale\":\"This is a conditional plan and care approach, not just an atomic fact; the reusable value is the decision order and fallback strategy.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"entity\",\"text\":\"Applies to the user's sneakers that became dirty after playing basketball on February 1st.\"},\"summary\":\"The user plans to try cleaning their dirty sneakers at home first, using a professional shoe cleaner only if the stains are too tough. This reflects a practical preference for DIY cleaning before using the shoe cleaning place near their house.\",\"tags\":[\"shoe_care\",\"cleaning_plan\"],\"title\":\"Sneaker cleaning fallback plan\",\"valid_from\":\"2023-02-03T03:08:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Adidas running shoes bought January 10\",\"Adidas running shoes cost $80\",\"purchase was at outlet mall with sister\",\"user liked the design despite exceeding budget\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"my sister and I had a great time at the outlet mall on January 10th when I bought my new Adidas running shoes\",\"evidence_reason\":\"The quote directly supports the purchase date, location, companion, and item; surrounding transcript adds the $80 price and design rationale.\",\"importance\":4,\"keywords\":[\"Adidas running shoes\",\"January 10\",\"outlet mall\",\"sister\",\"$80\",\"design\",\"budget\"],\"note_type\":\"context\",\"rationale\":\"This combines several related purchase-context details and rationale; storing them as a note preserves the meaningful event context better than isolated claims alone.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's Adidas running shoes and their January 10th outlet mall purchase context.\"},\"summary\":\"The user's new Adidas running shoes were bought during an outlet mall trip with their sister on January 10th; the user paid more than budgeted because they liked the design. This context links the item to the shopping event, companion, price rationale, and sentimental purchase setting.\",\"tags\":[\"purchase_context\",\"shoe_collection\"],\"title\":\"Adidas running shoes purchase context\",\"valid_from\":\"2023-02-03T03:08:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"ask Rachel about new shoe brand\",\"Rachel mentioned brand at office party on February 5\",\"brand has nice black stilettos\",\"user wants to check out black stilettos\"],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"subject\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think I'll also ask my colleague Rachel about the new shoe brand she was telling me about at the office party on February 5th.\",\"evidence_reason\":\"The quote directly states the user's planned follow-up with Rachel and identifies the context of the recommendation.\",\"importance\":4,\"keywords\":[\"Rachel\",\"new shoe brand\",\"black stilettos\",\"office party\",\"February 5\",\"shopping\"],\"note_type\":\"plan\",\"rationale\":\"This is a future-oriented shopping follow-up with contextual rationale, not merely a single clean fact.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"entity\",\"text\":\"Applies to the user's future shopping interest in Rachel's recommended shoe brand and its black stilettos.\"},\"summary\":\"The user intends to ask colleague Rachel about a new shoe brand Rachel mentioned at the February 5th office party, especially because the brand reportedly has nice black stilettos the user wants to check out.\",\"tags\":[\"shopping_interest\",\"follow_up\"],\"title\":\"Rachel's black stiletto brand follow-up\",\"valid_from\":\"2023-02-03T03:08:00+02:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7294,
+                "completionTokens": 1115,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

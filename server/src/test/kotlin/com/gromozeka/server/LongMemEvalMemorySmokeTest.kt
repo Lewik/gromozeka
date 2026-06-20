@@ -831,6 +831,7 @@ class LongMemEvalMemorySmokeTest {
         filterByCaseProperty()
             .filterByTypeProperty()
             .sampleByProperty()
+            .offsetByProperty()
             .limitByProperty()
 
     private fun List<LongMemEvalEntry>.filterByCaseProperty(): List<LongMemEvalEntry> {
@@ -877,6 +878,14 @@ class LongMemEvalMemorySmokeTest {
         val count = limit.toIntOrNull()?.takeIf { it > 0 }
             ?: throw IllegalArgumentException("Invalid LongMemEval limit '$limit'. Use a positive integer or 'all'.")
         return take(count)
+    }
+
+    private fun List<LongMemEvalEntry>.offsetByProperty(): List<LongMemEvalEntry> {
+        val offset = System.getProperty(OFFSET_PROPERTY)?.trim().orEmpty()
+        if (offset.isBlank()) return this
+        val count = offset.toIntOrNull()?.takeIf { it >= 0 }
+            ?: throw IllegalArgumentException("Invalid LongMemEval offset '$offset'. Use a non-negative integer.")
+        return drop(count)
     }
 
     private fun prepareArtifactDirectory(runId: String): Path {
@@ -1235,6 +1244,7 @@ class LongMemEvalMemorySmokeTest {
         const val ENABLE_PROPERTY = "gromozeka.longmemeval"
         const val DATA_FILE_PROPERTY = "gromozeka.longmemeval.data"
         const val LIMIT_PROPERTY = "gromozeka.longmemeval.limit"
+        const val OFFSET_PROPERTY = "gromozeka.longmemeval.offset"
         const val CASE_FILTER_PROPERTY = "gromozeka.longmemeval.caseFilter"
         const val TYPE_FILTER_PROPERTY = "gromozeka.longmemeval.type"
         const val SAMPLE_PROPERTY = "gromozeka.longmemeval.sample"
