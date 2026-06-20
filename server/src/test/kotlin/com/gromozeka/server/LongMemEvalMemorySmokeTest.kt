@@ -345,6 +345,13 @@ class LongMemEvalMemorySmokeTest {
             progressPath,
             "answer_judge_done id=${entry.questionId} supported=${answerJudgement.supported} reason=${answerJudgement.reason.oneLineForArtifact(240)}"
         )
+        val memoryLlmCalls = rememberedSessions.flatMap { remembered ->
+            remembered.writeTrace?.llmCalls.orEmpty().map { call ->
+                call.toLongMemEvalMemoryLlmCallResult(scope = "remember:${remembered.haystackSessionId}")
+            }
+        } + readTrace?.llmCalls.orEmpty().map { call ->
+            call.toLongMemEvalMemoryLlmCallResult(scope = "enrich")
+        }
         val memorySmokePassReason = if (answerJudgement.supported) {
             "answer_judge"
         } else {
@@ -391,6 +398,7 @@ class LongMemEvalMemorySmokeTest {
             answerHypothesis = answerHypothesis.answer,
             answerHypothesisReasoning = answerHypothesis.reasoning,
             answerJudgeReason = answerJudgement.reason,
+            memoryLlmCalls = memoryLlmCalls,
             rememberStatuses = rememberResults.map { it.status },
             rememberDecisions = rememberResults.map { it.decision.orEmpty() },
             rememberReasons = rememberResults.map { it.reason.orEmpty() },
@@ -933,6 +941,8 @@ class LongMemEvalMemorySmokeTest {
         appendLine()
         appendSlowestStages(results)
         appendLine()
+        appendSlowestMemoryLlmCalls(results)
+        appendLine()
         results.forEach { result ->
             appendLine("## ${result.questionId} (${result.questionType})")
             appendLine()
@@ -950,6 +960,7 @@ class LongMemEvalMemorySmokeTest {
             appendLine("- answer hypothesis: ${result.answerHypothesis}")
             appendLine("- answer hypothesis reasoning: ${result.answerHypothesisReasoning}")
             appendLine("- answer judge reason: ${result.answerJudgeReason}")
+            appendLine("- memory llm calls: ${result.memoryLlmCalls.renderLlmCallsForSummary()}")
             appendLine("- remember statuses: ${result.rememberStatuses.joinToString()}")
             appendLine("- remember decisions: ${result.rememberDecisions.joinToString()}")
             appendLine("- remember reasons: ${result.rememberReasons.filter { it.isNotBlank() }.joinToString().ifBlank { "none" }}")
@@ -1462,6 +1473,7 @@ private data class LongMemEvalSmokeCaseResult(
     val answerHypothesis: String,
     val answerHypothesisReasoning: String,
     val answerJudgeReason: String,
+    val memoryLlmCalls: List<LongMemEvalMemoryLlmCallResult>,
     val rememberStatuses: List<String>,
     val rememberDecisions: List<String>,
     val rememberReasons: List<String>,
@@ -1473,6 +1485,20 @@ private data class LongMemEvalSmokeCaseResult(
     val answerDurationMs: Long,
     val answerJudgeDurationMs: Long,
     val durationMs: Long,
+)
+
+@Serializable
+private data class LongMemEvalMemoryLlmCallResult(
+    val scope: String,
+    val stageName: String,
+    val attempt: Int,
+    val status: String,
+    val latencyMs: Long,
+    val timeoutMs: Long?,
+    val finishReason: String?,
+    val promptTokens: Int?,
+    val completionTokens: Int?,
+    val totalTokens: Int?,
 )
 
 @Serializable
@@ -1489,6 +1515,29 @@ private fun String.oneLineForArtifact(limit: Int): String =
 
 private fun String.markdownTableCell(): String =
     replace("|", "\\|")
+
+private fun MemoryRun.LlmCallTiming.toLongMemEvalMemoryLlmCallResult(scope: String): LongMemEvalMemoryLlmCallResult =
+    LongMemEvalMemoryLlmCallResult(
+        scope = scope,
+        stageName = stageName,
+        attempt = attempt,
+        status = status.name,
+        latencyMs = latencyMs,
+        timeoutMs = timeoutMs,
+        finishReason = finishReason,
+        promptTokens = promptTokens,
+        completionTokens = completionTokens,
+        totalTokens = totalTokens,
+    )
+
+private fun List<LongMemEvalMemoryLlmCallResult>.renderLlmCallsForSummary(): String =
+    if (isEmpty()) {
+        "none"
+    } else {
+        val totalLatencyMs = sumOf { it.latencyMs }
+        val slowest = maxBy { it.latencyMs }
+        "${size} calls, total=${totalLatencyMs.durationSummary()}, slowest=${slowest.scope}:${slowest.stageName}:${slowest.status}:${slowest.latencyMs.durationSummary()}"
+    }
 
 private fun StringBuilder.appendSlowestStages(results: List<LongMemEvalSmokeCaseResult>) {
     val rows = results.flatMap { result ->
@@ -1521,10 +1570,43 @@ private fun StringBuilder.appendSlowestStages(results: List<LongMemEvalSmokeCase
     }
 }
 
+private fun StringBuilder.appendSlowestMemoryLlmCalls(results: List<LongMemEvalSmokeCaseResult>) {
+    val rows = results.flatMap { result ->
+        result.memoryLlmCalls.map { call ->
+            LongMemEvalMemoryLlmCallDuration(result = result, call = call)
+        }
+    }
+        .filter { it.call.latencyMs > 0L }
+        .sortedByDescending { it.call.latencyMs }
+        .take(15)
+
+    if (rows.isEmpty()) {
+        return
+    }
+
+    appendLine("## Slowest Memory LLM Calls")
+    appendLine()
+    appendLine("| case | scope | stage | attempt | status | latency | timeout | tokens | question |")
+    appendLine("| --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |")
+    rows.forEach { row ->
+        val call = row.call
+        appendLine(
+            "| `${row.result.questionId}` | `${call.scope.markdownTableCell()}` | `${call.stageName.markdownTableCell()}` | ${call.attempt} | ${call.status} | ${call.latencyMs.durationSummary()} | ${call.timeoutMs?.durationSummary() ?: "unknown"} | ${call.totalTokens ?: "unknown"} | ${
+                row.result.question.oneLineForArtifact(120).markdownTableCell()
+            } |",
+        )
+    }
+}
+
 private data class LongMemEvalStageDuration(
     val stage: String,
     val durationMs: Long,
     val result: LongMemEvalSmokeCaseResult,
+)
+
+private data class LongMemEvalMemoryLlmCallDuration(
+    val result: LongMemEvalSmokeCaseResult,
+    val call: LongMemEvalMemoryLlmCallResult,
 )
 
 private fun String.truncateForJudgeEvidence(limit: Int): String =
