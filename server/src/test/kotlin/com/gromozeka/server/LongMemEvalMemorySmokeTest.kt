@@ -931,6 +931,8 @@ class LongMemEvalMemorySmokeTest {
         appendLine("- answer duration: ${results.sumOf { it.answerDurationMs }.durationSummary()}")
         appendLine("- answer judge duration: ${results.sumOf { it.answerJudgeDurationMs }.durationSummary()}")
         appendLine()
+        appendSlowestStages(results)
+        appendLine()
         results.forEach { result ->
             appendLine("## ${result.questionId} (${result.questionType})")
             appendLine()
@@ -1484,6 +1486,46 @@ private fun String.oneLineForArtifact(limit: Int): String =
     replace(Regex("\\s+"), " ")
         .trim()
         .let { if (it.length <= limit) it else it.take(limit - 3) + "..." }
+
+private fun String.markdownTableCell(): String =
+    replace("|", "\\|")
+
+private fun StringBuilder.appendSlowestStages(results: List<LongMemEvalSmokeCaseResult>) {
+    val rows = results.flatMap { result ->
+        listOf(
+            LongMemEvalStageDuration(stage = "total", durationMs = result.durationMs, result = result),
+            LongMemEvalStageDuration(stage = "remember", durationMs = result.rememberDurationMs, result = result),
+            LongMemEvalStageDuration(stage = "enrich", durationMs = result.enrichDurationMs, result = result),
+            LongMemEvalStageDuration(stage = "answer", durationMs = result.answerDurationMs, result = result),
+            LongMemEvalStageDuration(stage = "judge", durationMs = result.answerJudgeDurationMs, result = result),
+        )
+    }
+        .filter { it.durationMs > 0L }
+        .sortedByDescending { it.durationMs }
+        .take(10)
+
+    if (rows.isEmpty()) {
+        return
+    }
+
+    appendLine("## Slowest Stages")
+    appendLine()
+    appendLine("| stage | case | duration | question |")
+    appendLine("| --- | --- | ---: | --- |")
+    rows.forEach { row ->
+        appendLine(
+            "| ${row.stage} | `${row.result.questionId}` | ${row.durationMs.durationSummary()} | ${
+                row.result.question.oneLineForArtifact(120).markdownTableCell()
+            } |",
+        )
+    }
+}
+
+private data class LongMemEvalStageDuration(
+    val stage: String,
+    val durationMs: Long,
+    val result: LongMemEvalSmokeCaseResult,
+)
 
 private fun String.truncateForJudgeEvidence(limit: Int): String =
     trim()
