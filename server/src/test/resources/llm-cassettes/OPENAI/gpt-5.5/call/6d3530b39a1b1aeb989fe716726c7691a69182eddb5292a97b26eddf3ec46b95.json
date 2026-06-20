@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "6d3530b39a1b1aeb989fe716726c7691a69182eddb5292a97b26eddf3ec46b95",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:c8090214\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past transcript includes durable purchase/device facts and shopping preferences/budgets, plus broader context useful as a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:c8090214:profile:<0> Profile for User (USER).\nStable facts:\n- The user wanted to find a nice birthday gift for the user's sister while staying within a budget.\n- The user planned to design a custom phone case as a birthday gift for the user's sister.\n- The user planned to try Canva or Adobe Spark to design the custom phone case for the user's sister.\n- The user planned to go back to the Holiday Market and take a closer look at the jewelry vendors to find a piece that could go with the custom phone case for the user's sister.\n- claim hot-path-5e08dbd12e09-claim-5: attended_event; The user attended the annual Holiday Market at the local mall about a week before Black Friday 2023 and saw unique handmade jewelry there.; scope=Historical attendance by the user at the annual Holiday Market at the local mall.\n- claim hot-path-5e08dbd12e09-claim-8: generated_artifact_detail; The planned custom phone case design should be simple, include the sister's name in an elegant font, and possibly include a small message such as \"Sis\" or \"Birthday Girl\".; scope=Design details for the custom phone case planned as the user's sister's birthday gift.\n- claim hot-path-5e08dbd12e09-claim-7: has_goal; The user planned to try Canva or Adobe Spark to design the custom phone case for the user's sister.; scope=Applies to the 2023-12-10 custom phone case design plan.\n- claim hot-path-5e08dbd12e09-claim-9: has_goal; The user planned to go back to the Holiday Market and take a closer look at the jewelry vendors to find a piece that could go with the custom phone case for the user's sister.; scope=Applies to the 2023-12-10 gift planning conversation for the user's sister.\n- claim hot-path-5e08dbd12e09-claim-6: has_goal; The user planned to design a custom phone case as a birthday gift for the user's sister.; scope=Applies to the 2023-12-10 birthday gift planning conversation for the user's sister.\n- claim hot-path-5e08dbd12e09-claim-4: has_goal; The user wanted to find a nice birthday gift for the user's sister while staying within a budget.; scope=Applies to the 2023-12-10 birthday gift planning conversation for the user's sister.\n- note hot-path-5e08dbd12e09-note-2: PLAN; Sister birthday gift plan: simple custom phone case plus possible handmade jewelry; For the user's sister's upcoming birthday, the user leaned toward designing a custom phone case in Canva or Adobe Spark with an elegant-font name and a small message such as \"Sis\" or \"Birthday Girl\", while considering returning to the Holiday Market to choose handmade jewelry as an additional gift if it fits her style.; scope=Gift planning context for the user's sister's birthday, especially the custom phone case and possible handmade jewelry pairing.\n- note hot-path-5e08dbd12e09-note-3: PLAN; Holiday Market jewelry follow-up strategy; The user decided to revisit the annual Holiday Market at the local mall to inspect handmade jewelry vendors more carefully, because earlier pieces caught their eye but they needed a clearer sense of whether they fit the sister's style and would pair well with the phone case gift.; scope=Follow-up plan for evaluating handmade jewelry at the annual Holiday Market as a birthday gift add-on for the user's sister.\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person user statements resolve to the stable User entity.\n- mention=my iPhone 13 Pro; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's iPhone 13 Pro; reason=Possessive wording identifies a concrete reusable personal product not present in candidates.\n- mention=Best Buy; action=CREATE_NEW; id=entity:<2>; type=ORGANIZATION; name=Best Buy; reason=Retailer involved in the user's phone purchase and not present in candidates.\n- mention=Black Friday; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Black Friday; reason=Named shopping event relevant to purchase timing and discounts.\n- mention=LifeProof FRĒ Series; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=LifeProof FRĒ Series; reason=Concrete product option discussed in the target message.\n- mention=Catalyst Waterproof Case; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Catalyst Waterproof Case; reason=Concrete product option discussed in the target message.\n- mention=OtterBox Defender Series Waterproof; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=OtterBox Defender Series Waterproof; reason=Concrete product option discussed in the target message.\n- mention=4K TV from Amazon; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=User's 4K TV from Amazon; reason=Possessive/contextual wording indicates a concrete TV the user bought, not present in candidates.\n- mention=Amazon; action=CREATE_NEW; id=entity:<8>; type=ORGANIZATION; name=Amazon; reason=Retailer involved in the user's TV purchase and not present in candidates.\n- mention=Cyber Monday; action=CREATE_NEW; id=entity:<9>; type=CONCEPT; name=Cyber Monday; reason=Named shopping event relevant to purchase timing and discounts.\n- mention=soundbar; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Soundbar for User's new TV; reason=User is seeking a concrete product category for their TV setup; later claims may track budget/preferences.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|iPhone 13 Pro|Best Buy|Amazon|4K TV|soundbar|Cyber Monday|Black Friday\n        text_queries=iPhone 13 Pro discounted price $800 Best Buy Black Friday|4K TV Amazon Cyber Monday 30% off original price $1,200|TV preferences good picture quality HDR support $800-$1,000|soundbar budget $200-$300 good sound quality\n        predicate_hints=owns|prefers|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:fb9538aa6db5d6111b1b910a108aaa3a] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:c8090214:session:2; title=LongMemEval c8090214 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/12/10 (Sun) 11:49\nTranscript:\nuser: I'm looking to upgrade my phone case and screen protector. Can you show me some options for iPhone 13 Pro cases and screen protectors? By the way, I got my iPhone 13 Pro at a discounted price of $800 from Best Buy on Black Friday, which was a great deal considering the regular price was $1,000.\nassistant: Congratulations on scoring a great deal on your iPhone 13 Pro!\n\nI'd be happy to help you find some excellent case and screen protector options for your device. Here are some popular and highly-rated choices:\n\n**iPhone 13 Pro Cases:**\n\n1. **OtterBox Defender Series**: A rugged and durable case with a built-in screen protector, offering triple-layer protection against drops, scratches, and dust. ($49.95)\n2. **Spigen Ultra Hybrid**: A clear case with a TPU bumper and a hard PC back, providing a sleek and protective design. ($25.99)\n3. **Case-Mate Tough Stand**: A stylish case with a built-in stand for hands-free viewing, featuring a durable design and raised edges for screen protection. ($30.00)\n4. **Mophie Juice Pack**: A battery case that provides up to 50% extra battery life, perfect for heavy users. ($99.95)\n5. **Tech21 Evo Check**: A slim and lightweight case with a checkered pattern, offering excellent drop protection and a stylish design. ($29.95)\n\n**iPhone 13 Pro Screen Protectors:**\n\n1. **Zagg InvisibleShield Glass+**: A tempered glass screen protector with advanced clarity and a smooth touch experience. ($29.99)\n2. **BodyGuardz Pure 2**: A tempered glass screen protector with a sleek design and a 100% satisfaction guarantee. ($24.95)\n3. **TechArmor High Definition**: A crystal-clear screen protector with a oleophobic coating and a lifetime warranty. ($14.95)\n4. **Anker GlassGuard**: A tempered glass screen protector with a 9H hardness rating and a lifetime warranty. ($12.99)\n5. **Skinomi TechSkin**: A clear screen protector with a unique self-healing technology and a lifetime warranty. ($14.95)\n\nThese are just a few of the many options available. You can find these and more on online marketplaces like Amazon, Best Buy, or the manufacturers' official websites.\n\nRemember to check the compatibility and reviews for each product to ensure you find the perfect fit for your iPhone 13 Pro.\nuser: Can you show me some waterproof phone cases, I'm planning to use my phone more outdoors and want to make sure it's protected from water and dust.\nassistant: Here are some top-rated waterproof phone cases for your iPhone 13 Pro:\n\n**Waterproof Phone Cases:**\n\n1. **LifeProof FRĒ Series**: A premium waterproof case with a rating of IP68, offering protection against water, dust, snow, and dirt. It's also drop-proof and features a built-in screen protector. ($89.99)\n2. ** Catalyst Waterproof Case**: A waterproof case with a rating of IP68, designed for underwater use up to 30 meters (100 feet). It also features a rotating mute switch and a clear back for showcasing your phone's design. ($69.99)\n3. **OtterBox Defender Series Waterproof**: A rugged and waterproof case with a rating of IP68, offering protection against water, dust, and drops. It also features a built-in screen protector and a belt holster. ($69.95)\n4. **UAG Monarch Series Waterproof**: A waterproof case with a rating of IP68, designed for extreme outdoor use. It features a rugged design, a built-in screen protector, and a 5-layer protection system. ($59.95)\n5. **Pelican Protector Series**: A waterproof case with a rating of IP68, offering protection against water, dust, and extreme temperatures. It also features a built-in screen protector and a rugged design. ($59.95)\n\n**IP Rating Guide:**\n\nWhen shopping for a waterproof case, look for the IP (Ingress Protection) rating, which indicates the level of protection against solid particles and water. Here's a breakdown of the IP ratings:\n\n* IP67: Protected against dust and immersion in water up to 1 meter (3.3 feet) for 30 minutes.\n* IP68: Protected against dust and immersion in water beyond 1 meter (3.3 feet) for 30 minutes.\n\n**Things to Consider:**\n\n* Check the warranty and customer support offered by the manufacturer.\n* Read reviews and ratings from other customers to ensure the case meets your needs.\n* Consider the thickness and weight of the case, as it may affect the overall feel of your phone.\n* Some waterproof cases may affect the audio quality or touchscreen responsiveness, so look for cases with acoustic membranes or special touch-sensitive materials.\n\nRemember to always test your phone's water resistance according to the manufacturer's instructions before using it in wet conditions.\nuser: I'm also planning to buy a new TV, can you show me some 4K TV options in the range of $800-$1,200?\nassistant: Here are some excellent 4K TV options in the range of $800-$1,200:\n\n**Budget-Friendly Options (Under $1,000):**\n\n1. ** TCL 55S535**: A 55-inch 4K UHD TV with Roku built-in, offering excellent picture quality, wide color gamut, and HDR support. ($799.99)\n2. **Vizio P-Series P55QX-H1**: A 55-inch 4K UHD TV with smart TV capabilities, featuring a high dynamic range, wide color gamut, and 120Hz refresh rate. ($899.99)\n3. **Samsung UN55TU8000**: A 55-inch 4K UHD TV with a crystal-clear display, featuring a 120Hz refresh rate, HDR support, and built-in Wi-Fi. ($999.99)\n\n**Mid-Range Options ($1,000-$1,200):**\n\n1. **LG UM7300**: A 55-inch 4K UHD TV with NanoCell technology, offering excellent color accuracy, a wide viewing angle, and HDR support. ($1,099.99)\n2. **Sony XBR55X900F**: A 55-inch 4K UHD TV with a stunning OLED panel, featuring a 120Hz refresh rate, HDR support, and Android TV operating system. ($1,099.99)\n3. **Vizio P-Series P65QX-H1**: A 65-inch 4K UHD TV with smart TV capabilities, featuring a high dynamic range, wide color gamut, and 120Hz refresh rate. ($1,199.99)\n\n**Key Features to Consider:**\n\n* **4K Resolution**: Ensure the TV has a native 4K resolution (3840 x 2160) for the best picture quality.\n* **HDR Support**: Look for TVs with HDR10, HDR10+, or Dolby Vision support for enhanced color and contrast.\n* **Refresh Rate**: A higher refresh rate (e.g., 120Hz) provides a smoother viewing experience, especially for fast-paced content.\n* **Smart TV Capabilities**: Consider TVs with built-in streaming services like Roku, Android TV, or SmartCast for easy access to your favorite apps.\n* **OLED or QLED**: OLED panels offer better contrast and viewing angles, while QLED panels provide improved color accuracy and brightness.\n\nRemember to check the TV's dimensions, weight, and connectivity options (e.g., HDMI ports, USB ports) to ensure it fits your space and meets your needs.\nuser: I'm looking for a TV with good picture quality and HDR support. I scored an amazing deal on a 4K TV from Amazon on Cyber Monday, getting 30% off the original price of $1,200. Can you show me some TV models with similar features and price points?\nassistant: Congratulations on scoring an amazing deal on your 4K TV!\n\nI'd be happy to help you explore other TV models with similar features and price points. Here are some options to consider:\n\n**TV Models with Good Picture Quality and HDR Support:**\n\n1. **Sony XBR55A8G**: A 55-inch 4K OLED TV with excellent picture quality, HDR support, and a wide viewing angle. ($999.99)\n2. **LG OLED55C9PUA**: A 55-inch 4K OLED TV with a stunning OLED panel, HDR support, and a wide color gamut. ($1,099.99)\n3. **Samsung QN55Q90R**: A 55-inch 4K QLED TV with excellent picture quality, HDR support, and a high dynamic range. ($1,099.99)\n4. **Vizio P-Series P55QX-H1**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($899.99)\n5. **TCL 55R615**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($699.99)\n\n**Key Features to Consider:**\n\n* **OLED or QLED Panel**: OLED panels offer better contrast and viewing angles, while QLED panels provide improved color accuracy and brightness.\n* **HDR Support**: Look for TVs with HDR10, HDR10+, or Dolby Vision support for enhanced color and contrast.\n* **Wide Color Gamut**: A wider color gamut provides more vivid and accurate colors.\n* **High Dynamic Range**: A higher dynamic range offers better contrast and a more immersive viewing experience.\n* **Refresh Rate**: A higher refresh rate (e.g., 120Hz) provides a smoother viewing experience, especially for fast-paced content.\n\n**Price Points:**\n\n* **Under $1,000**: TCL 55R615, Vizio P-Series P55QX-H1\n* **$1,000-$1,200**: Sony XBR55A8G, LG OLED55C9PUA, Samsung QN55Q90R\n\nRemember to check the TV's dimensions, weight, and connectivity options (e.g., HDMI ports, USB ports) to ensure it fits your space and meets your needs.\nuser: I'm looking for a TV with a similar price point to what I got on Cyber Monday, around $800-$1,000. Can you show me some TV models with good picture quality and HDR support in that price range?\nassistant: Here are some TV models with good picture quality and HDR support in the $800-$1,000 price range:\n\n**TV Models with Good Picture Quality and HDR Support:**\n\n1. **TCL 55R625**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($899.99)\n2. **Vizio P-Series P55QX-H1**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($899.99)\n3. **Samsung UN55RU8000**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($949.99)\n4. **LG 55UM7300**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($999.99)\n5. **Sony KD55X720E**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($999.99)\n\n**Key Features to Consider:**\n\n* **4K Resolution**: Ensure the TV has a native 4K resolution (3840 x 2160) for the best picture quality.\n* **HDR Support**: Look for TVs with HDR10, HDR10+, or Dolby Vision support for enhanced color and contrast.\n* **Wide Color Gamut**: A wider color gamut provides more vivid and accurate colors.\n* **Refresh Rate**: A higher refresh rate (e.g., 120Hz) provides a smoother viewing experience, especially for fast-paced content.\n* **Smart TV Capabilities**: Consider TVs with built-in streaming services like Roku, Android TV, or SmartCast for easy access to your favorite apps.\n\n**Price Points:**\n\n* **$800-$900**: TCL 55R625, Vizio P-Series P55QX-H1\n* **$900-$1,000**: Samsung UN55RU8000, LG 55UM7300, Sony KD55X720E\n\nRemember to check the TV's dimensions, weight, and connectivity options (e.g., HDMI ports, USB ports) to ensure it fits your space and meets your needs.\nuser: I'm also looking for a soundbar to complement my new TV. Can you show me some soundbar options with good sound quality and a budget of around $200-$300?\nassistant: A soundbar can greatly enhance your TV-watching experience. Here are some soundbar options with good sound quality and a budget of around $200-$300:\n\n**Soundbar Options:**\n\n1. **Yamaha YAS-209**: A compact soundbar with clear and balanced sound, featuring a wireless subwoofer and built-in Alexa. ($299.95)\n2. **Sonos Beam**: A compact soundbar with excellent sound quality, featuring a compact design and built-in Alexa and Google Assistant. ($299.00)\n3. **Bose Solo 5**: A sleek and compact soundbar with clear and balanced sound, featuring a single speaker design. ($249.95)\n4. **Samsung HW-R450**: A slim soundbar with good sound quality, featuring a wireless subwoofer and Bluetooth connectivity. ($299.99)\n5. **JBL Bar 3.1**: A 3.1-channel soundbar with good sound quality, featuring a wireless subwoofer and Bluetooth connectivity. ($299.95)\n\n**Key Features to Consider:**\n\n* **Sound Quality**: Look for soundbars with clear and balanced sound, and consider the number of channels (e.g., 2.1, 3.1) for a more immersive experience.\n* **Wireless Subwoofer**: A wireless subwoofer provides more flexibility and convenience.\n* **Smart Speaker Integration**: Consider soundbars with built-in smart speakers like Alexa or Google Assistant for voice control.\n* **Connectivity Options**: Ensure the soundbar has the right connectivity options for your devices, such as HDMI, optical, or Bluetooth.\n* **Size and Design**: Choose a soundbar that fits your space and complements your TV's design.\n\n**Price Points:**\n\n* **$200-$250**: Bose Solo 5, JBL Bar 3.1\n* **$250-$300**: Yamaha YAS-209, Sonos Beam, Samsung HW-R450\n\nRemember to read reviews and compare features to find the best soundbar for your needs and budget.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:c8090214",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:fb9538aa6db5d6111b1b910a108aaa3a"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:c8090214\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past transcript includes durable purchase/device facts and shopping preferences/budgets, plus broader context useful as a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - profile benchmark:longmemeval:c8090214:profile:<0> Profile for User (USER).\nStable facts:\n- The user wanted to find a nice birthday gift for the user's sister while staying within a budget.\n- The user planned to design a custom phone case as a birthday gift for the user's sister.\n- The user planned to try Canva or Adobe Spark to design the custom phone case for the user's sister.\n- The user planned to go back to the Holiday Market and take a closer look at the jewelry vendors to find a piece that could go with the custom phone case for the user's sister.\n- claim hot-path-5e08dbd12e09-claim-5: attended_event; The user attended the annual Holiday Market at the local mall about a week before Black Friday 2023 and saw unique handmade jewelry there.; scope=Historical attendance by the user at the annual Holiday Market at the local mall.\n- claim hot-path-5e08dbd12e09-claim-8: generated_artifact_detail; The planned custom phone case design should be simple, include the sister's name in an elegant font, and possibly include a small message such as \"Sis\" or \"Birthday Girl\".; scope=Design details for the custom phone case planned as the user's sister's birthday gift.\n- claim hot-path-5e08dbd12e09-claim-7: has_goal; The user planned to try Canva or Adobe Spark to design the custom phone case for the user's sister.; scope=Applies to the 2023-12-10 custom phone case design plan.\n- claim hot-path-5e08dbd12e09-claim-9: has_goal; The user planned to go back to the Holiday Market and take a closer look at the jewelry vendors to find a piece that could go with the custom phone case for the user's sister.; scope=Applies to the 2023-12-10 gift planning conversation for the user's sister.\n- claim hot-path-5e08dbd12e09-claim-6: has_goal; The user planned to design a custom phone case as a birthday gift for the user's sister.; scope=Applies to the 2023-12-10 birthday gift planning conversation for the user's sister.\n- claim hot-path-5e08dbd12e09-claim-4: has_goal; The user wanted to find a nice birthday gift for the user's sister while staying within a budget.; scope=Applies to the 2023-12-10 birthday gift planning conversation for the user's sister.\n- note hot-path-5e08dbd12e09-note-2: PLAN; Sister birthday gift plan: simple custom phone case plus possible handmade jewelry; For the user's sister's upcoming birthday, the user leaned toward designing a custom phone case in Canva or Adobe Spark with an elegant-font name and a small message such as \"Sis\" or \"Birthday Girl\", while considering returning to the Holiday Market to choose handmade jewelry as an additional gift if it fits her style.; scope=Gift planning context for the user's sister's birthday, especially the custom phone case and possible handmade jewelry pairing.\n- note hot-path-5e08dbd12e09-note-3: PLAN; Holiday Market jewelry follow-up strategy; The user decided to revisit the annual Holiday Market at the local mall to inspect handmade jewelry vendors more carefully, because earlier pieces caught their eye but they needed a clearer sense of whether they fit the sister's style and would pair well with the phone case gift.; scope=Follow-up plan for evaluating handmade jewelry at the annual Holiday Market as a birthday gift add-on for the user's sister.\n\n        Resolved entities:\n        - mention=I; action=LINK_EXISTING; id=entity:<0>; type=existing; name=I; reason=First-person user statements resolve to the stable User entity.\n- mention=my iPhone 13 Pro; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's iPhone 13 Pro; reason=Possessive wording identifies a concrete reusable personal product not present in candidates.\n- mention=Best Buy; action=CREATE_NEW; id=entity:<2>; type=ORGANIZATION; name=Best Buy; reason=Retailer involved in the user's phone purchase and not present in candidates.\n- mention=Black Friday; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Black Friday; reason=Named shopping event relevant to purchase timing and discounts.\n- mention=LifeProof FRĒ Series; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=LifeProof FRĒ Series; reason=Concrete product option discussed in the target message.\n- mention=Catalyst Waterproof Case; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Catalyst Waterproof Case; reason=Concrete product option discussed in the target message.\n- mention=OtterBox Defender Series Waterproof; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=OtterBox Defender Series Waterproof; reason=Concrete product option discussed in the target message.\n- mention=4K TV from Amazon; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=User's 4K TV from Amazon; reason=Possessive/contextual wording indicates a concrete TV the user bought, not present in candidates.\n- mention=Amazon; action=CREATE_NEW; id=entity:<8>; type=ORGANIZATION; name=Amazon; reason=Retailer involved in the user's TV purchase and not present in candidates.\n- mention=Cyber Monday; action=CREATE_NEW; id=entity:<9>; type=CONCEPT; name=Cyber Monday; reason=Named shopping event relevant to purchase timing and discounts.\n- mention=soundbar; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Soundbar for User's new TV; reason=User is seeking a concrete product category for their TV setup; later claims may track budget/preferences.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|iPhone 13 Pro|Best Buy|Amazon|4K TV|soundbar|Cyber Monday|Black Friday\n        text_queries=iPhone 13 Pro discounted price $800 Best Buy Black Friday|4K TV Amazon Cyber Monday 30% off original price $1,200|TV preferences good picture quality HDR support $800-$1,000|soundbar budget $200-$300 good sound quality\n        predicate_hints=owns|prefers|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:fb9538aa6db5d6111b1b910a108aaa3a] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:c8090214:session:2; title=LongMemEval c8090214 session 2; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/12/10 (Sun) 11:49\nTranscript:\nuser: I'm looking to upgrade my phone case and screen protector. Can you show me some options for iPhone 13 Pro cases and screen protectors? By the way, I got my iPhone 13 Pro at a discounted price of $800 from Best Buy on Black Friday, which was a great deal considering the regular price was $1,000.\nassistant: Congratulations on scoring a great deal on your iPhone 13 Pro!\n\nI'd be happy to help you find some excellent case and screen protector options for your device. Here are some popular and highly-rated choices:\n\n**iPhone 13 Pro Cases:**\n\n1. **OtterBox Defender Series**: A rugged and durable case with a built-in screen protector, offering triple-layer protection against drops, scratches, and dust. ($49.95)\n2. **Spigen Ultra Hybrid**: A clear case with a TPU bumper and a hard PC back, providing a sleek and protective design. ($25.99)\n3. **Case-Mate Tough Stand**: A stylish case with a built-in stand for hands-free viewing, featuring a durable design and raised edges for screen protection. ($30.00)\n4. **Mophie Juice Pack**: A battery case that provides up to 50% extra battery life, perfect for heavy users. ($99.95)\n5. **Tech21 Evo Check**: A slim and lightweight case with a checkered pattern, offering excellent drop protection and a stylish design. ($29.95)\n\n**iPhone 13 Pro Screen Protectors:**\n\n1. **Zagg InvisibleShield Glass+**: A tempered glass screen protector with advanced clarity and a smooth touch experience. ($29.99)\n2. **BodyGuardz Pure 2**: A tempered glass screen protector with a sleek design and a 100% satisfaction guarantee. ($24.95)\n3. **TechArmor High Definition**: A crystal-clear screen protector with a oleophobic coating and a lifetime warranty. ($14.95)\n4. **Anker GlassGuard**: A tempered glass screen protector with a 9H hardness rating and a lifetime warranty. ($12.99)\n5. **Skinomi TechSkin**: A clear screen protector with a unique self-healing technology and a lifetime warranty. ($14.95)\n\nThese are just a few of the many options available. You can find these and more on online marketplaces like Amazon, Best Buy, or the manufacturers' official websites.\n\nRemember to check the compatibility and reviews for each product to ensure you find the perfect fit for your iPhone 13 Pro.\nuser: Can you show me some waterproof phone cases, I'm planning to use my phone more outdoors and want to make sure it's protected from water and dust.\nassistant: Here are some top-rated waterproof phone cases for your iPhone 13 Pro:\n\n**Waterproof Phone Cases:**\n\n1. **LifeProof FRĒ Series**: A premium waterproof case with a rating of IP68, offering protection against water, dust, snow, and dirt. It's also drop-proof and features a built-in screen protector. ($89.99)\n2. ** Catalyst Waterproof Case**: A waterproof case with a rating of IP68, designed for underwater use up to 30 meters (100 feet). It also features a rotating mute switch and a clear back for showcasing your phone's design. ($69.99)\n3. **OtterBox Defender Series Waterproof**: A rugged and waterproof case with a rating of IP68, offering protection against water, dust, and drops. It also features a built-in screen protector and a belt holster. ($69.95)\n4. **UAG Monarch Series Waterproof**: A waterproof case with a rating of IP68, designed for extreme outdoor use. It features a rugged design, a built-in screen protector, and a 5-layer protection system. ($59.95)\n5. **Pelican Protector Series**: A waterproof case with a rating of IP68, offering protection against water, dust, and extreme temperatures. It also features a built-in screen protector and a rugged design. ($59.95)\n\n**IP Rating Guide:**\n\nWhen shopping for a waterproof case, look for the IP (Ingress Protection) rating, which indicates the level of protection against solid particles and water. Here's a breakdown of the IP ratings:\n\n* IP67: Protected against dust and immersion in water up to 1 meter (3.3 feet) for 30 minutes.\n* IP68: Protected against dust and immersion in water beyond 1 meter (3.3 feet) for 30 minutes.\n\n**Things to Consider:**\n\n* Check the warranty and customer support offered by the manufacturer.\n* Read reviews and ratings from other customers to ensure the case meets your needs.\n* Consider the thickness and weight of the case, as it may affect the overall feel of your phone.\n* Some waterproof cases may affect the audio quality or touchscreen responsiveness, so look for cases with acoustic membranes or special touch-sensitive materials.\n\nRemember to always test your phone's water resistance according to the manufacturer's instructions before using it in wet conditions.\nuser: I'm also planning to buy a new TV, can you show me some 4K TV options in the range of $800-$1,200?\nassistant: Here are some excellent 4K TV options in the range of $800-$1,200:\n\n**Budget-Friendly Options (Under $1,000):**\n\n1. ** TCL 55S535**: A 55-inch 4K UHD TV with Roku built-in, offering excellent picture quality, wide color gamut, and HDR support. ($799.99)\n2. **Vizio P-Series P55QX-H1**: A 55-inch 4K UHD TV with smart TV capabilities, featuring a high dynamic range, wide color gamut, and 120Hz refresh rate. ($899.99)\n3. **Samsung UN55TU8000**: A 55-inch 4K UHD TV with a crystal-clear display, featuring a 120Hz refresh rate, HDR support, and built-in Wi-Fi. ($999.99)\n\n**Mid-Range Options ($1,000-$1,200):**\n\n1. **LG UM7300**: A 55-inch 4K UHD TV with NanoCell technology, offering excellent color accuracy, a wide viewing angle, and HDR support. ($1,099.99)\n2. **Sony XBR55X900F**: A 55-inch 4K UHD TV with a stunning OLED panel, featuring a 120Hz refresh rate, HDR support, and Android TV operating system. ($1,099.99)\n3. **Vizio P-Series P65QX-H1**: A 65-inch 4K UHD TV with smart TV capabilities, featuring a high dynamic range, wide color gamut, and 120Hz refresh rate. ($1,199.99)\n\n**Key Features to Consider:**\n\n* **4K Resolution**: Ensure the TV has a native 4K resolution (3840 x 2160) for the best picture quality.\n* **HDR Support**: Look for TVs with HDR10, HDR10+, or Dolby Vision support for enhanced color and contrast.\n* **Refresh Rate**: A higher refresh rate (e.g., 120Hz) provides a smoother viewing experience, especially for fast-paced content.\n* **Smart TV Capabilities**: Consider TVs with built-in streaming services like Roku, Android TV, or SmartCast for easy access to your favorite apps.\n* **OLED or QLED**: OLED panels offer better contrast and viewing angles, while QLED panels provide improved color accuracy and brightness.\n\nRemember to check the TV's dimensions, weight, and connectivity options (e.g., HDMI ports, USB ports) to ensure it fits your space and meets your needs.\nuser: I'm looking for a TV with good picture quality and HDR support. I scored an amazing deal on a 4K TV from Amazon on Cyber Monday, getting 30% off the original price of $1,200. Can you show me some TV models with similar features and price points?\nassistant: Congratulations on scoring an amazing deal on your 4K TV!\n\nI'd be happy to help you explore other TV models with similar features and price points. Here are some options to consider:\n\n**TV Models with Good Picture Quality and HDR Support:**\n\n1. **Sony XBR55A8G**: A 55-inch 4K OLED TV with excellent picture quality, HDR support, and a wide viewing angle. ($999.99)\n2. **LG OLED55C9PUA**: A 55-inch 4K OLED TV with a stunning OLED panel, HDR support, and a wide color gamut. ($1,099.99)\n3. **Samsung QN55Q90R**: A 55-inch 4K QLED TV with excellent picture quality, HDR support, and a high dynamic range. ($1,099.99)\n4. **Vizio P-Series P55QX-H1**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($899.99)\n5. **TCL 55R615**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($699.99)\n\n**Key Features to Consider:**\n\n* **OLED or QLED Panel**: OLED panels offer better contrast and viewing angles, while QLED panels provide improved color accuracy and brightness.\n* **HDR Support**: Look for TVs with HDR10, HDR10+, or Dolby Vision support for enhanced color and contrast.\n* **Wide Color Gamut**: A wider color gamut provides more vivid and accurate colors.\n* **High Dynamic Range**: A higher dynamic range offers better contrast and a more immersive viewing experience.\n* **Refresh Rate**: A higher refresh rate (e.g., 120Hz) provides a smoother viewing experience, especially for fast-paced content.\n\n**Price Points:**\n\n* **Under $1,000**: TCL 55R615, Vizio P-Series P55QX-H1\n* **$1,000-$1,200**: Sony XBR55A8G, LG OLED55C9PUA, Samsung QN55Q90R\n\nRemember to check the TV's dimensions, weight, and connectivity options (e.g., HDMI ports, USB ports) to ensure it fits your space and meets your needs.\nuser: I'm looking for a TV with a similar price point to what I got on Cyber Monday, around $800-$1,000. Can you show me some TV models with good picture quality and HDR support in that price range?\nassistant: Here are some TV models with good picture quality and HDR support in the $800-$1,000 price range:\n\n**TV Models with Good Picture Quality and HDR Support:**\n\n1. **TCL 55R625**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($899.99)\n2. **Vizio P-Series P55QX-H1**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($899.99)\n3. **Samsung UN55RU8000**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($949.99)\n4. **LG 55UM7300**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($999.99)\n5. **Sony KD55X720E**: A 55-inch 4K TV with good picture quality, HDR support, and a wide color gamut. ($999.99)\n\n**Key Features to Consider:**\n\n* **4K Resolution**: Ensure the TV has a native 4K resolution (3840 x 2160) for the best picture quality.\n* **HDR Support**: Look for TVs with HDR10, HDR10+, or Dolby Vision support for enhanced color and contrast.\n* **Wide Color Gamut**: A wider color gamut provides more vivid and accurate colors.\n* **Refresh Rate**: A higher refresh rate (e.g., 120Hz) provides a smoother viewing experience, especially for fast-paced content.\n* **Smart TV Capabilities**: Consider TVs with built-in streaming services like Roku, Android TV, or SmartCast for easy access to your favorite apps.\n\n**Price Points:**\n\n* **$800-$900**: TCL 55R625, Vizio P-Series P55QX-H1\n* **$900-$1,000**: Samsung UN55RU8000, LG 55UM7300, Sony KD55X720E\n\nRemember to check the TV's dimensions, weight, and connectivity options (e.g., HDMI ports, USB ports) to ensure it fits your space and meets your needs.\nuser: I'm also looking for a soundbar to complement my new TV. Can you show me some soundbar options with good sound quality and a budget of around $200-$300?\nassistant: A soundbar can greatly enhance your TV-watching experience. Here are some soundbar options with good sound quality and a budget of around $200-$300:\n\n**Soundbar Options:**\n\n1. **Yamaha YAS-209**: A compact soundbar with clear and balanced sound, featuring a wireless subwoofer and built-in Alexa. ($299.95)\n2. **Sonos Beam**: A compact soundbar with excellent sound quality, featuring a compact design and built-in Alexa and Google Assistant. ($299.00)\n3. **Bose Solo 5**: A sleek and compact soundbar with clear and balanced sound, featuring a single speaker design. ($249.95)\n4. **Samsung HW-R450**: A slim soundbar with good sound quality, featuring a wireless subwoofer and Bluetooth connectivity. ($299.99)\n5. **JBL Bar 3.1**: A 3.1-channel soundbar with good sound quality, featuring a wireless subwoofer and Bluetooth connectivity. ($299.95)\n\n**Key Features to Consider:**\n\n* **Sound Quality**: Look for soundbars with clear and balanced sound, and consider the number of channels (e.g., 2.1, 3.1) for a more immersive experience.\n* **Wireless Subwoofer**: A wireless subwoofer provides more flexibility and convenience.\n* **Smart Speaker Integration**: Consider soundbars with built-in smart speakers like Alexa or Google Assistant for voice control.\n* **Connectivity Options**: Ensure the soundbar has the right connectivity options for your devices, such as HDMI, optical, or Bluetooth.\n* **Size and Design**: Choose a soundbar that fits your space and complements your TV's design.\n\n**Price Points:**\n\n* **$200-$250**: Bose Solo 5, JBL Bar 3.1\n* **$250-$300**: Yamaha YAS-209, Sonos Beam, Samsung HW-R450\n\nRemember to read reviews and compare features to find the best soundbar for your needs and budget.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:c8090214",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:fb9538aa6db5d6111b1b910a108aaa3a"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"The user wants waterproof and dustproof protection for their iPhone 13 Pro because they plan to use it more outdoors.\",\"The user bought their iPhone 13 Pro from Best Buy for $800 on Black Friday, discounted from $1,000.\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I'm planning to use my phone more outdoors and want to make sure it's protected from water and dust.\",\"evidence_reason\":\"The quoted user statement explains the durable shopping rationale behind the waterproof case search.\",\"importance\":4,\"keywords\":[\"iPhone 13 Pro\",\"waterproof case\",\"screen protector\",\"outdoors\",\"IP68\",\"dustproof\",\"LifeProof FRĒ Series\",\"Catalyst Waterproof Case\",\"OtterBox Defender Series Waterproof\"],\"note_type\":\"context\",\"rationale\":\"This captures a reusable shopping context and evaluation rationale rather than only one atomic purchase fact or product preference.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Shopping context for the user's iPhone 13 Pro protection accessories, especially waterproof outdoor-use cases.\"},\"summary\":\"The user was shopping for an iPhone 13 Pro case and screen protector, then narrowed the case requirement toward waterproof/dustproof protection because they planned to use the phone more outdoors. Suggested evaluation criteria included IP67/IP68 rating, warranty/support, reviews, bulk/weight, and possible effects on audio quality or touchscreen responsiveness.\",\"tags\":[\"shopping_context\",\"phone_accessories\",\"outdoor_protection\"],\"title\":\"Outdoor-focused iPhone 13 Pro protection shopping context\",\"valid_from\":\"2023-12-10T11:49:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user bought a 4K TV from Amazon on Cyber Monday for 30% off the original price of $1,200.\",\"The user prefers TV models around $800-$1,000 with good picture quality and HDR support.\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<7>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I scored an amazing deal on a 4K TV from Amazon on Cyber Monday, getting 30% off the original price of $1,200.\",\"evidence_reason\":\"The quoted user statement establishes the purchase context and price anchor used for subsequent TV comparisons.\",\"importance\":4,\"keywords\":[\"4K TV\",\"Amazon\",\"Cyber Monday\",\"30% off\",\"$1,200\",\"$800-$1,000\",\"HDR support\",\"picture quality\",\"OLED\",\"QLED\"],\"note_type\":\"context\",\"rationale\":\"This note preserves the broader comparison context, priorities, and price anchor; the individual ownership and budget facts can be represented separately as claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Shopping and comparison context for the user's 4K TV purchase and similar model recommendations.\"},\"summary\":\"The user bought a 4K TV from Amazon on Cyber Monday for 30% off the original $1,200 price, then compared similar $800-$1,000 TVs prioritizing good picture quality and HDR support. Reusable comparison criteria included OLED/QLED or panel quality, HDR formats, wide color gamut, refresh rate, smart TV capabilities, dimensions, and connectivity.\",\"tags\":[\"shopping_context\",\"tv_purchase\",\"deal_context\"],\"title\":\"4K TV deal and comparison criteria\",\"valid_from\":\"2023-12-10T11:49:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"The user is looking for a soundbar to complement their new TV.\",\"The user's soundbar budget is around $200-$300 and they want good sound quality.\"],\"confidence\":0.94,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<10>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I'm also looking for a soundbar to complement my new TV.\",\"evidence_reason\":\"The quote directly establishes the user's soundbar search as part of their new TV setup.\",\"importance\":3,\"keywords\":[\"soundbar\",\"new TV\",\"$200-$300\",\"good sound quality\",\"wireless subwoofer\",\"HDMI\",\"Bluetooth\",\"Alexa\",\"Google Assistant\"],\"note_type\":\"context\",\"rationale\":\"This is reusable shopping context with selection criteria, not just a single atomic budget/preference claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Shopping context for selecting a soundbar for the user's new TV setup.\"},\"summary\":\"The user wanted a soundbar to complement their new TV, with good sound quality and a budget around $200-$300. Useful selection criteria included clear/balanced sound, number of channels, wireless subwoofer, smart assistant integration, HDMI/optical/Bluetooth connectivity, and physical fit with the TV setup.\",\"tags\":[\"shopping_context\",\"audio\",\"tv_setup\"],\"title\":\"Soundbar search for new TV setup\",\"valid_from\":\"2023-12-10T11:49:00+02:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6031,
+                "completionTokens": 1248,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
