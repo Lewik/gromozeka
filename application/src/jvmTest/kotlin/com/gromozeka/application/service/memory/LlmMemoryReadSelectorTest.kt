@@ -696,6 +696,7 @@ class LlmMemoryReadSelectorTest {
         val prompt = runtime.prompts.single()
         assertTrue(prompt.contains("qualifiers_json"), prompt)
         assertTrue(prompt.contains("Rachel and Mike"), prompt)
+        assertTrue(prompt.contains("A shared anchor can connect candidates only when it explicitly identifies the same fully-qualified target"), prompt)
     }
 
     @Test
