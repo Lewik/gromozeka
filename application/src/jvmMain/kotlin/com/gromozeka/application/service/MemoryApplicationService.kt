@@ -14,6 +14,7 @@ import com.gromozeka.application.service.memory.MemoryThreadContextCompactor
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipeline
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
 import com.gromozeka.application.service.memory.defaultMemoryNamespace
+import com.gromozeka.application.service.memory.MemoryRunLlmCallObserver
 import com.gromozeka.application.service.memory.MemoryRepairPipeline
 import com.gromozeka.application.service.memory.MemoryRepairPipelineResult
 import com.gromozeka.application.service.memory.MemoryRetentionPipeline
@@ -55,6 +56,7 @@ class MemoryApplicationService(
     private val store: MemoryStore,
     private val readTraceSinks: List<MemoryReadTraceSink>,
     private val maintenanceTraceSinks: List<MemoryMaintenanceTraceSink>,
+    private val llmCallObservers: List<MemoryRunLlmCallObserver>,
     private val embeddingIndexer: MemoryEmbeddingIndexer,
 ) {
     private val log = KLoggers.logger(this)
@@ -98,7 +100,7 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespaceOverride: MemoryNamespace? = null,
-    ): MemoryReadResult = collectMemoryRunTimings { timingCollector ->
+    ): MemoryReadResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val startedAt = Clock.System.now()
         val memoryContextMessages = threadMessages.filterNot { it.isSyntheticMemoryRuntimeMessage() }
         val targetIndex = memoryContextMessages.indexOfFirst { it.id == targetMessage.id }
@@ -208,7 +210,7 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = project.defaultMemoryNamespace(),
-    ): MemoryNoteConsolidationPipelineResult = collectMemoryRunTimings { timingCollector ->
+    ): MemoryNoteConsolidationPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryNoteConsolidationPipeline(
             store = store,
@@ -254,7 +256,7 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = project.defaultMemoryNamespace(),
-    ): MemoryRepairPipelineResult = collectMemoryRunTimings { timingCollector ->
+    ): MemoryRepairPipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryRepairPipeline(
             store = store,
@@ -299,7 +301,7 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = project.defaultMemoryNamespace(),
-    ): MemoryEntityMaintenancePipelineResult = collectMemoryRunTimings { timingCollector ->
+    ): MemoryEntityMaintenancePipelineResult = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryEntityMaintenancePipeline(
             store = store,

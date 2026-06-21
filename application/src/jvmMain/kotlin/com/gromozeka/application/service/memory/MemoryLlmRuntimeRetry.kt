@@ -38,6 +38,16 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
         val attemptStartedAt = System.nanoTime()
         val attemptWallStartedAt = Clock.System.now()
         try {
+            recordCurrentMemoryRunLlmCallStart(
+                stageName = stageName,
+                attempt = attempt,
+                startedAt = attemptWallStartedAt,
+                timeoutMs = timeoutMs,
+                logContext = logContext,
+            )
+            memoryLlmRetryLog.info {
+                "Memory LLM stage start: stage=$stageName attempt=$attempt timeoutMs=$timeoutMs $logContext"
+            }
             val response = withTimeout(timeoutMs) {
                 call(request)
             }

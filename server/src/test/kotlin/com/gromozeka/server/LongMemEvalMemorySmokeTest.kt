@@ -129,6 +129,7 @@ class LongMemEvalMemorySmokeTest {
             val memoryTools = harness.context.getBean(MemoryToolApplicationService::class.java)
             val readTraceCollector = harness.context.getBean(MemoryE2eReadTraceCollector::class.java)
             val writeTraceCollector = harness.context.getBean(MemoryE2eWriteTraceCollector::class.java)
+            val llmCallProgressCollector = harness.context.getBean(MemoryE2eLlmCallProgressCollector::class.java)
             val judgeRuntime = harness.context
                 .getBean(AiRuntimeProvider::class.java)
                 .getRuntime(ServerTestHarness.openAiSubscriptionRuntimeSelection(), resolveProjectRoot())
@@ -141,6 +142,7 @@ class LongMemEvalMemorySmokeTest {
 
             Files.createDirectories(caseArtifactDirectory)
             progressPath.writeText("")
+            llmCallProgressCollector.bind(progressPath)
             appendProgress(
                 progressPath,
                 "suite_start model=$modelName schema=$postgresSchema data=$dataFile cases=${entries.size} namespace=$LONGMEMEVAL_NAMESPACE"
@@ -270,6 +272,11 @@ class LongMemEvalMemorySmokeTest {
                 progressPath,
                 "remember_session id=${entry.questionId} index=$sessionNumber/${entry.haystackSessions.size} durationMs=${System.currentTimeMillis() - startedAt} status=${result.status} decision=${result.decision.orEmpty()} reason=${result.reason.orEmpty().oneLineForArtifact(240)} counts=${result.countsSummary}"
             )
+            appendProgress(
+                progressPath,
+                "remember_session_llm_calls id=${entry.questionId} index=$sessionNumber/${entry.haystackSessions.size} " +
+                    writeTrace?.llmCalls.orEmpty().renderLlmCallsForProgress()
+            )
             result
         }
         val rememberDurationMs = System.currentTimeMillis() - rememberStartedAt
@@ -293,6 +300,12 @@ class LongMemEvalMemorySmokeTest {
         val readTrace = readTraceCollector.takeLatest(namespace)
 
         val memoryContext = enrichResult.memoryContext.orEmpty()
+        appendProgress(
+            progressPath,
+            "enrich_done id=${entry.questionId} durationMs=$enrichDurationMs status=${enrichResult.status} " +
+                "retrieved=${enrichResult.retrievedCount ?: 0} memoryContextChars=${memoryContext.length} " +
+                readTrace?.llmCalls.orEmpty().renderLlmCallsForProgress()
+        )
         val expectedAnswer = entry.answerText()
         val exactAnswerTextVisible = memoryContext.contains(expectedAnswer, ignoreCase = true)
         val selectedEvidenceSourceIds = (
@@ -1185,6 +1198,17 @@ class LongMemEvalMemorySmokeTest {
         } else {
             joinToString("; ") { call ->
                 "${call.stageName}:${call.status.name}:${call.latencyMs}ms"
+            }
+        }
+
+    private fun List<MemoryRun.LlmCallTiming>.renderLlmCallsForProgress(): String =
+        if (isEmpty()) {
+            "llmCalls=none"
+        } else {
+            joinToString("; ", prefix = "llmCalls=") { call ->
+                "${call.stageName}:attempt=${call.attempt}:status=${call.status.name}:latencyMs=${call.latencyMs}" +
+                    ":timeoutMs=${call.timeoutMs ?: "unknown"}:input=${call.totalInputTokens ?: "unknown"}" +
+                    ":output=${call.totalOutputTokens ?: "unknown"}:finish=${call.finishReason ?: "unknown"}"
             }
         }
 

@@ -40,6 +40,7 @@ class MemoryMessageRoutingApplicationService(
     private val store: MemoryStore,
     private val threadMessageRepository: ThreadMessageRepository,
     private val writeTraceSinks: List<MemoryWriteTraceSink>,
+    private val llmCallObservers: List<MemoryRunLlmCallObserver>,
     private val embeddingIndexer: MemoryEmbeddingIndexer,
 ) {
     private val log = KLoggers.logger(this)
@@ -409,7 +410,7 @@ class MemoryMessageRoutingApplicationService(
         logContext: String,
         traceContext: MemoryWriteTraceContext?,
         throwOnError: Boolean = false,
-    ): DirectStructuredMemoryWriteResult? = collectMemoryRunTimings { timingCollector ->
+    ): DirectStructuredMemoryWriteResult? = collectMemoryRunTimings(llmCallObservers) { timingCollector ->
         val startedAt = Clock.System.now()
         val runtimes = MemoryWriteStageRuntimes(project)
         val memoryStageTools = emptyList<AiToolCallback>()

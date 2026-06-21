@@ -7,6 +7,8 @@ import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
 import com.gromozeka.application.service.memory.MemoryReadTraceEvent
 import com.gromozeka.application.service.memory.MemoryReadTraceSink
+import com.gromozeka.application.service.memory.MemoryRunLlmCallEvent
+import com.gromozeka.application.service.memory.MemoryRunLlmCallObserver
 import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.application.service.memory.MemoryWriteTraceSink
 import com.gromozeka.application.service.memory.NoOpMemoryEmbeddingIndexer
@@ -3077,6 +3079,10 @@ class MemoryRealModelE2eNoToolsConfig {
 
     @Bean
     fun memoryE2eMaintenanceTraceCollector(): MemoryE2eMaintenanceTraceCollector = MemoryE2eMaintenanceTraceCollector()
+
+    @Bean
+    fun memoryE2eLlmCallProgressCollector(): MemoryE2eLlmCallProgressCollector =
+        MemoryE2eLlmCallProgressCollector()
 }
 
 class MemoryE2eReadTraceCollector : MemoryReadTraceSink {
@@ -3116,6 +3122,52 @@ class MemoryE2eWriteTraceCollector : MemoryWriteTraceSink {
 
     fun takeBySourceId(sourceId: String): MemoryWriteTraceEvent? =
         eventsBySourceId[sourceId]?.poll()
+}
+
+class MemoryE2eLlmCallProgressCollector : MemoryRunLlmCallObserver {
+    private val lock = Any()
+
+    @Volatile
+    private var progressPath: Path? = null
+
+    fun bind(progressPath: Path) {
+        synchronized(lock) {
+            this.progressPath = progressPath
+        }
+    }
+
+    fun clear() {
+        synchronized(lock) {
+            progressPath = null
+        }
+    }
+
+    override fun onMemoryRunLlmCall(event: MemoryRunLlmCallEvent) {
+        val path = progressPath ?: return
+        synchronized(lock) {
+            Files.writeString(
+                path,
+                "${Clock.System.now()} ${event.toProgressLine()}\n",
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND,
+            )
+        }
+    }
+
+    private fun MemoryRunLlmCallEvent.toProgressLine(): String {
+        return when (this) {
+            is MemoryRunLlmCallEvent.Started ->
+                "memory_llm_started stage=$stageName attempt=$attempt timeoutMs=$timeoutMs $logContext"
+
+            is MemoryRunLlmCallEvent.Completed -> {
+                val call = timing
+                "memory_llm_completed stage=${call.stageName} attempt=${call.attempt} timeoutMs=${call.timeoutMs ?: "unknown"} " +
+                    "status=${call.status.name} latencyMs=${call.latencyMs} " +
+                    "input=${call.totalInputTokens ?: "unknown"} output=${call.totalOutputTokens ?: "unknown"} " +
+                    "finish=${call.finishReason ?: "unknown"} error=${call.errorText ?: "none"} ${call.logContext}"
+            }
+        }
+    }
 }
 
 class MemoryE2eMaintenanceTraceCollector : MemoryMaintenanceTraceSink {
