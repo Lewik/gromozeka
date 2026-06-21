@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "5eab6d09bdf7309c2dca472eb4d67a221b6bde221ac93fc7afc493d799b92fc9",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:d23cf73b\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 04:12\nTranscript:\nuser: I'm looking for some ideas on meal prep for the week. I've been trying to cook more at home, and I want to make sure I'm using up all the ingredients I buy. By the way, I just tried out a recipe for Korean bibimbap from the cooking class's online recipe library, and it was amazing. Do you have any suggestions for meal prep containers that can keep my food fresh for a few days?\nassistant: Bibimbap is a delicious and nutritious meal! I'm glad you enjoyed it.\n\nMeal prep is a great way to save time, reduce food waste, and ensure you're eating healthy meals throughout the week. Here are some meal prep container suggestions that can help keep your food fresh for a few days:\n\n1. **Glass containers**: Glass containers with airtight lids are ideal for meal prep. They're non-porous, easy to clean, and can be used for both hot and cold foods. Look for brands like Pyrex, Anchor Hocking, or OXO.\n2. **Stainless Steel Containers**: Stainless steel containers are durable, resistant to rust, and can keep food fresh for a long time. They're also great for keeping food hot or cold. Try brands like LunchBots, S'well, or Klean Kanteen.\n3. **BPA-Free Plastic Containers**: If you prefer plastic containers, look for BPA-free options with airtight lids. Brands like Rubbermaid, Glad, or Ziploc offer a variety of containers that are perfect for meal prep.\n4. **Mason Jars**: Mason jars are a popular choice for meal prep, especially for salads, soups, or overnight oats. They're affordable, easy to clean, and can be used for both hot and cold foods.\n5. **Reusable Silicone Bags**: Silicone bags are a great alternative to traditional plastic bags. They're dishwasher safe, reusable, and can be used for both hot and cold foods. Brands like Stasher or Silipint offer a range of sizes and styles.\n\nWhen choosing meal prep containers, consider the following factors:\n\n* Size: Choose containers that fit your meal portions and can be easily stacked in your fridge or freezer.\n* Material: Select containers that are durable, easy to clean, and resistant to scratches or chipping.\n* Airtight seal: Ensure the containers have a tight-fitting lid to prevent air from entering and spoiling your food.\n* Insulation: If you plan to transport your meals, look for containers with insulation to keep your food hot or cold.\n\nSome popular meal prep ideas to get you started:\n\n* Grilled chicken or salmon with roasted vegetables\n* Quinoa or brown rice bowls with roasted vegetables and protein of your choice\n* Lentil or vegetable soups with crusty bread\n* Overnight oats or chia seed pudding with fresh fruits and nuts\n* Stir-fries with your favorite protein and mixed vegetables\n\nRemember to label and date your containers, so you know what you have and how long it's been stored. Happy meal prepping!\nuser: That's really helpful, thanks. I was thinking of doing a stir-fry with chicken and mixed veggies this week. Do you have a suggestion for a good marinade for the chicken?\nassistant: Stir-fries are a great option for meal prep, and a good marinade can make all the difference in flavor and tenderness. Here are a few marinade suggestions for chicken that would pair well with a stir-fry:\n\n1. **Soy Sauce and Ginger**: Mix 1/2 cup soy sauce, 1/4 cup olive oil, 2 cloves minced garlic, 1-inch piece of grated ginger, and 1 tablespoon honey. This marinade is a classic Asian-inspired flavor combination that pairs well with stir-fried veggies.\n2. **Korean-Style Gochujang**: Combine 1/2 cup gochujang (Korean chili paste), 1/4 cup soy sauce, 2 cloves minced garlic, 1 tablespoon brown sugar, and 1 tablespoon rice vinegar. This marinade has a sweet, spicy, and savory flavor profile that's perfect for a Korean-inspired stir-fry.\n3. **Lime and Cilantro**: Mix 1/2 cup freshly squeezed lime juice, 1/4 cup olive oil, 2 cloves minced garlic, 1/4 cup chopped cilantro, and 1 teaspoon ground cumin. This marinade is bright, citrusy, and herby, making it a great match for a colorful stir-fry with bell peppers, onions, and snow peas.\n4. **Simple Sesame**: Combine 1/2 cup soy sauce, 1/4 cup olive oil, 2 cloves minced garlic, 1 tablespoon sesame oil, and 1 tablespoon honey. This marinade has a nutty, slightly sweet flavor that complements the nutty flavor of sesame oil.\n\nFor each marinade, place the chicken breast or thighs in a ziplock bag or a shallow dish, pour the marinade over the chicken, and refrigerate for at least 30 minutes or up to 2 hours.\n\nSome general tips for marinating chicken:\n\n* Always marinate in the refrigerator, not at room temperature, to prevent bacterial growth.\n* Acidic ingredients like citrus juice or vinegar help break down the proteins and tenderize the chicken.\n* Don't over-marinate, as this can make the chicken mushy or develop off-flavors.\n* Always pat the chicken dry with paper towels before cooking to remove excess moisture and promote browning.\n\nFeel free to experiment with these marinades or combine them to create your own flavor profile. Enjoy your stir-fry!\nuser: I was thinking of adding some kimchi to my stir-fry for an extra kick. Do you have any suggestions on how to make kimchi at home?\nassistant: Kimchi is an excellent addition to a stir-fry, and making it at home is easier than you think. Kimchi is a traditional Korean side dish made from fermented vegetables, usually cabbage or radishes, seasoned with chili peppers, garlic, ginger, and other spices. Here's a simple recipe to get you started:\n\n**Basic Kimchi Recipe**\n\nIngredients:\n\n* 2 lbs napa cabbage, cut into 2-inch pieces\n* 2 tablespoons coarse salt\n* 1/4 cup Korean chili flakes (gochugaru)\n* 2 cloves garlic, minced\n* 1-inch piece of fresh ginger, grated\n* 1/4 cup fish sauce\n* 1/4 cup rice vinegar\n* 1/4 cup water\n* 1/4 cup chopped green onions, for garnish\n* 1/4 cup toasted sesame seeds, for garnish (optional)\n\nInstructions:\n\n1. **Salting the cabbage**: In a large bowl, mix the cabbage and coarse salt. Massage the salt into the cabbage for about 5 minutes, until it starts to soften and release its juices. Let it sit at room temperature for 2-3 hours. The cabbage should be limp and have released a lot of liquid.\n2. **Rinsing and draining**: Rinse the cabbage pieces in cold water to remove excess salt. Drain well and set aside.\n3. **Making the kimchi paste**: In a blender or food processor, blend the chili flakes, garlic, ginger, fish sauce, rice vinegar, and water until you get a smooth, spicy paste.\n4. **Assembling the kimchi**: In a large bowl, combine the blended kimchi paste, cabbage, and any other desired ingredients (e.g., carrots, cucumbers, or scallions). Mix everything together until the cabbage is evenly coated with the spicy paste.\n5. **Fermenting the kimchi**: Pack the kimchi mixture into a jar or container, pressing down on the cabbage to remove any air pockets. Leave about 1 inch of space at the top. Cover the jar with a lid or plastic wrap. Let it ferment at room temperature (around 70-75°F) for 1-5 days, or until it reaches your desired level of fermentation. You can check the fermentation by tasting the kimchi. When it's slightly sour and tangy, it's ready.\n6. **Storing the kimchi**: Once the kimchi is fermented, store it in the refrigerator to slow down the fermentation process. It will keep for several weeks in the fridge.\n\nTips and Variations:\n\n* **Use a kimchi crock or jar**: If you plan to make kimchi regularly, consider investing in a kimchi crock or jar with a weight to keep the cabbage submerged under the brine.\n* **Adjust the spice level**: If you prefer a milder kimchi, reduce the amount of chili flakes or omit the seeds, which are the spiciest part.\n* **Add other ingredients**: Feel free to customize your kimchi with other vegetables, such as radishes, cucumbers, or carrots. You can also add seafood, garlic scapes, or other aromatics to create different flavor profiles.\n* **Secondary fermentation**: After the initial fermentation, you can transfer the kimchi to a smaller jar and let it ferment for another week or two. This will create a stronger, more sour flavor.\n\nNow that you have homemade kimchi, you can add it to your stir-fry and enjoy the bold, umami flavor it brings!\nuser: That's really helpful, thanks. I've actually made kimchi before from a workshop I attended on fermentation. But I didn't know you could add other ingredients like seafood or garlic scapes to create different flavor profiles. I'll have to try that out.\nassistant: That's great to hear that you've already dabbled in kimchi-making! Fermentation workshops can be a fantastic way to learn new skills and get hands-on experience.\n\nYes, kimchi is a very versatile condiment, and adding different ingredients can really elevate its flavor and texture. Seafood, like shrimp or anchovies, can add a salty, umami flavor, while garlic scapes can add a pungent, aromatic flavor. You can also experiment with other ingredients like:\n\n* **Korean radish** (danmuji): Adds a nice crunch and sweetness to the kimchi.\n* **Cucumbers**: Makes a refreshing, summery kimchi perfect for hot days.\n* **Carrots**: Adds a pop of color and sweetness to the kimchi.\n* **Gochugaru** (Korean chili flakes) in different levels of heat: From mild to extremely spicy, you can adjust the heat level to your liking.\n* **Other aromatics**: Like onions, leeks, or shallots, which can add depth and complexity to the kimchi.\n\nRemember, the beauty of kimchi is that it's a very forgiving recipe, and you can experiment with different ingredients and flavor profiles to create your own unique variations.\n\nIf you're feeling adventurous, you might want to try making other types of kimchi, like:\n\n* **Baechu kimchi**: Made with napa cabbage and a focus on the umami flavor.\n* **Radish kimchi** (kkakdugi): Made with Korean radish and a sweet, spicy flavor.\n* **White kimchi** (baek-kimchi): Made without chili peppers, it's a mild, refreshing kimchi perfect for summer.\n\nI hope this inspires you to continue exploring the world of kimchi and fermentation!\nuser: I'm thinking of making a big batch of kimchi this weekend and experimenting with different flavor profiles. Do you have any suggestions for other fermented foods I could make to pair with my kimchi?\nassistant: What a great idea! Making a big batch of kimchi and experimenting with different flavor profiles sounds like a fantastic weekend project!\n\nPairing kimchi with other fermented foods can create a harmonious and balanced flavor experience. Here are some suggestions for other fermented foods you could make to pair with your kimchi:\n\n1. **Miso**: A fermented soybean paste that's savory, umami, and slightly sweet. It's a great addition to soups, sauces, and marinades. You can make miso with different ingredients, like rice, barley, or chickpeas, to create varying flavor profiles.\n2. **Sourdough bread**: A fermented bread that's tangy, slightly sour, and perfect for sopping up kimchi juices. You can make sourdough bread with a variety of flours, like whole wheat, rye, or spelt, to create different flavor profiles.\n3. **Sauerkraut**: A fermented cabbage dish that's tangy, crunchy, and pairs perfectly with kimchi. You can make sauerkraut with different ingredients, like carrots, beets, or junipers, to create varying flavor profiles.\n4. **Kefir**: A fermented milk drink that's tangy, creamy, and packed with probiotics. You can make kefir with cow's milk, goat's milk, or non-dairy milks like coconut or almond milk.\n5. **Pickles**: Fermented cucumbers that are sour, salty, and crunchy. You can make pickles with different ingredients, like garlic, dill, or Korean chili flakes, to create varying flavor profiles.\n6. **Natto**: A fermented soybean dish that's slimy, savory, and packed with protein. You can make natto with different ingredients, like rice or barley, to create varying flavor profiles.\n7. **Kombucha**: A fermented tea drink that's fizzy, tangy, and packed with probiotics. You can make kombucha with different teas, like black, green, or herbal, to create varying flavor profiles.\n\nThese fermented foods will complement your kimchi nicely and create a delicious, balanced flavor experience. Feel free to experiment with different ingredients and flavor profiles to find your favorite combinations!\n\nRemember to always follow proper fermentation techniques and safety guidelines when making fermented foods to ensure they're safe to eat and delicious. Happy fermenting!\nuser: I'm thinking of making some kimchi fried rice to go with my kimchi. Do you have any suggestions for other Korean-inspired dishes I could make to pair with my kimchi?\nassistant: Kimchi fried rice is a great choice! Kimchi pairs well with many Korean-inspired dishes, and here are some suggestions to complement your kimchi:\n\n1. **Bulgogi**: A classic Korean marinade-based dish made with thinly sliced beef, typically ribeye or sirloin. Serve it with a side of kimchi and steamed rice.\n2. ** Japchae**: A stir-fried noodle dish made from sweet potato starch noodles, beef, and vegetables. It's a popular Korean dish that pairs well with kimchi.\n3. **Mandu**: Korean dumplings that can be steamed, fried, or boiled. You can fill them with kimchi, meat, or vegetables for a delicious pairing.\n4. **Bibimbap**: A signature Korean rice bowl dish topped with an assortment of vegetables, meat (usually beef), and a fried egg. Kimchi is a common addition to this dish.\n5. **Tteokbokki**: A popular Korean street food made with chewy rice cakes in a spicy gochujang sauce. You can add kimchi to the sauce for an extra kick.\n6. **Naengmyeon**: A cold noodle dish made with buckwheat or starch noodles, served with a spicy sauce, slices of cucumber, pear, and boiled egg. Kimchi can be added on top for extra flavor.\n7. **Galbi**: Korean-style short ribs, typically marinated in a sweet and spicy sauce. Serve it with kimchi and steamed rice for a satisfying meal.\n8. **Doenjang Jjigae**: A fermented soybean paste stew made with doenjang, vegetables, and meat or seafood. Kimchi can be added to the stew for extra flavor.\n\nThese dishes will complement your kimchi nicely and provide a delicious and well-rounded Korean-inspired meal. Enjoy experimenting and finding your favorite pairings!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Korean-inspired meal prep with kimchi experimentation summary=The user is extending meal prep beyond basic stir-fry by incorporating Korean-inspired dishes: they enjoyed a Korean bibimbap recipe from the Cooking class online recipe library, planned kimchi fried rice, and wanted dishes that pair well with a big batch of homemade kimchi. The useful direction is to suggest Korean pairings such as bulgogi, japchae, mandu, bibimbap, tteokbokki, naengmyeon, galbi,...[truncated 53 chars] scope=User's Korean-inspired meal prep and kimchi pairing exploration from the 2023-05-25 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=Korean bibimbap,kimchi fried rice,Korean-inspired dishes,bulgogi,japchae,mandu,tteokbokki,doenjang jjigae,meal prep tags=cooking,meal_prep,korean_food,kimchi evidence=I just tried out a recipe for Korean bibimbap from the cooking class's online recipe library, and it was amazing\n[1] type=CONTEXT title=Homemade kimchi flavor-profile experimentation after fermentation workshop summary=The user already had hands-on kimchi-making experience from a fermentation workshop and planned a weekend big batch of kimchi specifically to experiment with flavor profiles. Future kimchi guidance can build on this by suggesting variations such as seafood, garlic scapes, Korean radish, cucumbers, carrots, aromatics, different gochugaru heat levels, and styles like baechu kimchi, kkakdugi, or baek...[truncated 44 chars] scope=User's homemade kimchi experimentation context after the fermentation workshop entities=entity:<0>,entity:<1>,entity:<6>,entity:<7> keywords=homemade kimchi,fermentation workshop,flavor profiles,seafood,garlic scapes,gochugaru,baechu kimchi,kkakdugi,baek-kimchi tags=cooking,fermentation,kimchi,korean_food evidence=I've actually made kimchi before from a workshop I attended on fermentation\n[2] type=CONTEXT title=Fermented-food pairing ideas around kimchi summary=When the user is making kimchi, they are interested in complementary fermented foods that pair with it, including miso, sourdough bread, sauerkraut, kefir, fermented pickles, natto, and kombucha. Guidance should emphasize safe fermentation practices and flavor balance across tangy, umami, crunchy, creamy, or fizzy accompaniments. scope=Fermented-food pairing context for the user's kimchi-making projects entities=entity:<0>,entity:<1>,entity:<6> keywords=fermented foods,kimchi pairing,miso,sourdough bread,sauerkraut,kefir,pickles,natto,kombucha tags=cooking,fermentation,pairings,kimchi evidence=Do you have any suggestions for other fermented foods I could make to pair with my kimchi?\n\n        Existing active notes:\n        id=hot-path-8b4f854160f0-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Fermented foods integration after local food co-op workshop summary=After attending a fermentation workshop at a local food co-op and learning to make sauerkraut and kimchi, the user wanted to incorporate more fermented foods into their diet. The useful guidance was to start with small daily amounts, use sauerkraut and kimchi as toppings or sides, store ferments refrigerated in airtight containers, and experiment with recipes such as kimchi fried rice or sauerkrau...[truncated 7 chars] scope=User's fermented-food diet exploration after the local food co-op fermentation workshop keywords=fermented foods,fermentation workshop,local food co-op,sauerkraut,kimchi,diet tags=cooking,fermentation,diet,meal_prep useCount=0\nid=hot-path-8b4f854160f0-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Plant-based meal prep exploration after vegan cuisine class summary=The user was looking for healthy meal-prep ideas while trying to eat more plant-based and being newly inspired by a vegan cuisine class. The discussion focused on plant-based prep staples such as vegan stir-fry, tofu/tempeh alternatives, legumes, seitan, and varied grains and vegetables. scope=User's plant-based meal-prep exploration in the 2023-05-24 vegan cuisine discussion keywords=plant-based meal prep,vegan cuisine class,vegan stir-fry,seitan,tempeh,healthy meal prep tags=cooking,plant_based,meal_prep,vegan useCount=0\nid=hot-path-dcf1a837fd72-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=User exploring Ethiopian meal prep with misir wot and injera summary=The user was looking to move beyond rice and roasted vegetables for meal prep and decided to try Ethiopian-inspired dishes, especially misir wot, after loving a new Ethiopian restaurant in town. They also wanted to make injera from scratch to accompany the misir wot. scope=User's cooking interests and recipe exploration around Ethiopian cuisine, misir wot, and injera keywords=Ethiopian cuisine,meal prep,misir wot,injera,restaurant tags=cooking_context,ethiopian_food,meal_prep useCount=0\nid=hot-path-6496eededb43-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Indian-inspired dinner party menu context summary=The user was planning an Indian-inspired dinner party for the weekend with chicken tikka masala as the definite main dish, drawing on a class where they learned to make it. The menu exploration also included pairings, a signature cocktail, naan bread, and saag paneer. scope=User's Indian-inspired dinner party menu planning from the 2023-05-22 session keywords=Indian-inspired dinner party,chicken tikka masala,Indian cuisine class,naan bread,saag paneer,menu planning tags=cooking,dinner_party,indian_cuisine,menu_planning useCount=0\nid=hot-path-8b4f854160f0-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Cashew-based vegan cheese recipe direction summary=The user learned vegan lasagna with a cashew-based ricotta in a vegan cuisine class and then wanted to explore cashew-based cheese substitutes such as mozzarella and feta. The discussion established cashews as a creamy neutral base, usually soaked and blended with lemon juice, salt, nutritional yeast, garlic, herbs, and sometimes thickeners, then chilled or shaped for different cheese styles. scope=User's interest in cashew-based vegan cheese substitutes after learning vegan lasagna keywords=cashew-based cheese substitutes,vegan lasagna,cashew ricotta,cashew mozzarella,cashew feta,vegan cheese tags=cooking,vegan,plant_based,recipe useCount=0\nid=hot-path-6496eededb43-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Saffron Gin Fizz and Mumbai Mule cocktail direction summary=For the Indian-inspired dinner party, the user narrowed signature cocktail interest to the Saffron Gin Fizz and the Mumbai Mule, then focused on learning and scaling saffron-infused simple syrup for the Saffron Gin Fizz. scope=Signature cocktail planning for the user's Indian-inspired dinner party keywords=Saffron Gin Fizz,Mumbai Mule,signature cocktail,saffron-infused simple syrup,saffron threads tags=cocktails,dinner_party,saffron,indian_flavors useCount=0\nid=hot-path-6496eededb43-note-6 type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Home naan bread technique for Indian dinner menu summary=The discussed naan guidance emphasized using atta or chapati flour when available, yeast for softness and puffiness, a 1-2 hour or overnight dough rest, minimal overworking, and very high heat via a skillet or baking stone to create puff and char. The simple recipe used 1 1/2 cups atta flour, salt, sugar, active dry yeast, lukewarm water, and melted ghee or butter. scope=Naan bread technique and recipe guidance for the user's Indian-inspired dinner party keywords=naan bread,atta flour,chapati flour,yeast,ghee,baking stone,hot skillet,Indian dinner party tags=recipe,naan,indian_cuisine,bread useCount=0\nid=hot-path-dcf1a837fd72-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=User is new to teff flour and injera sourdough starter summary=The user has not worked with teff flour before and expected injera-making to be a new experience involving recipe adjustments, experimentation with ratios, and learning how the sourdough starter should behave. scope=User's experience level and learning context for teff flour, injera, and sourdough starter use keywords=teff flour,injera,sourdough starter,new experience,recipe ratios tags=cooking_experience,teff_flour,injera useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d23cf73b",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:75964c76c34d1da769e2992c9a1cafd2"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:d23cf73b\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/25 (Thu) 04:12\nTranscript:\nuser: I'm looking for some ideas on meal prep for the week. I've been trying to cook more at home, and I want to make sure I'm using up all the ingredients I buy. By the way, I just tried out a recipe for Korean bibimbap from the cooking class's online recipe library, and it was amazing. Do you have any suggestions for meal prep containers that can keep my food fresh for a few days?\nassistant: Bibimbap is a delicious and nutritious meal! I'm glad you enjoyed it.\n\nMeal prep is a great way to save time, reduce food waste, and ensure you're eating healthy meals throughout the week. Here are some meal prep container suggestions that can help keep your food fresh for a few days:\n\n1. **Glass containers**: Glass containers with airtight lids are ideal for meal prep. They're non-porous, easy to clean, and can be used for both hot and cold foods. Look for brands like Pyrex, Anchor Hocking, or OXO.\n2. **Stainless Steel Containers**: Stainless steel containers are durable, resistant to rust, and can keep food fresh for a long time. They're also great for keeping food hot or cold. Try brands like LunchBots, S'well, or Klean Kanteen.\n3. **BPA-Free Plastic Containers**: If you prefer plastic containers, look for BPA-free options with airtight lids. Brands like Rubbermaid, Glad, or Ziploc offer a variety of containers that are perfect for meal prep.\n4. **Mason Jars**: Mason jars are a popular choice for meal prep, especially for salads, soups, or overnight oats. They're affordable, easy to clean, and can be used for both hot and cold foods.\n5. **Reusable Silicone Bags**: Silicone bags are a great alternative to traditional plastic bags. They're dishwasher safe, reusable, and can be used for both hot and cold foods. Brands like Stasher or Silipint offer a range of sizes and styles.\n\nWhen choosing meal prep containers, consider the following factors:\n\n* Size: Choose containers that fit your meal portions and can be easily stacked in your fridge or freezer.\n* Material: Select containers that are durable, easy to clean, and resistant to scratches or chipping.\n* Airtight seal: Ensure the containers have a tight-fitting lid to prevent air from entering and spoiling your food.\n* Insulation: If you plan to transport your meals, look for containers with insulation to keep your food hot or cold.\n\nSome popular meal prep ideas to get you started:\n\n* Grilled chicken or salmon with roasted vegetables\n* Quinoa or brown rice bowls with roasted vegetables and protein of your choice\n* Lentil or vegetable soups with crusty bread\n* Overnight oats or chia seed pudding with fresh fruits and nuts\n* Stir-fries with your favorite protein and mixed vegetables\n\nRemember to label and date your containers, so you know what you have and how long it's been stored. Happy meal prepping!\nuser: That's really helpful, thanks. I was thinking of doing a stir-fry with chicken and mixed veggies this week. Do you have a suggestion for a good marinade for the chicken?\nassistant: Stir-fries are a great option for meal prep, and a good marinade can make all the difference in flavor and tenderness. Here are a few marinade suggestions for chicken that would pair well with a stir-fry:\n\n1. **Soy Sauce and Ginger**: Mix 1/2 cup soy sauce, 1/4 cup olive oil, 2 cloves minced garlic, 1-inch piece of grated ginger, and 1 tablespoon honey. This marinade is a classic Asian-inspired flavor combination that pairs well with stir-fried veggies.\n2. **Korean-Style Gochujang**: Combine 1/2 cup gochujang (Korean chili paste), 1/4 cup soy sauce, 2 cloves minced garlic, 1 tablespoon brown sugar, and 1 tablespoon rice vinegar. This marinade has a sweet, spicy, and savory flavor profile that's perfect for a Korean-inspired stir-fry.\n3. **Lime and Cilantro**: Mix 1/2 cup freshly squeezed lime juice, 1/4 cup olive oil, 2 cloves minced garlic, 1/4 cup chopped cilantro, and 1 teaspoon ground cumin. This marinade is bright, citrusy, and herby, making it a great match for a colorful stir-fry with bell peppers, onions, and snow peas.\n4. **Simple Sesame**: Combine 1/2 cup soy sauce, 1/4 cup olive oil, 2 cloves minced garlic, 1 tablespoon sesame oil, and 1 tablespoon honey. This marinade has a nutty, slightly sweet flavor that complements the nutty flavor of sesame oil.\n\nFor each marinade, place the chicken breast or thighs in a ziplock bag or a shallow dish, pour the marinade over the chicken, and refrigerate for at least 30 minutes or up to 2 hours.\n\nSome general tips for marinating chicken:\n\n* Always marinate in the refrigerator, not at room temperature, to prevent bacterial growth.\n* Acidic ingredients like citrus juice or vinegar help break down the proteins and tenderize the chicken.\n* Don't over-marinate, as this can make the chicken mushy or develop off-flavors.\n* Always pat the chicken dry with paper towels before cooking to remove excess moisture and promote browning.\n\nFeel free to experiment with these marinades or combine them to create your own flavor profile. Enjoy your stir-fry!\nuser: I was thinking of adding some kimchi to my stir-fry for an extra kick. Do you have any suggestions on how to make kimchi at home?\nassistant: Kimchi is an excellent addition to a stir-fry, and making it at home is easier than you think. Kimchi is a traditional Korean side dish made from fermented vegetables, usually cabbage or radishes, seasoned with chili peppers, garlic, ginger, and other spices. Here's a simple recipe to get you started:\n\n**Basic Kimchi Recipe**\n\nIngredients:\n\n* 2 lbs napa cabbage, cut into 2-inch pieces\n* 2 tablespoons coarse salt\n* 1/4 cup Korean chili flakes (gochugaru)\n* 2 cloves garlic, minced\n* 1-inch piece of fresh ginger, grated\n* 1/4 cup fish sauce\n* 1/4 cup rice vinegar\n* 1/4 cup water\n* 1/4 cup chopped green onions, for garnish\n* 1/4 cup toasted sesame seeds, for garnish (optional)\n\nInstructions:\n\n1. **Salting the cabbage**: In a large bowl, mix the cabbage and coarse salt. Massage the salt into the cabbage for about 5 minutes, until it starts to soften and release its juices. Let it sit at room temperature for 2-3 hours. The cabbage should be limp and have released a lot of liquid.\n2. **Rinsing and draining**: Rinse the cabbage pieces in cold water to remove excess salt. Drain well and set aside.\n3. **Making the kimchi paste**: In a blender or food processor, blend the chili flakes, garlic, ginger, fish sauce, rice vinegar, and water until you get a smooth, spicy paste.\n4. **Assembling the kimchi**: In a large bowl, combine the blended kimchi paste, cabbage, and any other desired ingredients (e.g., carrots, cucumbers, or scallions). Mix everything together until the cabbage is evenly coated with the spicy paste.\n5. **Fermenting the kimchi**: Pack the kimchi mixture into a jar or container, pressing down on the cabbage to remove any air pockets. Leave about 1 inch of space at the top. Cover the jar with a lid or plastic wrap. Let it ferment at room temperature (around 70-75°F) for 1-5 days, or until it reaches your desired level of fermentation. You can check the fermentation by tasting the kimchi. When it's slightly sour and tangy, it's ready.\n6. **Storing the kimchi**: Once the kimchi is fermented, store it in the refrigerator to slow down the fermentation process. It will keep for several weeks in the fridge.\n\nTips and Variations:\n\n* **Use a kimchi crock or jar**: If you plan to make kimchi regularly, consider investing in a kimchi crock or jar with a weight to keep the cabbage submerged under the brine.\n* **Adjust the spice level**: If you prefer a milder kimchi, reduce the amount of chili flakes or omit the seeds, which are the spiciest part.\n* **Add other ingredients**: Feel free to customize your kimchi with other vegetables, such as radishes, cucumbers, or carrots. You can also add seafood, garlic scapes, or other aromatics to create different flavor profiles.\n* **Secondary fermentation**: After the initial fermentation, you can transfer the kimchi to a smaller jar and let it ferment for another week or two. This will create a stronger, more sour flavor.\n\nNow that you have homemade kimchi, you can add it to your stir-fry and enjoy the bold, umami flavor it brings!\nuser: That's really helpful, thanks. I've actually made kimchi before from a workshop I attended on fermentation. But I didn't know you could add other ingredients like seafood or garlic scapes to create different flavor profiles. I'll have to try that out.\nassistant: That's great to hear that you've already dabbled in kimchi-making! Fermentation workshops can be a fantastic way to learn new skills and get hands-on experience.\n\nYes, kimchi is a very versatile condiment, and adding different ingredients can really elevate its flavor and texture. Seafood, like shrimp or anchovies, can add a salty, umami flavor, while garlic scapes can add a pungent, aromatic flavor. You can also experiment with other ingredients like:\n\n* **Korean radish** (danmuji): Adds a nice crunch and sweetness to the kimchi.\n* **Cucumbers**: Makes a refreshing, summery kimchi perfect for hot days.\n* **Carrots**: Adds a pop of color and sweetness to the kimchi.\n* **Gochugaru** (Korean chili flakes) in different levels of heat: From mild to extremely spicy, you can adjust the heat level to your liking.\n* **Other aromatics**: Like onions, leeks, or shallots, which can add depth and complexity to the kimchi.\n\nRemember, the beauty of kimchi is that it's a very forgiving recipe, and you can experiment with different ingredients and flavor profiles to create your own unique variations.\n\nIf you're feeling adventurous, you might want to try making other types of kimchi, like:\n\n* **Baechu kimchi**: Made with napa cabbage and a focus on the umami flavor.\n* **Radish kimchi** (kkakdugi): Made with Korean radish and a sweet, spicy flavor.\n* **White kimchi** (baek-kimchi): Made without chili peppers, it's a mild, refreshing kimchi perfect for summer.\n\nI hope this inspires you to continue exploring the world of kimchi and fermentation!\nuser: I'm thinking of making a big batch of kimchi this weekend and experimenting with different flavor profiles. Do you have any suggestions for other fermented foods I could make to pair with my kimchi?\nassistant: What a great idea! Making a big batch of kimchi and experimenting with different flavor profiles sounds like a fantastic weekend project!\n\nPairing kimchi with other fermented foods can create a harmonious and balanced flavor experience. Here are some suggestions for other fermented foods you could make to pair with your kimchi:\n\n1. **Miso**: A fermented soybean paste that's savory, umami, and slightly sweet. It's a great addition to soups, sauces, and marinades. You can make miso with different ingredients, like rice, barley, or chickpeas, to create varying flavor profiles.\n2. **Sourdough bread**: A fermented bread that's tangy, slightly sour, and perfect for sopping up kimchi juices. You can make sourdough bread with a variety of flours, like whole wheat, rye, or spelt, to create different flavor profiles.\n3. **Sauerkraut**: A fermented cabbage dish that's tangy, crunchy, and pairs perfectly with kimchi. You can make sauerkraut with different ingredients, like carrots, beets, or junipers, to create varying flavor profiles.\n4. **Kefir**: A fermented milk drink that's tangy, creamy, and packed with probiotics. You can make kefir with cow's milk, goat's milk, or non-dairy milks like coconut or almond milk.\n5. **Pickles**: Fermented cucumbers that are sour, salty, and crunchy. You can make pickles with different ingredients, like garlic, dill, or Korean chili flakes, to create varying flavor profiles.\n6. **Natto**: A fermented soybean dish that's slimy, savory, and packed with protein. You can make natto with different ingredients, like rice or barley, to create varying flavor profiles.\n7. **Kombucha**: A fermented tea drink that's fizzy, tangy, and packed with probiotics. You can make kombucha with different teas, like black, green, or herbal, to create varying flavor profiles.\n\nThese fermented foods will complement your kimchi nicely and create a delicious, balanced flavor experience. Feel free to experiment with different ingredients and flavor profiles to find your favorite combinations!\n\nRemember to always follow proper fermentation techniques and safety guidelines when making fermented foods to ensure they're safe to eat and delicious. Happy fermenting!\nuser: I'm thinking of making some kimchi fried rice to go with my kimchi. Do you have any suggestions for other Korean-inspired dishes I could make to pair with my kimchi?\nassistant: Kimchi fried rice is a great choice! Kimchi pairs well with many Korean-inspired dishes, and here are some suggestions to complement your kimchi:\n\n1. **Bulgogi**: A classic Korean marinade-based dish made with thinly sliced beef, typically ribeye or sirloin. Serve it with a side of kimchi and steamed rice.\n2. ** Japchae**: A stir-fried noodle dish made from sweet potato starch noodles, beef, and vegetables. It's a popular Korean dish that pairs well with kimchi.\n3. **Mandu**: Korean dumplings that can be steamed, fried, or boiled. You can fill them with kimchi, meat, or vegetables for a delicious pairing.\n4. **Bibimbap**: A signature Korean rice bowl dish topped with an assortment of vegetables, meat (usually beef), and a fried egg. Kimchi is a common addition to this dish.\n5. **Tteokbokki**: A popular Korean street food made with chewy rice cakes in a spicy gochujang sauce. You can add kimchi to the sauce for an extra kick.\n6. **Naengmyeon**: A cold noodle dish made with buckwheat or starch noodles, served with a spicy sauce, slices of cucumber, pear, and boiled egg. Kimchi can be added on top for extra flavor.\n7. **Galbi**: Korean-style short ribs, typically marinated in a sweet and spicy sauce. Serve it with kimchi and steamed rice for a satisfying meal.\n8. **Doenjang Jjigae**: A fermented soybean paste stew made with doenjang, vegetables, and meat or seafood. Kimchi can be added to the stew for extra flavor.\n\nThese dishes will complement your kimchi nicely and provide a delicious and well-rounded Korean-inspired meal. Enjoy experimenting and finding your favorite pairings!\n\n        Candidate notes:\n        [0] type=CONTEXT title=Korean-inspired meal prep with kimchi experimentation summary=The user is extending meal prep beyond basic stir-fry by incorporating Korean-inspired dishes: they enjoyed a Korean bibimbap recipe from the Cooking class online recipe library, planned kimchi fried rice, and wanted dishes that pair well with a big batch of homemade kimchi. The useful direction is to suggest Korean pairings such as bulgogi, japchae, mandu, bibimbap, tteokbokki, naengmyeon, galbi,...[truncated 53 chars] scope=User's Korean-inspired meal prep and kimchi pairing exploration from the 2023-05-25 session entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5> keywords=Korean bibimbap,kimchi fried rice,Korean-inspired dishes,bulgogi,japchae,mandu,tteokbokki,doenjang jjigae,meal prep tags=cooking,meal_prep,korean_food,kimchi evidence=I just tried out a recipe for Korean bibimbap from the cooking class's online recipe library, and it was amazing\n[1] type=CONTEXT title=Homemade kimchi flavor-profile experimentation after fermentation workshop summary=The user already had hands-on kimchi-making experience from a fermentation workshop and planned a weekend big batch of kimchi specifically to experiment with flavor profiles. Future kimchi guidance can build on this by suggesting variations such as seafood, garlic scapes, Korean radish, cucumbers, carrots, aromatics, different gochugaru heat levels, and styles like baechu kimchi, kkakdugi, or baek...[truncated 44 chars] scope=User's homemade kimchi experimentation context after the fermentation workshop entities=entity:<0>,entity:<1>,entity:<6>,entity:<7> keywords=homemade kimchi,fermentation workshop,flavor profiles,seafood,garlic scapes,gochugaru,baechu kimchi,kkakdugi,baek-kimchi tags=cooking,fermentation,kimchi,korean_food evidence=I've actually made kimchi before from a workshop I attended on fermentation\n[2] type=CONTEXT title=Fermented-food pairing ideas around kimchi summary=When the user is making kimchi, they are interested in complementary fermented foods that pair with it, including miso, sourdough bread, sauerkraut, kefir, fermented pickles, natto, and kombucha. Guidance should emphasize safe fermentation practices and flavor balance across tangy, umami, crunchy, creamy, or fizzy accompaniments. scope=Fermented-food pairing context for the user's kimchi-making projects entities=entity:<0>,entity:<1>,entity:<6> keywords=fermented foods,kimchi pairing,miso,sourdough bread,sauerkraut,kefir,pickles,natto,kombucha tags=cooking,fermentation,pairings,kimchi evidence=Do you have any suggestions for other fermented foods I could make to pair with my kimchi?\n\n        Existing active notes:\n        id=hot-path-8b4f854160f0-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Fermented foods integration after local food co-op workshop summary=After attending a fermentation workshop at a local food co-op and learning to make sauerkraut and kimchi, the user wanted to incorporate more fermented foods into their diet. The useful guidance was to start with small daily amounts, use sauerkraut and kimchi as toppings or sides, store ferments refrigerated in airtight containers, and experiment with recipes such as kimchi fried rice or sauerkrau...[truncated 7 chars] scope=User's fermented-food diet exploration after the local food co-op fermentation workshop keywords=fermented foods,fermentation workshop,local food co-op,sauerkraut,kimchi,diet tags=cooking,fermentation,diet,meal_prep useCount=0\nid=hot-path-8b4f854160f0-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Plant-based meal prep exploration after vegan cuisine class summary=The user was looking for healthy meal-prep ideas while trying to eat more plant-based and being newly inspired by a vegan cuisine class. The discussion focused on plant-based prep staples such as vegan stir-fry, tofu/tempeh alternatives, legumes, seitan, and varied grains and vegetables. scope=User's plant-based meal-prep exploration in the 2023-05-24 vegan cuisine discussion keywords=plant-based meal prep,vegan cuisine class,vegan stir-fry,seitan,tempeh,healthy meal prep tags=cooking,plant_based,meal_prep,vegan useCount=0\nid=hot-path-dcf1a837fd72-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=User exploring Ethiopian meal prep with misir wot and injera summary=The user was looking to move beyond rice and roasted vegetables for meal prep and decided to try Ethiopian-inspired dishes, especially misir wot, after loving a new Ethiopian restaurant in town. They also wanted to make injera from scratch to accompany the misir wot. scope=User's cooking interests and recipe exploration around Ethiopian cuisine, misir wot, and injera keywords=Ethiopian cuisine,meal prep,misir wot,injera,restaurant tags=cooking_context,ethiopian_food,meal_prep useCount=0\nid=hot-path-6496eededb43-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Indian-inspired dinner party menu context summary=The user was planning an Indian-inspired dinner party for the weekend with chicken tikka masala as the definite main dish, drawing on a class where they learned to make it. The menu exploration also included pairings, a signature cocktail, naan bread, and saag paneer. scope=User's Indian-inspired dinner party menu planning from the 2023-05-22 session keywords=Indian-inspired dinner party,chicken tikka masala,Indian cuisine class,naan bread,saag paneer,menu planning tags=cooking,dinner_party,indian_cuisine,menu_planning useCount=0\nid=hot-path-8b4f854160f0-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Cashew-based vegan cheese recipe direction summary=The user learned vegan lasagna with a cashew-based ricotta in a vegan cuisine class and then wanted to explore cashew-based cheese substitutes such as mozzarella and feta. The discussion established cashews as a creamy neutral base, usually soaked and blended with lemon juice, salt, nutritional yeast, garlic, herbs, and sometimes thickeners, then chilled or shaped for different cheese styles. scope=User's interest in cashew-based vegan cheese substitutes after learning vegan lasagna keywords=cashew-based cheese substitutes,vegan lasagna,cashew ricotta,cashew mozzarella,cashew feta,vegan cheese tags=cooking,vegan,plant_based,recipe useCount=0\nid=hot-path-6496eededb43-note-3 type=DIRECTION status=ACTIVE maturity=FRESH title=Saffron Gin Fizz and Mumbai Mule cocktail direction summary=For the Indian-inspired dinner party, the user narrowed signature cocktail interest to the Saffron Gin Fizz and the Mumbai Mule, then focused on learning and scaling saffron-infused simple syrup for the Saffron Gin Fizz. scope=Signature cocktail planning for the user's Indian-inspired dinner party keywords=Saffron Gin Fizz,Mumbai Mule,signature cocktail,saffron-infused simple syrup,saffron threads tags=cocktails,dinner_party,saffron,indian_flavors useCount=0\nid=hot-path-6496eededb43-note-6 type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Home naan bread technique for Indian dinner menu summary=The discussed naan guidance emphasized using atta or chapati flour when available, yeast for softness and puffiness, a 1-2 hour or overnight dough rest, minimal overworking, and very high heat via a skillet or baking stone to create puff and char. The simple recipe used 1 1/2 cups atta flour, salt, sugar, active dry yeast, lukewarm water, and melted ghee or butter. scope=Naan bread technique and recipe guidance for the user's Indian-inspired dinner party keywords=naan bread,atta flour,chapati flour,yeast,ghee,baking stone,hot skillet,Indian dinner party tags=recipe,naan,indian_cuisine,bread useCount=0\nid=hot-path-dcf1a837fd72-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=User is new to teff flour and injera sourdough starter summary=The user has not worked with teff flour before and expected injera-making to be a new experience involving recipe adjustments, experimentation with ratios, and learning how the sourdough starter should behave. scope=User's experience level and learning context for teff flour, injera, and sourdough starter use keywords=teff flour,injera,sourdough starter,new experience,recipe ratios tags=cooking_experience,teff_flour,injera useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d23cf73b",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:75964c76c34d1da769e2992c9a1cafd2"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-8b4f854160f0-note-3\"}],\"patch\":null,\"reason\":\"Captures a distinct Korean-inspired meal prep and pairing thread around bibimbap, kimchi fried rice, and Korean dishes; related to but not duplicative of the broader fermented-food diet note.\",\"target_note_id\":null},{\"action\":\"supersede\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Refines the existing fermentation workshop/kimchi note with more specific current context: prior kimchi-making experience, planned big-batch experimentation, and concrete kimchi flavor/style variations.\",\"target_note_id\":\"hot-path-8b4f854160f0-note-3\"},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.9,\"to_note_id\":\"hot-path-8b4f854160f0-note-3\"}],\"patch\":null,\"reason\":\"Adds a distinct reusable fragment about complementary fermented foods to pair with kimchi, not fully captured by the existing general fermented-food integration note.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6098,
+                "completionTokens": 279,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
