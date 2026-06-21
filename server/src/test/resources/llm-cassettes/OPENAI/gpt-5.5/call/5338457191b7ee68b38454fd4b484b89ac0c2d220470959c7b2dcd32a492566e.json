@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "5338457191b7ee68b38454fd4b484b89ac0c2d220470959c7b2dcd32a492566e",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:d851d5ba\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past session contains durable dated charity/fundraising experience, upcoming event plans, fitness background, cycling-event concerns, and a reusable digest of advice/context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / I'm / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level USER entity as subject for later claims.\n- mention=charity cycling event; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=User's charity cycling event; reason=Concrete recurring referent in the conversation; no existing entity candidates.\n- mention=local animal shelter; action=CREATE_NEW; id=entity:<2>; type=ORGANIZATION; name=Local animal shelter; reason=A specific beneficiary organization mentioned by the user, though unnamed; no existing entity candidates.\n- mention=professional bike fitting / bike fitting; action=CREATE_NEW; id=entity:<3>; type=SERVICE; name=Professional bike fitting; reason=Reusable service/object of the user's intended scheduling claim; no existing entity candidates.\n- mention=my bike / your bike; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=User's bike; reason=First-person possessive wording identifies a reusable personal item for later claims.\n- mention=fundraising; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Fundraising; reason=Reusable concept referenced as an area of user experience and advice; no existing entity candidates.\n- mention=running; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Running; reason=Reusable activity concept needed for user exercise-experience claims.\n- mention=cycling; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Cycling; reason=Reusable activity concept needed for user experience and endurance claims.\n- mention=group riding / riding in a group; action=CREATE_NEW; id=entity:<8>; type=CONCEPT; name=Group cycling; reason=Reusable cycling practice mentioned as something the user plans to practice.\n- mention=pre-event jitters or performance anxiety; action=CREATE_NEW; id=entity:<9>; type=CONCEPT; name=Performance anxiety; reason=Reusable mental-state concept for later claims about the user's nervousness.\n- mention=current project; action=CREATE_NEW; id=entity:<10>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|local animal shelter|charity cycling event|bike fitting\n        text_queries=raised $2,000 for a local animal shelter on January 20th|planning to participate in a charity cycling event next month|mainly running and occasionally cycling|never participated in a cycling event of this scale before|schedule a professional bike fitting soon|practice riding in a group before the event\n        predicate_hints=has_experience_with|attended_event|metric_observation|has_goal|pending_pickup|has_constraint|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:585bbb39761ab905a67b6d5de55d7a4e] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:d851d5ba:session:1; title=LongMemEval d851d5ba session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/20 (Mon) 05:49\nTranscript:\nuser: I'm planning to participate in a charity cycling event next month and I want to make sure I'm prepared. Can you give me some tips on how to train for it? By the way, I've been getting more into charity events lately - I helped raise $2,000 for a local animal shelter on January 20th, and it was an amazing experience!\nassistant: Congratulations on your recent charity event and raising $2,000 for the local animal shelter! That's fantastic!\n\nNow, let's get you prepared for your upcoming charity cycling event. Here are some tips to help you train and be ready for the big day:\n\n1. **Assess your current fitness level**: Be honest about your current cycling experience and fitness level. If you're a beginner, start with shorter rides and gradually increase your distance and intensity.\n2. **Set realistic goals**: Determine what you want to achieve in the event. Is it to complete a certain distance, beat a personal best, or simply finish the ride? Having a goal in mind will help you focus your training.\n3. **Create a training plan**: Develop a structured training plan that includes regular rides, rest days, and cross-training (if needed). Aim to ride at least 2-3 times a week, with one longer ride on the weekends.\n4. **Gradually increase your mileage**: Gradually increase your weekly mileage to allow your body to adapt to the demands of cycling. Aim to increase your distance by 10-15% each week.\n5. **Incorporate interval training**: Include interval workouts in your training plan to improve your endurance and speed. This can include hill repeats, sprints, or tempo rides.\n6. **Focus on cadence and efficiency**: Pay attention to your pedaling technique, aiming for a high cadence (80-100 RPM) and efficient pedaling style.\n7. **Get comfortable with your bike**: Make sure your bike is fitted to you, and you're comfortable with its handling and gear shifting.\n8. **Practice fueling and hydration**: Experiment with different foods, drinks, and electrolyte supplements to find what works best for you during long rides.\n9. **Train in similar conditions**: If possible, train in similar weather and terrain conditions as the event to prepare yourself for the challenges you'll face.\n10. **Rest and recovery**: Don't forget to include rest days and active recovery rides (e.g., easy spins) in your training plan to allow your body to recover and adapt.\n11. **Get familiar with the event course**: If possible, ride the event course or a similar route to get familiar with the terrain, elevation changes, and any potential challenges.\n12. **Join a cycling group or find a training buddy**: Riding with others can help keep you motivated, accountable, and provide valuable tips and support.\n\nRemember to listen to your body and adjust your training plan as needed. It's better to err on the side of caution and recover from a minor setback than to risk injury or burnout.\n\nYou've already shown your commitment to charity events, and with a solid training plan, you'll be ready to crush your cycling event and help raise even more funds for a great cause!\nuser: I'm glad you provided these tips. I've been mainly running and only occasionally cycling, so I'll have to work on my cycling endurance. Do you think I should get a professional bike fitting to ensure my bike is properly fitted to me?\nassistant: As a runner, you'll find that cycling requires a different set of muscles and techniques, so it's great that you're acknowledging the need to focus on your cycling endurance.\n\nA professional bike fitting is an excellent idea, especially if you're new to cycling or haven't had your bike fitted in a while. A proper bike fit can make a huge difference in your comfort, efficiency, and overall riding experience.\n\nHere are some benefits of a professional bike fitting:\n\n1. **Improved comfort**: A bike fitting ensures that your bike is adjusted to fit your body, reducing discomfort, pain, and fatigue.\n2. **Increased efficiency**: A proper fit helps you maintain a more aerodynamic position, reducing air resistance and allowing you to ride more efficiently.\n3. **Reduced risk of injury**: A bike fitting can help prevent common cycling injuries, such as knee strain, back pain, and neck discomfort, by ensuring that your body is in a neutral position.\n4. **Better performance**: With a properly fitted bike, you'll be able to ride longer and stronger, as you'll be able to maintain a more efficient pedaling technique.\n\nA professional bike fitter will assess your riding style, flexibility, and body measurements to make adjustments to your bike's saddle height, handlebar height, pedal position, and other components. They may also provide guidance on proper riding techniques and offer tips for improving your overall cycling performance.\n\nBefore you schedule a bike fitting, make sure to:\n\n1. **Choose a reputable fitter**: Look for a certified bike fitter with experience working with cyclists of your level and discipline (road, mountain, or commuter).\n2. **Bring your bike and gear**: Bring your bike, shoes, and any other gear you plan to use during the event.\n3. **Be prepared to ride**: Be prepared to ride your bike during the fitting process, so wear your cycling clothes and be ready to pedal.\n4. **Ask questions**: Don't hesitate to ask questions or seek clarification on any adjustments or recommendations made during the fitting process.\n\nBy investing in a professional bike fitting, you'll be able to ride more comfortably, efficiently, and safely, which will help you enjoy your charity cycling event and perform at your best.\nuser: I think I'll schedule a bike fitting soon. I'm also wondering, do you have any tips on how to fundraise for the event? I've had some experience with fundraising, but any additional advice would be great.\nassistant: Fundraising is a crucial part of participating in a charity cycling event! I'm happy to share some tips to help you reach your fundraising goals:\n\n1. **Set a realistic goal**: Determine a specific fundraising target and make it achievable. Break it down into smaller, manageable chunks to help you stay focused.\n2. **Create a compelling story**: Share your personal connection to the charity or cause, and explain why this event is important to you. This will help donors understand the impact of their contribution.\n3. **Leverage social media**: Use platforms like Facebook, Twitter, Instagram, and LinkedIn to share your story, update your progress, and thank donors. Create a Facebook Fundraiser or use a charity's online fundraising tool to make it easy for donors to contribute.\n4. **Reach out to your network**: Inform friends, family, colleagues, and acquaintances about your fundraising efforts. Don't be afraid to ask for donations, and be prepared to share your story and answer questions.\n5. **Corporate sponsorships**: Approach local businesses, especially those with a connection to the charity or cause, to see if they'd be willing to sponsor your ride or make a donation.\n6. **Host a fundraising event**: Organize a bake sale, charity ride, spin class, or other event to raise funds and awareness for your cause.\n7. **Personalized emails and letters**: Write heartfelt, personalized emails or letters to potential donors, explaining your story and the impact of their contribution.\n8. **Follow up and thank donors**: Regularly update your donors on your progress, and be sure to thank them for their support. This will help build a sense of community and encourage further donations.\n9. **Use online fundraising tools**: Utilize online platforms like Classy, Qgiv, or Network for Good to create a fundraising page, track donations, and share updates.\n10. **Get creative**: Think outside the box! Consider hosting a fundraising challenge, auctioning off items or services, or creating a viral social media campaign to attract attention and donations.\n11. **Share your progress**: Regularly share updates on your training, fundraising progress, and event preparations to keep your donors engaged and motivated.\n12. **Show appreciation**: Express gratitude to your donors through social media, email, or handwritten notes. This will encourage them to continue supporting you and your cause.\n\nRemember, fundraising takes time and effort, but with persistence, creativity, and a clear goal in mind, you'll be able to reach your target and make a meaningful impact for the charity.\n\nAs you've had experience with fundraising, you might also consider:\n\n* Reaching out to past donors or sponsors to see if they'd be willing to support you again\n* Sharing your fundraising page or story with your employer or colleagues to see if they'd be willing to match donations or provide support\n* Using your fundraising event as an opportunity to raise awareness about the charity or cause, and encouraging others to get involved\n\nGood luck with your fundraising efforts, and I hope these tips help you reach your goals!\nuser: I'm glad you provided those tips. I've had some experience with fundraising, like I said, I helped raise over $2,000 for a local animal shelter on January 20th. I'll definitely use some of those ideas to reach my fundraising goal for this cycling event. Do you have any information on how to stay safe while cycling, especially in a charity event with many participants?\nassistant: Congratulations again on your successful fundraising effort for the local animal shelter! That's a fantastic achievement!\n\nStaying safe while cycling is crucial, especially in a charity event with many participants. Here are some safety tips to help you minimize risks and enjoy your ride:\n\n1. **Follow traffic laws and rules**: Obey all traffic laws, signs, and signals. Ride with the flow of traffic, and use designated bike lanes or paths when available.\n2. **Wear safety gear**: Always wear a properly fitted helmet, and consider additional safety gear like knee pads, elbow pads, and gloves.\n3. **Be visible**: Wear bright, reflective clothing and attach reflective stickers or lights to your bike to increase visibility, especially in low-light conditions.\n4. **Ride defensively**: Anticipate the actions of other cyclists, motorists, and pedestrians. Keep a safe distance, and be prepared to react to unexpected situations.\n5. **Stay alert and focused**: Avoid distractions like using your phone, eating, or chatting with fellow riders while cycling. Keep your eyes on the road and be aware of your surroundings.\n6. **Use hand signals**: Communicate your intentions to turn or change lanes by using clear hand signals.\n7. **Ride in a group safely**: When riding with a group, maintain a safe distance from the rider in front of you, and avoid sudden movements or braking.\n8. **Be aware of road conditions**: Watch for potholes, rough roads, and other hazards that could cause you to lose control of your bike.\n9. **Hydrate and fuel**: Make sure to drink plenty of water and eat nutritious snacks to maintain your energy levels throughout the ride.\n10. **Mechanical checks**: Ensure your bike is in good working condition before the event. Check your tire pressure, brakes, and gears to avoid mechanical issues during the ride.\n11. **Event-specific safety**: Familiarize yourself with the event's safety guidelines, rules, and emergency procedures. Know the location of aid stations, rest stops, and medical support.\n12. **Buddy system**: Consider riding with a buddy or joining a group of riders who can provide support and assistance if needed.\n\nAdditionally, make sure to:\n\n* Register for the event and follow the organizer's guidelines and instructions.\n* Carry a basic tool kit, pump, and spare tube in case of minor mechanical issues.\n* Bring a phone, ID, and some cash in case of an emergency.\n* Know the event's emergency contact numbers and procedures.\n\nBy following these safety tips, you'll be well-prepared to enjoy your charity cycling event while minimizing the risk of accidents or injuries.\n\nRemember, safety is everyone's responsibility, so be mindful of your fellow riders and other road users, and let's have a safe and successful event!\nuser: I think I'll definitely take these safety tips into consideration, especially since I've never participated in a cycling event of this scale before. I'll make sure to check my bike thoroughly and practice riding in a group before the event. Thanks for the advice! Do you have any information on how to deal with pre-event jitters or performance anxiety? I'm feeling a bit nervous about the event, and I want to make sure I'm prepared mentally as well.\nassistant: Dealing with pre-event jitters and performance anxiety is a crucial aspect of preparing for a charity cycling event! It's completely normal to feel nervous, but with some strategies, you can manage your nerves and perform at your best. Here are some tips to help you deal with pre-event jitters and performance anxiety:\n\n1. **Acknowledge and accept your nerves**: Recognize that it's normal to feel nervous before a big event. Acknowledge your feelings, and remind yourself that you've prepared well for this.\n2. **Focus on the process, not the outcome**: Instead of worrying about the end result, focus on the process of completing the event. Break down the ride into smaller, manageable tasks, and concentrate on executing each one to the best of your ability.\n3. **Visualize success**: Imagine yourself successfully completing the event, feeling strong and confident. Visualize the sense of accomplishment and pride you'll feel when you cross the finish line.\n4. **Practice relaxation techniques**: Regularly practice relaxation techniques like deep breathing, progressive muscle relaxation, or meditation to help calm your nerves. You can find many guided relaxation exercises online.\n5. **Reframe negative thoughts**: Challenge negative self-talk by reframing negative thoughts into positive, empowering ones. Instead of \"I'm not sure I can do this,\" tell yourself \"I've trained hard, and I'm ready for this.\"\n6. **Get familiar with the course**: If possible, ride the course or a similar route before the event to get familiar with the terrain, hills, and road conditions. This can help reduce anxiety and boost your confidence.\n7. **Get enough rest and nutrition**: Make sure you're well-rested, hydrated, and fueled with a balanced diet in the days leading up to the event. A well-nourished body and mind will help you perform at your best.\n8. **Seek support**: Share your concerns with friends, family, or a mentor. Talking through your nerves can help you feel more at ease and gain a fresh perspective.\n9. **Focus on the bigger picture**: Remember why you're participating in the event – to raise money and awareness for a great cause. Focus on the positive impact you'll make, and let that motivate you to push through any nerves.\n10. **Embrace the experience**: View the event as an opportunity to challenge yourself, learn, and grow. Embrace the experience, and remember that it's okay to make mistakes – they're an essential part of the learning process.\n\nAdditionally, consider the following tips specifically for the day of the event:\n\n* Arrive early to get settled and composed before the start.\n* Take time to warm up and get your bike ready.\n* Focus on your breathing and try to relax your muscles.\n* Start with a positive mantra or affirmation to boost your confidence.\n* Break the ride into smaller segments, and focus on one section at a time.\n\nBy using these strategies, you'll be better equipped to manage your pre-event jitters and performance anxiety. Remember, it's normal to feel some level of nervousness, but with preparation and the right mindset, you'll be able to perform at your best and enjoy the experience.\n\nYou've got this! You've trained hard, and you're ready for this event. Go out there, have fun, and make a difference for the charity you're supporting!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d851d5ba",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:585bbb39761ab905a67b6d5de55d7a4e"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:d851d5ba\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The forced past session contains durable dated charity/fundraising experience, upcoming event plans, fitness background, cycling-event concerns, and a reusable digest of advice/context.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / I'm / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level USER entity as subject for later claims.\n- mention=charity cycling event; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=User's charity cycling event; reason=Concrete recurring referent in the conversation; no existing entity candidates.\n- mention=local animal shelter; action=CREATE_NEW; id=entity:<2>; type=ORGANIZATION; name=Local animal shelter; reason=A specific beneficiary organization mentioned by the user, though unnamed; no existing entity candidates.\n- mention=professional bike fitting / bike fitting; action=CREATE_NEW; id=entity:<3>; type=SERVICE; name=Professional bike fitting; reason=Reusable service/object of the user's intended scheduling claim; no existing entity candidates.\n- mention=my bike / your bike; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=User's bike; reason=First-person possessive wording identifies a reusable personal item for later claims.\n- mention=fundraising; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Fundraising; reason=Reusable concept referenced as an area of user experience and advice; no existing entity candidates.\n- mention=running; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Running; reason=Reusable activity concept needed for user exercise-experience claims.\n- mention=cycling; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Cycling; reason=Reusable activity concept needed for user experience and endurance claims.\n- mention=group riding / riding in a group; action=CREATE_NEW; id=entity:<8>; type=CONCEPT; name=Group cycling; reason=Reusable cycling practice mentioned as something the user plans to practice.\n- mention=pre-event jitters or performance anxiety; action=CREATE_NEW; id=entity:<9>; type=CONCEPT; name=Performance anxiety; reason=Reusable mental-state concept for later claims about the user's nervousness.\n- mention=current project; action=CREATE_NEW; id=entity:<10>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|local animal shelter|charity cycling event|bike fitting\n        text_queries=raised $2,000 for a local animal shelter on January 20th|planning to participate in a charity cycling event next month|mainly running and occasionally cycling|never participated in a cycling event of this scale before|schedule a professional bike fitting soon|practice riding in a group before the event\n        predicate_hints=has_experience_with|attended_event|metric_observation|has_goal|pending_pickup|has_constraint|prefers\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:585bbb39761ab905a67b6d5de55d7a4e] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:d851d5ba:session:1; title=LongMemEval d851d5ba session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/20 (Mon) 05:49\nTranscript:\nuser: I'm planning to participate in a charity cycling event next month and I want to make sure I'm prepared. Can you give me some tips on how to train for it? By the way, I've been getting more into charity events lately - I helped raise $2,000 for a local animal shelter on January 20th, and it was an amazing experience!\nassistant: Congratulations on your recent charity event and raising $2,000 for the local animal shelter! That's fantastic!\n\nNow, let's get you prepared for your upcoming charity cycling event. Here are some tips to help you train and be ready for the big day:\n\n1. **Assess your current fitness level**: Be honest about your current cycling experience and fitness level. If you're a beginner, start with shorter rides and gradually increase your distance and intensity.\n2. **Set realistic goals**: Determine what you want to achieve in the event. Is it to complete a certain distance, beat a personal best, or simply finish the ride? Having a goal in mind will help you focus your training.\n3. **Create a training plan**: Develop a structured training plan that includes regular rides, rest days, and cross-training (if needed). Aim to ride at least 2-3 times a week, with one longer ride on the weekends.\n4. **Gradually increase your mileage**: Gradually increase your weekly mileage to allow your body to adapt to the demands of cycling. Aim to increase your distance by 10-15% each week.\n5. **Incorporate interval training**: Include interval workouts in your training plan to improve your endurance and speed. This can include hill repeats, sprints, or tempo rides.\n6. **Focus on cadence and efficiency**: Pay attention to your pedaling technique, aiming for a high cadence (80-100 RPM) and efficient pedaling style.\n7. **Get comfortable with your bike**: Make sure your bike is fitted to you, and you're comfortable with its handling and gear shifting.\n8. **Practice fueling and hydration**: Experiment with different foods, drinks, and electrolyte supplements to find what works best for you during long rides.\n9. **Train in similar conditions**: If possible, train in similar weather and terrain conditions as the event to prepare yourself for the challenges you'll face.\n10. **Rest and recovery**: Don't forget to include rest days and active recovery rides (e.g., easy spins) in your training plan to allow your body to recover and adapt.\n11. **Get familiar with the event course**: If possible, ride the event course or a similar route to get familiar with the terrain, elevation changes, and any potential challenges.\n12. **Join a cycling group or find a training buddy**: Riding with others can help keep you motivated, accountable, and provide valuable tips and support.\n\nRemember to listen to your body and adjust your training plan as needed. It's better to err on the side of caution and recover from a minor setback than to risk injury or burnout.\n\nYou've already shown your commitment to charity events, and with a solid training plan, you'll be ready to crush your cycling event and help raise even more funds for a great cause!\nuser: I'm glad you provided these tips. I've been mainly running and only occasionally cycling, so I'll have to work on my cycling endurance. Do you think I should get a professional bike fitting to ensure my bike is properly fitted to me?\nassistant: As a runner, you'll find that cycling requires a different set of muscles and techniques, so it's great that you're acknowledging the need to focus on your cycling endurance.\n\nA professional bike fitting is an excellent idea, especially if you're new to cycling or haven't had your bike fitted in a while. A proper bike fit can make a huge difference in your comfort, efficiency, and overall riding experience.\n\nHere are some benefits of a professional bike fitting:\n\n1. **Improved comfort**: A bike fitting ensures that your bike is adjusted to fit your body, reducing discomfort, pain, and fatigue.\n2. **Increased efficiency**: A proper fit helps you maintain a more aerodynamic position, reducing air resistance and allowing you to ride more efficiently.\n3. **Reduced risk of injury**: A bike fitting can help prevent common cycling injuries, such as knee strain, back pain, and neck discomfort, by ensuring that your body is in a neutral position.\n4. **Better performance**: With a properly fitted bike, you'll be able to ride longer and stronger, as you'll be able to maintain a more efficient pedaling technique.\n\nA professional bike fitter will assess your riding style, flexibility, and body measurements to make adjustments to your bike's saddle height, handlebar height, pedal position, and other components. They may also provide guidance on proper riding techniques and offer tips for improving your overall cycling performance.\n\nBefore you schedule a bike fitting, make sure to:\n\n1. **Choose a reputable fitter**: Look for a certified bike fitter with experience working with cyclists of your level and discipline (road, mountain, or commuter).\n2. **Bring your bike and gear**: Bring your bike, shoes, and any other gear you plan to use during the event.\n3. **Be prepared to ride**: Be prepared to ride your bike during the fitting process, so wear your cycling clothes and be ready to pedal.\n4. **Ask questions**: Don't hesitate to ask questions or seek clarification on any adjustments or recommendations made during the fitting process.\n\nBy investing in a professional bike fitting, you'll be able to ride more comfortably, efficiently, and safely, which will help you enjoy your charity cycling event and perform at your best.\nuser: I think I'll schedule a bike fitting soon. I'm also wondering, do you have any tips on how to fundraise for the event? I've had some experience with fundraising, but any additional advice would be great.\nassistant: Fundraising is a crucial part of participating in a charity cycling event! I'm happy to share some tips to help you reach your fundraising goals:\n\n1. **Set a realistic goal**: Determine a specific fundraising target and make it achievable. Break it down into smaller, manageable chunks to help you stay focused.\n2. **Create a compelling story**: Share your personal connection to the charity or cause, and explain why this event is important to you. This will help donors understand the impact of their contribution.\n3. **Leverage social media**: Use platforms like Facebook, Twitter, Instagram, and LinkedIn to share your story, update your progress, and thank donors. Create a Facebook Fundraiser or use a charity's online fundraising tool to make it easy for donors to contribute.\n4. **Reach out to your network**: Inform friends, family, colleagues, and acquaintances about your fundraising efforts. Don't be afraid to ask for donations, and be prepared to share your story and answer questions.\n5. **Corporate sponsorships**: Approach local businesses, especially those with a connection to the charity or cause, to see if they'd be willing to sponsor your ride or make a donation.\n6. **Host a fundraising event**: Organize a bake sale, charity ride, spin class, or other event to raise funds and awareness for your cause.\n7. **Personalized emails and letters**: Write heartfelt, personalized emails or letters to potential donors, explaining your story and the impact of their contribution.\n8. **Follow up and thank donors**: Regularly update your donors on your progress, and be sure to thank them for their support. This will help build a sense of community and encourage further donations.\n9. **Use online fundraising tools**: Utilize online platforms like Classy, Qgiv, or Network for Good to create a fundraising page, track donations, and share updates.\n10. **Get creative**: Think outside the box! Consider hosting a fundraising challenge, auctioning off items or services, or creating a viral social media campaign to attract attention and donations.\n11. **Share your progress**: Regularly share updates on your training, fundraising progress, and event preparations to keep your donors engaged and motivated.\n12. **Show appreciation**: Express gratitude to your donors through social media, email, or handwritten notes. This will encourage them to continue supporting you and your cause.\n\nRemember, fundraising takes time and effort, but with persistence, creativity, and a clear goal in mind, you'll be able to reach your target and make a meaningful impact for the charity.\n\nAs you've had experience with fundraising, you might also consider:\n\n* Reaching out to past donors or sponsors to see if they'd be willing to support you again\n* Sharing your fundraising page or story with your employer or colleagues to see if they'd be willing to match donations or provide support\n* Using your fundraising event as an opportunity to raise awareness about the charity or cause, and encouraging others to get involved\n\nGood luck with your fundraising efforts, and I hope these tips help you reach your goals!\nuser: I'm glad you provided those tips. I've had some experience with fundraising, like I said, I helped raise over $2,000 for a local animal shelter on January 20th. I'll definitely use some of those ideas to reach my fundraising goal for this cycling event. Do you have any information on how to stay safe while cycling, especially in a charity event with many participants?\nassistant: Congratulations again on your successful fundraising effort for the local animal shelter! That's a fantastic achievement!\n\nStaying safe while cycling is crucial, especially in a charity event with many participants. Here are some safety tips to help you minimize risks and enjoy your ride:\n\n1. **Follow traffic laws and rules**: Obey all traffic laws, signs, and signals. Ride with the flow of traffic, and use designated bike lanes or paths when available.\n2. **Wear safety gear**: Always wear a properly fitted helmet, and consider additional safety gear like knee pads, elbow pads, and gloves.\n3. **Be visible**: Wear bright, reflective clothing and attach reflective stickers or lights to your bike to increase visibility, especially in low-light conditions.\n4. **Ride defensively**: Anticipate the actions of other cyclists, motorists, and pedestrians. Keep a safe distance, and be prepared to react to unexpected situations.\n5. **Stay alert and focused**: Avoid distractions like using your phone, eating, or chatting with fellow riders while cycling. Keep your eyes on the road and be aware of your surroundings.\n6. **Use hand signals**: Communicate your intentions to turn or change lanes by using clear hand signals.\n7. **Ride in a group safely**: When riding with a group, maintain a safe distance from the rider in front of you, and avoid sudden movements or braking.\n8. **Be aware of road conditions**: Watch for potholes, rough roads, and other hazards that could cause you to lose control of your bike.\n9. **Hydrate and fuel**: Make sure to drink plenty of water and eat nutritious snacks to maintain your energy levels throughout the ride.\n10. **Mechanical checks**: Ensure your bike is in good working condition before the event. Check your tire pressure, brakes, and gears to avoid mechanical issues during the ride.\n11. **Event-specific safety**: Familiarize yourself with the event's safety guidelines, rules, and emergency procedures. Know the location of aid stations, rest stops, and medical support.\n12. **Buddy system**: Consider riding with a buddy or joining a group of riders who can provide support and assistance if needed.\n\nAdditionally, make sure to:\n\n* Register for the event and follow the organizer's guidelines and instructions.\n* Carry a basic tool kit, pump, and spare tube in case of minor mechanical issues.\n* Bring a phone, ID, and some cash in case of an emergency.\n* Know the event's emergency contact numbers and procedures.\n\nBy following these safety tips, you'll be well-prepared to enjoy your charity cycling event while minimizing the risk of accidents or injuries.\n\nRemember, safety is everyone's responsibility, so be mindful of your fellow riders and other road users, and let's have a safe and successful event!\nuser: I think I'll definitely take these safety tips into consideration, especially since I've never participated in a cycling event of this scale before. I'll make sure to check my bike thoroughly and practice riding in a group before the event. Thanks for the advice! Do you have any information on how to deal with pre-event jitters or performance anxiety? I'm feeling a bit nervous about the event, and I want to make sure I'm prepared mentally as well.\nassistant: Dealing with pre-event jitters and performance anxiety is a crucial aspect of preparing for a charity cycling event! It's completely normal to feel nervous, but with some strategies, you can manage your nerves and perform at your best. Here are some tips to help you deal with pre-event jitters and performance anxiety:\n\n1. **Acknowledge and accept your nerves**: Recognize that it's normal to feel nervous before a big event. Acknowledge your feelings, and remind yourself that you've prepared well for this.\n2. **Focus on the process, not the outcome**: Instead of worrying about the end result, focus on the process of completing the event. Break down the ride into smaller, manageable tasks, and concentrate on executing each one to the best of your ability.\n3. **Visualize success**: Imagine yourself successfully completing the event, feeling strong and confident. Visualize the sense of accomplishment and pride you'll feel when you cross the finish line.\n4. **Practice relaxation techniques**: Regularly practice relaxation techniques like deep breathing, progressive muscle relaxation, or meditation to help calm your nerves. You can find many guided relaxation exercises online.\n5. **Reframe negative thoughts**: Challenge negative self-talk by reframing negative thoughts into positive, empowering ones. Instead of \"I'm not sure I can do this,\" tell yourself \"I've trained hard, and I'm ready for this.\"\n6. **Get familiar with the course**: If possible, ride the course or a similar route before the event to get familiar with the terrain, hills, and road conditions. This can help reduce anxiety and boost your confidence.\n7. **Get enough rest and nutrition**: Make sure you're well-rested, hydrated, and fueled with a balanced diet in the days leading up to the event. A well-nourished body and mind will help you perform at your best.\n8. **Seek support**: Share your concerns with friends, family, or a mentor. Talking through your nerves can help you feel more at ease and gain a fresh perspective.\n9. **Focus on the bigger picture**: Remember why you're participating in the event – to raise money and awareness for a great cause. Focus on the positive impact you'll make, and let that motivate you to push through any nerves.\n10. **Embrace the experience**: View the event as an opportunity to challenge yourself, learn, and grow. Embrace the experience, and remember that it's okay to make mistakes – they're an essential part of the learning process.\n\nAdditionally, consider the following tips specifically for the day of the event:\n\n* Arrive early to get settled and composed before the start.\n* Take time to warm up and get your bike ready.\n* Focus on your breathing and try to relax your muscles.\n* Start with a positive mantra or affirmation to boost your confidence.\n* Break the ride into smaller segments, and focus on one section at a time.\n\nBy using these strategies, you'll be better equipped to manage your pre-event jitters and performance anxiety. Remember, it's normal to feel some level of nervousness, but with preparation and the right mindset, you'll be able to perform at your best and enjoy the experience.\n\nYou've got this! You've trained hard, and you're ready for this event. Go out there, have fun, and make a difference for the charity you're supporting!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:d851d5ba",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:585bbb39761ab905a67b6d5de55d7a4e"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"planning to participate in a charity cycling event next month\",\"mainly running and only occasionally cycling\",\"schedule a bike fitting soon\",\"check my bike thoroughly\",\"practice riding in a group\",\"feeling a bit nervous\"],\"confidence\":0.93,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'll make sure to check my bike thoroughly and practice riding in a group before the event.\",\"evidence_reason\":\"The target transcript explicitly combines the user's event context with intended preparation steps and concerns about safety and performance anxiety.\",\"importance\":4,\"keywords\":[\"charity cycling event\",\"bike fitting\",\"group riding\",\"cycling endurance\",\"pre-event jitters\",\"performance anxiety\"],\"note_type\":\"plan\",\"rationale\":\"This is a multi-part preparation approach with rationale and sequencing across training, equipment, safety, and mental readiness; it is more reusable as a contextual plan than as one atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's preparation for the charity cycling event discussed in LongMemEval d851d5ba session 1.\"},\"summary\":\"For the planned charity cycling event, the user’s preparation approach includes building cycling endurance from a running-heavy baseline, scheduling a professional bike fitting, checking the bike thoroughly, practicing group riding, and using mental strategies for pre-event jitters.\",\"tags\":[\"cycling_event\",\"training_plan\",\"safety\",\"mental_preparation\"],\"title\":\"Charity cycling event preparation plan\",\"valid_from\":\"2023-03-20T05:49:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"helped raise over $2,000 for a local animal shelter on January 20th\",\"had some experience with fundraising\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I helped raise over $2,000 for a local animal shelter on January 20th.\",\"evidence_reason\":\"The transcript states the user's prior fundraising experience and contains reusable fundraising tactics suggested for the cycling event.\",\"importance\":3,\"keywords\":[\"fundraising\",\"local animal shelter\",\"$2,000\",\"January 20th\",\"charity cycling event\",\"past donors\",\"employer matching\"],\"note_type\":\"context\",\"rationale\":\"The value is not just the atomic fundraising amount; it captures how future fundraising help should build on prior experience and suggested tactics.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies when helping the user with fundraising for charity events, especially the charity cycling event.\"},\"summary\":\"For the charity cycling event, fundraising advice was framed around the user’s prior success raising over $2,000 for a local animal shelter on January 20th: set a realistic goal, tell a compelling story, use social media and online tools, contact networks and past donors, consider employer matching or local sponsorships, and keep donors updated and thanked.\",\"tags\":[\"fundraising\",\"charity_events\",\"donor_outreach\"],\"title\":\"Fundraising advice tailored to prior shelter fundraiser experience\",\"valid_from\":\"2023-03-20T05:49:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"never participated in a cycling event of this scale before\",\"check my bike thoroughly\",\"practice riding in a group before the event\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"especially since I've never participated in a cycling event of this scale before\",\"evidence_reason\":\"The target transcript includes a safety discussion specifically motivated by the user's lack of experience in large cycling events.\",\"importance\":3,\"keywords\":[\"cycling safety\",\"large-scale event\",\"group riding\",\"bike check\",\"helmet\",\"hand signals\",\"emergency contacts\"],\"note_type\":\"lesson\",\"rationale\":\"This captures a reusable safety checklist and its motivation rather than a single factual claim; it can guide future event-preparation advice.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to safety preparation for the user's first large charity cycling event or similar group rides.\"},\"summary\":\"Because the user had never participated in a cycling event of this scale, safety advice emphasized event-specific rules, traffic laws, helmet and visibility gear, defensive riding, hand signals, safe group spacing, road hazard awareness, hydration/fueling, bike mechanical checks, emergency contacts, and carrying basic repair/emergency items.\",\"tags\":[\"cycling_safety\",\"event_preparation\",\"group_riding\"],\"title\":\"Safety checklist for first large-scale cycling event\",\"valid_from\":\"2023-03-20T05:49:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"feeling a bit nervous about the event\",\"prepared mentally\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<9>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm feeling a bit nervous about the event, and I want to make sure I'm prepared mentally as well.\",\"evidence_reason\":\"The transcript directly introduces the user's anxiety and contains a reusable set of coping strategies for the event.\",\"importance\":3,\"keywords\":[\"pre-event jitters\",\"performance anxiety\",\"visualization\",\"breathing\",\"negative self-talk\",\"event day\",\"charity purpose\"],\"note_type\":\"lesson\",\"rationale\":\"This is a reusable coping framework with multiple tactics and rationale, not a clean atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to helping the user manage performance anxiety before endurance or charity events.\"},\"summary\":\"For pre-event jitters or performance anxiety before the charity cycling event, the recommended approach was to normalize nerves, focus on process over outcome, visualize success, practice relaxation or breathing, reframe negative self-talk, get familiar with the course, rest and fuel well, seek support, focus on the charity purpose, and break event day into manageable segments.\",\"tags\":[\"mental_preparation\",\"performance_anxiety\",\"cycling_event\"],\"title\":\"Mental strategy for cycling-event jitters\",\"valid_from\":\"2023-03-20T05:49:00+02:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5353,
+                "completionTokens": 1659,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
