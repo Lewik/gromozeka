@@ -332,6 +332,7 @@ class RuntimeMemoryReadPipelineTest {
 
         assertTrue(prompt.contains("An empty counted set is not evidence for zero by itself"), prompt)
         assertTrue(prompt.contains("retrieved memory explicitly states none/zero"), prompt)
+        assertTrue(prompt.contains("do not put a concrete zero count in the final answer"), prompt)
     }
 
     @Test
