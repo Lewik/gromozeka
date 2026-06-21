@@ -34,7 +34,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -330,12 +334,18 @@ class LongMemEvalMemorySmokeTest {
             "answer_hypothesis_start id=${entry.questionId} memoryContextChars=${memoryContext.length}"
         )
         val answerStartedAt = System.currentTimeMillis()
-        val answerHypothesis = generateAnswerHypothesis(
-            runtime = judgeRuntime,
-            entry = entry,
-            selectedRefs = enrichResult.selectedRefs,
-            memoryContext = memoryContext,
-        )
+        val answerHypothesis = callBenchmarkEvalStage(
+            stageName = "answer_hypothesis",
+            questionId = entry.questionId,
+            progressPath = progressPath,
+        ) {
+            generateAnswerHypothesis(
+                runtime = judgeRuntime,
+                entry = entry,
+                selectedRefs = enrichResult.selectedRefs,
+                memoryContext = memoryContext,
+            )
+        }
         val answerDurationMs = System.currentTimeMillis() - answerStartedAt
         appendProgress(
             progressPath,
@@ -346,13 +356,19 @@ class LongMemEvalMemorySmokeTest {
             "answer_judge_start id=${entry.questionId} exactAnswerVisible=$exactAnswerTextVisible evidenceSourceHit=$evidenceSourceHit"
         )
         val answerJudgeStartedAt = System.currentTimeMillis()
-        val answerJudgement = judgeAnswerHypothesis(
-            runtime = judgeRuntime,
-            entry = entry,
-            expectedAnswer = expectedAnswer,
-            goldEvidence = entry.renderGoldEvidenceForJudge(),
-            answerHypothesis = answerHypothesis.answer,
-        )
+        val answerJudgement = callBenchmarkEvalStage(
+            stageName = "answer_judge",
+            questionId = entry.questionId,
+            progressPath = progressPath,
+        ) {
+            judgeAnswerHypothesis(
+                runtime = judgeRuntime,
+                entry = entry,
+                expectedAnswer = expectedAnswer,
+                goldEvidence = entry.renderGoldEvidenceForJudge(),
+                answerHypothesis = answerHypothesis.answer,
+            )
+        }
         val answerJudgeDurationMs = System.currentTimeMillis() - answerJudgeStartedAt
         appendProgress(
             progressPath,
@@ -424,6 +440,52 @@ class LongMemEvalMemorySmokeTest {
             answerJudgeDurationMs = answerJudgeDurationMs,
             durationMs = System.currentTimeMillis() - caseStartedAt,
         )
+    }
+
+    private suspend fun <T> callBenchmarkEvalStage(
+        stageName: String,
+        questionId: String,
+        progressPath: Path,
+        block: suspend () -> T,
+    ): T {
+        val timeoutMs = benchmarkEvalLlmTimeoutMs()
+        val maxAttempts = benchmarkEvalLlmMaxAttempts()
+        var attempt = 1
+        var retryDelayMs = 1_000L
+
+        while (true) {
+            val startedAt = System.currentTimeMillis()
+            appendProgress(
+                progressPath,
+                "${stageName}_llm_attempt_start id=$questionId attempt=$attempt timeoutMs=$timeoutMs"
+            )
+
+            try {
+                val result = withTimeout(timeoutMs) { block() }
+                appendProgress(
+                    progressPath,
+                    "${stageName}_llm_attempt_done id=$questionId attempt=$attempt durationMs=${System.currentTimeMillis() - startedAt}"
+                )
+                return result
+            } catch (error: Throwable) {
+                if (error is CancellationException && error !is TimeoutCancellationException) {
+                    throw error
+                }
+
+                val retryable = error.isRetryableBenchmarkEvalFailure()
+                appendProgress(
+                    progressPath,
+                    "${stageName}_llm_attempt_failed id=$questionId attempt=$attempt durationMs=${System.currentTimeMillis() - startedAt} retryable=$retryable error=${error.shortErrorForProgress()}"
+                )
+                if (!retryable || attempt >= maxAttempts) {
+                    throw error
+                }
+
+                delay(retryDelayMs)
+                attempt += 1
+                retryDelayMs = (retryDelayMs * 2).coerceAtMost(4_000L)
+            }
+        }
     }
 
     private suspend fun generateAnswerHypothesis(
@@ -617,9 +679,13 @@ class LongMemEvalMemorySmokeTest {
 
         val rawText = AiConversationMessageMapper.extractAssistantText(response)
         val root = json.parseToJsonElement(rawText).jsonObject
+        val answer = root.stringValue("answer").orEmpty()
+        val reasoning = root.stringValue("reasoning").orEmpty()
+        validateBenchmarkEvalText(stageName = "answer_hypothesis", questionId = entry.questionId, fieldName = "answer", value = answer)
+        validateBenchmarkEvalText(stageName = "answer_hypothesis", questionId = entry.questionId, fieldName = "reasoning", value = reasoning)
         return LongMemEvalAnswerHypothesis(
-            answer = root.stringValue("answer").orEmpty(),
-            reasoning = root.stringValue("reasoning").orEmpty(),
+            answer = answer,
+            reasoning = reasoning,
             countedItems = root.stringArrayValue("counted_items"),
             countEvidenceKind = root.stringValue("count_evidence_kind").orEmpty(),
             excludedRankedRefs = root.stringArrayValue("excluded_ranked_refs"),
@@ -711,9 +777,11 @@ class LongMemEvalMemorySmokeTest {
 
         val rawText = AiConversationMessageMapper.extractAssistantText(response)
         val root = json.parseToJsonElement(rawText).jsonObject
+        val reason = root.stringValue("reason").orEmpty()
+        validateBenchmarkEvalText(stageName = "answer_judge", questionId = entry.questionId, fieldName = "reason", value = reason)
         return LongMemEvalAnswerJudgement(
             supported = root["supported"]?.jsonPrimitive?.booleanOrNull ?: false,
-            reason = root.stringValue("reason").orEmpty(),
+            reason = reason,
         )
     }
 
@@ -1297,6 +1365,20 @@ class LongMemEvalMemorySmokeTest {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
+    private fun benchmarkEvalLlmTimeoutMs(): Long =
+        System.getProperty(EVAL_LLM_TIMEOUT_MS_PROPERTY)
+            ?.trim()
+            ?.toLongOrNull()
+            ?.coerceAtLeast(1_000L)
+            ?: 180_000L
+
+    private fun benchmarkEvalLlmMaxAttempts(): Int =
+        System.getProperty(EVAL_LLM_MAX_ATTEMPTS_PROPERTY)
+            ?.trim()
+            ?.toIntOrNull()
+            ?.coerceAtLeast(1)
+            ?: 2
+
     private companion object {
         const val ENABLE_PROPERTY = "gromozeka.longmemeval"
         const val DATA_FILE_PROPERTY = "gromozeka.longmemeval.data"
@@ -1309,6 +1391,8 @@ class LongMemEvalMemorySmokeTest {
         const val SUBSCRIPTION_CONFIG_PROPERTY = "gromozeka.longmemeval.subscriptionConfig"
         const val WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.websocketResponseTimeoutMs"
         const val WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.websocketTransportTimeoutMs"
+        const val EVAL_LLM_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.evalLlmTimeoutMs"
+        const val EVAL_LLM_MAX_ATTEMPTS_PROPERTY = "gromozeka.longmemeval.evalLlmMaxAttempts"
         const val MEMORY_LLM_MAX_ATTEMPTS_PROPERTY = "gromozeka.longmemeval.memoryLlmMaxAttempts"
         const val MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.longmemeval.memoryLlmStageTimeoutMs"
         const val DIRECT_WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.ai.openai-subscription.websocket-response-timeout-ms"
@@ -1487,6 +1571,16 @@ private data class LongMemEvalAnswerHypothesis(
     val excludedRankedRefs: List<String> = emptyList(),
 )
 
+private class LongMemEvalDegenerateEvalResponseException(
+    stageName: String,
+    questionId: String,
+    fieldName: String,
+    value: String,
+) : IllegalStateException(
+    "LongMemEval eval response field is degenerate: stage=$stageName questionId=$questionId field=$fieldName " +
+        "chars=${value.length} preview=${value.oneLineForArtifact(180)}"
+)
+
 private data class LongMemEvalBalancedSample(
     val perType: Int,
     val page: Int,
@@ -1509,6 +1603,62 @@ private data class LongMemEvalBalancedSample(
         }
     }
 }
+
+private fun Throwable.isRetryableBenchmarkEvalFailure(): Boolean {
+    if (this is LongMemEvalDegenerateEvalResponseException) return true
+    if (this is TimeoutCancellationException) return true
+
+    val chainText = generateSequence(this) { it.cause }
+        .joinToString(" | ") { error ->
+            "${error::class.simpleName.orEmpty()}: ${error.message.orEmpty()}"
+        }
+        .lowercase()
+
+    return listOf(
+        "server_error",
+        "rate_limit",
+        "temporarily",
+        "try again",
+        "timeout",
+        "timed out",
+        "transport",
+        "websocket",
+        "connection reset",
+        "connection closed",
+    ).any(chainText::contains)
+}
+
+private fun validateBenchmarkEvalText(
+    stageName: String,
+    questionId: String,
+    fieldName: String,
+    value: String,
+) {
+    val normalized = value.lowercase()
+    val looksDegenerate = value.length > 1_200 ||
+        listOf(
+            "# valid channels",
+            "<|end|>",
+            "response format expects json",
+            "current response final",
+            "the generated final",
+            "must ensure only json",
+            "final already",
+        ).any(normalized::contains)
+
+    if (looksDegenerate) {
+        throw LongMemEvalDegenerateEvalResponseException(
+            stageName = stageName,
+            questionId = questionId,
+            fieldName = fieldName,
+            value = value,
+        )
+    }
+}
+
+private fun Throwable.shortErrorForProgress(): String =
+    "${this::class.simpleName.orEmpty()}:${message.orEmpty()}"
+        .oneLineForArtifact(240)
 
 @Serializable
 private data class LongMemEvalSmokeCaseResult(
