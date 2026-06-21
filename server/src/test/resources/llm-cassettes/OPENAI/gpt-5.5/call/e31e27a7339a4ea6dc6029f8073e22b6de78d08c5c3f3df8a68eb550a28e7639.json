@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "e31e27a7339a4ea6dc6029f8073e22b6de78d08c5c3f3df8a68eb550a28e7639",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you remind me of the name of the romantic Italian restaurant in Rome you recommended for dinner?\n\n                                Question date:\n                                2023/05/23 (Tue) 04:42\n\n                                Noisy expected-answer label:\n                                Roscioli\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 08:55\nTranscript:\nuser: Can you recommend some authentic Italian restaurants in Rome?\nassistant: Yes, here are some highly recommended authentic Italian restaurants in Rome:\n\n1. Trattoria Da Enzo al 29 - located in the Trastevere neighborhood, it's a cozy and traditional trattoria that serves classic Roman dishes.\n\n2. Roscioli - This is a gastronomic delicatessen and restaurant located near the Campo dei Fiori market. They offer the finest quality products and dishes with a focus on high-quality ingredients.\n\n3. Pizzeria La Montecarlo - is a small family-run pizzeria in the Gianicolo area that serves traditional Roman-style thin-crust pizza.\n\n4. Sora Margherita - This is a small and quaint family-owned restaurant in the Jewish Ghetto neighborhood that is known for its authentic Roman cuisine.\n\n5. La Pergola - This is a fine-dining restaurant located atop the Rome Cavalieri Hotel that offers a range of Italian and International dishes made with the finest ingredients.\n\n6. Hostaria Costanza - This restaurant is located in the heart of Rome near the Colosseum and offers classic Roman dishes in a traditional and elegant atmosphere.\n\n7. Ditirambo - This restaurant is located in the historical center of Rome and offers a high-quality menu consisting of fresh and seasonal ingredients.\nuser: Which one would you say is the best for a romantic dinner?\nassistant: For a romantic dinner, I would recommend Roscioli. It has a cozy and intimate atmosphere with soft lighting and excellent service. They also have a great wine list and a menu that offers a range of dishes made with high-quality ingredients. You can even request a private wine and cheese tasting for a unique and romantic dining experience.\nuser: Sounds perfect! Can you make a reservation for me at Roscioli for tomorrow evening at 7:00 pm?\nassistant: I'm sorry but i am unable to make reservations. however, you can visit roscioli's official website or contact them directly to make a reservation.\nuser: Do you have any suggestions for a good gelato spot in Rome?\nassistant: Certainly! Rome is home to some excellent gelato spots. Here are a few highly recommended ones:\n\n1. Giolitti - founded in 1900, Giolitti is one of the oldest and most famous gelaterias in Rome. They offer a range of classic flavors and seasonal specialties. 2. Fatamorgana - This is a popular gelateria that focuses on using high-quality and unique ingredients such as ginger, rosemary, and even gorgonzola cheese, to create unusual yet delicious gelato flavors. 3. Gelateria del Teatro - located close to Piazza Navona, this gelateria is known for its creative flavors such as goat cheese and fig or white chocolate and basil, as well as its aesthetically pleasing presentation. 4. La Romana - This chain of gelaterias is known for its use of fresh and natural ingredients, with flavors ranging from classic to more innovative combinations. 5. Neve di Latte - This gelateria uses only the freshest, organic ingredients that come from small farms to create its high-quality gelato. They offer a range of classic and seasonal flavors. Enjoy!\n                                ```\n\n                                Candidate answer:\n                                The romantic Italian restaurant in Rome I recommended for dinner was Roscioli.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "4c36ccef",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you remind me of the name of the romantic Italian restaurant in Rome you recommended for dinner?\n\n                                Question date:\n                                2023/05/23 (Tue) 04:42\n\n                                Noisy expected-answer label:\n                                Roscioli\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 08:55\nTranscript:\nuser: Can you recommend some authentic Italian restaurants in Rome?\nassistant: Yes, here are some highly recommended authentic Italian restaurants in Rome:\n\n1. Trattoria Da Enzo al 29 - located in the Trastevere neighborhood, it's a cozy and traditional trattoria that serves classic Roman dishes.\n\n2. Roscioli - This is a gastronomic delicatessen and restaurant located near the Campo dei Fiori market. They offer the finest quality products and dishes with a focus on high-quality ingredients.\n\n3. Pizzeria La Montecarlo - is a small family-run pizzeria in the Gianicolo area that serves traditional Roman-style thin-crust pizza.\n\n4. Sora Margherita - This is a small and quaint family-owned restaurant in the Jewish Ghetto neighborhood that is known for its authentic Roman cuisine.\n\n5. La Pergola - This is a fine-dining restaurant located atop the Rome Cavalieri Hotel that offers a range of Italian and International dishes made with the finest ingredients.\n\n6. Hostaria Costanza - This restaurant is located in the heart of Rome near the Colosseum and offers classic Roman dishes in a traditional and elegant atmosphere.\n\n7. Ditirambo - This restaurant is located in the historical center of Rome and offers a high-quality menu consisting of fresh and seasonal ingredients.\nuser: Which one would you say is the best for a romantic dinner?\nassistant: For a romantic dinner, I would recommend Roscioli. It has a cozy and intimate atmosphere with soft lighting and excellent service. They also have a great wine list and a menu that offers a range of dishes made with high-quality ingredients. You can even request a private wine and cheese tasting for a unique and romantic dining experience.\nuser: Sounds perfect! Can you make a reservation for me at Roscioli for tomorrow evening at 7:00 pm?\nassistant: I'm sorry but i am unable to make reservations. however, you can visit roscioli's official website or contact them directly to make a reservation.\nuser: Do you have any suggestions for a good gelato spot in Rome?\nassistant: Certainly! Rome is home to some excellent gelato spots. Here are a few highly recommended ones:\n\n1. Giolitti - founded in 1900, Giolitti is one of the oldest and most famous gelaterias in Rome. They offer a range of classic flavors and seasonal specialties. 2. Fatamorgana - This is a popular gelateria that focuses on using high-quality and unique ingredients such as ginger, rosemary, and even gorgonzola cheese, to create unusual yet delicious gelato flavors. 3. Gelateria del Teatro - located close to Piazza Navona, this gelateria is known for its creative flavors such as goat cheese and fig or white chocolate and basil, as well as its aesthetically pleasing presentation. 4. La Romana - This chain of gelaterias is known for its use of fresh and natural ingredients, with flavors ranging from classic to more innovative combinations. 5. Neve di Latte - This gelateria uses only the freshest, organic ingredients that come from small farms to create its high-quality gelato. They offer a range of classic and seasonal flavors. Enjoy!\n                                ```\n\n                                Candidate answer:\n                                The romantic Italian restaurant in Rome I recommended for dinner was Roscioli.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "4c36ccef",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The evidence explicitly states Roscioli was recommended for a romantic dinner in Rome.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1832,
+                "completionTokens": 37,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
