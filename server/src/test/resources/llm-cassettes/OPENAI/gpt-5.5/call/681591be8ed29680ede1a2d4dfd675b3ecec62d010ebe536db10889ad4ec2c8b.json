@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "681591be8ed29680ede1a2d4dfd675b3ecec62d010ebe536db10889ad4ec2c8b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to check back on our previous conversation about Netflix. I mentioned that I wanted to be able to access all seasons of old shows? Do you remember what show I used as an example, the one that only had the last season available?\n\n                                Question date:\n                                2023/05/25 (Thu) 23:30\n\n                                Noisy expected-answer label:\n                                Doc Martin\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 03:35\nTranscript:\nuser: Act as an interviewer. You ask questions and I answer. Don’t write “Sure, I can do that”. Address with personal pronouns. Your task is to find out what people think of Netflix. Start with “thank you very much for agreeing to chat with me” and then start the first question with “let's start by asking. If you were to recommend Netflix to a friend, what would you tell them?why should they watch it?”. Ask one question at a time and wait for a response. One question at a time is mandatory\nassistant: Thank you very much for agreeing to chat with me. Let's start by asking, If you were to recommend Netflix to a friend, what would you tell them? Why should they watch it?\nuser: I personally enjoy Netflix because there is something there for everybody. every day there is something new on Netflix. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: That's great to hear. What types of content do you usually watch on Netflix? Do you have any favorite shows or movies that you would recommend?\nuser: Movies it is hard to say, I go more for series. My recent series is black list which I enjoy very much. address another part of the first answer. Short questions only. One question at a time is mandatory!\nassistant: That's interesting. You mentioned that there is always something new on Netflix. How do you usually discover new shows or movies to watch on the platform? Do you use any specific features or recommendations?\nuser: No. there is function on Netflix. what is coming next week, what's coming next month. it is a good platform. say “thank you, now for the next question: Do you think that the variety of genres and types of shows and movies on Netflix is sufficient, or would you like to see more diversity in their content offerings?” Ask this question and wait for a response\nassistant: Thank you for sharing that. Now for the next question: Do you think that the variety of genres and types of shows and movies on Netflix is sufficient, or would you like to see more diversity in their content offerings?\nuser: I think it is always to have more choice but I have no complain. Short questions only. One question at a time is mandatory!\nassistant: Understood. Another question for you, have you tried any of the original content produced by Netflix? If so, what are your thoughts on their original programming?\nuser: I don't have any thought. take it as it comes. say “thank you, now for the next question: “What do you think about the pricing of Netflix? Do you believe it offers good value for money, or do you think it's too expensive?” Ask this question and wait for a response\nassistant: Thank you for sharing your perspective. Now for the next question: What do you think about the pricing of Netflix? Do you believe it offers good value for money, or do you think it's too expensive?\nuser: I don't know how much it costs. I think it is good value for the money but I don't know how much it costs. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: Understood. Do you have any suggestions on how Netflix could improve its service or offerings to make it even better for its subscribers?\nuser: Yes. I have a comment. After a while Netflix takes down shows. I want to be able to have access to all seasons for old shows. I will give you an example, \"doc martin\" show went down after a while, and now we have access only to the last season. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: I see. Thank you for sharing your feedback. Another question for you, have you ever faced any issues or problems while using Netflix? If so, how did you resolve them?\nuser: yes. from time to time, I'm unable to open Netflix, I go out, come back, I give up and come back after a while. some access issue. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: Thank you for sharing that. It can be frustrating when there are technical issues. Final question for you, would you say that Netflix has had a positive impact on the way you consume entertainment? Why or why not?\nuser: I don't know. no comment. rapp the interview.\nassistant: Thank you for taking the time to share your thoughts with me. It was a pleasure chatting with you. Have a great day!\nuser: summarize in bullets\nassistant: * The interviewee enjoys Netflix because of the wide variety of content available.\n* They primarily watch series on Netflix and currently enjoy \"Black List.\"\n* They don't use any specific features or recommendations to discover new content.\n* They would appreciate more diversity in Netflix's content offerings, but are generally satisfied.\n* They have no particular thoughts on Netflix's original programming.\n* They are unsure of the pricing of Netflix, but believe it offers good value for money.\n* The interviewee suggests that Netflix should keep all seasons of old shows available for viewing.\n* They have experienced occasional access issues with Netflix.\n* The interviewee has no opinion on whether Netflix has had a positive impact on the way they consume entertainment.\n                                ```\n\n                                Candidate answer:\n                                You used **Doc Martin** as the example: you said the show had gone down after a while and that Netflix only had the last season available.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "f523d9fe",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to check back on our previous conversation about Netflix. I mentioned that I wanted to be able to access all seasons of old shows? Do you remember what show I used as an example, the one that only had the last season available?\n\n                                Question date:\n                                2023/05/25 (Thu) 23:30\n\n                                Noisy expected-answer label:\n                                Doc Martin\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 03:35\nTranscript:\nuser: Act as an interviewer. You ask questions and I answer. Don’t write “Sure, I can do that”. Address with personal pronouns. Your task is to find out what people think of Netflix. Start with “thank you very much for agreeing to chat with me” and then start the first question with “let's start by asking. If you were to recommend Netflix to a friend, what would you tell them?why should they watch it?”. Ask one question at a time and wait for a response. One question at a time is mandatory\nassistant: Thank you very much for agreeing to chat with me. Let's start by asking, If you were to recommend Netflix to a friend, what would you tell them? Why should they watch it?\nuser: I personally enjoy Netflix because there is something there for everybody. every day there is something new on Netflix. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: That's great to hear. What types of content do you usually watch on Netflix? Do you have any favorite shows or movies that you would recommend?\nuser: Movies it is hard to say, I go more for series. My recent series is black list which I enjoy very much. address another part of the first answer. Short questions only. One question at a time is mandatory!\nassistant: That's interesting. You mentioned that there is always something new on Netflix. How do you usually discover new shows or movies to watch on the platform? Do you use any specific features or recommendations?\nuser: No. there is function on Netflix. what is coming next week, what's coming next month. it is a good platform. say “thank you, now for the next question: Do you think that the variety of genres and types of shows and movies on Netflix is sufficient, or would you like to see more diversity in their content offerings?” Ask this question and wait for a response\nassistant: Thank you for sharing that. Now for the next question: Do you think that the variety of genres and types of shows and movies on Netflix is sufficient, or would you like to see more diversity in their content offerings?\nuser: I think it is always to have more choice but I have no complain. Short questions only. One question at a time is mandatory!\nassistant: Understood. Another question for you, have you tried any of the original content produced by Netflix? If so, what are your thoughts on their original programming?\nuser: I don't have any thought. take it as it comes. say “thank you, now for the next question: “What do you think about the pricing of Netflix? Do you believe it offers good value for money, or do you think it's too expensive?” Ask this question and wait for a response\nassistant: Thank you for sharing your perspective. Now for the next question: What do you think about the pricing of Netflix? Do you believe it offers good value for money, or do you think it's too expensive?\nuser: I don't know how much it costs. I think it is good value for the money but I don't know how much it costs. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: Understood. Do you have any suggestions on how Netflix could improve its service or offerings to make it even better for its subscribers?\nuser: Yes. I have a comment. After a while Netflix takes down shows. I want to be able to have access to all seasons for old shows. I will give you an example, \"doc martin\" show went down after a while, and now we have access only to the last season. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: I see. Thank you for sharing your feedback. Another question for you, have you ever faced any issues or problems while using Netflix? If so, how did you resolve them?\nuser: yes. from time to time, I'm unable to open Netflix, I go out, come back, I give up and come back after a while. some access issue. One question at a time is mandatory! Make sure to follow up on every thread\nassistant: Thank you for sharing that. It can be frustrating when there are technical issues. Final question for you, would you say that Netflix has had a positive impact on the way you consume entertainment? Why or why not?\nuser: I don't know. no comment. rapp the interview.\nassistant: Thank you for taking the time to share your thoughts with me. It was a pleasure chatting with you. Have a great day!\nuser: summarize in bullets\nassistant: * The interviewee enjoys Netflix because of the wide variety of content available.\n* They primarily watch series on Netflix and currently enjoy \"Black List.\"\n* They don't use any specific features or recommendations to discover new content.\n* They would appreciate more diversity in Netflix's content offerings, but are generally satisfied.\n* They have no particular thoughts on Netflix's original programming.\n* They are unsure of the pricing of Netflix, but believe it offers good value for money.\n* The interviewee suggests that Netflix should keep all seasons of old shows available for viewing.\n* They have experienced occasional access issues with Netflix.\n* The interviewee has no opinion on whether Netflix has had a positive impact on the way they consume entertainment.\n                                ```\n\n                                Candidate answer:\n                                You used **Doc Martin** as the example: you said the show had gone down after a while and that Netflix only had the last season available.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "f523d9fe",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The evidence explicitly says the user used \\\"Doc Martin\\\" as the example with only the last season available.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2311,
+                "completionTokens": 42,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
