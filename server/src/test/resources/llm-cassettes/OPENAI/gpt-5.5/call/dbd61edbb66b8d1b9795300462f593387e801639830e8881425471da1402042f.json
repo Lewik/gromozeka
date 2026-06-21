@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "dbd61edbb66b8d1b9795300462f593387e801639830e8881425471da1402042f",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about Native American powwows and I was wondering, which traditional game did you say was often performed by skilled dancers at powwows?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:06\n\n                                Noisy expected-answer label:\n                                Hoop Dance\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 01:59\nTranscript:\nuser: What are the traditional games played during a Native American powwow?\nassistant: There are many traditional games that are played during Native American powwows. Some of the most popular include:\n\n1. Stick Game - This traditional game is played with stick markers and a bowl. It is a game of chance and skill, and requires players to guess the location of the marked stick.\n\n2. Hand Games - This is a traditional gambling game that involves two teams of players. The game is played with bones or sticks and requires each team to guess which hand the opposing team is hiding the bone or stick.\n\n3. Drum and Dance Competitions - These competitions are a popular feature of powwows. Drum groups compete against each other to create the best rhythm, while dancers compete based on their style and skill.\n\n4. Indian Relay - This is a fast-paced horse racing event that involves multiple riders and horse exchanges. The goal is to complete a circuit around the track in the shortest time possible.\n\n5. Lacrosse - This traditional game is played with a ball and a long-handled stick. Players use the stick to catch and throw the ball, and score points by hitting the opposing team's goal.\n\n6. Double Ball - This is a fast-paced game that involves catching and throwing a small ball with two sticks. The goal is to score points by hitting a goal post with the ball.\n\n7. Hoop Dance - This traditional dance involves intricate movements with multiple hoops, and is often performed by skilled dancers at powwows.\nuser: Wow, I didn't realize there were so many traditional games played during powwows. Which one do you think is the most exciting to watch?\nassistant: I don't have personal feelings or opinions. however, each of the traditional games has its unique excitement and thrill. it depends on personal preferences, but generally, the drum and dance competition attracts the largest crowds and is considered the highlight of a powwow. the athleticism and grace of the dancers, combined with the beat of the drum, create an electrifying atmosphere that many find thrilling to watch. similarly, the indian relay and lacrosse are also considered very exhilarating and captivating events by many people.\nuser: That's so cool! I've always been interested in Native American culture and now I definitely want to attend a powwow. Do you have any recommendations for the best powwows to attend?\nassistant: As an AI, I do not have personal preferences or opinions, but there are many well-known powwows across North America, each with its unique style and traditions. Some of the most popular ones include:\n\n1. Gathering of Nations - This is one of the largest powwows in North America and takes place in Albuquerque, New Mexico.\n\n2. Denver March Powwow - Held each spring in the Colorado State Fairgrounds in Denver, it is a cultural event that showcases the history and traditions of the indigenous tribes of the region.\n\n3. Black Hills Powwow - This is one of the longest-running powwows in South Dakota, and is held annually in the city of Rapid City.\n\n4. Stanford Powwow - Held at Stanford University in California, it is one of the most well-attended powwows on the West Coast.\n\n5. United Tribes International Powwow - This powwow takes place in Bismarck, North Dakota during the first weekend of September and is one of the premier powwows in the United States.\n\nIt is always best to check with the organizers of a particular powwow to ensure that it aligns with your expectations, as dates, locations, and details can change from year to year.\nuser: I'll definitely look into those powwows and try to attend one soon. Do you have any tips for what to wear or bring to a powwow?\nassistant: Sure! Here are some tips for what to wear and bring to a powwow:\n\n1. Dress appropriately - As the powwow is a cultural event, it is respectful to dress appropriately. You can choose to wear traditional Native American clothing or casual attire. Avoid wearing clothing with offensive images or slogans. 2. Comfortable shoes - Wear comfortable shoes as you may be standing or walking for an extended period. 3. Bring a chair or blanket - It's a good idea to bring a comfortable chair or blanket to sit on, as seating may be limited. 4. Sunscreen and hat - Bring sunscreen as the powwow may be held outdoors and a hat to protect from the sun. 5. Respectful behavior - Be respectful and attentive during the events. Avoid taking pictures without permission, and always be mindful of your surroundings. 6. Bring cash - Bring cash as some powwows may have vendors selling Native American crafts, food, and souvenirs. 7. Water - Bring a water bottle to stay hydrated. These are just a few things to keep in mind to ensure you have a comfortable and respectful experience at a powwow.\n                                ```\n\n                                Candidate answer:\n                                The traditional game/dance I mentioned was Hoop Dance, described as involving intricate movements with multiple hoops and often performed by skilled dancers at powwows.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "dc439ea3",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about Native American powwows and I was wondering, which traditional game did you say was often performed by skilled dancers at powwows?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:06\n\n                                Noisy expected-answer label:\n                                Hoop Dance\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 01:59\nTranscript:\nuser: What are the traditional games played during a Native American powwow?\nassistant: There are many traditional games that are played during Native American powwows. Some of the most popular include:\n\n1. Stick Game - This traditional game is played with stick markers and a bowl. It is a game of chance and skill, and requires players to guess the location of the marked stick.\n\n2. Hand Games - This is a traditional gambling game that involves two teams of players. The game is played with bones or sticks and requires each team to guess which hand the opposing team is hiding the bone or stick.\n\n3. Drum and Dance Competitions - These competitions are a popular feature of powwows. Drum groups compete against each other to create the best rhythm, while dancers compete based on their style and skill.\n\n4. Indian Relay - This is a fast-paced horse racing event that involves multiple riders and horse exchanges. The goal is to complete a circuit around the track in the shortest time possible.\n\n5. Lacrosse - This traditional game is played with a ball and a long-handled stick. Players use the stick to catch and throw the ball, and score points by hitting the opposing team's goal.\n\n6. Double Ball - This is a fast-paced game that involves catching and throwing a small ball with two sticks. The goal is to score points by hitting a goal post with the ball.\n\n7. Hoop Dance - This traditional dance involves intricate movements with multiple hoops, and is often performed by skilled dancers at powwows.\nuser: Wow, I didn't realize there were so many traditional games played during powwows. Which one do you think is the most exciting to watch?\nassistant: I don't have personal feelings or opinions. however, each of the traditional games has its unique excitement and thrill. it depends on personal preferences, but generally, the drum and dance competition attracts the largest crowds and is considered the highlight of a powwow. the athleticism and grace of the dancers, combined with the beat of the drum, create an electrifying atmosphere that many find thrilling to watch. similarly, the indian relay and lacrosse are also considered very exhilarating and captivating events by many people.\nuser: That's so cool! I've always been interested in Native American culture and now I definitely want to attend a powwow. Do you have any recommendations for the best powwows to attend?\nassistant: As an AI, I do not have personal preferences or opinions, but there are many well-known powwows across North America, each with its unique style and traditions. Some of the most popular ones include:\n\n1. Gathering of Nations - This is one of the largest powwows in North America and takes place in Albuquerque, New Mexico.\n\n2. Denver March Powwow - Held each spring in the Colorado State Fairgrounds in Denver, it is a cultural event that showcases the history and traditions of the indigenous tribes of the region.\n\n3. Black Hills Powwow - This is one of the longest-running powwows in South Dakota, and is held annually in the city of Rapid City.\n\n4. Stanford Powwow - Held at Stanford University in California, it is one of the most well-attended powwows on the West Coast.\n\n5. United Tribes International Powwow - This powwow takes place in Bismarck, North Dakota during the first weekend of September and is one of the premier powwows in the United States.\n\nIt is always best to check with the organizers of a particular powwow to ensure that it aligns with your expectations, as dates, locations, and details can change from year to year.\nuser: I'll definitely look into those powwows and try to attend one soon. Do you have any tips for what to wear or bring to a powwow?\nassistant: Sure! Here are some tips for what to wear and bring to a powwow:\n\n1. Dress appropriately - As the powwow is a cultural event, it is respectful to dress appropriately. You can choose to wear traditional Native American clothing or casual attire. Avoid wearing clothing with offensive images or slogans. 2. Comfortable shoes - Wear comfortable shoes as you may be standing or walking for an extended period. 3. Bring a chair or blanket - It's a good idea to bring a comfortable chair or blanket to sit on, as seating may be limited. 4. Sunscreen and hat - Bring sunscreen as the powwow may be held outdoors and a hat to protect from the sun. 5. Respectful behavior - Be respectful and attentive during the events. Avoid taking pictures without permission, and always be mindful of your surroundings. 6. Bring cash - Bring cash as some powwows may have vendors selling Native American crafts, food, and souvenirs. 7. Water - Bring a water bottle to stay hydrated. These are just a few things to keep in mind to ensure you have a comfortable and respectful experience at a powwow.\n                                ```\n\n                                Candidate answer:\n                                The traditional game/dance I mentioned was Hoop Dance, described as involving intricate movements with multiple hoops and often performed by skilled dancers at powwows.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "dc439ea3",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The evidence explicitly says Hoop Dance is often performed by skilled dancers at powwows.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2206,
+                "completionTokens": 38,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
