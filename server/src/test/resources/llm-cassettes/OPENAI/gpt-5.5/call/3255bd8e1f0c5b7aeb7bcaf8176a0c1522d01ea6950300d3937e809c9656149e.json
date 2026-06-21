@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "3255bd8e1f0c5b7aeb7bcaf8176a0c1522d01ea6950300d3937e809c9656149e",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous chat and I was wondering, what was Andy wearing in the script you wrote for the comedy movie scene?\n\n                                Question date:\n                                2023/05/25 (Thu) 14:10\n\n                                Noisy expected-answer label:\n                                Andy was wearing an untidy, stained white shirt.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 12:47\nTranscript:\nuser: Write me the beginning of a script (formatted like a real movie script) for a comedy movie scene, based on the below information:\n\nAndy, a man in his 40s, is the Head of Computing at a rural high school. He has a loud, deep voice, and has more confidence than he has intelligence. He wants to be friends with his colleague exam invigilator John, so often tries and fails to impress him with his elaborate stories. He often bangs on about how he presents the school talent show. He has poor personal hygiene and can often be found making moaning noises while using disabled toilets, despite him having no obvious disability. Andy wears an untidy, stained white shirt. When addressing a group he starts with the words \"Right guys, settle down\".\n\nRoger, a man in his 50s, is a computing teacher working under Andy. He is an intelligent man, with grey hair and a laid back attitude to teaching. His classes are often out of control, while he sits there in despair. He has quiet contempt at the fact that Andy is the head of department, because he knows that he is much more qualified than Andy.\n\nJohn is a 69 year old man working as an exam invigilator. As he is past retirement it is unusual that he is still working, but we suspect it might be because he enjoys making people uncomfortable. John has wispy, grey hair and wears a pinstripe suit, several gold rings and red tinted glasses. He makes brazen, inappropriate remarks towards his colleagues.\n\nRuth, a woman in her 40s, is a languages teacher at the high school. She is so obsessed with the German language and culture that she regularly speaks to people in German and they don't understand what she's saying. She is attracted to women and regularly has to deter John's advances.\nassistant: INT. RURAL HIGH SCHOOL - COMPUTING DEPARTMENT - DAY\n\nAndy, a man in his 40s with a loud, deep voice and poor personal hygiene, is standing in front of the department's whiteboard. He wears an untidy, stained white shirt.\n\nANDY:\nRight guys, settle down. I just wanted to let you all know that this year's talent show is going to be bigger and better than ever. I'm putting in a lot of hard work to make sure it's a success.\n\nROGER:\n(sitting in the back of the room)\nYeah, sure Andy. We all know how much work you put into the talent show.\n\nANDY:\n(ignoring Roger's sarcasm)\nAnd John, I know you'll be there to help me out as usual.\n\nJOHN:\n(69 year old man with wispy, grey hair and red tinted glasses)\nI'll be there to make sure no one cheats, Andy.\n\nRUTH:\n(woman in her 40s, speaking in German)\nJa, John wird da sein, um sicherzustellen, dass niemand betrügt.\n\nANDY:\n(confused)\nUm, thanks Ruth. I'll make sure to brush up on my German before the talent show.\n\nROGER:\n(rolling his eyes)\nGood luck with that, Andy.\n\nANDY:\n(determined)\nI'll show you all that I'm a great talent show presenter. You just wait and see.\n\nROGER:\n(under his breath)\nI'll believe it when I see it.\n\nThe scene ends with Andy confidently walking out of the room, while the other teachers look on in amusement.\nuser: Write another scene\nassistant: INT. RURAL HIGH SCHOOL - DISABLED TOILET - DAY\n\nAndy is heard making moaning noises from inside the disabled toilet. He is not visibly disabled.\n\nROGER:\n(knocking on the door)\nAndy, are you in there?\n\nANDY:\n(groaning)\nYeah, just a minute.\n\nROGER:\n(sighing)\nWhat are you doing in there?\n\nANDY:\n(still moaning)\nI don't know, I just felt like making some noise.\n\nROGER:\n(exasperated)\nAndy, you can't just use the disabled toilet for no reason. You're not disabled.\n\nANDY:\n(defensive)\nI'm the head of department, I can do what I want.\n\nROGER:\n(shaking his head)\nYou need to get your act together, Andy.\n\nThe scene ends with Andy exiting the disabled toilet, looking sheepish.\nuser: Write another scene\nassistant: INT. RURAL HIGH SCHOOL - STAFF ROOM - DAY\n\nAndy is sitting at a table, trying to impress John with one of his elaborate stories.\n\nANDY:\n...and then I was like, \"Right guys, settle down\" and they all listened to me. It was amazing.\n\nJOHN:\n(69 year old man with wispy, grey hair and red tinted glasses)\nThat's impressive, Andy.\n\nRUTH:\n(woman in her 40s, speaking in German)\nJa, das ist beeindruckend, Andy.\n\nANDY:\n(confused)\nThanks, Ruth. I'm glad you enjoyed my story.\n\nROGER:\n(rolling his eyes)\nAndy, you always have the most interesting stories.\n\nANDY:\n(defensive)\nWhat's that supposed to mean?\n\nROGER:\n(sarcastically)\nIt means that your stories are always exaggerated and not very believable.\n\nANDY:\n(offended)\nWell, maybe you just don't have a good sense of humor.\n\nJOHN:\n(making a lewd comment)\nMaybe you just need to lighten up, Ruth.\n\nRUTH:\n(deterring John's advances)\nJohn, please. I'm not interested.\n\nThe scene ends with Andy looking dejected and the other teachers awkwardly avoiding eye contact with him.\n                                ```\n\n                                Candidate answer:\n                                Andy was wearing an untidy, stained white shirt in the comedy movie scene script.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "4388e9dd",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous chat and I was wondering, what was Andy wearing in the script you wrote for the comedy movie scene?\n\n                                Question date:\n                                2023/05/25 (Thu) 14:10\n\n                                Noisy expected-answer label:\n                                Andy was wearing an untidy, stained white shirt.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 12:47\nTranscript:\nuser: Write me the beginning of a script (formatted like a real movie script) for a comedy movie scene, based on the below information:\n\nAndy, a man in his 40s, is the Head of Computing at a rural high school. He has a loud, deep voice, and has more confidence than he has intelligence. He wants to be friends with his colleague exam invigilator John, so often tries and fails to impress him with his elaborate stories. He often bangs on about how he presents the school talent show. He has poor personal hygiene and can often be found making moaning noises while using disabled toilets, despite him having no obvious disability. Andy wears an untidy, stained white shirt. When addressing a group he starts with the words \"Right guys, settle down\".\n\nRoger, a man in his 50s, is a computing teacher working under Andy. He is an intelligent man, with grey hair and a laid back attitude to teaching. His classes are often out of control, while he sits there in despair. He has quiet contempt at the fact that Andy is the head of department, because he knows that he is much more qualified than Andy.\n\nJohn is a 69 year old man working as an exam invigilator. As he is past retirement it is unusual that he is still working, but we suspect it might be because he enjoys making people uncomfortable. John has wispy, grey hair and wears a pinstripe suit, several gold rings and red tinted glasses. He makes brazen, inappropriate remarks towards his colleagues.\n\nRuth, a woman in her 40s, is a languages teacher at the high school. She is so obsessed with the German language and culture that she regularly speaks to people in German and they don't understand what she's saying. She is attracted to women and regularly has to deter John's advances.\nassistant: INT. RURAL HIGH SCHOOL - COMPUTING DEPARTMENT - DAY\n\nAndy, a man in his 40s with a loud, deep voice and poor personal hygiene, is standing in front of the department's whiteboard. He wears an untidy, stained white shirt.\n\nANDY:\nRight guys, settle down. I just wanted to let you all know that this year's talent show is going to be bigger and better than ever. I'm putting in a lot of hard work to make sure it's a success.\n\nROGER:\n(sitting in the back of the room)\nYeah, sure Andy. We all know how much work you put into the talent show.\n\nANDY:\n(ignoring Roger's sarcasm)\nAnd John, I know you'll be there to help me out as usual.\n\nJOHN:\n(69 year old man with wispy, grey hair and red tinted glasses)\nI'll be there to make sure no one cheats, Andy.\n\nRUTH:\n(woman in her 40s, speaking in German)\nJa, John wird da sein, um sicherzustellen, dass niemand betrügt.\n\nANDY:\n(confused)\nUm, thanks Ruth. I'll make sure to brush up on my German before the talent show.\n\nROGER:\n(rolling his eyes)\nGood luck with that, Andy.\n\nANDY:\n(determined)\nI'll show you all that I'm a great talent show presenter. You just wait and see.\n\nROGER:\n(under his breath)\nI'll believe it when I see it.\n\nThe scene ends with Andy confidently walking out of the room, while the other teachers look on in amusement.\nuser: Write another scene\nassistant: INT. RURAL HIGH SCHOOL - DISABLED TOILET - DAY\n\nAndy is heard making moaning noises from inside the disabled toilet. He is not visibly disabled.\n\nROGER:\n(knocking on the door)\nAndy, are you in there?\n\nANDY:\n(groaning)\nYeah, just a minute.\n\nROGER:\n(sighing)\nWhat are you doing in there?\n\nANDY:\n(still moaning)\nI don't know, I just felt like making some noise.\n\nROGER:\n(exasperated)\nAndy, you can't just use the disabled toilet for no reason. You're not disabled.\n\nANDY:\n(defensive)\nI'm the head of department, I can do what I want.\n\nROGER:\n(shaking his head)\nYou need to get your act together, Andy.\n\nThe scene ends with Andy exiting the disabled toilet, looking sheepish.\nuser: Write another scene\nassistant: INT. RURAL HIGH SCHOOL - STAFF ROOM - DAY\n\nAndy is sitting at a table, trying to impress John with one of his elaborate stories.\n\nANDY:\n...and then I was like, \"Right guys, settle down\" and they all listened to me. It was amazing.\n\nJOHN:\n(69 year old man with wispy, grey hair and red tinted glasses)\nThat's impressive, Andy.\n\nRUTH:\n(woman in her 40s, speaking in German)\nJa, das ist beeindruckend, Andy.\n\nANDY:\n(confused)\nThanks, Ruth. I'm glad you enjoyed my story.\n\nROGER:\n(rolling his eyes)\nAndy, you always have the most interesting stories.\n\nANDY:\n(defensive)\nWhat's that supposed to mean?\n\nROGER:\n(sarcastically)\nIt means that your stories are always exaggerated and not very believable.\n\nANDY:\n(offended)\nWell, maybe you just don't have a good sense of humor.\n\nJOHN:\n(making a lewd comment)\nMaybe you just need to lighten up, Ruth.\n\nRUTH:\n(deterring John's advances)\nJohn, please. I'm not interested.\n\nThe scene ends with Andy looking dejected and the other teachers awkwardly avoiding eye contact with him.\n                                ```\n\n                                Candidate answer:\n                                Andy was wearing an untidy, stained white shirt in the comedy movie scene script.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "4388e9dd",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The gold evidence explicitly states Andy wears an untidy, stained white shirt.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2334,
+                "completionTokens": 36,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
