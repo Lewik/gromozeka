@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "25ed7e7df1f732f205487eb7731ed4bebc1253c8c37265d4483f41226a351caa",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about language learning apps. You mentioned a few options, and I was wondering if you could remind me of the one that uses mnemonics to help learners memorize words and phrases?\n\n                                Question date:\n                                2023/05/27 (Sat) 09:58\n\n                                Noisy expected-answer label:\n                                Memrise\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 06:01\nTranscript:\nuser: What was the most challenging experience you had while learning a new language in a foreign country, and how did you overcome it?\nassistant: As an AI language model, I don't have personal experiences. However, some common challenging experiences while learning a new language in a foreign country are:\n\n1) Language Barrier: When a student doesn't have sufficient knowledge of the local language, communicating with natives and understanding the lesson becomes difficult.\n\n2) Cultural Differences: Understanding the cultural context of a language is crucial, and it becomes challenging for learners to comprehend the language nuances without knowing its cultural background.\n\n3) Lack of Practice: Learning a language requires practice, and not using the language regularly hampers the learner's progress.\n\nTo overcome these challenges, one can try the following:\n\n1) Enroll in language programs: Joining language programs can help in understanding the language better, and practicing with native speakers can improve communication skills.\n\n2) Immersion: Living in the local community of the foreign country can help in understanding the culture and language better.\n\n3) Practice: Practice with language partners, watch native language movies, read books, and surround oneself with the language.\nuser: Yeah, I understand. I found it hard to understand the cultural context when I first moved to Japan. But through making local friends and joining language exchange groups, it got easier over time.\nassistant: That's great to hear! Making local friends and joining language exchange groups are excellent ways to overcome the challenges of learning a new language in a foreign country. These experiences help you to immerse yourself in the language and gain a better understanding of the cultural context, which is critical to mastering a language. Consistency in practicing the language is also vital. I wish you all the best in your language learning journey!\nuser: Yeah, consistency is key. I've also found that using language learning apps and practicing with my Japanese co-workers has really helped my progress. Do you have any recommendations for language apps?\nassistant: Sure, there are several excellent language learning apps that can be useful for learners, depending on their preferences and learning goals. Here are some popular ones:\n\n1. Duolingo - It is one of the most popular language learning apps with gamified exercises to learn new words, phrases, and grammar. 2. Rosetta Stone - Rosetta Stone offers immersive language lessons with speech recognition software to practice speaking. 3. Babbel - Babbel provides personalized language lessons in bite-sized chunks and offers real-world conversations. 4. Memrise - Memrise uses mnemonics to help learners memorize words, phrases, and grammatical concepts. 5. Lingodeer - Lingodeer is a language learning app that provides courses with interactive games, videos, and quizzes to help learners progress in their language skills. I hope that helps!\n                                ```\n\n                                Candidate answer:\n                                The app was Memrise. In the previous language-app recommendations, Memrise was described as using mnemonics to help learners memorize words, phrases, and grammatical concepts.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "fca762bc",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate must satisfy every explicit qualifier supported by the gold evidence. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about language learning apps. You mentioned a few options, and I was wondering if you could remind me of the one that uses mnemonics to help learners memorize words and phrases?\n\n                                Question date:\n                                2023/05/27 (Sat) 09:58\n\n                                Noisy expected-answer label:\n                                Memrise\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 06:01\nTranscript:\nuser: What was the most challenging experience you had while learning a new language in a foreign country, and how did you overcome it?\nassistant: As an AI language model, I don't have personal experiences. However, some common challenging experiences while learning a new language in a foreign country are:\n\n1) Language Barrier: When a student doesn't have sufficient knowledge of the local language, communicating with natives and understanding the lesson becomes difficult.\n\n2) Cultural Differences: Understanding the cultural context of a language is crucial, and it becomes challenging for learners to comprehend the language nuances without knowing its cultural background.\n\n3) Lack of Practice: Learning a language requires practice, and not using the language regularly hampers the learner's progress.\n\nTo overcome these challenges, one can try the following:\n\n1) Enroll in language programs: Joining language programs can help in understanding the language better, and practicing with native speakers can improve communication skills.\n\n2) Immersion: Living in the local community of the foreign country can help in understanding the culture and language better.\n\n3) Practice: Practice with language partners, watch native language movies, read books, and surround oneself with the language.\nuser: Yeah, I understand. I found it hard to understand the cultural context when I first moved to Japan. But through making local friends and joining language exchange groups, it got easier over time.\nassistant: That's great to hear! Making local friends and joining language exchange groups are excellent ways to overcome the challenges of learning a new language in a foreign country. These experiences help you to immerse yourself in the language and gain a better understanding of the cultural context, which is critical to mastering a language. Consistency in practicing the language is also vital. I wish you all the best in your language learning journey!\nuser: Yeah, consistency is key. I've also found that using language learning apps and practicing with my Japanese co-workers has really helped my progress. Do you have any recommendations for language apps?\nassistant: Sure, there are several excellent language learning apps that can be useful for learners, depending on their preferences and learning goals. Here are some popular ones:\n\n1. Duolingo - It is one of the most popular language learning apps with gamified exercises to learn new words, phrases, and grammar. 2. Rosetta Stone - Rosetta Stone offers immersive language lessons with speech recognition software to practice speaking. 3. Babbel - Babbel provides personalized language lessons in bite-sized chunks and offers real-world conversations. 4. Memrise - Memrise uses mnemonics to help learners memorize words, phrases, and grammatical concepts. 5. Lingodeer - Lingodeer is a language learning app that provides courses with interactive games, videos, and quizzes to help learners progress in their language skills. I hope that helps!\n                                ```\n\n                                Candidate answer:\n                                The app was Memrise. In the previous language-app recommendations, Memrise was described as using mnemonics to help learners memorize words, phrases, and grammatical concepts.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "fca762bc",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The evidence explicitly identifies Memrise as the app that uses mnemonics to memorize words, phrases, and grammatical concepts.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1789,
+                "completionTokens": 45,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
