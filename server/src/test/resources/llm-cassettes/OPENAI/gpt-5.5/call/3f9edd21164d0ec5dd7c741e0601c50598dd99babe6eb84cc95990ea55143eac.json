@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "3f9edd21164d0ec5dd7c741e0601c50598dd99babe6eb84cc95990ea55143eac",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:ed4ddc30\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/15 (Wed) 12:06\nTranscript:\nuser: I'm thinking of making some quiche for dinner, do you have a simple recipe you can share?\nassistant: Quiche is a great choice for dinner! I'd be happy to share a simple recipe with you. Here's a classic quiche recipe that's easy to make and adaptable to your taste:\n\n**Basic Quiche Recipe**\n\nIngredients:\n\n* 1 pie crust (homemade or store-bought)\n* 3 large eggs\n* 1 1/2 cups heavy cream or half-and-half\n* 1/2 cup shredded cheese (Cheddar, Swiss, or a mix)\n* 1/2 cup diced ham, bacon, or vegetables (optional)\n* Salt and pepper to taste\n* Fresh herbs (optional)\n\nInstructions:\n\n1. Preheat your oven to 375°F (190°C).\n2. Roll out the pie crust and place it in a 9-inch tart pan with a removable bottom.\n3. In a large bowl, whisk together the eggs, heavy cream, and a pinch of salt and pepper.\n4. Add the shredded cheese and diced ham, bacon, or vegetables (if using) to the egg mixture. Mix well.\n5. Pour the egg mixture into the pie crust.\n6. Bake the quiche for 35-40 minutes or until the edges are golden brown and the center is set.\n7. Remove the quiche from the oven and let it cool for a few minutes.\n8. Garnish with fresh herbs (if using) and serve warm or at room temperature.\n\n**Variations:**\n\n* Spinach and Feta Quiche: Add 1 cup fresh spinach leaves and 1/2 cup crumbled feta cheese to the egg mixture.\n* Mushroom and Swiss Quiche: Add 1 cup sautéed mushrooms and 1/2 cup grated Swiss cheese to the egg mixture.\n* Broccoli and Cheddar Quiche: Add 1 cup steamed broccoli florets and 1/2 cup grated Cheddar cheese to the egg mixture.\n\nTips:\n\n* Blind baking the pie crust (baking it without the filling) for 5-7 minutes before adding the egg mixture can help prevent the crust from becoming soggy.\n* Use a pie shield or foil to prevent the crust from overbrowning.\n* Quiche is a great make-ahead dish; you can prepare the filling and crust separately, then assemble and bake when you're ready.\n\nEnjoy your delicious homemade quiche!\nuser: I think I'll try the spinach and feta variation, sounds delicious. By the way, I was thinking of using some of our fresh eggs from the coop - we've got 20 dozen stocked up in the fridge right now. Do you have any tips on how to store eggs properly to keep them fresh for a longer period?\nassistant: The spinach and feta quiche is a fantastic combination.\n\nWow, 20 dozen eggs is a lot! Congratulations on having a thriving coop! Proper storage is crucial to keep your eggs fresh for a longer period. Here are some tips to help you store your eggs:\n\n1. **Cool, dry place:** Store eggs in a cool, dry place, away from direct sunlight and heat sources. The ideal storage temperature is between 40°F (4°C) and 50°F (10°C).\n2. **Refrigerate:** Store eggs in the refrigerator at a consistent temperature below 40°F (4°C). This will help prevent bacterial growth and keep eggs fresh for a longer period.\n3. **Carton or container:** Store eggs in their original carton or a covered container to protect them from moisture, light, and contamination. Make sure the container is clean and dry before placing the eggs inside.\n4. **Pointed end down:** Store eggs with the pointed end down to prevent the yolk from coming into contact with the shell membrane, which can cause bacterial contamination.\n5. **Don't wash:** Avoid washing eggs before storing them. Washing can remove the natural coating on the eggshell, making it more susceptible to bacterial penetration.\n6. **Check regularly:** Regularly check your eggs for cracks, breaks, or unusual odors. Remove any spoiled eggs to prevent contamination.\n7. **First-in, first-out:** Use the oldest eggs first to ensure you're consuming the freshest eggs.\n8. **Label and date:** Label the carton or container with the date you collected the eggs, so you can keep track of their age.\n9. **Don't stack:** Avoid stacking eggs on top of each other, as this can cause pressure and lead to breakage.\n10. **Freezing:** If you have an excess of eggs, you can freeze them. Beat the eggs, add a pinch of salt or sugar (depending on your intended use), and store them in an airtight container or freezer bag. Frozen eggs are perfect for baking, scrambling, or making omelets.\n\nBy following these tips, you can enjoy your fresh eggs for a longer period. Generally, eggs can be stored for:\n\n* 4 to 5 weeks in the refrigerator\n* 1 year or longer in the freezer (if frozen)\n\nRemember to always handle eggs safely and hygienically to prevent the risk of Salmonella and other bacterial contamination.\n\nNow, go ahead and enjoy your fresh eggs in that delicious spinach and feta quiche!\nuser: Thanks! I'll keep those tips in mind. I was also thinking of making some cheese using the milk from our goats, Billy and Nibbles. Do you have any simple recipes for a beginner like me?\nassistant: Making cheese from your own goat's milk is a great idea! Congratulations on having a thriving goat farm! I'd be happy to help you with a simple recipe for a beginner.\n\nHere's a recipe for a delicious and easy-to-make cheese, perfect for a beginner:\n\n**Simple Goat Cheese Recipe (Chevre)**\n\nIngredients:\n\n* 1 gallon goat's milk\n* 1/4 cup cheese cultures (you can buy this at a cheese-making supply store or online)\n* 1/4 cup cheese salt\n* 1/2 tsp rennet (vegetable or animal, depending on your preference)\n* Water\n\nEquipment:\n\n* Large pot (at least 3-4 qt capacity)\n* Cheese mold or form (you can use a colander or a cheese basket)\n* Cheesecloth or butter muslin\n* Thermometer\n\nInstructions:\n\n1. **Pasteurize the milk:** Heat the milk to 145°F (63°C) and hold it at that temperature for 30 minutes. You can do this by placing the pot in a sink filled with hot water or using a thermometer to monitor the temperature.\n2. **Cool the milk:** Let the milk cool to 86°F (30°C) for the cheese cultures to activate.\n3. **Add cheese cultures:** Add the cheese cultures to the cooled milk and stir gently to distribute evenly. Cover the pot and let it sit at room temperature (around 70°F to 75°F or 21°C to 24°C) for 45 minutes to allow the cultures to grow.\n4. **Add rennet:** Add the rennet to the milk and stir gently in an up-and-down motion for about 30 seconds. Cover the pot and let it sit at room temperature for 30 to 45 minutes, or until you see a clean break (the curds will separate from the whey).\n5. **Cut and stir:** Cut the curds into 1/2-inch (1.3 cm) cubes and let them sit for 5 minutes. Then, gently stir the curds in a figure-eight motion for 5 to 10 minutes, until they reach the desired consistency.\n6. **Drain and shape:** Line a cheese mold or colander with cheesecloth or butter muslin. Carefully pour the curds into the mold and let the whey drain off. Gather the edges of the cloth and give the cheese a gentle squeeze to remove excess whey.\n7. **Age the cheese (optional):** You can age the cheese at room temperature (around 70°F to 75°F or 21°C to 24°C) for a few days to a week, or until it reaches the desired flavor and texture. Wrap the cheese in plastic wrap or aluminum foil and store it in the refrigerator.\n\nTips for a beginner:\n\n* Make sure to sanitize all equipment and utensils before starting.\n* Keep the cheese-making area clean and dust-free.\n* Monitor the temperature and pH levels during the process.\n* Don't over-stir or over-handle the curds, as this can cause them to break or become tough.\n* Be patient and flexible, as cheese-making can be a trial-and-error process.\n\nThis recipe will give you a delicious and tangy goat cheese, perfect for spreading on crackers or bread. You can also flavor it with herbs, garlic, or other ingredients to create different varieties.\n\nRemember to always follow proper sanitation and safety guidelines when working with dairy products to avoid contamination and foodborne illness.\n\nGood luck, and I hope you enjoy your homemade goat cheese!\nuser: That sounds like a great recipe, thanks! I'll definitely give it a try. By the way, do you have any advice on how to deal with pests like mites and flies in the chicken coop? We've had some issues with them lately.\nassistant: Pests like mites and flies can be a real nuisance in the chicken coop, can't they? Don't worry, I've got some advice to help you tackle those pesky critters!\n\n**Mites:**\n\n1. **Cleanliness is key:** Regularly clean the coop, including the walls, floors, and perches. Remove any debris, poop, and old bedding. Disinfect all surfaces with a mild detergent and water.\n2. **Dusting:** Use a dusting powder specifically designed for mites, such as diatomaceous earth or pyrethrin powder, to dust the chickens and the coop. This will help dehydrate and kill the mites.\n3. **Ventilation:** Ensure good ventilation in the coop to reduce humidity, which mites thrive in. Add windows, vents, or fans to improve airflow.\n4. **Seal entry points:** Mites can hide in tiny crevices, so seal any gaps or cracks around the coop, including windows, doors, and vents.\n5. **Treat the chickens:** Use a mite powder or spray on the chickens themselves, following the product's instructions. You can also add a few drops of peppermint oil to their water to help repel mites.\n\n**Flies:**\n\n1. **Remove attractants:** Keep the coop and surrounding area clean, and remove any food sources, such as spilled feed or manure, that might attract flies.\n2. **Screening:** Install screening around the coop's windows, vents, and doors to keep flies out.\n3. **Fans:** Use fans to circulate air and make it difficult for flies to land and breed.\n4. **Traps:** Create homemade fly traps using jars, bowls, or containers with a sweet liquid bait (e.g., apple cider vinegar, fruit juice) and a funnel or paper cone to direct the flies inside. Cover the trap with plastic wrap or a cloth to prevent escape.\n5. **Essential oils:** Certain essential oils, such as peppermint, lemongrass, and citronella, can help repel flies. Mix a few drops of the oil with water and spray it around the coop.\n\n**General Tips:**\n\n1. **Regular inspections:** Regularly inspect the coop and chickens for signs of pests, such as mites, flies, or lice.\n2. **Quarantine:** Isolate new chickens or those showing signs of pest infestation to prevent the spread of pests to the rest of the flock.\n3. **Integrate natural pest control:** Encourage natural pest control by introducing beneficial insects, such as ladybugs or lacewings, into the coop.\n4. **Rotate bedding:** Rotate the bedding material (e.g., straw, wood shavings) regularly to reduce the buildup of pests and diseases.\n5. **Consult a veterinarian:** If you're struggling to manage pests or if you notice signs of illness in your chickens, consult a veterinarian for guidance and support.\n\nBy following these tips, you should be able to reduce the presence of mites and flies in your chicken coop. Remember to stay vigilant and adapt your strategies as needed to keep your flock healthy and happy!\nuser: I was thinking of building a fence around the chicken coop to protect them from predators like raccoons and foxes. Do you have any advice on how to build a predator-proof fence?\nassistant: Building a predator-proof fence around your chicken coop is a great idea! Raccoons, foxes, and other predators can be a real threat to your chickens, so it's essential to take measures to protect them. Here are some tips to help you build a sturdy and effective predator-proof fence:\n\n**Choose the right materials:**\n\n1. **Hardware cloth:** Use hardware cloth, a type of metal mesh, for the fence material. It's durable, long-lasting, and can withstand predator attacks. You can choose from various mesh sizes, but a 1/2 inch or 1/4 inch mesh is recommended.\n2. **Chicken wire:** While chicken wire can be used, it's not as effective as hardware cloth. If you do use chicken wire, make sure it's at least 3 feet high and extends at least 12 inches below ground level.\n3. **Electric fencing:** Consider adding an electric fencing component to your predator-proof fence. This can be an effective deterrent for predators like raccoons and foxes.\n\n**Design and construction:**\n\n1. **Bury the fence:** Bury the fence at least 12 inches below ground level to prevent predators from digging underneath. You can also add a 12-inch wide apron of hardware cloth around the perimeter to prevent digging.\n2. **Extend the fence:** Make sure the fence extends at least 3 feet above ground level to prevent predators from jumping over.\n3. **Use sturdy posts:** Use sturdy posts, such as 2-3 inch diameter wooden or metal posts, to support the fence. Space them 8-10 feet apart.\n4. **Secure the gates:** Use strong gates and secure them with latches or locks to prevent predators from getting in.\n5. **Cover the top:** Cover the top of the fence with a roof or a mesh material to prevent predators from climbing over.\n\n**Additional tips:**\n\n1. **Inspect regularly:** Regularly inspect the fence for damage, gaps, or weaknesses.\n2. **Trim vegetation:** Keep vegetation around the fence trimmed to prevent predators from using it as cover.\n3. **Use multiple layers:** Consider using multiple layers of fencing, such as a combination of hardware cloth and chicken wire, for added protection.\n4. **Consider the corners:** Pay extra attention to the corners of the fence, as these are common weak points. Use additional materials, such as extra mesh or wire, to reinforce these areas.\n5. **Consult local experts:** Consult with local farmers, animal control experts, or fencing contractors for specific advice on building a predator-proof fence in your area.\n\nBy following these tips, you can build a sturdy and effective predator-proof fence to protect your chickens from raccoons, foxes, and other predators. Remember to stay vigilant and adapt your fencing strategy as needed to keep your flock safe!\nuser: I think I'll get started on building that fence this weekend. Thanks for the tips! By the way, I was thinking of getting some bees to help with pollination on our farm. Do you have any advice on how to get started with beekeeping?\nassistant: Bees are a great addition to any farm! Beekeeping can be a fascinating and rewarding hobby, and it's fantastic that you're considering it. Here are some tips to help you get started with beekeeping:\n\n**Initial Preparation:**\n\n1. **Research and education:** Learn as much as you can about bee biology, beekeeping, and the specific needs of honey bees in your region.\n2. **Check local regulations:** Familiarize yourself with local regulations and ordinances regarding beekeeping in your area.\n3. **Join a beekeeping community:** Connect with local beekeepers, join online forums, or attend beekeeping workshops to learn from experienced beekeepers.\n\n**Equipment and Supplies:**\n\n1. **Beehive:** Choose a suitable beehive design and material (e.g., Langstroth, Top-bar, Warre) that suits your needs and climate.\n2. **Protective clothing:** Invest in a beekeeping suit, veil, and gloves to protect yourself from stings.\n3. **Smoker:** A smoker helps calm bees during inspections by producing a gentle, cool smoke.\n4. **Honey extractor:** If you plan to harvest honey, you'll need an extractor to extract honey from the frames.\n\n**Getting Your Bees:**\n\n1. **Obtain bees:** You can purchase bees from a reputable supplier or capture a swarm (if you're experienced).\n2. **Choose the right bees:** Select a bee species suitable for your region and climate (e.g., European, Italian, Carniolan).\n\n**Ongoing Care and Management:**\n\n1. **Regular inspections:** Check your bees every 7-10 days during peak season to monitor health, growth, and potential issues.\n2. **Maintain a healthy environment:** Ensure a clean, dry, and well-ventilated hive environment.\n3. **Control pests and diseases:** Monitor for signs of pests (e.g., varroa mites, small hive beetles) and diseases (e.g., American foulbrood, nosema).\n4. **Harvest honey:** Extract honey during peak honey flow, usually in late summer or early fall.\n\n**Tips for Beginners:**\n\n1. **Start small:** Begin with one or two hives and expand as you gain experience.\n2. **Be patient:** Beekeeping requires patience, as it can take time to develop a strong, healthy colony.\n3. **Stay calm and gentle:** Move slowly and deliberately when handling bees to avoid agitating them.\n4. **Continuously learn:** Attend workshops, read books, and seek guidance from experienced beekeepers to improve your skills.\n\nRemember, beekeeping is a long-term commitment that requires dedication, patience, and attention to detail. With the right mindset and preparation, you can enjoy the many rewards of beekeeping and contribute to the health of your farm's ecosystem.\n\n        Candidate notes:\n        [0] type=CONTEXT title=Spinach and feta quiche as egg-use recipe summary=The user chose the spinach and feta quiche variation as a dinner idea while trying to use a large stock of fresh coop eggs; prior recipe context used 3 eggs, cream or half-and-half, cheese, and optional fillings in a pie crust. scope=Applies to the user's recipe preferences for using fresh eggs from the coop. entities=entity:<0>,entity:<1> keywords=spinach feta quiche,fresh eggs,coop eggs,egg recipes,dinner tags=cooking,eggs,recipe_context evidence=I think I'll try the spinach and feta variation\n[1] type=LESSON title=Egg storage guidance for surplus coop eggs summary=For the user's large fresh-egg stock, prior guidance emphasized refrigeration below 40°F, keeping eggs in cartons or covered containers, storing pointed-end down, not washing before storage, using FIFO/date labels, checking for cracks or odors, and freezing beaten eggs for excess supply. scope=Applies to storing the user's fresh eggs from the chicken coop when there is surplus inventory. entities=entity:<1>,entity:<2> keywords=egg storage,coop eggs,refrigerate eggs,pointed end down,freeze eggs,FIFO tags=food_storage,eggs,homesteading evidence=Do you have any tips on how to store eggs properly to keep them fresh for a longer period?\n[2] type=PLAN title=Beginner chevre plan using Billy and Nibbles' goat milk summary=The user intended to try a beginner Simple Goat Cheese Recipe (Chevre) using milk from their goats Billy and Nibbles; the discussed method used 1 gallon goat milk, cheese cultures, salt, rennet, sanitation, temperature control, draining in cheesecloth, and optional aging. scope=Applies to the user's home cheese-making plans using milk from goats Billy and Nibbles. entities=entity:<0>,entity:<3>,entity:<4>,entity:<5> keywords=Billy,Nibbles,goat milk,chevre,goat cheese,beginner cheese making tags=cheese_making,goats,homesteading evidence=I'll definitely give it a try\n[3] type=LESSON title=Chicken coop pest-management guidance for mites and flies summary=For mites and flies in the user's chicken coop, prior guidance focused on sanitation, removing manure/spilled feed, rotating bedding, improving ventilation, sealing crevices and screening openings, using mite dusts such as diatomaceous earth or pyrethrin according to directions, fly traps/fans/repellent oils, regular inspections, and quarantining affected or new chickens. scope=Applies to managing mites and flies in the user's chicken coop and flock environment. entities=entity:<6>,entity:<7> keywords=chicken coop pests,mites,flies,diatomaceous earth,pyrethrin,ventilation,bedding tags=chickens,coop_maintenance,pest_control evidence=We've had some issues with them lately.\n[4] type=PLAN title=Predator-proof chicken coop fence direction summary=The user planned to start building a predator-proof fence around the chicken coop the following weekend to protect chickens from raccoons and foxes; reusable design guidance included hardware cloth with 1/2-inch or 1/4-inch mesh, burying fencing or adding a 12-inch apron, at least 3 feet above ground, sturdy posts, secure gates, top cover, reinforced corners, and regular inspection. scope=Applies to the user's chicken coop predator-proof fencing project. entities=entity:<6>,entity:<7>,entity:<0> keywords=predator-proof fence,chicken coop,hardware cloth,raccoons,foxes,fence apron tags=chickens,fencing,predator_protection,homesteading evidence=I think I'll get started on building that fence this weekend.\n[5] type=DIRECTION title=Beginner beekeeping direction for farm pollination summary=The user was considering getting bees to help with pollination on their farm; prior beginner guidance recommended researching bee biology and local regulations, joining a beekeeping community, starting with one or two hives, choosing hive type and region-suitable bees, buying protective gear and a smoker, inspecting every 7–10 days in peak season, and monitoring pests and diseases. scope=Applies to the user's prospective beekeeping setup for farm pollination. entities=entity:<8>,entity:<9>,entity:<0> keywords=beekeeping,pollination,farm bees,beginner beekeeper,hives,smoker,bee inspections tags=beekeeping,farm,pollination,homesteading evidence=I was thinking of getting some bees to help with pollination on our farm.\n\n        Existing active notes:\n        id=hot-path-b1661ef0f14a-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Egg-heavy cooking context and quick egg-salad direction summary=The user was looking for practical ways to use a large fresh-egg stock, including quick egg salad for lunch and breakfast dishes combining fresh eggs with goat milk such as pancakes, eggs en cocotte, crepes, quiche, strata, French toast, eggs in purgatory, and custard tarts. scope=Applies to the user's cooking context for using fresh eggs, especially with goat milk and quick lunch/breakfast recipes. keywords=fresh eggs,egg salad,goat milk breakfast,quiche,strata,30 dozen eggs tags=cooking,egg_inventory,recipe_context useCount=0\nid=hot-path-b1661ef0f14a-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Beginner goat-milk cheese-making directions summary=The user is exploring beginner-friendly ways to use fresh goat milk for cheese-making, with fresh chevre and ricotta emerging as preferred starter projects; simple recipes discussed include chevre, ricotta, mozzarella, and feta using goat milk, cultures/acid, rennet, salt, draining, and refrigeration/freezing guidance. scope=Applies to the user's home goat-milk cheese-making interests and beginner recipe selection. keywords=goat milk,cheese making,fresh chevre,ricotta,beginner cheese,feta,mozzarella tags=cooking,cheese_making,goat_milk,beginner_recipe useCount=0\nid=hot-path-b1661ef0f14a-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Fresh chevre and ricotta storage/use guidance summary=Fresh chevre storage guidance given: wrap tightly, refrigerate away from strong odors, use ideally within 1–2 weeks, with possible freezing up to 6–9 months. Ricotta guidance given: use promptly in lasagna, cannoli, ravioli, cheesecake, refrigerate up to 3 days, freeze up to 3 months, or dry for longer storage. scope=Applies to prior guidance for storing and using the user's homemade fresh chevre and ricotta. keywords=fresh chevre storage,ricotta uses,homemade cheese storage,freeze ricotta,freeze chevre tags=cooking,storage_guidance,cheese_making useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:ed4ddc30",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:0fde38dd0fe6b3f87562916020eb9ad8"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:ed4ddc30\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/03/15 (Wed) 12:06\nTranscript:\nuser: I'm thinking of making some quiche for dinner, do you have a simple recipe you can share?\nassistant: Quiche is a great choice for dinner! I'd be happy to share a simple recipe with you. Here's a classic quiche recipe that's easy to make and adaptable to your taste:\n\n**Basic Quiche Recipe**\n\nIngredients:\n\n* 1 pie crust (homemade or store-bought)\n* 3 large eggs\n* 1 1/2 cups heavy cream or half-and-half\n* 1/2 cup shredded cheese (Cheddar, Swiss, or a mix)\n* 1/2 cup diced ham, bacon, or vegetables (optional)\n* Salt and pepper to taste\n* Fresh herbs (optional)\n\nInstructions:\n\n1. Preheat your oven to 375°F (190°C).\n2. Roll out the pie crust and place it in a 9-inch tart pan with a removable bottom.\n3. In a large bowl, whisk together the eggs, heavy cream, and a pinch of salt and pepper.\n4. Add the shredded cheese and diced ham, bacon, or vegetables (if using) to the egg mixture. Mix well.\n5. Pour the egg mixture into the pie crust.\n6. Bake the quiche for 35-40 minutes or until the edges are golden brown and the center is set.\n7. Remove the quiche from the oven and let it cool for a few minutes.\n8. Garnish with fresh herbs (if using) and serve warm or at room temperature.\n\n**Variations:**\n\n* Spinach and Feta Quiche: Add 1 cup fresh spinach leaves and 1/2 cup crumbled feta cheese to the egg mixture.\n* Mushroom and Swiss Quiche: Add 1 cup sautéed mushrooms and 1/2 cup grated Swiss cheese to the egg mixture.\n* Broccoli and Cheddar Quiche: Add 1 cup steamed broccoli florets and 1/2 cup grated Cheddar cheese to the egg mixture.\n\nTips:\n\n* Blind baking the pie crust (baking it without the filling) for 5-7 minutes before adding the egg mixture can help prevent the crust from becoming soggy.\n* Use a pie shield or foil to prevent the crust from overbrowning.\n* Quiche is a great make-ahead dish; you can prepare the filling and crust separately, then assemble and bake when you're ready.\n\nEnjoy your delicious homemade quiche!\nuser: I think I'll try the spinach and feta variation, sounds delicious. By the way, I was thinking of using some of our fresh eggs from the coop - we've got 20 dozen stocked up in the fridge right now. Do you have any tips on how to store eggs properly to keep them fresh for a longer period?\nassistant: The spinach and feta quiche is a fantastic combination.\n\nWow, 20 dozen eggs is a lot! Congratulations on having a thriving coop! Proper storage is crucial to keep your eggs fresh for a longer period. Here are some tips to help you store your eggs:\n\n1. **Cool, dry place:** Store eggs in a cool, dry place, away from direct sunlight and heat sources. The ideal storage temperature is between 40°F (4°C) and 50°F (10°C).\n2. **Refrigerate:** Store eggs in the refrigerator at a consistent temperature below 40°F (4°C). This will help prevent bacterial growth and keep eggs fresh for a longer period.\n3. **Carton or container:** Store eggs in their original carton or a covered container to protect them from moisture, light, and contamination. Make sure the container is clean and dry before placing the eggs inside.\n4. **Pointed end down:** Store eggs with the pointed end down to prevent the yolk from coming into contact with the shell membrane, which can cause bacterial contamination.\n5. **Don't wash:** Avoid washing eggs before storing them. Washing can remove the natural coating on the eggshell, making it more susceptible to bacterial penetration.\n6. **Check regularly:** Regularly check your eggs for cracks, breaks, or unusual odors. Remove any spoiled eggs to prevent contamination.\n7. **First-in, first-out:** Use the oldest eggs first to ensure you're consuming the freshest eggs.\n8. **Label and date:** Label the carton or container with the date you collected the eggs, so you can keep track of their age.\n9. **Don't stack:** Avoid stacking eggs on top of each other, as this can cause pressure and lead to breakage.\n10. **Freezing:** If you have an excess of eggs, you can freeze them. Beat the eggs, add a pinch of salt or sugar (depending on your intended use), and store them in an airtight container or freezer bag. Frozen eggs are perfect for baking, scrambling, or making omelets.\n\nBy following these tips, you can enjoy your fresh eggs for a longer period. Generally, eggs can be stored for:\n\n* 4 to 5 weeks in the refrigerator\n* 1 year or longer in the freezer (if frozen)\n\nRemember to always handle eggs safely and hygienically to prevent the risk of Salmonella and other bacterial contamination.\n\nNow, go ahead and enjoy your fresh eggs in that delicious spinach and feta quiche!\nuser: Thanks! I'll keep those tips in mind. I was also thinking of making some cheese using the milk from our goats, Billy and Nibbles. Do you have any simple recipes for a beginner like me?\nassistant: Making cheese from your own goat's milk is a great idea! Congratulations on having a thriving goat farm! I'd be happy to help you with a simple recipe for a beginner.\n\nHere's a recipe for a delicious and easy-to-make cheese, perfect for a beginner:\n\n**Simple Goat Cheese Recipe (Chevre)**\n\nIngredients:\n\n* 1 gallon goat's milk\n* 1/4 cup cheese cultures (you can buy this at a cheese-making supply store or online)\n* 1/4 cup cheese salt\n* 1/2 tsp rennet (vegetable or animal, depending on your preference)\n* Water\n\nEquipment:\n\n* Large pot (at least 3-4 qt capacity)\n* Cheese mold or form (you can use a colander or a cheese basket)\n* Cheesecloth or butter muslin\n* Thermometer\n\nInstructions:\n\n1. **Pasteurize the milk:** Heat the milk to 145°F (63°C) and hold it at that temperature for 30 minutes. You can do this by placing the pot in a sink filled with hot water or using a thermometer to monitor the temperature.\n2. **Cool the milk:** Let the milk cool to 86°F (30°C) for the cheese cultures to activate.\n3. **Add cheese cultures:** Add the cheese cultures to the cooled milk and stir gently to distribute evenly. Cover the pot and let it sit at room temperature (around 70°F to 75°F or 21°C to 24°C) for 45 minutes to allow the cultures to grow.\n4. **Add rennet:** Add the rennet to the milk and stir gently in an up-and-down motion for about 30 seconds. Cover the pot and let it sit at room temperature for 30 to 45 minutes, or until you see a clean break (the curds will separate from the whey).\n5. **Cut and stir:** Cut the curds into 1/2-inch (1.3 cm) cubes and let them sit for 5 minutes. Then, gently stir the curds in a figure-eight motion for 5 to 10 minutes, until they reach the desired consistency.\n6. **Drain and shape:** Line a cheese mold or colander with cheesecloth or butter muslin. Carefully pour the curds into the mold and let the whey drain off. Gather the edges of the cloth and give the cheese a gentle squeeze to remove excess whey.\n7. **Age the cheese (optional):** You can age the cheese at room temperature (around 70°F to 75°F or 21°C to 24°C) for a few days to a week, or until it reaches the desired flavor and texture. Wrap the cheese in plastic wrap or aluminum foil and store it in the refrigerator.\n\nTips for a beginner:\n\n* Make sure to sanitize all equipment and utensils before starting.\n* Keep the cheese-making area clean and dust-free.\n* Monitor the temperature and pH levels during the process.\n* Don't over-stir or over-handle the curds, as this can cause them to break or become tough.\n* Be patient and flexible, as cheese-making can be a trial-and-error process.\n\nThis recipe will give you a delicious and tangy goat cheese, perfect for spreading on crackers or bread. You can also flavor it with herbs, garlic, or other ingredients to create different varieties.\n\nRemember to always follow proper sanitation and safety guidelines when working with dairy products to avoid contamination and foodborne illness.\n\nGood luck, and I hope you enjoy your homemade goat cheese!\nuser: That sounds like a great recipe, thanks! I'll definitely give it a try. By the way, do you have any advice on how to deal with pests like mites and flies in the chicken coop? We've had some issues with them lately.\nassistant: Pests like mites and flies can be a real nuisance in the chicken coop, can't they? Don't worry, I've got some advice to help you tackle those pesky critters!\n\n**Mites:**\n\n1. **Cleanliness is key:** Regularly clean the coop, including the walls, floors, and perches. Remove any debris, poop, and old bedding. Disinfect all surfaces with a mild detergent and water.\n2. **Dusting:** Use a dusting powder specifically designed for mites, such as diatomaceous earth or pyrethrin powder, to dust the chickens and the coop. This will help dehydrate and kill the mites.\n3. **Ventilation:** Ensure good ventilation in the coop to reduce humidity, which mites thrive in. Add windows, vents, or fans to improve airflow.\n4. **Seal entry points:** Mites can hide in tiny crevices, so seal any gaps or cracks around the coop, including windows, doors, and vents.\n5. **Treat the chickens:** Use a mite powder or spray on the chickens themselves, following the product's instructions. You can also add a few drops of peppermint oil to their water to help repel mites.\n\n**Flies:**\n\n1. **Remove attractants:** Keep the coop and surrounding area clean, and remove any food sources, such as spilled feed or manure, that might attract flies.\n2. **Screening:** Install screening around the coop's windows, vents, and doors to keep flies out.\n3. **Fans:** Use fans to circulate air and make it difficult for flies to land and breed.\n4. **Traps:** Create homemade fly traps using jars, bowls, or containers with a sweet liquid bait (e.g., apple cider vinegar, fruit juice) and a funnel or paper cone to direct the flies inside. Cover the trap with plastic wrap or a cloth to prevent escape.\n5. **Essential oils:** Certain essential oils, such as peppermint, lemongrass, and citronella, can help repel flies. Mix a few drops of the oil with water and spray it around the coop.\n\n**General Tips:**\n\n1. **Regular inspections:** Regularly inspect the coop and chickens for signs of pests, such as mites, flies, or lice.\n2. **Quarantine:** Isolate new chickens or those showing signs of pest infestation to prevent the spread of pests to the rest of the flock.\n3. **Integrate natural pest control:** Encourage natural pest control by introducing beneficial insects, such as ladybugs or lacewings, into the coop.\n4. **Rotate bedding:** Rotate the bedding material (e.g., straw, wood shavings) regularly to reduce the buildup of pests and diseases.\n5. **Consult a veterinarian:** If you're struggling to manage pests or if you notice signs of illness in your chickens, consult a veterinarian for guidance and support.\n\nBy following these tips, you should be able to reduce the presence of mites and flies in your chicken coop. Remember to stay vigilant and adapt your strategies as needed to keep your flock healthy and happy!\nuser: I was thinking of building a fence around the chicken coop to protect them from predators like raccoons and foxes. Do you have any advice on how to build a predator-proof fence?\nassistant: Building a predator-proof fence around your chicken coop is a great idea! Raccoons, foxes, and other predators can be a real threat to your chickens, so it's essential to take measures to protect them. Here are some tips to help you build a sturdy and effective predator-proof fence:\n\n**Choose the right materials:**\n\n1. **Hardware cloth:** Use hardware cloth, a type of metal mesh, for the fence material. It's durable, long-lasting, and can withstand predator attacks. You can choose from various mesh sizes, but a 1/2 inch or 1/4 inch mesh is recommended.\n2. **Chicken wire:** While chicken wire can be used, it's not as effective as hardware cloth. If you do use chicken wire, make sure it's at least 3 feet high and extends at least 12 inches below ground level.\n3. **Electric fencing:** Consider adding an electric fencing component to your predator-proof fence. This can be an effective deterrent for predators like raccoons and foxes.\n\n**Design and construction:**\n\n1. **Bury the fence:** Bury the fence at least 12 inches below ground level to prevent predators from digging underneath. You can also add a 12-inch wide apron of hardware cloth around the perimeter to prevent digging.\n2. **Extend the fence:** Make sure the fence extends at least 3 feet above ground level to prevent predators from jumping over.\n3. **Use sturdy posts:** Use sturdy posts, such as 2-3 inch diameter wooden or metal posts, to support the fence. Space them 8-10 feet apart.\n4. **Secure the gates:** Use strong gates and secure them with latches or locks to prevent predators from getting in.\n5. **Cover the top:** Cover the top of the fence with a roof or a mesh material to prevent predators from climbing over.\n\n**Additional tips:**\n\n1. **Inspect regularly:** Regularly inspect the fence for damage, gaps, or weaknesses.\n2. **Trim vegetation:** Keep vegetation around the fence trimmed to prevent predators from using it as cover.\n3. **Use multiple layers:** Consider using multiple layers of fencing, such as a combination of hardware cloth and chicken wire, for added protection.\n4. **Consider the corners:** Pay extra attention to the corners of the fence, as these are common weak points. Use additional materials, such as extra mesh or wire, to reinforce these areas.\n5. **Consult local experts:** Consult with local farmers, animal control experts, or fencing contractors for specific advice on building a predator-proof fence in your area.\n\nBy following these tips, you can build a sturdy and effective predator-proof fence to protect your chickens from raccoons, foxes, and other predators. Remember to stay vigilant and adapt your fencing strategy as needed to keep your flock safe!\nuser: I think I'll get started on building that fence this weekend. Thanks for the tips! By the way, I was thinking of getting some bees to help with pollination on our farm. Do you have any advice on how to get started with beekeeping?\nassistant: Bees are a great addition to any farm! Beekeeping can be a fascinating and rewarding hobby, and it's fantastic that you're considering it. Here are some tips to help you get started with beekeeping:\n\n**Initial Preparation:**\n\n1. **Research and education:** Learn as much as you can about bee biology, beekeeping, and the specific needs of honey bees in your region.\n2. **Check local regulations:** Familiarize yourself with local regulations and ordinances regarding beekeeping in your area.\n3. **Join a beekeeping community:** Connect with local beekeepers, join online forums, or attend beekeeping workshops to learn from experienced beekeepers.\n\n**Equipment and Supplies:**\n\n1. **Beehive:** Choose a suitable beehive design and material (e.g., Langstroth, Top-bar, Warre) that suits your needs and climate.\n2. **Protective clothing:** Invest in a beekeeping suit, veil, and gloves to protect yourself from stings.\n3. **Smoker:** A smoker helps calm bees during inspections by producing a gentle, cool smoke.\n4. **Honey extractor:** If you plan to harvest honey, you'll need an extractor to extract honey from the frames.\n\n**Getting Your Bees:**\n\n1. **Obtain bees:** You can purchase bees from a reputable supplier or capture a swarm (if you're experienced).\n2. **Choose the right bees:** Select a bee species suitable for your region and climate (e.g., European, Italian, Carniolan).\n\n**Ongoing Care and Management:**\n\n1. **Regular inspections:** Check your bees every 7-10 days during peak season to monitor health, growth, and potential issues.\n2. **Maintain a healthy environment:** Ensure a clean, dry, and well-ventilated hive environment.\n3. **Control pests and diseases:** Monitor for signs of pests (e.g., varroa mites, small hive beetles) and diseases (e.g., American foulbrood, nosema).\n4. **Harvest honey:** Extract honey during peak honey flow, usually in late summer or early fall.\n\n**Tips for Beginners:**\n\n1. **Start small:** Begin with one or two hives and expand as you gain experience.\n2. **Be patient:** Beekeeping requires patience, as it can take time to develop a strong, healthy colony.\n3. **Stay calm and gentle:** Move slowly and deliberately when handling bees to avoid agitating them.\n4. **Continuously learn:** Attend workshops, read books, and seek guidance from experienced beekeepers to improve your skills.\n\nRemember, beekeeping is a long-term commitment that requires dedication, patience, and attention to detail. With the right mindset and preparation, you can enjoy the many rewards of beekeeping and contribute to the health of your farm's ecosystem.\n\n        Candidate notes:\n        [0] type=CONTEXT title=Spinach and feta quiche as egg-use recipe summary=The user chose the spinach and feta quiche variation as a dinner idea while trying to use a large stock of fresh coop eggs; prior recipe context used 3 eggs, cream or half-and-half, cheese, and optional fillings in a pie crust. scope=Applies to the user's recipe preferences for using fresh eggs from the coop. entities=entity:<0>,entity:<1> keywords=spinach feta quiche,fresh eggs,coop eggs,egg recipes,dinner tags=cooking,eggs,recipe_context evidence=I think I'll try the spinach and feta variation\n[1] type=LESSON title=Egg storage guidance for surplus coop eggs summary=For the user's large fresh-egg stock, prior guidance emphasized refrigeration below 40°F, keeping eggs in cartons or covered containers, storing pointed-end down, not washing before storage, using FIFO/date labels, checking for cracks or odors, and freezing beaten eggs for excess supply. scope=Applies to storing the user's fresh eggs from the chicken coop when there is surplus inventory. entities=entity:<1>,entity:<2> keywords=egg storage,coop eggs,refrigerate eggs,pointed end down,freeze eggs,FIFO tags=food_storage,eggs,homesteading evidence=Do you have any tips on how to store eggs properly to keep them fresh for a longer period?\n[2] type=PLAN title=Beginner chevre plan using Billy and Nibbles' goat milk summary=The user intended to try a beginner Simple Goat Cheese Recipe (Chevre) using milk from their goats Billy and Nibbles; the discussed method used 1 gallon goat milk, cheese cultures, salt, rennet, sanitation, temperature control, draining in cheesecloth, and optional aging. scope=Applies to the user's home cheese-making plans using milk from goats Billy and Nibbles. entities=entity:<0>,entity:<3>,entity:<4>,entity:<5> keywords=Billy,Nibbles,goat milk,chevre,goat cheese,beginner cheese making tags=cheese_making,goats,homesteading evidence=I'll definitely give it a try\n[3] type=LESSON title=Chicken coop pest-management guidance for mites and flies summary=For mites and flies in the user's chicken coop, prior guidance focused on sanitation, removing manure/spilled feed, rotating bedding, improving ventilation, sealing crevices and screening openings, using mite dusts such as diatomaceous earth or pyrethrin according to directions, fly traps/fans/repellent oils, regular inspections, and quarantining affected or new chickens. scope=Applies to managing mites and flies in the user's chicken coop and flock environment. entities=entity:<6>,entity:<7> keywords=chicken coop pests,mites,flies,diatomaceous earth,pyrethrin,ventilation,bedding tags=chickens,coop_maintenance,pest_control evidence=We've had some issues with them lately.\n[4] type=PLAN title=Predator-proof chicken coop fence direction summary=The user planned to start building a predator-proof fence around the chicken coop the following weekend to protect chickens from raccoons and foxes; reusable design guidance included hardware cloth with 1/2-inch or 1/4-inch mesh, burying fencing or adding a 12-inch apron, at least 3 feet above ground, sturdy posts, secure gates, top cover, reinforced corners, and regular inspection. scope=Applies to the user's chicken coop predator-proof fencing project. entities=entity:<6>,entity:<7>,entity:<0> keywords=predator-proof fence,chicken coop,hardware cloth,raccoons,foxes,fence apron tags=chickens,fencing,predator_protection,homesteading evidence=I think I'll get started on building that fence this weekend.\n[5] type=DIRECTION title=Beginner beekeeping direction for farm pollination summary=The user was considering getting bees to help with pollination on their farm; prior beginner guidance recommended researching bee biology and local regulations, joining a beekeeping community, starting with one or two hives, choosing hive type and region-suitable bees, buying protective gear and a smoker, inspecting every 7–10 days in peak season, and monitoring pests and diseases. scope=Applies to the user's prospective beekeeping setup for farm pollination. entities=entity:<8>,entity:<9>,entity:<0> keywords=beekeeping,pollination,farm bees,beginner beekeeper,hives,smoker,bee inspections tags=beekeeping,farm,pollination,homesteading evidence=I was thinking of getting some bees to help with pollination on our farm.\n\n        Existing active notes:\n        id=hot-path-b1661ef0f14a-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Egg-heavy cooking context and quick egg-salad direction summary=The user was looking for practical ways to use a large fresh-egg stock, including quick egg salad for lunch and breakfast dishes combining fresh eggs with goat milk such as pancakes, eggs en cocotte, crepes, quiche, strata, French toast, eggs in purgatory, and custard tarts. scope=Applies to the user's cooking context for using fresh eggs, especially with goat milk and quick lunch/breakfast recipes. keywords=fresh eggs,egg salad,goat milk breakfast,quiche,strata,30 dozen eggs tags=cooking,egg_inventory,recipe_context useCount=0\nid=hot-path-b1661ef0f14a-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Beginner goat-milk cheese-making directions summary=The user is exploring beginner-friendly ways to use fresh goat milk for cheese-making, with fresh chevre and ricotta emerging as preferred starter projects; simple recipes discussed include chevre, ricotta, mozzarella, and feta using goat milk, cultures/acid, rennet, salt, draining, and refrigeration/freezing guidance. scope=Applies to the user's home goat-milk cheese-making interests and beginner recipe selection. keywords=goat milk,cheese making,fresh chevre,ricotta,beginner cheese,feta,mozzarella tags=cooking,cheese_making,goat_milk,beginner_recipe useCount=0\nid=hot-path-b1661ef0f14a-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Fresh chevre and ricotta storage/use guidance summary=Fresh chevre storage guidance given: wrap tightly, refrigerate away from strong odors, use ideally within 1–2 weeks, with possible freezing up to 6–9 months. Ricotta guidance given: use promptly in lasagna, cannoli, ravioli, cheesecake, refrigerate up to 3 days, freeze up to 3 months, or dry for longer storage. scope=Applies to prior guidance for storing and using the user's homemade fresh chevre and ricotta. keywords=fresh chevre storage,ricotta uses,homemade cheese storage,freeze ricotta,freeze chevre tags=cooking,storage_guidance,cheese_making useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:ed4ddc30",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:0fde38dd0fe6b3f87562916020eb9ad8"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"noop\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"The spinach and feta quiche detail is already covered by the existing egg-heavy cooking context, including quiche as an egg-use option; candidate adds only a narrow instance.\",\"target_note_id\":\"hot-path-b1661ef0f14a-note-4\"},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-b1661ef0f14a-note-4\"}],\"patch\":null,\"reason\":\"Egg storage guidance for surplus coop eggs is distinct reusable food-storage context not captured by existing cooking recipe notes.\",\"target_note_id\":null},{\"action\":\"update\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":{\"maturity\":null,\"maturity_score\":0.35,\"scope_json\":null,\"status\":\"active\",\"summary\":\"The user is exploring beginner-friendly ways to use fresh goat milk from goats Billy and Nibbles for cheese-making, with fresh chevre and ricotta emerging as preferred starter projects; simple recipes discussed include chevre, ricotta, mozzarella, and feta using goat milk, cultures/acid, rennet, salt, sanitation, temperature control, draining in cheesecloth, and refrigeration/freezing guidance.\",\"title\":\"Beginner goat-milk cheese-making directions\"},\"reason\":\"Candidate refines the existing goat-milk cheese-making note with the goats' names and chevre process details; no separate note needed.\",\"target_note_id\":\"hot-path-b1661ef0f14a-note-2\"},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[],\"patch\":null,\"reason\":\"Chicken coop mite and fly management is distinct reusable homesteading guidance not represented in existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":4,\"links_to_create\":[],\"patch\":null,\"reason\":\"Predator-proof fencing for the chicken coop is a distinct planned project and reusable design guidance not captured by existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":5,\"links_to_create\":[],\"patch\":null,\"reason\":\"Beginner beekeeping for farm pollination is a distinct prospective direction not captured by existing notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 8478,
+                "completionTokens": 489,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
