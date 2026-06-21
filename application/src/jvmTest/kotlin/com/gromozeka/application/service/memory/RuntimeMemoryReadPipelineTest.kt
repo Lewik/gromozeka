@@ -370,7 +370,7 @@ class RuntimeMemoryReadPipelineTest {
         assertTrue(prompt.contains("a caveat that the qualifier differs is not enough"), prompt)
         assertTrue(prompt.contains("A shared anchor can bridge retrieved memories only when it explicitly preserves the same fully-qualified target"), prompt)
         assertTrue(prompt.contains("the final answer must be an insufficiency answer, not a concrete adjacent answer with a warning"), prompt)
-        assertTrue(prompt.contains("Do not infer missing academic level, course ownership, project identity, artifact type"), prompt)
+        assertTrue(prompt.contains("Do not infer missing academic level, course ownership, job role, job title, position"), prompt)
         assertTrue(prompt.contains("do not compute or include the mismatched value"), prompt)
     }
 
