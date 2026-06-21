@@ -590,6 +590,56 @@ class LlmMemoryClaimExtractorTest {
         assertTrue(prompt.contains("a later same-slot value can replace an older current value"), prompt)
     }
 
+    @Test
+    fun promptPreservesImportedAssistantRecommendationListDetails() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(listOf("""{"claims":[]}"""))
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        extractor.extract(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source(
+                    "assistant: Options: 1. Escovitch Fish with pickled vegetables. 2. Grilled Snapper with Mango Salsa with fruit."
+                ),
+            ),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target contains imported recommendation details.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("generated_artifact_detail"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(entityOp("I", userEntityId, MemoryEntity.Type.USER)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        val prompt = runtime.requests.single().messages.joinToString("\n") { message ->
+            message.content.joinToString("\n") { item ->
+                when (item) {
+                    is Conversation.Message.ContentItem.UserMessage -> item.text
+                    is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                    else -> item.toString()
+                }
+            }
+        }
+        assertTrue(prompt.contains("recommendation lists, option lists, ranked lists"), prompt)
+        assertTrue(prompt.contains("preserve named options plus distinguishing descriptors"), prompt)
+        assertTrue(prompt.contains("ingredient, component, material, feature"), prompt)
+        assertTrue(prompt.contains("Do not collapse the list to only the option the user chose"), prompt)
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {

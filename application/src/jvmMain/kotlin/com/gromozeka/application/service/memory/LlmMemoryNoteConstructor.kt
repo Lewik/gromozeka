@@ -309,6 +309,7 @@ class LlmMemoryNoteConstructor(
             - Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.
             - Do not duplicate a claim candidate as a note when a precise claim is enough.
             - Do use a note when the target captures "why", "how", "we decided", "current approach", trade-offs, working agreements, troubleshooting order, or a design direction.
+            - For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.
             - If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.
             - For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.
             - For one document section, return at most two notes. If a section defines one compact component or policy, return one note.
