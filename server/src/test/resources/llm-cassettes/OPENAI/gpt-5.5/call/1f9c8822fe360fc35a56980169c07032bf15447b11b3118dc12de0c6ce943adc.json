@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "1f9c8822fe360fc35a56980169c07032bf15447b11b3118dc12de0c6ce943adc",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:7a87bd0c\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/09/30 (Sat) 21:43\nTranscript:\nuser: I'm planning to clean out the garage this weekend, but I need some advice on how to organize all the storage bins and boxes. Do you have any tips? By the way, I've been sticking to my daily tidying routine for 4 weeks now, and it's amazing how much of a difference it's made in my apartment.\nassistant: Congratulations on sticking to your daily tidying routine! That's a great accomplishment, and it's wonderful to hear that it's made a positive impact on your living space.\n\nNow, let's tackle that garage organization project! Here are some tips to help you optimize your storage bins and boxes:\n\n1. **Purge before you organize**: Before you start organizing, take everything out of the garage and sort items into three piles: keep, donate/sell, and discard. Be ruthless – if you haven't used something in a year, it's probably safe to get rid of it.\n2. **Categorize and group similar items**: Once you've purged your items, group similar things together (e.g., all sports equipment, all tools, all seasonal decorations). This will make it easier to assign a home for each category.\n3. **Assign a home for each category**: Designate a specific area of the garage for each category. For example, you might have a section for tools, a section for sports equipment, and a section for seasonal items.\n4. **Use clear and labeled bins**: Use clear plastic bins or containers with labels so you can easily see what's inside without having to dig through everything. You can also use color-coding to differentiate between categories.\n5. **Stack and nest bins**: To maximize vertical space, stack smaller bins on top of larger ones, and nest smaller containers inside larger ones. Just make sure the bins are stable and won't topple over.\n6. **Install shelving and hooks**: Consider installing shelving units or hooks to hang items like bikes, tools, or accessories. This will help keep them off the floor and make the most of your garage's vertical space.\n7. **Keep frequently used items accessible**: Store frequently used items in easy-to-reach locations, and reserve higher or harder-to-reach areas for less frequently used items.\n8. **Keep a \"launching pad\"**: Designate a specific area, like a pegboard or a small shelf, as a \"launching pad\" for items that need to be used frequently, like bikes or sports equipment.\n9. **Store items by frequency of use**: Store items that you use seasonally or infrequently towards the back or on higher shelves, and keep more frequently used items in easy-to-reach locations.\n10. **Maintain your space**: Set aside some time each month to maintain your organized garage. Go through each category and make sure everything is still organized and in its assigned home.\n\nRemember to take your time, and don't be afraid to get creative with your organization system. Good luck, and have fun with your garage organization project!\nuser: I'm planning to use some of those tips to organize my garage, especially the one about categorizing and grouping similar items. I've also been thinking about implementing a \"one-touch rule\" when it comes to cleaning, do you have any advice on how to make it a habit?\nassistant: The \"one-touch rule\" is a fantastic habit to develop, especially when it comes to cleaning and organizing! The idea is to handle each item only once, making a decision about it immediately, rather than putting it down and dealing with it later. This can save you time and energy in the long run.\n\nHere are some tips to help you make the \"one-touch rule\" a habit:\n\n1. **Start small**: Begin with a specific area or task, like cleaning your garage or doing the dishes. As you get comfortable with the habit, you can expand it to other areas of your life.\n2. **Create a decision-making framework**: Develop a simple decision-making process for each item you touch. For example:\n\t* Can I get rid of it?\n\t* Can I donate or sell it?\n\t* Do I need to clean or maintain it?\n\t* Where does it belong?\n\t* Do I need to take action on it (e.g., respond to a letter, pay a bill)?\n3. **Handle each item deliberately**: When you pick up an item, make a conscious decision about what to do with it. Don't just move it from one place to another; deal with it immediately.\n4. **Practice mindfulness**: Be present and focused when cleaning or organizing. Avoid distractions, and try to stay in the moment.\n5. **Use the \"3-box method\"**: When cleaning, use three boxes or containers labeled \"Keep,\" \"Donate/Sell,\" and \"Discard.\" This will help you make quick decisions and keep you from putting items down and dealing with them later.\n6. **Create a \"home\" for each item**: Assign a designated spot for each item, so you can put it away immediately. This will help you develop a sense of ownership and responsibility for keeping things organized.\n7. **Make it a habit loop**: Attach the \"one-touch rule\" to an existing habit or routine, like cleaning or doing chores. This will help you create a mental connection and make it easier to stick to.\n8. **Be kind to yourself**: Remember that it takes time to develop a new habit. Don't get discouraged if you slip up; simply acknowledge the mistake and try again.\n9. **Celebrate small wins**: Acknowledge and celebrate your successes, even if it's just a small area or task. This will help motivate you to continue the habit.\n10. **Make it a part of your identity**: Tell yourself, \"I'm the kind of person who handles things once and moves on.\" This will help you internalize the habit and make it a part of your daily routine.\n\nBy following these tips, you can make the \"one-touch rule\" a habit that will save you time, reduce stress, and help you maintain a more organized and clutter-free life.\nuser: I'll definitely try to implement the \"one-touch rule\" when I'm cleaning out the garage this weekend. I've also been thinking about using a label maker to label all the storage bins and shelves, do you have any recommendations for a good label maker?\nassistant: Label makers are a fantastic tool for organizing and keeping track of your storage bins and shelves. There are many great options out there, but here are a few popular and highly-recommended label makers:\n\n1. **Brother P-Touch**: Brother's P-Touch line is a popular choice among organizers and label enthusiasts. They offer a range of models, from basic to advanced, with features like QWERTY keyboards, LCD displays, and advanced font styles.\n2. **DYMO LabelWriter**: DYMO's LabelWriter series is another well-known and respected brand. They offer a variety of models, including wireless and Bluetooth-enabled options, with features like automatic label formatting and customizable templates.\n3. **Labelmaster**: Labelmaster is a budget-friendly option that still packs a punch. Their label makers are known for their ease of use, durability, and affordability.\n4. **Epson LabelWorks**: Epson's LabelWorks series offers a range of label makers with advanced features like color printing, wireless connectivity, and a built-in keyboard.\n\nWhen choosing a label maker, consider the following factors:\n\n* **Ease of use**: Look for a label maker with an intuitive interface and easy-to-use keyboard.\n* **Label size and type**: Decide on the size and type of labels you need (e.g., adhesive, laminated, or iron-on).\n* **Battery life**: If you plan to use the label maker frequently or in multiple locations, consider one with a long battery life or a rechargeable battery.\n* **Additional features**: Think about the features you need, such as wireless connectivity, customizable templates, or advanced font styles.\n* **Price**: Label makers can range from under $10 to over $100, so set a budget and choose a model that fits within it.\n\nFor garage organization, you'll likely want a label maker that can produce durable, weather-resistant labels. Look for models with laminated or vinyl labels, and consider a label maker with a rugged design that can withstand dust and moisture.\n\nRemember to also stock up on label refills and consider purchasing a label maker with a built-in cutter or a separate label cutter to make the labeling process even more efficient. Happy labeling!\nuser: I think I'll go with the Brother P-Touch label maker, I've heard good things about it. Can you give me some advice on how to organize my bookshelf?\nassistant: The Brother P-Touch is a popular and reliable label maker.\n\nNow, let's talk about organizing your bookshelf! Here are some tips to help you create a harmonious and functional bookshelf:\n\n1. **Purge and declutter**: Remove any books that are no longer relevant, damaged, or unwanted. Consider donating or recycling them.\n2. **Categorize and group**: Organize books by category (e.g., fiction, non-fiction, biographies, self-help, etc.). Within each category, group books by author, title, or series.\n3. **Prioritize frequently read books**: Place frequently read books at eye level or near the front of the shelf for easy access.\n4. **Use a color scheme**: Organize books by cover color to create a visually pleasing arrangement. This can add a decorative touch to your bookshelf.\n5. **Create a \"to-read\" section**: Designate a section for books you haven't read yet, and consider using a separate shelf or basket to keep them separate from your main collection.\n6. **Utilize vertical space**: Maximize your bookshelf's vertical space by using stackable bookshelves, bookends, or risers to keep books organized and prevent them from toppling over.\n7. **Face out favorite books**: Display your favorite books or most prized possessions with their covers facing outwards, adding a personal touch to your bookshelf.\n8. **Keep related items together**: Store related items, such as bookmarks, booklights, or reading glasses, nearby to keep your bookshelf functional.\n9. **Leave some breathing room**: Don't overcrowd your bookshelf. Leave some space between books to create a clean and visually appealing arrangement.\n10. **Maintain your bookshelf**: Set aside time to regularly dust and tidy your bookshelf to keep it looking its best.\n\nAdditionally, consider the following tips specifically for labeling your bookshelf:\n\n* **Use clear and concise labels**: Use a label maker to create clear and concise labels for each category or section.\n* **Label shelves, not individual books**: Instead of labeling each book, label the shelves or sections to create a clean and organized look.\n* **Use a consistent label style**: Choose a consistent label style and font to create a cohesive look throughout your bookshelf.\n\nBy following these tips, you'll be able to create a beautiful and functional bookshelf that showcases your love for reading and makes it easy to find your next great read!\nuser: I'm planning to use some of those tips to organize my bookshelf, especially the one about categorizing and grouping similar books together. Speaking of categorizing, do you have any advice on how to categorize my cleaning supplies? I've been thinking of organizing them by room or by type of cleaning product.\nassistant: Categorizing cleaning supplies can be a bit tricky, but I'm happy to help you out.\n\nBoth methods you mentioned, categorizing by room or by type of cleaning product, have their advantages. Here's a breakdown of each approach to help you decide:\n\n**Categorizing by Room:**\n\n* Advantages:\n\t+ Easy to find what you need for a specific room or area.\n\t+ Helps you remember which products are needed for each room.\n* Disadvantages:\n\t+ May lead to duplication of products (e.g., having multiple all-purpose cleaners for different rooms).\n\t+ Can be less efficient if you have similar products used in multiple rooms.\n\n**Categorizing by Type of Cleaning Product:**\n\n* Advantages:\n\t+ Reduces duplication of products.\n\t+ Makes it easier to find similar products and compare labels.\n\t+ Can help you identify areas where you have too many similar products.\n* Disadvantages:\n\t+ May require more time to find what you need for a specific room or task.\n\t+ Can be overwhelming if you have a large collection of cleaning products.\n\nHere's a hybrid approach you might consider:\n\n**Categorize by Category, then by Room:**\n\n* Divide your cleaning supplies into categories (e.g., all-purpose cleaners, glass cleaners, disinfectants, etc.).\n* Within each category, group products by room or area (e.g., all the bathroom cleaning products together, all the kitchen cleaning products together, etc.).\n\nThis approach combines the benefits of both methods. You'll have similar products together, reducing duplication and making it easier to compare labels, while still having a sense of which products are needed for each room.\n\nSome additional tips to keep in mind:\n\n* Store cleaning products in a well-ventilated area, away from children and pets.\n* Consider using a caddy or bucket with separate compartments to keep products organized and portable.\n* Label each category or room section clearly, so you can easily find what you need.\n* Keep frequently used products in easy-to-reach locations, and less frequently used products on higher or harder-to-reach shelves.\n\nRemember, the key is to find a system that works for you and your cleaning needs. Experiment with different approaches until you find one that feels comfortable and efficient.\n\n        Candidate notes:\n        [0] type=PLAN title=Garage organization with one-touch rule and labels summary=The user planned to clean out the garage on the weekend after 2023-09-30 by categorizing and grouping similar items, applying the one-touch rule while cleaning, and labeling storage bins and shelves with a Brother P-Touch label maker. scope=Applies to the user's garage cleanout and storage-bin organization plan discussed on 2023-09-30. entities=entity:<0>,entity:<1>,entity:<2>,entity:<3> keywords=garage,storage bins,boxes,categorizing,one-touch rule,Brother P-Touch,label maker,shelves tags=garage_organization,decluttering,labeling,one_touch_rule evidence=I'll definitely try to implement the \"one-touch rule\" when I'm cleaning out the garage this weekend.\n[1] type=LESSON title=One-touch rule habit procedure for cleaning summary=For the user's cleaning and organizing habits, the one-touch rule means handling each item once and deciding immediately whether to keep, donate/sell, discard, clean/maintain, put away, or take action. The recommended habit-building approach is to start with a specific task such as garage cleaning, use a simple decision framework and 3-box method, assign a home for each item, and attach the rule t...[truncated 31 chars] scope=Applies to the user's attempt to make the one-touch rule part of cleaning and organizing habits. entities=entity:<4>,entity:<5>,entity:<6> keywords=one-touch rule,cleaning habit,3-box method,Keep Donate Sell Discard,decision framework,habit loop tags=cleaning_habit,organizing_method,habit_building evidence=The idea is to handle each item only once, making a decision about it immediately, rather than putting it down and dealing with it later.\n[2] type=PLAN title=Bookshelf organizing approach summary=The user planned to organize their bookshelf using the advice to categorize and group similar books together; supporting tactics included purging unwanted books, grouping by category and then author/title/series, keeping frequently read books accessible, making a to-read section, leaving breathing room, and labeling shelves or sections rather than individual books. scope=Applies to the user's bookshelf organization plan discussed on 2023-09-30. entities=entity:<7>,entity:<8> keywords=bookshelf,categorize books,group similar books,to-read section,label shelves,book organization tags=bookshelf_organization,home_organization,labeling evidence=I'm planning to use some of those tips to organize my bookshelf, especially the one about categorizing and grouping similar books together.\n[3] type=DIRECTION title=Hybrid categorization approach for cleaning supplies summary=For cleaning supplies, a hybrid system was recommended: first divide supplies by product category, such as all-purpose cleaners, glass cleaners, and disinfectants, then group within each category by room or area, such as bathroom or kitchen. This balances reduced product duplication and easy label comparison with still being able to find supplies for a particular room. scope=Applies to categorizing the user's cleaning supplies by product type and room. entities=entity:<9>,entity:<10> keywords=cleaning supplies,categorize by room,categorize by type,hybrid approach,all-purpose cleaners,glass cleaners,disinfectants tags=cleaning_supplies,organization_system,categorization evidence=This approach combines the benefits of both methods.\n\n        Existing active notes:\n        id=hot-path-88bbd404e7a3-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Garage decluttering and workstation conversion plan summary=The user planned to organize their garage by first purging and categorizing cluttered tools and sports equipment, removing old furniture—especially an unused old desk—and converting the freed desk space into a dedicated workstation for their daily tidying routine and cleaning supplies. scope=Applies to the user's garage organization and daily tidying setup. keywords=garage organization,purging,tools,sports equipment,old desk,daily tidying routine,cleaning supplies workstation tags=garage,decluttering,tidying_routine,workstation useCount=0\nid=hot-path-88bbd404e7a3-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Garage bin and label organization approach summary=For the garage organization project, the user was considering stackable bins and labels to keep items organized and easy to find after purging and categorizing. Relevant guidance centered on measuring storage areas, matching bin strength and size to contents, choosing secure stackable bins, and using consistent clear labels possibly with color-coding and shelf labels. scope=Applies to the user's planned garage storage system using bins and labels. keywords=stackable bins,labels,garage storage,color-coding,label maker,shelf labels tags=garage,storage_system,organization useCount=0\nid=hot-path-88bbd404e7a3-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Daily tidying workstation supply setup summary=The user's planned tidying workstation would centralize all-purpose cleaners, disinfectants, dusters, paper towels, regularly used specialized tools such as a cordless vacuum and microfiber mop, and an all-natural bathroom cleaning brand that had been effective against soap scum and mildew. scope=Applies to the user's dedicated cleaning supplies workstation for the daily tidying routine. keywords=cleaning supplies workstation,all-purpose cleaners,disinfectants,dusters,paper towels,cordless vacuum,microfiber mop,all-natural bathroom cleaner,soap scum,mildew tags=tidying_routine,cleaning_supplies,workstation useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:7a87bd0c",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:0d09209044ca0829354fe178178c351a"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:7a87bd0c\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/09/30 (Sat) 21:43\nTranscript:\nuser: I'm planning to clean out the garage this weekend, but I need some advice on how to organize all the storage bins and boxes. Do you have any tips? By the way, I've been sticking to my daily tidying routine for 4 weeks now, and it's amazing how much of a difference it's made in my apartment.\nassistant: Congratulations on sticking to your daily tidying routine! That's a great accomplishment, and it's wonderful to hear that it's made a positive impact on your living space.\n\nNow, let's tackle that garage organization project! Here are some tips to help you optimize your storage bins and boxes:\n\n1. **Purge before you organize**: Before you start organizing, take everything out of the garage and sort items into three piles: keep, donate/sell, and discard. Be ruthless – if you haven't used something in a year, it's probably safe to get rid of it.\n2. **Categorize and group similar items**: Once you've purged your items, group similar things together (e.g., all sports equipment, all tools, all seasonal decorations). This will make it easier to assign a home for each category.\n3. **Assign a home for each category**: Designate a specific area of the garage for each category. For example, you might have a section for tools, a section for sports equipment, and a section for seasonal items.\n4. **Use clear and labeled bins**: Use clear plastic bins or containers with labels so you can easily see what's inside without having to dig through everything. You can also use color-coding to differentiate between categories.\n5. **Stack and nest bins**: To maximize vertical space, stack smaller bins on top of larger ones, and nest smaller containers inside larger ones. Just make sure the bins are stable and won't topple over.\n6. **Install shelving and hooks**: Consider installing shelving units or hooks to hang items like bikes, tools, or accessories. This will help keep them off the floor and make the most of your garage's vertical space.\n7. **Keep frequently used items accessible**: Store frequently used items in easy-to-reach locations, and reserve higher or harder-to-reach areas for less frequently used items.\n8. **Keep a \"launching pad\"**: Designate a specific area, like a pegboard or a small shelf, as a \"launching pad\" for items that need to be used frequently, like bikes or sports equipment.\n9. **Store items by frequency of use**: Store items that you use seasonally or infrequently towards the back or on higher shelves, and keep more frequently used items in easy-to-reach locations.\n10. **Maintain your space**: Set aside some time each month to maintain your organized garage. Go through each category and make sure everything is still organized and in its assigned home.\n\nRemember to take your time, and don't be afraid to get creative with your organization system. Good luck, and have fun with your garage organization project!\nuser: I'm planning to use some of those tips to organize my garage, especially the one about categorizing and grouping similar items. I've also been thinking about implementing a \"one-touch rule\" when it comes to cleaning, do you have any advice on how to make it a habit?\nassistant: The \"one-touch rule\" is a fantastic habit to develop, especially when it comes to cleaning and organizing! The idea is to handle each item only once, making a decision about it immediately, rather than putting it down and dealing with it later. This can save you time and energy in the long run.\n\nHere are some tips to help you make the \"one-touch rule\" a habit:\n\n1. **Start small**: Begin with a specific area or task, like cleaning your garage or doing the dishes. As you get comfortable with the habit, you can expand it to other areas of your life.\n2. **Create a decision-making framework**: Develop a simple decision-making process for each item you touch. For example:\n\t* Can I get rid of it?\n\t* Can I donate or sell it?\n\t* Do I need to clean or maintain it?\n\t* Where does it belong?\n\t* Do I need to take action on it (e.g., respond to a letter, pay a bill)?\n3. **Handle each item deliberately**: When you pick up an item, make a conscious decision about what to do with it. Don't just move it from one place to another; deal with it immediately.\n4. **Practice mindfulness**: Be present and focused when cleaning or organizing. Avoid distractions, and try to stay in the moment.\n5. **Use the \"3-box method\"**: When cleaning, use three boxes or containers labeled \"Keep,\" \"Donate/Sell,\" and \"Discard.\" This will help you make quick decisions and keep you from putting items down and dealing with them later.\n6. **Create a \"home\" for each item**: Assign a designated spot for each item, so you can put it away immediately. This will help you develop a sense of ownership and responsibility for keeping things organized.\n7. **Make it a habit loop**: Attach the \"one-touch rule\" to an existing habit or routine, like cleaning or doing chores. This will help you create a mental connection and make it easier to stick to.\n8. **Be kind to yourself**: Remember that it takes time to develop a new habit. Don't get discouraged if you slip up; simply acknowledge the mistake and try again.\n9. **Celebrate small wins**: Acknowledge and celebrate your successes, even if it's just a small area or task. This will help motivate you to continue the habit.\n10. **Make it a part of your identity**: Tell yourself, \"I'm the kind of person who handles things once and moves on.\" This will help you internalize the habit and make it a part of your daily routine.\n\nBy following these tips, you can make the \"one-touch rule\" a habit that will save you time, reduce stress, and help you maintain a more organized and clutter-free life.\nuser: I'll definitely try to implement the \"one-touch rule\" when I'm cleaning out the garage this weekend. I've also been thinking about using a label maker to label all the storage bins and shelves, do you have any recommendations for a good label maker?\nassistant: Label makers are a fantastic tool for organizing and keeping track of your storage bins and shelves. There are many great options out there, but here are a few popular and highly-recommended label makers:\n\n1. **Brother P-Touch**: Brother's P-Touch line is a popular choice among organizers and label enthusiasts. They offer a range of models, from basic to advanced, with features like QWERTY keyboards, LCD displays, and advanced font styles.\n2. **DYMO LabelWriter**: DYMO's LabelWriter series is another well-known and respected brand. They offer a variety of models, including wireless and Bluetooth-enabled options, with features like automatic label formatting and customizable templates.\n3. **Labelmaster**: Labelmaster is a budget-friendly option that still packs a punch. Their label makers are known for their ease of use, durability, and affordability.\n4. **Epson LabelWorks**: Epson's LabelWorks series offers a range of label makers with advanced features like color printing, wireless connectivity, and a built-in keyboard.\n\nWhen choosing a label maker, consider the following factors:\n\n* **Ease of use**: Look for a label maker with an intuitive interface and easy-to-use keyboard.\n* **Label size and type**: Decide on the size and type of labels you need (e.g., adhesive, laminated, or iron-on).\n* **Battery life**: If you plan to use the label maker frequently or in multiple locations, consider one with a long battery life or a rechargeable battery.\n* **Additional features**: Think about the features you need, such as wireless connectivity, customizable templates, or advanced font styles.\n* **Price**: Label makers can range from under $10 to over $100, so set a budget and choose a model that fits within it.\n\nFor garage organization, you'll likely want a label maker that can produce durable, weather-resistant labels. Look for models with laminated or vinyl labels, and consider a label maker with a rugged design that can withstand dust and moisture.\n\nRemember to also stock up on label refills and consider purchasing a label maker with a built-in cutter or a separate label cutter to make the labeling process even more efficient. Happy labeling!\nuser: I think I'll go with the Brother P-Touch label maker, I've heard good things about it. Can you give me some advice on how to organize my bookshelf?\nassistant: The Brother P-Touch is a popular and reliable label maker.\n\nNow, let's talk about organizing your bookshelf! Here are some tips to help you create a harmonious and functional bookshelf:\n\n1. **Purge and declutter**: Remove any books that are no longer relevant, damaged, or unwanted. Consider donating or recycling them.\n2. **Categorize and group**: Organize books by category (e.g., fiction, non-fiction, biographies, self-help, etc.). Within each category, group books by author, title, or series.\n3. **Prioritize frequently read books**: Place frequently read books at eye level or near the front of the shelf for easy access.\n4. **Use a color scheme**: Organize books by cover color to create a visually pleasing arrangement. This can add a decorative touch to your bookshelf.\n5. **Create a \"to-read\" section**: Designate a section for books you haven't read yet, and consider using a separate shelf or basket to keep them separate from your main collection.\n6. **Utilize vertical space**: Maximize your bookshelf's vertical space by using stackable bookshelves, bookends, or risers to keep books organized and prevent them from toppling over.\n7. **Face out favorite books**: Display your favorite books or most prized possessions with their covers facing outwards, adding a personal touch to your bookshelf.\n8. **Keep related items together**: Store related items, such as bookmarks, booklights, or reading glasses, nearby to keep your bookshelf functional.\n9. **Leave some breathing room**: Don't overcrowd your bookshelf. Leave some space between books to create a clean and visually appealing arrangement.\n10. **Maintain your bookshelf**: Set aside time to regularly dust and tidy your bookshelf to keep it looking its best.\n\nAdditionally, consider the following tips specifically for labeling your bookshelf:\n\n* **Use clear and concise labels**: Use a label maker to create clear and concise labels for each category or section.\n* **Label shelves, not individual books**: Instead of labeling each book, label the shelves or sections to create a clean and organized look.\n* **Use a consistent label style**: Choose a consistent label style and font to create a cohesive look throughout your bookshelf.\n\nBy following these tips, you'll be able to create a beautiful and functional bookshelf that showcases your love for reading and makes it easy to find your next great read!\nuser: I'm planning to use some of those tips to organize my bookshelf, especially the one about categorizing and grouping similar books together. Speaking of categorizing, do you have any advice on how to categorize my cleaning supplies? I've been thinking of organizing them by room or by type of cleaning product.\nassistant: Categorizing cleaning supplies can be a bit tricky, but I'm happy to help you out.\n\nBoth methods you mentioned, categorizing by room or by type of cleaning product, have their advantages. Here's a breakdown of each approach to help you decide:\n\n**Categorizing by Room:**\n\n* Advantages:\n\t+ Easy to find what you need for a specific room or area.\n\t+ Helps you remember which products are needed for each room.\n* Disadvantages:\n\t+ May lead to duplication of products (e.g., having multiple all-purpose cleaners for different rooms).\n\t+ Can be less efficient if you have similar products used in multiple rooms.\n\n**Categorizing by Type of Cleaning Product:**\n\n* Advantages:\n\t+ Reduces duplication of products.\n\t+ Makes it easier to find similar products and compare labels.\n\t+ Can help you identify areas where you have too many similar products.\n* Disadvantages:\n\t+ May require more time to find what you need for a specific room or task.\n\t+ Can be overwhelming if you have a large collection of cleaning products.\n\nHere's a hybrid approach you might consider:\n\n**Categorize by Category, then by Room:**\n\n* Divide your cleaning supplies into categories (e.g., all-purpose cleaners, glass cleaners, disinfectants, etc.).\n* Within each category, group products by room or area (e.g., all the bathroom cleaning products together, all the kitchen cleaning products together, etc.).\n\nThis approach combines the benefits of both methods. You'll have similar products together, reducing duplication and making it easier to compare labels, while still having a sense of which products are needed for each room.\n\nSome additional tips to keep in mind:\n\n* Store cleaning products in a well-ventilated area, away from children and pets.\n* Consider using a caddy or bucket with separate compartments to keep products organized and portable.\n* Label each category or room section clearly, so you can easily find what you need.\n* Keep frequently used products in easy-to-reach locations, and less frequently used products on higher or harder-to-reach shelves.\n\nRemember, the key is to find a system that works for you and your cleaning needs. Experiment with different approaches until you find one that feels comfortable and efficient.\n\n        Candidate notes:\n        [0] type=PLAN title=Garage organization with one-touch rule and labels summary=The user planned to clean out the garage on the weekend after 2023-09-30 by categorizing and grouping similar items, applying the one-touch rule while cleaning, and labeling storage bins and shelves with a Brother P-Touch label maker. scope=Applies to the user's garage cleanout and storage-bin organization plan discussed on 2023-09-30. entities=entity:<0>,entity:<1>,entity:<2>,entity:<3> keywords=garage,storage bins,boxes,categorizing,one-touch rule,Brother P-Touch,label maker,shelves tags=garage_organization,decluttering,labeling,one_touch_rule evidence=I'll definitely try to implement the \"one-touch rule\" when I'm cleaning out the garage this weekend.\n[1] type=LESSON title=One-touch rule habit procedure for cleaning summary=For the user's cleaning and organizing habits, the one-touch rule means handling each item once and deciding immediately whether to keep, donate/sell, discard, clean/maintain, put away, or take action. The recommended habit-building approach is to start with a specific task such as garage cleaning, use a simple decision framework and 3-box method, assign a home for each item, and attach the rule t...[truncated 31 chars] scope=Applies to the user's attempt to make the one-touch rule part of cleaning and organizing habits. entities=entity:<4>,entity:<5>,entity:<6> keywords=one-touch rule,cleaning habit,3-box method,Keep Donate Sell Discard,decision framework,habit loop tags=cleaning_habit,organizing_method,habit_building evidence=The idea is to handle each item only once, making a decision about it immediately, rather than putting it down and dealing with it later.\n[2] type=PLAN title=Bookshelf organizing approach summary=The user planned to organize their bookshelf using the advice to categorize and group similar books together; supporting tactics included purging unwanted books, grouping by category and then author/title/series, keeping frequently read books accessible, making a to-read section, leaving breathing room, and labeling shelves or sections rather than individual books. scope=Applies to the user's bookshelf organization plan discussed on 2023-09-30. entities=entity:<7>,entity:<8> keywords=bookshelf,categorize books,group similar books,to-read section,label shelves,book organization tags=bookshelf_organization,home_organization,labeling evidence=I'm planning to use some of those tips to organize my bookshelf, especially the one about categorizing and grouping similar books together.\n[3] type=DIRECTION title=Hybrid categorization approach for cleaning supplies summary=For cleaning supplies, a hybrid system was recommended: first divide supplies by product category, such as all-purpose cleaners, glass cleaners, and disinfectants, then group within each category by room or area, such as bathroom or kitchen. This balances reduced product duplication and easy label comparison with still being able to find supplies for a particular room. scope=Applies to categorizing the user's cleaning supplies by product type and room. entities=entity:<9>,entity:<10> keywords=cleaning supplies,categorize by room,categorize by type,hybrid approach,all-purpose cleaners,glass cleaners,disinfectants tags=cleaning_supplies,organization_system,categorization evidence=This approach combines the benefits of both methods.\n\n        Existing active notes:\n        id=hot-path-88bbd404e7a3-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Garage decluttering and workstation conversion plan summary=The user planned to organize their garage by first purging and categorizing cluttered tools and sports equipment, removing old furniture—especially an unused old desk—and converting the freed desk space into a dedicated workstation for their daily tidying routine and cleaning supplies. scope=Applies to the user's garage organization and daily tidying setup. keywords=garage organization,purging,tools,sports equipment,old desk,daily tidying routine,cleaning supplies workstation tags=garage,decluttering,tidying_routine,workstation useCount=0\nid=hot-path-88bbd404e7a3-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Garage bin and label organization approach summary=For the garage organization project, the user was considering stackable bins and labels to keep items organized and easy to find after purging and categorizing. Relevant guidance centered on measuring storage areas, matching bin strength and size to contents, choosing secure stackable bins, and using consistent clear labels possibly with color-coding and shelf labels. scope=Applies to the user's planned garage storage system using bins and labels. keywords=stackable bins,labels,garage storage,color-coding,label maker,shelf labels tags=garage,storage_system,organization useCount=0\nid=hot-path-88bbd404e7a3-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Daily tidying workstation supply setup summary=The user's planned tidying workstation would centralize all-purpose cleaners, disinfectants, dusters, paper towels, regularly used specialized tools such as a cordless vacuum and microfiber mop, and an all-natural bathroom cleaning brand that had been effective against soap scum and mildew. scope=Applies to the user's dedicated cleaning supplies workstation for the daily tidying routine. keywords=cleaning supplies workstation,all-purpose cleaners,disinfectants,dusters,paper towels,cordless vacuum,microfiber mop,all-natural bathroom cleaner,soap scum,mildew tags=tidying_routine,cleaning_supplies,workstation useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:7a87bd0c",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:0d09209044ca0829354fe178178c351a"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"supersede\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path-88bbd404e7a3-note-2\"}],\"patch\":{\"maturity\":\"stabilizing\",\"maturity_score\":0.55,\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"Applies to the user's planned garage storage system and cleanout approach discussed around 2023-09-30.\"},\"status\":\"active\",\"summary\":\"The user planned to clean out the garage by purging, categorizing and grouping similar items, using storage bins and shelf labels, applying the one-touch rule while cleaning, and using a Brother P-Touch label maker for the garage storage bins and shelves. Earlier guidance also included matching bin size/strength to contents, using secure stackable bins, consistent clear labels, and possible color-coding.\",\"title\":\"Garage organization with one-touch rule and Brother P-Touch labels\"},\"reason\":\"Candidate refines the existing garage bin/label note with the specific one-touch rule and Brother P-Touch choice rather than being a separate plan.\",\"target_note_id\":\"hot-path-88bbd404e7a3-note-3\"},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-88bbd404e7a3-note-2\"},{\"link_type\":\"related\",\"link_weight\":0.5,\"to_note_id\":\"hot-path-88bbd404e7a3-note-4\"}],\"patch\":null,\"reason\":\"Distinct reusable cleaning habit procedure not already captured by active notes, though related to garage cleanup and tidying setup.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct bookshelf organization plan not represented in existing active notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":3,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-88bbd404e7a3-note-4\"}],\"patch\":null,\"reason\":\"Distinct reusable categorization rule for cleaning supplies; it refines but does not duplicate the workstation supply setup note.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7134,
+                "completionTokens": 504,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
