@@ -9,6 +9,7 @@ import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryClaimCandidate
 import com.gromozeka.domain.model.memory.MemoryEntity
+import com.gromozeka.domain.model.memory.MemoryEvidenceRef
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalogDefaults
 import com.gromozeka.domain.model.memory.MemoryReconciliationAction
 import com.gromozeka.domain.model.memory.MemoryScope
@@ -164,6 +165,84 @@ class LlmMemoryClaimReconcilerTest {
         assertEquals(MemoryClaim.Status.SUPERSEDED, ops.single().updatedClaim?.status)
     }
 
+    @Test
+    fun supersedesAmbiguousEventWhenLlmNoopsMorePreciseDatedDuplicate() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "noop",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "attended_event",
+                        temporalPolicy = "time_scoped",
+                        semanticKinds = listOf("event_participation"),
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("I just came back from a lecture series at the Museum of Contemporary Art."),
+            ),
+            claimCandidates = listOf(datedLectureCandidate()),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingAmbiguousLectureClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.SUPERSEDE, ops.single().action)
+        assertEquals(MemoryClaim.Id("claim-existing"), ops.single().targetClaimId)
+        assertEquals("attended_event", ops.single().candidate?.predicate)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, ops.single().updatedClaim?.status)
+    }
+
+    @Test
+    fun supersedesWeaklyAnchoredRelativeEventDateWhenLlmNoopsAsDuplicate() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "noop",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "attended_event",
+                        temporalPolicy = "time_scoped",
+                        semanticKinds = listOf("event_participation"),
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("I just came back from a lecture series at the Museum of Contemporary Art."),
+            ),
+            claimCandidates = listOf(datedLectureCandidate()),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingWeaklyAnchoredLectureClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.SUPERSEDE, ops.single().action)
+        assertEquals(MemoryClaim.Id("claim-existing"), ops.single().targetClaimId)
+        assertEquals("attended_event", ops.single().candidate?.predicate)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, ops.single().updatedClaim?.status)
+    }
+
     private class SequencedJsonRuntime(
         private val responses: ArrayDeque<String>,
     ) : AiRuntime {
@@ -277,6 +356,89 @@ class LlmMemoryClaimReconcilerTest {
                 updatedAt = NOW,
             )
 
+        fun datedLectureCandidate(): MemoryClaimCandidate =
+            MemoryClaimCandidate(
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "attended_event",
+                objectValue = JsonPrimitive(
+                    "Lecture series at the Museum of Contemporary Art attended by the user shortly before or on 2023-01-22.",
+                ),
+                normalizedText = "The user attended a lecture series at the Museum of Contemporary Art shortly before or on 2023-01-22.",
+                scope = MemoryScope.Global(
+                    text = "User's dated art events",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                qualifiers = JsonObject(emptyMap()),
+                confidence = 0.97,
+                importance = 8,
+                validFrom = Instant.parse("2023-01-22T18:05:00Z"),
+                evidenceQuote = "I just came back from a lecture series at the Museum of Contemporary Art",
+                evidenceReason = "The target explicitly states recent attendance in the dated source.",
+                reason = "This is a more precisely dated event claim.",
+            )
+
+        fun existingAmbiguousLectureClaim(): MemoryClaim =
+            MemoryClaim(
+                id = MemoryClaim.Id("claim-existing"),
+                namespace = TEST_NAMESPACE,
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "attended_event",
+                predicateFamily = "attended_event",
+                predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE)
+                    .first { it.predicate == "attended_event" },
+                objectValue = JsonPrimitive("Lecture series at the Museum of Contemporary Art attended by the user recently."),
+                normalizedText = "The user recently attended a lecture series at the Museum of Contemporary Art.",
+                scope = MemoryScope.Global(
+                    text = "User's art events",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                confidence = 0.95,
+                importance = 7,
+                validFrom = Instant.parse("2023-01-15T08:39:00Z"),
+                evidenceRefs = listOf(
+                    MemoryEvidenceRef(
+                        sourceId = MemorySource.Id("source-old"),
+                        kind = MemoryEvidenceRef.Kind.IMPORTED,
+                        cachedQuote = "I attended a lecture series at the Museum of Contemporary Art recently.",
+                    )
+                ),
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                createdAt = NOW,
+                updatedAt = NOW,
+            )
+
+        fun existingWeaklyAnchoredLectureClaim(): MemoryClaim =
+            MemoryClaim(
+                id = MemoryClaim.Id("claim-existing"),
+                namespace = TEST_NAMESPACE,
+                subjectEntityId = USER_ENTITY_ID,
+                predicate = "attended_event",
+                predicateFamily = "attended_event",
+                predicatePolicy = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE)
+                    .first { it.predicate == "attended_event" },
+                objectValue = JsonPrimitive("Lecture series at the Museum of Contemporary Art attended by the user before or around 2023-01-15."),
+                normalizedText = "The user attended a lecture series at the Museum of Contemporary Art before or around 2023-01-15.",
+                scope = MemoryScope.Global(
+                    text = "User's art events",
+                    basis = MemoryScope.Basis.EXPLICIT,
+                ),
+                confidence = 0.95,
+                importance = 7,
+                validFrom = Instant.parse("2023-01-15T08:39:00Z"),
+                evidenceRefs = listOf(
+                    MemoryEvidenceRef(
+                        sourceId = MemorySource.Id("source-old"),
+                        kind = MemoryEvidenceRef.Kind.IMPORTED,
+                        cachedQuote = "I attended a lecture series at the Museum of Contemporary Art recently.",
+                    )
+                ),
+                firstSeenAt = NOW,
+                lastSeenAt = NOW,
+                createdAt = NOW,
+                updatedAt = NOW,
+            )
+
         fun source(text: String): MemorySource =
             MemorySource.ChatTurn(
                 id = MemorySource.Id("source"),
@@ -296,6 +458,8 @@ class LlmMemoryClaimReconcilerTest {
             action: String = "insert",
             targetClaimId: String? = null,
             conflictPolicy: String = "coexist",
+            temporalPolicy: String = "status_like",
+            semanticKinds: List<String> = listOf("constraint"),
         ): String =
             """
             {
@@ -309,9 +473,9 @@ class LlmMemoryClaimReconcilerTest {
                   "predicate_description": "Test predicate",
                   "object_kind": "string",
                   "cardinality": "multi",
-                  "temporal_policy": "status_like",
+                  "temporal_policy": "$temporalPolicy",
                   "conflict_policy": "$conflictPolicy",
-                  "semantic_kinds": ["constraint"],
+                  "semantic_kinds": [${semanticKinds.joinToString(",") { "\"$it\"" }}],
                   "aggregate_effect": "none",
                   "reason": "Test operation."
                 }

@@ -288,7 +288,23 @@ class LlmMemoryClaimReconciler(
                     targetClaimId = target,
                     candidate = candidate,
                     reason = reason.trim().ifBlank { "LLM reconciler selected noop" },
-                )
+                ).let { op ->
+                    val targetClaim = target?.let { targetId -> existingClaims.firstOrNull { it.id == targetId } }
+                    if (candidate != null && targetClaim != null && candidate.shouldSupersedeTemporalRefinementOf(targetClaim)) {
+                        MemoryClaimReconciliationOp(
+                            action = MemoryReconciliationAction.SUPERSEDE,
+                            targetClaimId = target,
+                            candidate = candidate,
+                            updatedClaim = MemoryClaimReconciliationOp.Patch(
+                                status = MemoryClaim.Status.SUPERSEDED,
+                                validTo = request.source.observedAt,
+                            ),
+                            reason = "Candidate adds stronger dated evidence for the same time-scoped event.",
+                        )
+                    } else {
+                        op
+                    }
+                }
 
                 "supersede" -> {
                     if (target == null || candidate == null) return null
@@ -499,8 +515,118 @@ internal fun MemoryClaimCandidate.isEquivalentToCoexistingTargetForMemoryReconci
         scope.text.normalizedClaimKey() == target.scope.text.normalizedClaimKey()
 }
 
+internal fun MemoryClaimCandidate.shouldSupersedeTemporalRefinementOf(target: MemoryClaim): Boolean {
+    val candidatePolicy = predicatePolicy ?: return false
+    val targetPolicy = target.predicatePolicy ?: return false
+    if (candidatePolicy.temporalPolicy != MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED) return false
+    if (targetPolicy.temporalPolicy != MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED) return false
+    if (SemanticKind.EVENT_PARTICIPATION !in candidatePolicy.semanticKinds &&
+        SemanticKind.EVENT_PARTICIPATION !in targetPolicy.semanticKinds
+    ) {
+        return false
+    }
+    if (subjectEntityId != target.subjectEntityId) return false
+    if ((predicateFamily ?: predicate).normalizedClaimKey() != (target.predicateFamily ?: target.predicate).normalizedClaimKey()) {
+        return false
+    }
+    if (textWithObjectValue().tokenOverlapWith(target.textWithObjectValue()) < 0.55) return false
+
+    val candidateHasDate = validFrom != null || textWithObjectValue().containsExplicitCalendarDate()
+    val targetHasDate = target.validFrom != null || target.textWithObjectValue().containsExplicitCalendarDate()
+    if (!candidateHasDate) return false
+    if (!targetHasDate) return true
+    if (validFrom != null && target.validFrom != null && validFrom == target.validFrom) return false
+
+    return temporalSignalText().temporalCueStrength() > target.temporalSignalText().temporalCueStrength()
+}
+
 private fun MemoryClaimCandidate.explicitlyReplacesPrevious(): Boolean =
     qualifiers["replaces_previous"]?.jsonPrimitive?.booleanOrNull == true
+
+private fun MemoryClaimCandidate.textWithObjectValue(): String =
+    listOfNotNull(normalizedText, objectValue?.toString())
+        .joinToString(" ")
+
+private fun MemoryClaim.textWithObjectValue(): String =
+    listOfNotNull(normalizedText, objectValue?.toString())
+        .joinToString(" ")
+
+private fun MemoryClaimCandidate.temporalSignalText(): String =
+    listOfNotNull(normalizedText, objectValue?.toString(), contextText, evidenceQuote, evidenceReason)
+        .joinToString(" ")
+
+private fun MemoryClaim.temporalSignalText(): String =
+    listOfNotNull(
+        normalizedText,
+        objectValue?.toString(),
+        contextText,
+        evidenceRefs.mapNotNull { it.cachedQuote }.joinToString(" ").takeIf { it.isNotBlank() },
+    ).joinToString(" ")
+
+private fun String.containsExplicitCalendarDate(): Boolean =
+    explicitIsoDateRegex.containsMatchIn(this) || explicitMonthDateRegex.containsMatchIn(this)
+
+private fun String.temporalCueStrength(): Int {
+    val text = lowercase()
+    if (strongTemporalCueRegex.containsMatchIn(text)) return 3
+    if (containsExplicitCalendarDate()) return 2
+    if (weakTemporalCueRegex.containsMatchIn(text)) return 1
+    return 0
+}
+
+private fun String.tokenOverlapWith(other: String): Double {
+    val left = semanticTokens()
+    val right = other.semanticTokens()
+    if (left.isEmpty() || right.isEmpty()) return 0.0
+    return left.intersect(right).size.toDouble() / minOf(left.size, right.size).toDouble()
+}
+
+private fun String.semanticTokens(): Set<String> =
+    semanticTokenRegex
+        .findAll(lowercase())
+        .map { it.value }
+        .filterNot { it in temporalRefinementStopWords }
+        .toSet()
+
+private val explicitIsoDateRegex = Regex("""\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b""")
+
+private val explicitMonthDateRegex = Regex(
+    """\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?\b""",
+    RegexOption.IGNORE_CASE,
+)
+
+private val semanticTokenRegex = Regex("""[\p{L}\p{N}]+""")
+
+private val temporalRefinementStopWords = setOf(
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "by",
+    "for",
+    "in",
+    "is",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "user",
+    "was",
+    "were",
+    "with",
+)
+
+private val strongTemporalCueRegex = Regex(
+    """\b(?:today|tonight|yesterday|this\s+(?:morning|afternoon|evening|week|weekend)|just\s+(?:came|got|returned)\s+back|just\s+(?:attended|visited|saw|finished)|came\s+back\s+from|returned\s+from)\b""",
+    RegexOption.IGNORE_CASE,
+)
+
+private val weakTemporalCueRegex = Regex(
+    """\b(?:recently|a\s+while\s+ago|some\s+time\s+ago|before\s+or\s+around|shortly\s+before|around)\b""",
+    RegexOption.IGNORE_CASE,
+)
 
 private fun String.normalizedClaimKey(): String =
     Regex("[A-Za-z0-9]+")
