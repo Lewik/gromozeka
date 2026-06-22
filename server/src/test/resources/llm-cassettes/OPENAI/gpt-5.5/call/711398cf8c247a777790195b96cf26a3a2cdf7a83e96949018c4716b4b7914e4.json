@@ -1,0 +1,179 @@
+{
+    "version": 1,
+    "hash": "711398cf8c247a777790195b96cf26a3a2cdf7a83e96949018c4716b4b7914e4",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I attend a networking event?\n\n                                Question date:\n                                2022/04/04 (Mon) 01:38\n\n                                Noisy expected-answer label:\n                                26 days. 27 days (including the last day) is also acceptable.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2022/03/09 (Wed) 04:12\nTranscript:\nuser: I'm looking to plan out my schedule for the upcoming week. I have a few commitments already, but I want to make sure I don't overbook myself. By the way, I just got back from a networking event that ran from 6 PM to 8 PM today, and I'm feeling a bit drained. Can you help me organize my tasks and appointments for the next few days?\nassistant: I'd be happy to help you plan out your schedule for the week.\n\nFirst, let's take into account your current state - you're feeling drained after the networking event, so it's essential to prioritize self-care and make sure you're not overcommitting yourself.\n\nTo get started, can you tell me about your existing commitments for the week? What do you already have planned, and when are those commitments scheduled?\n\nAlso, what are your top priorities for the week? Are there any tasks or projects that you need to focus on, or any deadlines you're working towards?\n\nLastly, what kind of tasks do you find most energizing and enjoyable, and which ones tend to drain your energy? This will help me suggest a schedule that balances your commitments with your energy levels and priorities.\nuser: I have a meeting at 2 PM on Tuesday, and I also need to work on a project that's due by the end of the week. As for energizing tasks, I find that exercising and meal-prepping give me a lot of energy.\nassistant: Let's break down your schedule for the week.\n\nConsidering you're feeling drained today, I recommend taking it easy tonight and getting a good night's rest. You can use tomorrow (Monday) to recharge and focus on self-care.\n\nHere's a suggested plan for the next few days:\n\n**Monday**\n\n* Morning: Sleep in and take your time getting ready\n* Afternoon: Fit in a energizing activity, such as a workout or a walk/jog\n* Late Afternoon: Meal-prep for the next few days to save time and energy\n* Evening: Relax and unwind with a book, movie, or a calming activity\n\n**Tuesday**\n\n* Morning: Focus on your project work (try to get a good chunk done before your meeting)\n* 2 PM: Attend your meeting\n* Afternoon: Continue working on your project, taking breaks as needed\n* Evening: Review your progress and plan your next steps for the project\n\n**Wednesday**\n\n* Morning: Dedicated project work time\n* Afternoon: Take a break and fit in another energizing activity (e.g., exercise, yoga, or a creative pursuit)\n* Evening: Continue working on your project or review what you've accomplished so far\n\n**Thursday**\n\n* Morning: Project work\n* Afternoon: Review and finalize your project (aim to complete it by the end of the day)\n* Evening: Relax and celebrate completing your project!\n\n**Friday**\n\n* Take the day to relax, catch up on any remaining tasks, or plan for the weekend\n\nThis schedule allows you to pace yourself, prioritize your project, and make time for energizing activities to help you stay motivated and focused. Feel free to adjust it as needed to suit your preferences and energy levels.\n\nHow does this look to you?\nuser: What do you think about incorporating some downtime this weekend to recharge before the next busy week? Are there any specific activities you'd like to fit in, such as watching TV shows, reading, or spending time with friends and family?\nassistant: Incorporating downtime this weekend is an excellent idea! It's essential to recharge before diving into another busy week. I'm glad you're thinking ahead.\n\nTo make the most of your weekend, let's allocate some time for relaxation and leisure activities. Here's a suggested plan:\n\n**Saturday**\n\n* Morning: Sleep in and have a slow morning (no rush!)\n* Afternoon: Choose one or two activities that bring you joy, such as:\n\t+ Catching up on your favorite TV show or watching a movie\n\t+ Reading a book or article you've been meaning to get to\n\t+ Taking a relaxing walk or doing some light stretching\n\t+ Cooking a favorite meal or trying a new recipe\n* Evening: Spend time with friends or family, or enjoy a quiet evening to yourself\n\n**Sunday**\n\n* Morning: Continue with relaxation mode (you can even take a nap if you need to!)\n* Afternoon: Fit in another activity that rejuvenates you, such as:\n\t+ Practicing a hobby or creative pursuit\n\t+ Taking a yoga class or doing some meditation\n\t+ Planning a fun outing or activity for the next week\n\t+ Simply enjoying a cup of coffee or tea in peace\n* Evening: Begin winding down for the night, preparing for the upcoming week\n\nRemember, this is your downtime, so feel free to customize it to your liking! If you have any specific activities or tasks you want to fit in, now's the time to do so.\n\nBy prioritizing relaxation and self-care this weekend, you'll be better equipped to tackle the next busy week ahead.\n\nHow does this sound?\nuser: That sounds like a great plan. I was thinking of watching some TV shows and catching up on laundry over the weekend.\nassistant: That sounds like a perfect way to unwind and recharge! Watching TV shows can be a great way to relax and escape into a different world for a while, and catching up on laundry is a great way to stay on top of your tasks without feeling overwhelmed.\n\nRemember to pace yourself and take breaks in between tasks, so you don't feel like you're doing too much. You can even set aside dedicated time for laundry, and then reward yourself with some TV time afterwards.\n\nAlso, consider setting a \"no work\" rule for the weekend, so you can fully disconnect from work-related tasks and focus on relaxation. This will help you come back to your project and other commitments feeling refreshed and motivated.\n\nOne more thing: don't forget to be kind to yourself and prioritize self-care. If you need an extra hour of sleep, take it. If you want to indulge in your favorite snack, go for it. Remember, this is your downtime, and it's all about recharging and having fun!\n\nHow many episodes of your favorite show are you planning to binge-watch this weekend?\nuser: I just remembered that I need to deposit a check at the bank. Would you be able to remind me to do that at some point this week?\nassistant: I'd be happy to remind you to deposit the check. Let's fit it into your schedule.\n\nConsidering your busy days are Tuesday and Thursday, I recommend doing it on Monday or Wednesday. You could do it on Monday morning, before you start your project work, or on Wednesday afternoon, after your project work and before you take a break.\n\nHere's an updated schedule:\n\n**Monday**\n\n* Morning: Deposit the check at the bank\n* Afternoon: Fit in a energizing activity (e.g., exercise, meal-prep)\n* Evening: Relax and unwind\n\nor\n\n**Wednesday**\n\n* Morning: Project work\n* Afternoon: Deposit the check at the bank\n* Late Afternoon: Take a break and fit in an energizing activity (e.g., exercise, yoga)\n* Evening: Continue working on your project or review your progress\n\nChoose the day and time that works best for you, and make sure to set a reminder so you don't forget!\n\nIs that all taken care of?\n                                ```\n\n                                Candidate answer:\n                                You attended the networking event on 2022-03-09, so as of 2022-04-04 that was 26 days ago.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "8077ef71",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor broad counts of music works or releases, count evidence-backed user-owned or downloaded vinyl records, CDs, cassettes, digital copies, and music downloads as album/EP/release items unless the evidence explicitly identifies them as only single tracks, playlists, non-audio merchandise, or the question asks for a narrower format or subtype.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor room or area item count/list questions, judge fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects as category-fitting when gold evidence explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I attend a networking event?\n\n                                Question date:\n                                2022/04/04 (Mon) 01:38\n\n                                Noisy expected-answer label:\n                                26 days. 27 days (including the last day) is also acceptable.\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2022/03/09 (Wed) 04:12\nTranscript:\nuser: I'm looking to plan out my schedule for the upcoming week. I have a few commitments already, but I want to make sure I don't overbook myself. By the way, I just got back from a networking event that ran from 6 PM to 8 PM today, and I'm feeling a bit drained. Can you help me organize my tasks and appointments for the next few days?\nassistant: I'd be happy to help you plan out your schedule for the week.\n\nFirst, let's take into account your current state - you're feeling drained after the networking event, so it's essential to prioritize self-care and make sure you're not overcommitting yourself.\n\nTo get started, can you tell me about your existing commitments for the week? What do you already have planned, and when are those commitments scheduled?\n\nAlso, what are your top priorities for the week? Are there any tasks or projects that you need to focus on, or any deadlines you're working towards?\n\nLastly, what kind of tasks do you find most energizing and enjoyable, and which ones tend to drain your energy? This will help me suggest a schedule that balances your commitments with your energy levels and priorities.\nuser: I have a meeting at 2 PM on Tuesday, and I also need to work on a project that's due by the end of the week. As for energizing tasks, I find that exercising and meal-prepping give me a lot of energy.\nassistant: Let's break down your schedule for the week.\n\nConsidering you're feeling drained today, I recommend taking it easy tonight and getting a good night's rest. You can use tomorrow (Monday) to recharge and focus on self-care.\n\nHere's a suggested plan for the next few days:\n\n**Monday**\n\n* Morning: Sleep in and take your time getting ready\n* Afternoon: Fit in a energizing activity, such as a workout or a walk/jog\n* Late Afternoon: Meal-prep for the next few days to save time and energy\n* Evening: Relax and unwind with a book, movie, or a calming activity\n\n**Tuesday**\n\n* Morning: Focus on your project work (try to get a good chunk done before your meeting)\n* 2 PM: Attend your meeting\n* Afternoon: Continue working on your project, taking breaks as needed\n* Evening: Review your progress and plan your next steps for the project\n\n**Wednesday**\n\n* Morning: Dedicated project work time\n* Afternoon: Take a break and fit in another energizing activity (e.g., exercise, yoga, or a creative pursuit)\n* Evening: Continue working on your project or review what you've accomplished so far\n\n**Thursday**\n\n* Morning: Project work\n* Afternoon: Review and finalize your project (aim to complete it by the end of the day)\n* Evening: Relax and celebrate completing your project!\n\n**Friday**\n\n* Take the day to relax, catch up on any remaining tasks, or plan for the weekend\n\nThis schedule allows you to pace yourself, prioritize your project, and make time for energizing activities to help you stay motivated and focused. Feel free to adjust it as needed to suit your preferences and energy levels.\n\nHow does this look to you?\nuser: What do you think about incorporating some downtime this weekend to recharge before the next busy week? Are there any specific activities you'd like to fit in, such as watching TV shows, reading, or spending time with friends and family?\nassistant: Incorporating downtime this weekend is an excellent idea! It's essential to recharge before diving into another busy week. I'm glad you're thinking ahead.\n\nTo make the most of your weekend, let's allocate some time for relaxation and leisure activities. Here's a suggested plan:\n\n**Saturday**\n\n* Morning: Sleep in and have a slow morning (no rush!)\n* Afternoon: Choose one or two activities that bring you joy, such as:\n\t+ Catching up on your favorite TV show or watching a movie\n\t+ Reading a book or article you've been meaning to get to\n\t+ Taking a relaxing walk or doing some light stretching\n\t+ Cooking a favorite meal or trying a new recipe\n* Evening: Spend time with friends or family, or enjoy a quiet evening to yourself\n\n**Sunday**\n\n* Morning: Continue with relaxation mode (you can even take a nap if you need to!)\n* Afternoon: Fit in another activity that rejuvenates you, such as:\n\t+ Practicing a hobby or creative pursuit\n\t+ Taking a yoga class or doing some meditation\n\t+ Planning a fun outing or activity for the next week\n\t+ Simply enjoying a cup of coffee or tea in peace\n* Evening: Begin winding down for the night, preparing for the upcoming week\n\nRemember, this is your downtime, so feel free to customize it to your liking! If you have any specific activities or tasks you want to fit in, now's the time to do so.\n\nBy prioritizing relaxation and self-care this weekend, you'll be better equipped to tackle the next busy week ahead.\n\nHow does this sound?\nuser: That sounds like a great plan. I was thinking of watching some TV shows and catching up on laundry over the weekend.\nassistant: That sounds like a perfect way to unwind and recharge! Watching TV shows can be a great way to relax and escape into a different world for a while, and catching up on laundry is a great way to stay on top of your tasks without feeling overwhelmed.\n\nRemember to pace yourself and take breaks in between tasks, so you don't feel like you're doing too much. You can even set aside dedicated time for laundry, and then reward yourself with some TV time afterwards.\n\nAlso, consider setting a \"no work\" rule for the weekend, so you can fully disconnect from work-related tasks and focus on relaxation. This will help you come back to your project and other commitments feeling refreshed and motivated.\n\nOne more thing: don't forget to be kind to yourself and prioritize self-care. If you need an extra hour of sleep, take it. If you want to indulge in your favorite snack, go for it. Remember, this is your downtime, and it's all about recharging and having fun!\n\nHow many episodes of your favorite show are you planning to binge-watch this weekend?\nuser: I just remembered that I need to deposit a check at the bank. Would you be able to remind me to do that at some point this week?\nassistant: I'd be happy to remind you to deposit the check. Let's fit it into your schedule.\n\nConsidering your busy days are Tuesday and Thursday, I recommend doing it on Monday or Wednesday. You could do it on Monday morning, before you start your project work, or on Wednesday afternoon, after your project work and before you take a break.\n\nHere's an updated schedule:\n\n**Monday**\n\n* Morning: Deposit the check at the bank\n* Afternoon: Fit in a energizing activity (e.g., exercise, meal-prep)\n* Evening: Relax and unwind\n\nor\n\n**Wednesday**\n\n* Morning: Project work\n* Afternoon: Deposit the check at the bank\n* Late Afternoon: Take a break and fit in an energizing activity (e.g., exercise, yoga)\n* Evening: Continue working on your project or review your progress\n\nChoose the day and time that works best for you, and make sure to set a reminder so you don't forget!\n\nIs that all taken care of?\n                                ```\n\n                                Candidate answer:\n                                You attended the networking event on 2022-03-09, so as of 2022-04-04 that was 26 days ago.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "8077ef71",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The candidate correctly identifies the event date as 2022-03-09 and computes 26 days before 2022-04-04.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2748,
+                "completionTokens": 111,
+                "thinkingTokens": 59,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
