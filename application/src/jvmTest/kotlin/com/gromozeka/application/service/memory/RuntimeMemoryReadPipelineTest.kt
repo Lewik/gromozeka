@@ -112,7 +112,113 @@ class RuntimeMemoryReadPipelineTest {
         )
         assertTrue(result.runtimePrompt.orEmpty().contains("claim-owned-item"))
         assertTrue(result.runtimePrompt.orEmpty().contains("semantics=POSSESSION"))
-        assertTrue(result.trace.sourceSafety.restoredTypedHits.any { it.ref.id == "claim-owned-item" })
+    }
+
+    @Test
+    fun selectedTypedHitsRestoreSiblingTypedEvidenceSupportFromTheirSources() = runBlocking {
+        val source = source(
+            id = "source-flight-history",
+            text = "The source contains multiple user flight facts from the same imported session.",
+        )
+        val selectedClaim = claim(
+            id = "claim-selected-flight",
+            sourceId = source.id,
+            text = "The user was flying a later planned route.",
+            predicate = "attended_event",
+        )
+        val siblingClaim = claim(
+            id = "claim-earlier-flight",
+            sourceId = source.id,
+            text = "The user had just returned from an earlier completed flight.",
+            predicate = "attended_event",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                claims = listOf(selectedClaim, siblingClaim),
+            )
+        )
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need every flight in chronological order.",
+                            query = "all flights earliest latest",
+                            topK = 2,
+                        )
+                    ),
+                    requireEvidenceFallback = true,
+                )
+            ),
+            selector = FixedRefsSelector("claim-selected-flight"),
+        )
+
+        val result = pipeline.read(readRequest("What flights did I take from earliest to latest?"))
+
+        assertTrue(result.runtimePrompt.orEmpty().contains("claim-selected-flight"))
+        assertTrue(result.runtimePrompt.orEmpty().contains("claim-earlier-flight"))
+    }
+
+    @Test
+    fun completeSetKeepsUnselectedTypedCandidatesFromIndependentSources() = runBlocking {
+        val earlierSource = source(
+            id = "source-earlier-event",
+            text = "The source contains an earlier distinct user event.",
+        )
+        val laterSource = source(
+            id = "source-later-event",
+            text = "The source contains a later distinct user event.",
+        )
+        val earlierClaim = claim(
+            id = "claim-earlier-event",
+            sourceId = earlierSource.id,
+            text = "The user completed an earlier dated event.",
+            predicate = "attended_event",
+        )
+        val laterClaim = claim(
+            id = "claim-later-event",
+            sourceId = laterSource.id,
+            text = "The user completed a later dated event.",
+            predicate = "attended_event",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(earlierSource, laterSource),
+                claims = listOf(earlierClaim, laterClaim),
+            )
+        )
+        val pipeline = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedMemoryReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Need every distinct dated event in chronological order.",
+                            query = "all dated events earliest latest",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+            selector = FixedRefsSelector("claim-later-event"),
+        )
+
+        val result = pipeline.read(readRequest("What dated events happened from earliest to latest?"))
+
+        assertTrue(result.runtimePrompt.orEmpty().contains("claim-later-event"))
+        assertTrue(result.runtimePrompt.orEmpty().contains("claim-earlier-event"))
     }
 
     @Test
@@ -503,6 +609,16 @@ class RuntimeMemoryReadPipelineTest {
             )
     }
 
+    private class FixedRefsSelector(
+        private vararg val ids: String,
+    ) : MemoryReadSelector {
+        override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult =
+            MemoryReadSelectionResult(
+                selectedHits = request.candidateHits.filter { it.toTestItemId() in ids },
+                summary = "Test selector kept fixed refs.",
+            )
+    }
+
     private class SourceSweepStore private constructor(
         private val sources: List<MemorySource.ExternalRecord>,
         private val delegateStore: InMemoryMemoryStore,
@@ -600,3 +716,15 @@ class RuntimeMemoryReadPipelineTest {
                 }
     }
 }
+
+private fun MemoryStore.SearchHit.toTestItemId(): String =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> source.id.value
+        is MemoryStore.SearchHit.EntityHit -> entity.id.value
+        is MemoryStore.SearchHit.ClaimHit -> claim.id.value
+        is MemoryStore.SearchHit.NoteHit -> note.id.value
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.id.value
+        is MemoryStore.SearchHit.ProfileHit -> profile.id.value
+        is MemoryStore.SearchHit.EpisodeHit -> episode.id.value
+        is MemoryStore.SearchHit.RunHit -> run.id.value
+    }

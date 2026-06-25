@@ -405,7 +405,18 @@ class RuntimeMemoryReadPipeline(
                     "droppedSourceIds=${sourceFilteredHits.droppedSources.joinToString("|") { it.source.id.value }}"
             }
         }
-        val selectedSourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(
+        val completeSetTypedCoverage = sourceFilteredHits.hits.keepCompleteSetTypedCoverageCandidates(
+            plan = plan,
+            candidateHits = selectorCandidateHits,
+        )
+        if (completeSetTypedCoverage.changed) {
+            log.info {
+                "Memory read complete-set typed candidate coverage: namespace=${request.namespace.value} " +
+                    "added=${completeSetTypedCoverage.addedHits.breakdownForRuntimeMemoryLog()} " +
+                    "refs=${completeSetTypedCoverage.addedHits.summaryForRuntimeMemoryLog()}"
+            }
+        }
+        val selectedSourceSafety = completeSetTypedCoverage.hits.applyActiveTypedMemorySourceSafety(
             plan = plan,
             includeHistoricalTypedMemory = includeHistoricalTypedMemory,
             snapshot = selectorSnapshot,
@@ -700,8 +711,7 @@ class RuntimeMemoryReadPipeline(
             return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
         }
 
-        val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
-            .mapTo(mutableSetOf()) { it.source.id }
+        val sourceIds = selectedTypedEvidenceSupportSourceIds(request, plan)
         if (sourceIds.isEmpty()) return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
 
         val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
@@ -710,8 +720,7 @@ class RuntimeMemoryReadPipeline(
             .filter { includeHistoricalTypedMemory || it.isCurrentTruthBearingTypedHit() }
             .filterNot { it.toItemRef() in existingRefs }
             .map { it.withRuntimeEvidenceSupportScore(request, plan) }
-            .sortedForRuntimeMemoryRead(plan)
-            .take(READ_SELECTED_SOURCE_TYPED_SUPPORT_LIMIT)
+            .takeSelectedSourceTypedSupport(plan, sourceIds)
         if (supportHits.isEmpty()) return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
 
         log.info {
@@ -725,6 +734,49 @@ class RuntimeMemoryReadPipeline(
             addedHits = supportHits,
         )
     }
+}
+
+private fun List<MemoryStore.SearchHit>.selectedTypedEvidenceSupportSourceIds(
+    request: MemoryReadRequest,
+    plan: MemoryReadPlan,
+): Set<MemorySource.Id> {
+    val currentThreadSourceIds = request.currentThreadChatSourceIds()
+    val selectedSourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+        .map { it.source.id }
+    val selectedEvidenceSourceIds = if (plan.coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        flatMap { it.evidenceRefsForRecall() }.map { it.sourceId }
+    } else {
+        emptyList()
+    }
+
+    return (selectedSourceIds + selectedEvidenceSourceIds)
+        .filterNot { it in currentThreadSourceIds }
+        .toSet()
+}
+
+private fun List<MemoryStore.SearchHit>.takeSelectedSourceTypedSupport(
+    plan: MemoryReadPlan,
+    sourceIds: Set<MemorySource.Id>,
+): List<MemoryStore.SearchHit> {
+    val sortedHits = sortedForRuntimeMemoryRead(plan)
+    if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        return sortedHits.take(READ_SELECTED_SOURCE_TYPED_SUPPORT_LIMIT)
+    }
+
+    val selectedRefs = linkedSetOf<MemoryItemRef>()
+    val perSourceHits = sourceIds
+        .sortedBy { it.value }
+        .flatMap { sourceId ->
+            sortedHits
+                .filter { hit -> hit.evidenceRefsForRecall().any { it.sourceId == sourceId } }
+                .take(READ_SELECTED_SOURCE_TYPED_SUPPORT_COMPLETE_SET_PER_SOURCE_LIMIT)
+        }
+        .filter { selectedRefs.add(it.toItemRef()) }
+    val remainingHits = sortedHits
+        .filter { selectedRefs.add(it.toItemRef()) }
+
+    return (perSourceHits + remainingHits)
+        .take(READ_SELECTED_SOURCE_TYPED_SUPPORT_COMPLETE_SET_LIMIT)
 }
 
 private data class RuntimeMemoryRetrievedHits(
@@ -758,6 +810,13 @@ private data class RuntimeMemorySelectedSourceTypedSupportResult(
     val hits: List<MemoryStore.SearchHit>,
     val addedHits: List<MemoryStore.SearchHit> = emptyList(),
 )
+
+private data class RuntimeMemoryCompleteSetTypedCoverageResult(
+    val hits: List<MemoryStore.SearchHit>,
+    val addedHits: List<MemoryStore.SearchHit> = emptyList(),
+) {
+    val changed: Boolean = addedHits.isNotEmpty()
+}
 
 private data class RuntimeMemoryRawSourceDeferralResult(
     val hits: List<MemoryStore.SearchHit>,
@@ -1697,6 +1756,30 @@ private fun List<MemoryStore.SearchHit>.keepPlannerRequestedProfiles(
     )
 }
 
+private fun List<MemoryStore.SearchHit>.keepCompleteSetTypedCoverageCandidates(
+    plan: MemoryReadPlan,
+    candidateHits: List<MemoryStore.SearchHit>,
+): RuntimeMemoryCompleteSetTypedCoverageResult {
+    if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) {
+        return RuntimeMemoryCompleteSetTypedCoverageResult(hits = this)
+    }
+
+    val selectedRefs = mapTo(mutableSetOf()) { it.toItemRef() }
+    val coverageHits = candidateHits
+        .filter { it.isCurrentTruthBearingTypedHit() }
+        .filterNot { it.toItemRef() in selectedRefs }
+        .sortedForRuntimeMemoryRead(plan)
+        .take(READ_COMPLETE_SET_TYPED_CANDIDATE_COVERAGE_LIMIT)
+    if (coverageHits.isEmpty()) {
+        return RuntimeMemoryCompleteSetTypedCoverageResult(hits = this)
+    }
+
+    return RuntimeMemoryCompleteSetTypedCoverageResult(
+        hits = this + coverageHits,
+        addedHits = coverageHits,
+    )
+}
+
 private fun List<MemoryStore.SearchHit>.renderProfiles(): String =
     filterIsInstance<MemoryStore.SearchHit.ProfileHit>()
         .joinToString("\n") { "- profile ${it.profile.id.value}: ${it.profile.profileText}" }
@@ -2125,7 +2208,10 @@ private fun String.truncateForRuntimeMemoryPrompt(maxChars: Int): String {
 
 private const val MAX_RUNTIME_CLAIM_CONTEXT_CHARS = 700
 private const val MAX_RUNTIME_FULL_SOURCE_CHARS = 12_000
+private const val READ_COMPLETE_SET_TYPED_CANDIDATE_COVERAGE_LIMIT = 80
 private const val READ_SELECTED_SOURCE_TYPED_SUPPORT_LIMIT = 16
+private const val READ_SELECTED_SOURCE_TYPED_SUPPORT_COMPLETE_SET_LIMIT = 80
+private const val READ_SELECTED_SOURCE_TYPED_SUPPORT_COMPLETE_SET_PER_SOURCE_LIMIT = 16
 
 private fun MemorySource.sourceLabelForMemoryPrompt(): String =
     when (this) {
