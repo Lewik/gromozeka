@@ -2,6 +2,8 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -26,6 +28,7 @@ class OpenAiSubscriptionAuthService(
     private val log = KLoggers.logger(this)
     private val json = Json { ignoreUnknownKeys = true }
     private val httpClient = HttpClient.newBuilder().build()
+    private val refreshMutex = Mutex()
 
     fun getAuthorizationUrl(): OpenAiSubscriptionAuthorizationUrl {
         val config = configService.load()
@@ -169,6 +172,21 @@ class OpenAiSubscriptionAuthService(
 
     suspend fun refreshTokens(
         refreshToken: String,
+    ): Result<OpenAiSubscriptionSession> = refreshMutex.withLock {
+        val latest = configService.getSession()
+        if (latest != null && latest.refreshToken != refreshToken) {
+            if (!latest.needsRefresh()) {
+                Result.success(latest)
+            } else {
+                refreshTokensUnsafe(latest.refreshToken)
+            }
+        } else {
+            refreshTokensUnsafe(refreshToken)
+        }
+    }
+
+    private suspend fun refreshTokensUnsafe(
+        refreshToken: String,
     ): Result<OpenAiSubscriptionSession> = withContext(Dispatchers.IO) {
         runCatching {
             val config = configService.load()
@@ -210,13 +228,24 @@ class OpenAiSubscriptionAuthService(
         val current = configService.getSession()
             ?: error("OpenAI subscription is not configured. Authenticate first.")
 
-        if (current.expiresAt > System.currentTimeMillis() + REFRESH_SAFETY_MARGIN_MS) {
+        if (!current.needsRefresh()) {
             return current
         }
 
-        log.info("OpenAI subscription access token expired or near expiry, refreshing")
-        return refreshTokens(current.refreshToken).getOrThrow()
+        return refreshMutex.withLock {
+            val latest = configService.getSession()
+                ?: error("OpenAI subscription is not configured. Authenticate first.")
+            if (!latest.needsRefresh()) {
+                latest
+            } else {
+                log.info("OpenAI subscription access token expired or near expiry, refreshing")
+                refreshTokensUnsafe(latest.refreshToken).getOrThrow()
+            }
+        }
     }
+
+    private fun OpenAiSubscriptionSession.needsRefresh(): Boolean =
+        expiresAt <= System.currentTimeMillis() + REFRESH_SAFETY_MARGIN_MS
 
     private fun buildFormBody(params: Map<String, String>): String {
         return params.entries.joinToString("&") { (key, value) ->
