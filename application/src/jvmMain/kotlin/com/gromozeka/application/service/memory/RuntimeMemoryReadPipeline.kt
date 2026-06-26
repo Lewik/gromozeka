@@ -99,6 +99,7 @@ class RuntimeMemoryReadPipeline(
     ): RuntimeMemoryRetrievedHits {
         val targetEntities = resolveTargetEntitiesForRead(request, plan)
         val includeHistoricalTypedMemory = request.targetAsksForHistoricalTypedMemory(plan)
+        val namespaceSnapshot = store.loadNamespaceSnapshot(request.namespace, includeArchived = true)
         val queryEmbeddings = mutableMapOf<String, MemoryStore.SearchEmbedding?>()
         val hits = mutableListOf<MemoryStore.SearchHit>()
         hits += targetEntities.hits
@@ -419,7 +420,7 @@ class RuntimeMemoryReadPipeline(
         val selectedSourceSafety = completeSetTypedCoverage.hits.applyActiveTypedMemorySourceSafety(
             plan = plan,
             includeHistoricalTypedMemory = includeHistoricalTypedMemory,
-            snapshot = selectorSnapshot,
+            snapshot = namespaceSnapshot,
             candidateHits = selectorCandidateHits,
             protectedRefs = selectorSelectedRefs,
         )
@@ -442,7 +443,7 @@ class RuntimeMemoryReadPipeline(
             }
         }
         val selectedHits = sourceSafety.hits.sortedForRuntimeMemoryRead()
-        val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits, selectorSnapshot)
+        val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits, namespaceSnapshot)
             .sortedForRuntimeMemoryRead()
         val entityHydratedHits = hydrateLinkedEntities(request, evidenceHydratedHits)
             .sortedForRuntimeMemoryRead()
@@ -877,6 +878,7 @@ object RuntimeMemoryPromptComposer {
             For relative month-count questions such as "two months ago", derive the approximate calendar-offset target from the current/question date and prefer retrieved memory closest to that offset. Do not treat any earlier recent event as matching the requested offset; for example, one month ago is not two months ago when another otherwise relevant retrieved item is near the two-month target.
             For "past weekend", "last week", "yesterday", or other relative-window questions, derive the target interval from the current/question date. An event with its own local cue such as "today" resolves to the source/session date and is outside the window when that date is outside the target interval.
             For relative-duration questions that name an anchor event, such as "how many days/weeks/months ago did X when/at the time Y", compute the interval from event X to the anchor event Y when both dates are selected. Use the current/question date only when no separate anchor event is named or retrieved.
+            For personal event timing from imported chat sources, first-person user recency cues such as "just", "today", "yesterday", "this weekend", "last week", or "recently" are stronger event-date evidence than assistant meta-statements about what the assistant did not know or remember. Do not chain an assistant-side relative interval when the user's own local cue dates the same event to the source/session date.
             For chained relative-time questions, combine explicit offsets instead of stopping at the last lexical hop. If memory says X happened N days/weeks/months before anchor Y, and Y happened M days/weeks/months before the question/current date, answer X as approximately N+M days/weeks/months ago when both operands are selected. A lead time such as "three months in advance" or "two weeks before" is not itself an "ago" answer unless its anchor is the question/current date.
             For questions asking how long the user had been doing an activity when an anchor event happened, compute from the explicit start/begin/first-participation date of that activity to the anchor event date when both are selected. Do not add an as-of duration or tenure value to the time between its as-of date and the anchor when selected memory also contains a conflicting explicit start date for the same activity; treat that as-of value as noisy or conflicting context.
             For date-scoped questions, a candidate whose event or source date matches the requested period is stronger than an ACTIVE typed fact from outside the period.
@@ -2029,10 +2031,11 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
     val suppressedSourceIds = replacementSourceIds.filterNotTo(mutableSetOf()) { it in protectedSourceIds }
 
     val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
-    val restoredHits = snapshot.activeTypedReplacementHitsForSources(
+    val replacementHits = snapshot.activeTypedReplacementHitsForSources(
         sourceIds = replacementSourceIds,
         candidateHits = candidateHits,
-    ).filterNot { it.toItemRef() in existingRefs }
+    )
+    val missingReplacementHits = replacementHits.filterNot { it.toItemRef() in existingRefs }
     val suppressRawSources =
         plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET && !includeHistoricalTypedMemory
     val suppressedSourceHits = if (suppressRawSources) {
@@ -2044,15 +2047,15 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
     val repairedHits = if (suppressRawSources) {
         filterNot { hit ->
             hit is MemoryStore.SearchHit.SourceHit && hit.source.id in suppressedSourceIds
-        } + restoredHits
+        } + missingReplacementHits
     } else {
-        this + restoredHits
+        this + missingReplacementHits
     }
 
     return RuntimeMemorySourceSafetyResult(
         hits = repairedHits,
         suppressedSourceHits = suppressedSourceHits,
-        restoredTypedHits = restoredHits,
+        restoredTypedHits = replacementHits,
     )
 }
 

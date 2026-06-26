@@ -2615,8 +2615,8 @@ class MemoryMaintenancePipelineTest {
         val prompt = assertNotNull(result.runtimePrompt)
 
         assertTrue(refs.contains(directRef))
-        assertEquals(4, refs.count { it.type == MemoryItemRef.Type.CLAIM })
-        assertTrue(safetyRefs.any { it !in refs })
+        assertEquals(1 + safetyRefs.size, refs.count { it.type == MemoryItemRef.Type.CLAIM })
+        assertTrue(safetyRefs.all { it in refs })
         assertTrue(prompt.contains("ACL's submission date was February 1st."))
     }
 
