@@ -339,7 +339,7 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
-    fun promptKeepsSourceDateCandidatesForNamedDateQuestions() = runBlocking {
+    fun promptComparesEventDateBeforeSourceDateForNamedDateQuestions() = runBlocking {
         val claims = listOf(
             claim(
                 id = "claim-explicit-wrong-date",
@@ -381,14 +381,18 @@ class LlmMemoryReadSelectorTest {
 
         val prompt = runtime.prompts.single()
         assertTrue(prompt.contains("For named-date or relative-date questions"), prompt)
-        assertTrue(prompt.contains("source/session date matches the target"), prompt)
+        assertTrue(prompt.contains("candidate event dates and local event wording are stronger"), prompt)
+        assertTrue(prompt.contains("Keep a source/session-date match only when"), prompt)
+        assertTrue(prompt.contains("For completed-experience questions"), prompt)
+        assertTrue(prompt.contains("A booking or reservation date is not the event date"), prompt)
         assertTrue(prompt.contains("relative month-count questions such as \"two months ago\""), prompt)
         assertTrue(prompt.contains("one month ago is not two months ago"), prompt)
         assertTrue(prompt.contains("derive the target interval from the current/question date"), prompt)
+        assertTrue(prompt.contains("First-person recency wording such as \"still recovering from\""), prompt)
         assertTrue(prompt.contains("Do not smear one relative date cue"), prompt)
         assertTrue(prompt.contains("Missing date evidence is uncertainty"), prompt)
         assertTrue(prompt.contains("target-period lifecycle variants"), prompt)
-        assertTrue(prompt.contains("outside-period completed actions"), prompt)
+        assertTrue(prompt.contains("requested action/status is not itself a required qualifier"), prompt)
         assertTrue(prompt.contains("place-visit questions"), prompt)
         assertTrue(prompt.contains("user-attended venue events such as lectures"), prompt)
         assertTrue(prompt.contains("Do not infer that an unrelated explicit date satisfies a named date"), prompt)
