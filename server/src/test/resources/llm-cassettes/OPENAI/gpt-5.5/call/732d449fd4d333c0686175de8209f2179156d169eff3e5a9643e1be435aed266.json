@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "732d449fd4d333c0686175de8209f2179156d169eff3e5a9643e1be435aed266",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_e414231f\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains durable personal cycling facts/statuses and richer maintenance/planning context worth preserving.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I'm / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable USER entity as subject; no existing candidates are provided.\n- mention=my road bike; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's road bike; reason=First-person possessive wording identifies a concrete reusable personal item.\n- mention=my mountain bike; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=User's mountain bike; reason=First-person possessive wording identifies a concrete reusable personal item.\n- mention=Shimano Ultegra pedals; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Shimano Ultegra pedals; reason=Specific product mentioned as an intended purchase/installation object; no existing candidate is available.\n- mention=MapMyRide; action=CREATE_NEW; id=entity:<4>; type=SERVICE; name=MapMyRide; reason=Named online service mentioned as a route-planning tool; no existing candidate is available.\n- mention=local bike shop; action=CREATE_NEW; id=entity:<5>; type=ORGANIZATION; name=User's local bike shop; reason=Mention is generic but can be a reusable organization-like entity for claims about possible maintenance assistance; canonicalized as the user's local bike shop.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|user's road bike|user's mountain bike|Shimano Ultegra pedals|MapMyRide\n        text_queries=road bike maintenance spongy brakes clipless pedals Shimano Ultegra pedals|mountain bike flat tire replaced inner tube cleaned chain running smoothly|planning longer bike ride 60 miles MapMyRide\n        predicate_hints=owns_vehicle|has_goal|has_constraint|prefers|current_metric_value|metric_observation\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:3c9b9dc58369a589a33bc063b4295e39] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_e414231f:session:1; title=LongMemEval gpt4_e414231f session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/15 (Wed) 17:24\nTranscript:\nuser: I'm thinking of planning a longer bike ride this weekend, maybe around 60 miles or so. Can you help me find some routes around my area that would be suitable for a road bike? Oh, and by the way, I finally got around to fixing that flat tire on my mountain bike today - replaced the inner tube, cleaned the chain, and it's been running smoothly.\nassistant: I'm happy to help you plan a road bike route! However, I have to clarify that I'm a large language model, I don't have access to your location or personal information, so I won't be able to provide you with specific routes around your area.\n\nBut don't worry, I can offer some general tips to help you find a suitable route for your 60-mile ride:\n\n1. **Use online route-planning tools**: Websites like MapMyRide, Strava, Ride with GPS, or Bikemap allow you to enter your location and desired distance to find pre-made routes or create your own. You can filter by road bike routes, terrain, and other preferences.\n2. **Check local bike maps and websites**: Look for local cycling organizations, bike shops, or government websites that provide bike route maps and recommendations for your area.\n3. **Consider rail trails or bike paths**: These routes are often flat, smooth, and car-free, making them ideal for road bikes. You can search for rail trails or bike paths in your area using online resources like TrailLink or Rails-to-Trails Conservancy.\n4. **Ask local cyclists or bike shops**: Reach out to local cycling clubs, bike shops, or online forums to ask for route recommendations. They can provide valuable insights and suggestions based on their experience.\n\nAs for your mountain bike, it's great to hear that you got it fixed and it's running smoothly! Remember to keep it well-maintained to ensure it continues to perform well.\n\nBefore your 60-mile ride, make sure to:\n\n* Check your road bike's condition, including tire pressure, brakes, and gears.\n* Plan your route in advance and bring a map or GPS device.\n* Pack essentials like water, snacks, and a basic tool kit.\n* Wear comfortable, breathable clothing and a properly fitted helmet.\n* Let someone know your route and expected return time.\n\nHave a great ride!\nuser: That's really helpful, thanks for the tips! I think I'll try out MapMyRide to find a route that suits my needs. By the way, I've been meaning to take my road bike in for a maintenance check, the brakes have been feeling a bit spongy lately and I don't want to risk any accidents. Do you know if there's a checklist I can follow to prepare my bike for a maintenance check?\nassistant: MapMyRide is a fantastic tool to find routes and plan your ride.\n\nRegarding your road bike's maintenance, it's great that you're proactive about getting it checked! A spongy brake feel can be a safety concern, so it's essential to address it ASAP. Here's a checklist to help you prepare your bike for a maintenance check:\n\n**Before taking your bike to the shop:**\n\n1. **Clean the bike**: Give your bike a thorough cleaning to remove dirt, grime, and any debris that might interfere with the mechanic's inspection. Pay attention to the chain, derailleurs, and brake calipers.\n2. **Check tire pressure**: Ensure the tires are inflated to the recommended pressure, as specified on the sidewall or in your owner's manual. Proper pressure can affect the bike's overall performance and safety.\n3. **Identify issues**: Make a list of any concerns or issues you've noticed, such as:\n\t* Spongy brakes (as you mentioned)\n\t* Shifting problems (e.g., gears skipping or not engaging properly)\n\t* Unusual noises or vibrations\n\t* Loose or worn-out components (e.g., stem, handlebars, or saddle)\n4. **Gather maintenance records**: Collect any records of previous maintenance, including dates and details of work done. This will help the mechanic understand your bike's history and identify potential patterns.\n\n**When you take your bike to the shop:**\n\n1. **Be prepared to describe the issues**: Clearly explain the problems you've experienced, including when they started and any circumstances that might be related (e.g., weather, terrain, or recent rides).\n2. **Ask about their process**: Inquire about the shop's maintenance process, what they'll check, and what kind of report or documentation you can expect.\n3. **Discuss any upgrades or repairs**: If you're considering upgrades or repairs, now's the time to discuss options with the mechanic.\n\n**Some common maintenance tasks:**\n\n* Brake pad replacement or adjustment\n* Chain cleaning and lubrication\n* Gear adjustment or replacement\n* Tire inspection and rotation\n* Bolt and quick-release checks\n* Cable adjustments (e.g., brake and gear cables)\n\nRemember to ask your local bike shop about their specific maintenance check process and what's included in their standard service. They may have a package deal or à la carte options to suit your needs.\n\nBy following this checklist, you'll be well-prepared for your bike's maintenance check, and the mechanic can focus on getting your road bike running smoothly and safely.\nuser: I'm thinking of upgrading my road bike's pedals to clipless pedals. I've heard that clipless pedals can improve my pedaling efficiency and reduce fatigue. Can you tell me more about clipless pedals and what I should consider when choosing the right ones for my bike?\nassistant: Clipless pedals can be a great upgrade for your road bike, offering several benefits, including improved pedaling efficiency, increased power transfer, and reduced fatigue. Here's a rundown on clipless pedals and what to consider when choosing the right ones for your bike:\n\n**What are clipless pedals?**\n\nClipless pedals, also known as clip-in or step-in pedals, are designed to work with special shoes that have a cleat attached to the sole. The cleat engages with the pedal, securely attaching your foot to the pedal. This allows for efficient power transfer and a more secure connection, especially during high-cadence or high-torque pedaling.\n\n**Benefits of clipless pedals:**\n\n1. **Improved pedaling efficiency**: By keeping your foot securely attached to the pedal, you can maintain a more consistent pedaling motion, reducing energy loss and improving overall efficiency.\n2. **Increased power transfer**: Clipless pedals enable you to apply more power to the pedals, especially during sprints or climbs, as your foot is directly connected to the pedal.\n3. **Reduced fatigue**: With your foot securely attached, you can relax your ankles and feet, reducing fatigue and discomfort during long rides.\n4. **Better control**: Clipless pedals provide a more secure connection, allowing for better control and stability, especially during cornering or descending.\n\n**Things to consider when choosing clipless pedals:**\n\n1. **Compatibility**: Ensure the pedals are compatible with your bike's crankset and shoes. Most clipless pedals use a specific type of cleat, so make sure your shoes are compatible with the pedal system you choose.\n2. **Pedal type**: There are several types of clipless pedals, including:\n\t* Road pedals (e.g., Shimano SPD-SL, Look Keo): Designed for road biking, these pedals are typically lighter and more aerodynamic.\n\t* Mountain bike pedals (e.g., Shimano SPD, Crankbrothers): Designed for off-road use, these pedals often feature a more rugged design and better mud clearance.\n\t* Hybrid pedals (e.g., Shimano SPD-R, Look Delta): A compromise between road and mountain bike pedals, offering a balance of performance and versatility.\n3. **Cleat type**: Different pedal systems use different cleat types. Some popular cleat types include:\n\t* Shimano SPD-SL (road)\n\t* Shimano SPD (mountain)\n\t* Look Keo (road)\n\t* Look Delta (hybrid)\n4. **Float and release tension**: Look for pedals with adjustable float (the amount of lateral movement allowed) and release tension (the force required to disengage the cleat). This will help you find a comfortable and secure fit.\n5. **Weight and durability**: Lighter pedals can improve your bike's overall weight and performance, but may compromise on durability. Consider your riding style and the pedal's construction when making a decision.\n6. **Price**: Clipless pedals can range from around $50 to over $200, depending on the brand, quality, and features.\n\n**Tips for beginners:**\n\n1. **Start with a hybrid pedal**: If you're new to clipless pedals, consider a hybrid pedal that allows for easier disengagement and a more forgiving float.\n2. **Practice before riding**: Get comfortable with the pedal's release mechanism and practice clipping in and out before hitting the road.\n3. **Adjust the cleats correctly**: Properly adjust the cleats on your shoes to ensure a secure and comfortable fit.\n\nBy considering these factors and tips, you'll be well on your way to finding the right clipless pedals for your road bike and enjoying the benefits of improved pedaling efficiency and reduced fatigue.\nuser: That's really helpful! I've been doing some research and think I've found a good option - the Shimano Ultegra pedals seem to get great reviews. I'll need to order them online and install them myself, which might be a bit of a challenge, but I'm up for the task.\nassistant: The Shimano Ultegra pedals are a popular and highly-regarded choice among cyclists. They're known for their high-quality construction, smooth pedaling feel, and reliable performance.\n\nInstalling clipless pedals can be a bit more involved than other components, but with some patience and basic tools, you should be able to do it yourself. Here are some tips to help you with the installation:\n\n**Before you start:**\n\n1. **Read the manual**: Make sure you have the pedal manufacturer's instructions and read them carefully before starting the installation.\n2. **Gather the necessary tools**: You'll need a few basic tools, such as a pedal wrench, Allen wrenches, and a torque wrench.\n3. **Prepare your bike**: Make sure your bike is clean and free of debris. Remove any existing pedals and clean the crank arms.\n\n**Installation tips:**\n\n1. **Thread the pedals correctly**: Pay attention to the thread direction and make sure you're threading the pedals in the correct direction.\n2. **Use the correct torque**: Use a torque wrench to ensure the pedals are tightened to the recommended torque specification.\n3. **Align the pedals properly**: Make sure the pedals are properly aligned with the crank arms and that the cleats are facing the correct direction.\n4. **Test the pedals**: Before hitting the road, test the pedals by clipping in and out several times to ensure they're functioning smoothly.\n\n**Additional tips for Shimano Ultegra pedals:**\n\n1. **Use the correct cleats**: Make sure you have the correct cleats for the Ultegra pedals. Shimano offers different cleat types, so double-check which ones are compatible with your pedals.\n2. **Adjust the tension**: The Ultegra pedals have an adjustable tension mechanism. Make sure to adjust it to your liking to ensure a smooth and secure engagement.\n\nIf you're still unsure or uncomfortable with the installation, consider taking your bike to a local bike shop for assistance. They'll be able to install the pedals correctly and ensure a safe and proper fit.\n\nRemember to also adjust your riding technique and get comfortable with the new pedals before heading out on a long ride. It may take some time to get used to the feel of clipless pedals, but with practice, you'll be pedaling like a pro in no time!\nuser: That's great advice! I think I'll be able to handle the installation myself, but it's good to know that I can always take it to a local bike shop if I need help. By the way, speaking of bike maintenance, I just fixed the flat tire on my mountain bike a few weeks ago. Replaced the inner tube, cleaned the chain, and it's been running smoothly ever since. Do you have any tips on how to keep my mountain bike's chain clean and well-lubricated?\nassistant: Keeping your mountain bike's chain clean and well-lubricated is essential for optimal performance, longevity, and overall bike health.\n\n**Chain cleaning tips:**\n\n1. **Clean the chain regularly**: Aim to clean your chain every 1-2 weeks, or more often if you ride in dirty or wet conditions.\n2. **Use the right cleaner**: Choose a gentle, bike-specific chain cleaner that's designed for your chain type (e.g., Shimano, SRAM, or Campagnolo). Avoid using harsh chemicals or household cleaners, as they can damage the chain or other components.\n3. **Use a chain cleaning tool**: Invest in a chain cleaning tool, such as a chain cleaner brush or a chain scrubber, to make the process easier and more effective.\n4. **Clean the chain in a well-ventilated area**: Make sure you're in a well-ventilated area to avoid inhaling any cleaners or fumes.\n5. **Rinse the chain thoroughly**: After cleaning, use a clean rag or brush to remove any remaining dirt or debris. Make sure to rinse the chain thoroughly to prevent any cleaning residue from affecting the lubricant.\n\n**Chain lubrication tips:**\n\n1. **Choose the right lubricant**: Select a lubricant that's designed for your chain type and riding conditions (e.g., wet, dry, or all-weather).\n2. **Apply lubricant sparingly**: Use a small amount of lubricant and apply it evenly to the chain. Avoid over-lubricating, as this can attract dirt and grime.\n3. **Lubricate the chain after cleaning**: Apply lubricant to the clean chain to help protect it from corrosion and wear.\n4. **Wipe off excess lubricant**: Use a clean rag to wipe off any excess lubricant from the chain, chainrings, and other components.\n5. **Check and reapply lubricant regularly**: Regularly inspect your chain for wear and tear, and reapply lubricant as needed.\n\n**Additional tips:**\n\n1. **Inspect your chain regularly**: Check your chain for signs of wear, such as rust, stretching, or broken links. Replace the chain if necessary.\n2. **Use a chain wear indicator**: Consider using a chain wear indicator, which can help you determine when the chain needs to be replaced.\n3. **Clean and lubricate other components**: Don't forget to clean and lubricate other components, such as the chainrings, cassette, and derailleur pivot points, to keep your bike running smoothly.\n\nBy following these tips, you'll be able to keep your mountain bike's chain clean and well-lubricated, ensuring optimal performance and prolonging the life of your components.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_e414231f",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:3c9b9dc58369a589a33bc063b4295e39"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:gpt4_e414231f\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: force_memory_write=true and transcript contains durable personal cycling facts/statuses and richer maintenance/planning context worth preserving.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I'm / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable USER entity as subject; no existing candidates are provided.\n- mention=my road bike; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=User's road bike; reason=First-person possessive wording identifies a concrete reusable personal item.\n- mention=my mountain bike; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=User's mountain bike; reason=First-person possessive wording identifies a concrete reusable personal item.\n- mention=Shimano Ultegra pedals; action=CREATE_NEW; id=entity:<3>; type=PRODUCT; name=Shimano Ultegra pedals; reason=Specific product mentioned as an intended purchase/installation object; no existing candidate is available.\n- mention=MapMyRide; action=CREATE_NEW; id=entity:<4>; type=SERVICE; name=MapMyRide; reason=Named online service mentioned as a route-planning tool; no existing candidate is available.\n- mention=local bike shop; action=CREATE_NEW; id=entity:<5>; type=ORGANIZATION; name=User's local bike shop; reason=Mention is generic but can be a reusable organization-like entity for claims about possible maintenance assistance; canonicalized as the user's local bike shop.\n- mention=current project; action=CREATE_NEW; id=entity:<6>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|user's road bike|user's mountain bike|Shimano Ultegra pedals|MapMyRide\n        text_queries=road bike maintenance spongy brakes clipless pedals Shimano Ultegra pedals|mountain bike flat tire replaced inner tube cleaned chain running smoothly|planning longer bike ride 60 miles MapMyRide\n        predicate_hints=owns_vehicle|has_goal|has_constraint|prefers|current_metric_value|metric_observation\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:3c9b9dc58369a589a33bc063b4295e39] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:gpt4_e414231f:session:1; title=LongMemEval gpt4_e414231f session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/15 (Wed) 17:24\nTranscript:\nuser: I'm thinking of planning a longer bike ride this weekend, maybe around 60 miles or so. Can you help me find some routes around my area that would be suitable for a road bike? Oh, and by the way, I finally got around to fixing that flat tire on my mountain bike today - replaced the inner tube, cleaned the chain, and it's been running smoothly.\nassistant: I'm happy to help you plan a road bike route! However, I have to clarify that I'm a large language model, I don't have access to your location or personal information, so I won't be able to provide you with specific routes around your area.\n\nBut don't worry, I can offer some general tips to help you find a suitable route for your 60-mile ride:\n\n1. **Use online route-planning tools**: Websites like MapMyRide, Strava, Ride with GPS, or Bikemap allow you to enter your location and desired distance to find pre-made routes or create your own. You can filter by road bike routes, terrain, and other preferences.\n2. **Check local bike maps and websites**: Look for local cycling organizations, bike shops, or government websites that provide bike route maps and recommendations for your area.\n3. **Consider rail trails or bike paths**: These routes are often flat, smooth, and car-free, making them ideal for road bikes. You can search for rail trails or bike paths in your area using online resources like TrailLink or Rails-to-Trails Conservancy.\n4. **Ask local cyclists or bike shops**: Reach out to local cycling clubs, bike shops, or online forums to ask for route recommendations. They can provide valuable insights and suggestions based on their experience.\n\nAs for your mountain bike, it's great to hear that you got it fixed and it's running smoothly! Remember to keep it well-maintained to ensure it continues to perform well.\n\nBefore your 60-mile ride, make sure to:\n\n* Check your road bike's condition, including tire pressure, brakes, and gears.\n* Plan your route in advance and bring a map or GPS device.\n* Pack essentials like water, snacks, and a basic tool kit.\n* Wear comfortable, breathable clothing and a properly fitted helmet.\n* Let someone know your route and expected return time.\n\nHave a great ride!\nuser: That's really helpful, thanks for the tips! I think I'll try out MapMyRide to find a route that suits my needs. By the way, I've been meaning to take my road bike in for a maintenance check, the brakes have been feeling a bit spongy lately and I don't want to risk any accidents. Do you know if there's a checklist I can follow to prepare my bike for a maintenance check?\nassistant: MapMyRide is a fantastic tool to find routes and plan your ride.\n\nRegarding your road bike's maintenance, it's great that you're proactive about getting it checked! A spongy brake feel can be a safety concern, so it's essential to address it ASAP. Here's a checklist to help you prepare your bike for a maintenance check:\n\n**Before taking your bike to the shop:**\n\n1. **Clean the bike**: Give your bike a thorough cleaning to remove dirt, grime, and any debris that might interfere with the mechanic's inspection. Pay attention to the chain, derailleurs, and brake calipers.\n2. **Check tire pressure**: Ensure the tires are inflated to the recommended pressure, as specified on the sidewall or in your owner's manual. Proper pressure can affect the bike's overall performance and safety.\n3. **Identify issues**: Make a list of any concerns or issues you've noticed, such as:\n\t* Spongy brakes (as you mentioned)\n\t* Shifting problems (e.g., gears skipping or not engaging properly)\n\t* Unusual noises or vibrations\n\t* Loose or worn-out components (e.g., stem, handlebars, or saddle)\n4. **Gather maintenance records**: Collect any records of previous maintenance, including dates and details of work done. This will help the mechanic understand your bike's history and identify potential patterns.\n\n**When you take your bike to the shop:**\n\n1. **Be prepared to describe the issues**: Clearly explain the problems you've experienced, including when they started and any circumstances that might be related (e.g., weather, terrain, or recent rides).\n2. **Ask about their process**: Inquire about the shop's maintenance process, what they'll check, and what kind of report or documentation you can expect.\n3. **Discuss any upgrades or repairs**: If you're considering upgrades or repairs, now's the time to discuss options with the mechanic.\n\n**Some common maintenance tasks:**\n\n* Brake pad replacement or adjustment\n* Chain cleaning and lubrication\n* Gear adjustment or replacement\n* Tire inspection and rotation\n* Bolt and quick-release checks\n* Cable adjustments (e.g., brake and gear cables)\n\nRemember to ask your local bike shop about their specific maintenance check process and what's included in their standard service. They may have a package deal or à la carte options to suit your needs.\n\nBy following this checklist, you'll be well-prepared for your bike's maintenance check, and the mechanic can focus on getting your road bike running smoothly and safely.\nuser: I'm thinking of upgrading my road bike's pedals to clipless pedals. I've heard that clipless pedals can improve my pedaling efficiency and reduce fatigue. Can you tell me more about clipless pedals and what I should consider when choosing the right ones for my bike?\nassistant: Clipless pedals can be a great upgrade for your road bike, offering several benefits, including improved pedaling efficiency, increased power transfer, and reduced fatigue. Here's a rundown on clipless pedals and what to consider when choosing the right ones for your bike:\n\n**What are clipless pedals?**\n\nClipless pedals, also known as clip-in or step-in pedals, are designed to work with special shoes that have a cleat attached to the sole. The cleat engages with the pedal, securely attaching your foot to the pedal. This allows for efficient power transfer and a more secure connection, especially during high-cadence or high-torque pedaling.\n\n**Benefits of clipless pedals:**\n\n1. **Improved pedaling efficiency**: By keeping your foot securely attached to the pedal, you can maintain a more consistent pedaling motion, reducing energy loss and improving overall efficiency.\n2. **Increased power transfer**: Clipless pedals enable you to apply more power to the pedals, especially during sprints or climbs, as your foot is directly connected to the pedal.\n3. **Reduced fatigue**: With your foot securely attached, you can relax your ankles and feet, reducing fatigue and discomfort during long rides.\n4. **Better control**: Clipless pedals provide a more secure connection, allowing for better control and stability, especially during cornering or descending.\n\n**Things to consider when choosing clipless pedals:**\n\n1. **Compatibility**: Ensure the pedals are compatible with your bike's crankset and shoes. Most clipless pedals use a specific type of cleat, so make sure your shoes are compatible with the pedal system you choose.\n2. **Pedal type**: There are several types of clipless pedals, including:\n\t* Road pedals (e.g., Shimano SPD-SL, Look Keo): Designed for road biking, these pedals are typically lighter and more aerodynamic.\n\t* Mountain bike pedals (e.g., Shimano SPD, Crankbrothers): Designed for off-road use, these pedals often feature a more rugged design and better mud clearance.\n\t* Hybrid pedals (e.g., Shimano SPD-R, Look Delta): A compromise between road and mountain bike pedals, offering a balance of performance and versatility.\n3. **Cleat type**: Different pedal systems use different cleat types. Some popular cleat types include:\n\t* Shimano SPD-SL (road)\n\t* Shimano SPD (mountain)\n\t* Look Keo (road)\n\t* Look Delta (hybrid)\n4. **Float and release tension**: Look for pedals with adjustable float (the amount of lateral movement allowed) and release tension (the force required to disengage the cleat). This will help you find a comfortable and secure fit.\n5. **Weight and durability**: Lighter pedals can improve your bike's overall weight and performance, but may compromise on durability. Consider your riding style and the pedal's construction when making a decision.\n6. **Price**: Clipless pedals can range from around $50 to over $200, depending on the brand, quality, and features.\n\n**Tips for beginners:**\n\n1. **Start with a hybrid pedal**: If you're new to clipless pedals, consider a hybrid pedal that allows for easier disengagement and a more forgiving float.\n2. **Practice before riding**: Get comfortable with the pedal's release mechanism and practice clipping in and out before hitting the road.\n3. **Adjust the cleats correctly**: Properly adjust the cleats on your shoes to ensure a secure and comfortable fit.\n\nBy considering these factors and tips, you'll be well on your way to finding the right clipless pedals for your road bike and enjoying the benefits of improved pedaling efficiency and reduced fatigue.\nuser: That's really helpful! I've been doing some research and think I've found a good option - the Shimano Ultegra pedals seem to get great reviews. I'll need to order them online and install them myself, which might be a bit of a challenge, but I'm up for the task.\nassistant: The Shimano Ultegra pedals are a popular and highly-regarded choice among cyclists. They're known for their high-quality construction, smooth pedaling feel, and reliable performance.\n\nInstalling clipless pedals can be a bit more involved than other components, but with some patience and basic tools, you should be able to do it yourself. Here are some tips to help you with the installation:\n\n**Before you start:**\n\n1. **Read the manual**: Make sure you have the pedal manufacturer's instructions and read them carefully before starting the installation.\n2. **Gather the necessary tools**: You'll need a few basic tools, such as a pedal wrench, Allen wrenches, and a torque wrench.\n3. **Prepare your bike**: Make sure your bike is clean and free of debris. Remove any existing pedals and clean the crank arms.\n\n**Installation tips:**\n\n1. **Thread the pedals correctly**: Pay attention to the thread direction and make sure you're threading the pedals in the correct direction.\n2. **Use the correct torque**: Use a torque wrench to ensure the pedals are tightened to the recommended torque specification.\n3. **Align the pedals properly**: Make sure the pedals are properly aligned with the crank arms and that the cleats are facing the correct direction.\n4. **Test the pedals**: Before hitting the road, test the pedals by clipping in and out several times to ensure they're functioning smoothly.\n\n**Additional tips for Shimano Ultegra pedals:**\n\n1. **Use the correct cleats**: Make sure you have the correct cleats for the Ultegra pedals. Shimano offers different cleat types, so double-check which ones are compatible with your pedals.\n2. **Adjust the tension**: The Ultegra pedals have an adjustable tension mechanism. Make sure to adjust it to your liking to ensure a smooth and secure engagement.\n\nIf you're still unsure or uncomfortable with the installation, consider taking your bike to a local bike shop for assistance. They'll be able to install the pedals correctly and ensure a safe and proper fit.\n\nRemember to also adjust your riding technique and get comfortable with the new pedals before heading out on a long ride. It may take some time to get used to the feel of clipless pedals, but with practice, you'll be pedaling like a pro in no time!\nuser: That's great advice! I think I'll be able to handle the installation myself, but it's good to know that I can always take it to a local bike shop if I need help. By the way, speaking of bike maintenance, I just fixed the flat tire on my mountain bike a few weeks ago. Replaced the inner tube, cleaned the chain, and it's been running smoothly ever since. Do you have any tips on how to keep my mountain bike's chain clean and well-lubricated?\nassistant: Keeping your mountain bike's chain clean and well-lubricated is essential for optimal performance, longevity, and overall bike health.\n\n**Chain cleaning tips:**\n\n1. **Clean the chain regularly**: Aim to clean your chain every 1-2 weeks, or more often if you ride in dirty or wet conditions.\n2. **Use the right cleaner**: Choose a gentle, bike-specific chain cleaner that's designed for your chain type (e.g., Shimano, SRAM, or Campagnolo). Avoid using harsh chemicals or household cleaners, as they can damage the chain or other components.\n3. **Use a chain cleaning tool**: Invest in a chain cleaning tool, such as a chain cleaner brush or a chain scrubber, to make the process easier and more effective.\n4. **Clean the chain in a well-ventilated area**: Make sure you're in a well-ventilated area to avoid inhaling any cleaners or fumes.\n5. **Rinse the chain thoroughly**: After cleaning, use a clean rag or brush to remove any remaining dirt or debris. Make sure to rinse the chain thoroughly to prevent any cleaning residue from affecting the lubricant.\n\n**Chain lubrication tips:**\n\n1. **Choose the right lubricant**: Select a lubricant that's designed for your chain type and riding conditions (e.g., wet, dry, or all-weather).\n2. **Apply lubricant sparingly**: Use a small amount of lubricant and apply it evenly to the chain. Avoid over-lubricating, as this can attract dirt and grime.\n3. **Lubricate the chain after cleaning**: Apply lubricant to the clean chain to help protect it from corrosion and wear.\n4. **Wipe off excess lubricant**: Use a clean rag to wipe off any excess lubricant from the chain, chainrings, and other components.\n5. **Check and reapply lubricant regularly**: Regularly inspect your chain for wear and tear, and reapply lubricant as needed.\n\n**Additional tips:**\n\n1. **Inspect your chain regularly**: Check your chain for signs of wear, such as rust, stretching, or broken links. Replace the chain if necessary.\n2. **Use a chain wear indicator**: Consider using a chain wear indicator, which can help you determine when the chain needs to be replaced.\n3. **Clean and lubricate other components**: Don't forget to clean and lubricate other components, such as the chainrings, cassette, and derailleur pivot points, to keep your bike running smoothly.\n\nBy following these tips, you'll be able to keep your mountain bike's chain clean and well-lubricated, ensuring optimal performance and prolonging the life of your components.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_e414231f",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:3c9b9dc58369a589a33bc063b4295e39"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User planned a longer road-bike ride of around 60 miles.\",\"User intended to try MapMyRide for route planning.\",\"User's road bike brakes felt spongy and needed a maintenance check.\",\"User researched Shimano Ultegra pedals as a likely clipless pedal upgrade.\",\"User planned to order Shimano Ultegra pedals online and install them themselves.\",\"User's local bike shop is a fallback if pedal installation is difficult.\",\"User repaired the mountain bike flat by replacing the inner tube and cleaning the chain.\"],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I think I'll try out MapMyRide to find a route that suits my needs.\",\"evidence_reason\":\"The transcript contains connected cycling planning, maintenance, and upgrade details spanning multiple turns, including the quoted route-planning choice and related bike maintenance statements.\",\"importance\":4,\"keywords\":[\"road bike\",\"mountain bike\",\"MapMyRide\",\"Shimano Ultegra pedals\",\"clipless pedals\",\"spongy brakes\",\"flat tire\",\"chain cleaning\",\"local bike shop\",\"60 miles\"],\"note_type\":\"context\",\"rationale\":\"This is richer reusable context tying together route planning, maintenance status, upgrade intent, self-installation confidence, and fallback support; it is not just one atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User cycling equipment, route planning, maintenance, and upgrade context from the 2023-03-15 session\"},\"summary\":\"The user is actively maintaining and upgrading their bikes: they were planning a roughly 60-mile road-bike ride using MapMyRide, wanted a road-bike maintenance check because the brakes felt spongy, researched Shimano Ultegra clipless pedals to order online and install themselves, and had recently repaired their mountain bike flat by replacing the inner tube and cleaning the chain. The local bike shop is considered a fallback for pedal installation or maintenance help.\",\"tags\":[\"cycling\",\"bike_maintenance\",\"route_planning\",\"equipment_upgrade\"],\"title\":\"Cycling maintenance and upgrade context\",\"valid_from\":\"2023-03-15T17:24:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Aim to clean your chain every 1-2 weeks, or more often if you ride in dirty or wet conditions.\",\"evidence_reason\":\"The assistant provided a reusable procedure for chain cleaning, lubrication, and inspection, with the quote capturing the maintenance cadence.\",\"importance\":3,\"keywords\":[\"mountain bike chain\",\"chain cleaning\",\"chain lubrication\",\"chain wear indicator\",\"bike-specific cleaner\",\"wet conditions\"],\"note_type\":\"lesson\",\"rationale\":\"This is procedural guidance with a maintenance workflow, not a single stable factual claim about the user.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Reusable mountain bike chain maintenance guidance given in the 2023-03-15 session\"},\"summary\":\"For the user's mountain bike chain, the recommended maintenance approach was to clean it regularly every 1-2 weeks or more often after dirty/wet rides, use bike-specific chain cleaner and a chain cleaning tool, rinse thoroughly, apply condition-appropriate lubricant sparingly after cleaning, wipe off excess, and inspect for wear using checks such as a chain wear indicator.\",\"tags\":[\"cycling\",\"maintenance_procedure\",\"chain_care\"],\"title\":\"Mountain bike chain cleaning and lubrication procedure\",\"valid_from\":\"2023-03-15T17:24:00+02:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7354,
+                "completionTokens": 901,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
