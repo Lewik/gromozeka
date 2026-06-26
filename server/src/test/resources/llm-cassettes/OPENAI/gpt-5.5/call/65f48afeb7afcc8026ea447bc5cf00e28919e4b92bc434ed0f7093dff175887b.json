@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "65f48afeb7afcc8026ea447bc5cf00e28919e4b92bc434ed0f7093dff175887b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_7ca326fa\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2022/06/22 (Wed) 15:59\nTranscript:\nuser: I'm planning a trip to visit my family soon and I need some help with gift ideas for my cousin John, who just graduated from college with a degree in engineering today. I was thinking of getting him something personalized, like an engraved accessory or a customized item for his new job. Do you have any suggestions? By the way, I just got back from my friend Rachel's master's degree graduation ceremony yesterday, which was amazing - she must be thrilled to finally have that behind her.\nassistant: Congratulations to your friend Rachel on her master's degree!\n\nNow, let's get to some great gift ideas for your cousin John! Personalized gifts are a thoughtful way to celebrate his engineering achievement. Here are some suggestions:\n\n1. **Engraved Watch**: A stylish watch with a customized message, his initials, or his degree (e.g., \"B.S. Engineering\") will make a thoughtful gift.\n2. **Customized Briefcase or Laptop Bag**: A high-quality briefcase or laptop bag with his name or initials will help him make a professional impression in his new job.\n3. **Personalized Desk Accessory**: An engraved paperweight, pen holder, or business card holder with a motivational quote or his name will add a touch of elegance to his workspace.\n4. **Monogrammed Coffee Mug**: A customized coffee mug with his initials or a funny engineering-related joke will bring a smile to his face every morning.\n5. **Customized Phone Case**: A phone case with his name, initials, or a message of congratulations will make a practical and unique gift.\n6. **Engineering-themed Art**: A beautiful piece of engineering-inspired art, such as a blueprint-style print or a 3D model of a iconic structure, will showcase his passion for the field.\n7. **Leather Wallet or Card Holder**: A high-quality leather wallet or card holder with his initials will be a stylish and functional gift.\n8. **Personalized Notebook or Journal**: A customized notebook or journal with his name or a motivational quote will encourage him to jot down his ideas and stay organized.\n9. **Engraved Desk Clock**: A beautifully crafted desk clock with his name or a message of congratulations will be a thoughtful addition to his workspace.\n10. **Experience Gift**: Consider gifting him an experience related to his field, such as a guided tour of a engineering marvel, a workshop, or a conference registration.\n\nRemember to choose a gift that reflects your cousin's personality, interests, and style. I'm sure he'll appreciate the thought and effort you put into selecting a unique and personalized gift!\nuser: I like the customized briefcase or laptop bag idea. Do you think it would be a good idea to also include a congratulatory card or a small gift card to a tech store, like Best Buy or Micro Center, to help him set up his new workspace?\nassistant: That's a fantastic idea! Including a congratulatory card and a small gift card to a tech store will make the gift even more thoughtful and practical. Here's why:\n\n1. **Personal touch**: A handwritten congratulatory card will add a personal touch to the gift, expressing your pride and excitement for Alex's achievement.\n2. **Practicality**: A gift card to a tech store like Best Buy or Micro Center will help Alex set up his new workspace or purchase any necessary tools and equipment for his job. This is especially useful for a new graduate who might be starting their first job or building their own setup.\n3. **Flexibility**: A gift card gives Alex the freedom to choose something he really needs or wants, rather than guessing what might be useful.\n\nSome ideas for the congratulatory card:\n\n* A heartfelt message expressing your pride and excitement for Alex's achievement\n* A funny anecdote or inside joke to make him smile\n* A motivational quote or message to inspire him in his future endeavors\n* A simple \"Congratulations, Cousin!\" or \"You did it, Alex!\"\n\nFor the gift card, consider a denomination that's reasonable for a tech store, such as $25, $50, or $100. This will give Alex enough flexibility to purchase something useful or put it towards a bigger investment.\n\nRemember to include the card and gift card with the customized briefcase or laptop bag, and you'll have a thoughtful and well-rounded gift that Alex will surely appreciate!\nuser: I'll probably add a card with a simple congratulatory message and a funny joke about engineers. What's a good way to word the message to make it sound more personal and heartfelt?\nassistant: A simple congratulatory message with a dash of humor will surely bring a smile to Alex's face. Here are some tips to make the message sound more personal and heartfelt:\n\n1. **Start with a personal greeting**: Begin the message with a warm greeting, such as \"Dear Alex,\" \"Hey Cousin,\" or \"Dear Engineer Extraordinaire.\"\n2. **Express your pride**: Let Alex know how proud you are of his achievement. You could say something like, \"I'm beyond proud of you for graduating with a degree in engineering!\" or \"Your hard work and dedication have paid off, and I couldn't be prouder!\"\n3. **Add a personal touch**: Mention a fond memory or inside joke you share with Alex to make the message more personal. For example, \"I still remember when you built that crazy robot in high school... who knew it was just the beginning of your engineering journey?\"\n4. **Keep it concise**: Keep the message brief and to the point. You want to express your congratulations and add a personal touch without overwhelming Alex with too much text.\n5. **End with a warm closing**: Close the message with a warm sentiment, such as \"Love, [Your Name],\" \"Best, [Your Name],\" or \"Cheers to your future, Cousin!\"\n\nHere's an example of a message that incorporates these tips:\n\n\"Hey Alex,\n\nI'm beyond proud of you for graduating with a degree in engineering! I still remember when you built that crazy robot in high school... who knew it was just the beginning of your engineering journey? \n\nNow, go forth and change the world (or at least fix my wonky Wi-Fi router). Seriously, I'm thrilled to see you achieve this milestone. You deserve it!\n\nLove, [Your Name]\"\n\nRemember to add a funny joke or pun about engineers to keep the tone light and playful. Here are a few examples:\n\n* \"Why did the engineer cross the road? Because it was a structurally sound decision!\"\n* \"I heard engineers are good at problem-solving. Can you fix my Netflix password?\"\n* \"You're not just an engineer, you're a master builder... of spreadsheets!\"\n\nFeel free to modify these examples to fit your personal style and relationship with Alex. Good luck!\nuser: I was thinking of suggesting some outdoor games and activities for the party, like a backyard obstacle course, a water balloon toss, or a badminton game. Do you think that's a good idea?\nassistant: What a fantastic idea! Outdoor games and activities are a great way to keep guests entertained and create a fun, lively atmosphere at the party! The ones you've suggested are perfect for a middle school graduation party:\n\n1. **Backyard Obstacle Course**: Set up a DIY obstacle course using items like hula hoops, cones, balance beams, and tires. You can also incorporate activities like crawling through tunnels, climbing over foam blocks, or jumping over hurdles.\n2. **Water Balloon Toss**: A classic summer party game that's perfect for a warm day. Fill up water balloons and have the kids stand in two lines facing each other. They need to toss the balloons to their opponent, taking a step back after each successful catch. The last pair standing wins!\n3. **Badminton Game**: Set up a badminton net in the backyard, and you're ready to go! You can also set up a mini tournament with teams or play a casual game for fun.\n\nOther outdoor game ideas you might consider:\n\n* **Lawn Twister**: Use spray paint to draw a Twister board on the lawn, and you're ready to play.\n* **Scavenger Hunt**: Create a list of items for the kids to find around the backyard or neighborhood.\n* **Outdoor Karaoke**: Set up a microphone and speaker, and let the kids show off their singing talents.\n* **Sidewalk Chalk Art**: Set up a designated area for kids to create their own sidewalk chalk art.\n* **Lawn Games**: Consider setting up other lawn games like cornhole, giant Jenga, or a ring toss.\n\nRemember to keep the games and activities age-appropriate and safe for the guests. With these ideas, you'll create an unforgettable and fun celebration for Sophia's middle school graduation party!\nuser: I'm thinking of suggesting a DIY photo booth as another activity for the party. Do you think that's a good idea?\nassistant: A DIY photo booth is an excellent idea! It's a fantastic way to encourage guests to have fun, be creative, and take home some amazing memories from the party. Here's why it's a great idea:\n\n1. **Interactive Fun**: A DIY photo booth is an interactive activity that allows guests to participate and have fun, making it a great way to break the ice and create a lively atmosphere.\n2. **Personalized Memories**: Guests can take home printed or digital copies of their photos as a personalized memento of the party, which they'll cherish for years to come.\n3. **Creative Expression**: A DIY photo booth allows guests to express their creativity, using props, backdrops, and accessories to create unique and hilarious photos.\n4. **Social Media Sharing**: Guests can share their photos on social media, creating a buzz around the party and generating excitement for Sophia's graduation celebration.\n\nTo set up a DIY photo booth, you'll need:\n\n1. **Backdrops**: Create a few different backdrops using colored paper, balloons, or even a customized banner with Sophia's name and graduation year.\n2. **Props**: Gather a variety of fun props like hats, glasses, mustaches, inflatable guitars, and silly accessories.\n3. **Camera**: Use a smartphone or a digital camera with a tripod to take high-quality photos.\n4. **Printing Station**: Set up a printing station with a printer and paper to print out the photos on the spot.\n5. **Signage**: Create a sign that says \"Photo Booth\" or \"Grad's Glamour Shots\" to draw attention to the activity.\n\nTips to make your DIY photo booth a success:\n\n1. **Keep it Simple**: Don't overcomplicate the setup. Keep the backdrops and props simple, and let the guests' creativity shine.\n2. **Designate a Host**: Assign someone to man the photo booth and help guests with props, backdrops, and printing photos.\n3. **Encourage Sharing**: Encourage guests to share their photos on social media using a branded hashtag or a custom Snapchat filter.\n\nWith a DIY photo booth, you'll create an unforgettable experience for Sophia's graduation party guests. It's a great way to capture the memories of this special day and create a fun, lively atmosphere!\n\n        Candidate notes:\n        [0] type=PLAN title=John graduation gift bundle plan summary=For John's college graduation in engineering, the user favored a customized briefcase or laptop bag and planned to add a congratulatory card with a simple message plus a funny engineer joke, with a possible small tech-store gift card from Best Buy or Micro Center to help set up his new workspace. scope=User's gift planning for John (user's cousin) after his college graduation in engineering entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<8> keywords=John,college graduation,engineering,customized briefcase,laptop bag,congratulatory card,engineer joke,Best Buy,Micro Center,tech store gift card tags=gift_plan,graduation,engineering,family evidence=I'll probably add a card with a simple congratulatory message and a funny joke about engineers.\n[1] type=PLAN title=Sophia middle school graduation party activity ideas summary=For Sophia's middle school graduation party, the user was considering outdoor activities such as a backyard obstacle course, water balloon toss, badminton game, and later a DIY photo booth. The assistant framed these as age-appropriate, interactive, memory-making activities, with the DIY photo booth using backdrops, props, a camera/tripod, optional printing station, signage, and possibly a host or...[truncated 17 chars] scope=Activity planning context for Sophia's middle school graduation party entities=entity:<0>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14> keywords=Sophia,middle school graduation party,backyard obstacle course,water balloon toss,badminton,DIY photo booth,backdrops,props,printing station tags=party_plan,graduation,activities,outdoor_games,photo_booth evidence=I'm thinking of suggesting a DIY photo booth as another activity for the party.\n[2] type=CONTEXT title=Rachel master's graduation context summary=The user had just returned from Rachel's master's degree graduation ceremony on 2022-06-21 and described it as amazing, noting that Rachel must be relieved to have completed the degree milestone. scope=Context about the user's attendance at Rachel's master's degree graduation ceremony entities=entity:<15>,entity:<16>,entity:<17> keywords=Rachel,master's degree,graduation ceremony,2022-06-21,amazing tags=personal_context,graduation,friend evidence=I just got back from my friend Rachel's master's degree graduation ceremony yesterday, which was amazing\n\n        Existing active notes:\n        id=hot-path-cc4128f0a9b8-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Emma's graduation ceremony context summary=The user attended Emma's high school graduation ceremony on a sunny Saturday in late May 2022; Emma did not give a speech, but she received several awards for academic achievements. This ceremony experience was emotional for the user and provides personal context for the graduation gift and letter. scope=Context around Emma's high school graduation ceremony and its relevance to the user's gift and letter keywords=Emma,graduation ceremony,late May 2022,academic awards,emotional experience tags=graduation,family_context,ceremony useCount=0\nid=hot-path-cc4128f0a9b8-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Graduation gift and letter plan for Emma summary=For Emma's high school graduation, the user settled on a personalized necklace with her name and graduation year, plus a heartfelt written letter rather than a video message. The intended closing sentence for the letter is: \"Remember, your dreams are within reach, and I'll be cheering you on every step of the way.\" scope=User's planned graduation gift and personal letter for Emma keywords=Emma,graduation gift,personalized necklace,heartfelt letter,dreams within reach,closing sentence tags=graduation,gift_plan,letter useCount=0\nid=hot-path-cc4128f0a9b8-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Advice for making Emma's graduation letter special summary=Recommended presentation details for Emma's heartfelt graduation letter included high-quality textured paper such as cotton or linen, archival-quality ink or an elegant pen, optional personal embellishments like a photo, artwork, wax seal, sticker, or small sentimental memento, and a clean layout with whitespace, a matching envelope, and decorative or commemorative postage. scope=Presentation guidance for User's heartfelt graduation letter to Emma keywords=Emma,graduation letter,cotton paper,linen paper,archival ink,wax seal,envelope,embellishments tags=letter_design,graduation,keepsake useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_7ca326fa",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:30b16606fca7e1f6cabdea19e4bdcd82"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_7ca326fa\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2022/06/22 (Wed) 15:59\nTranscript:\nuser: I'm planning a trip to visit my family soon and I need some help with gift ideas for my cousin John, who just graduated from college with a degree in engineering today. I was thinking of getting him something personalized, like an engraved accessory or a customized item for his new job. Do you have any suggestions? By the way, I just got back from my friend Rachel's master's degree graduation ceremony yesterday, which was amazing - she must be thrilled to finally have that behind her.\nassistant: Congratulations to your friend Rachel on her master's degree!\n\nNow, let's get to some great gift ideas for your cousin John! Personalized gifts are a thoughtful way to celebrate his engineering achievement. Here are some suggestions:\n\n1. **Engraved Watch**: A stylish watch with a customized message, his initials, or his degree (e.g., \"B.S. Engineering\") will make a thoughtful gift.\n2. **Customized Briefcase or Laptop Bag**: A high-quality briefcase or laptop bag with his name or initials will help him make a professional impression in his new job.\n3. **Personalized Desk Accessory**: An engraved paperweight, pen holder, or business card holder with a motivational quote or his name will add a touch of elegance to his workspace.\n4. **Monogrammed Coffee Mug**: A customized coffee mug with his initials or a funny engineering-related joke will bring a smile to his face every morning.\n5. **Customized Phone Case**: A phone case with his name, initials, or a message of congratulations will make a practical and unique gift.\n6. **Engineering-themed Art**: A beautiful piece of engineering-inspired art, such as a blueprint-style print or a 3D model of a iconic structure, will showcase his passion for the field.\n7. **Leather Wallet or Card Holder**: A high-quality leather wallet or card holder with his initials will be a stylish and functional gift.\n8. **Personalized Notebook or Journal**: A customized notebook or journal with his name or a motivational quote will encourage him to jot down his ideas and stay organized.\n9. **Engraved Desk Clock**: A beautifully crafted desk clock with his name or a message of congratulations will be a thoughtful addition to his workspace.\n10. **Experience Gift**: Consider gifting him an experience related to his field, such as a guided tour of a engineering marvel, a workshop, or a conference registration.\n\nRemember to choose a gift that reflects your cousin's personality, interests, and style. I'm sure he'll appreciate the thought and effort you put into selecting a unique and personalized gift!\nuser: I like the customized briefcase or laptop bag idea. Do you think it would be a good idea to also include a congratulatory card or a small gift card to a tech store, like Best Buy or Micro Center, to help him set up his new workspace?\nassistant: That's a fantastic idea! Including a congratulatory card and a small gift card to a tech store will make the gift even more thoughtful and practical. Here's why:\n\n1. **Personal touch**: A handwritten congratulatory card will add a personal touch to the gift, expressing your pride and excitement for Alex's achievement.\n2. **Practicality**: A gift card to a tech store like Best Buy or Micro Center will help Alex set up his new workspace or purchase any necessary tools and equipment for his job. This is especially useful for a new graduate who might be starting their first job or building their own setup.\n3. **Flexibility**: A gift card gives Alex the freedom to choose something he really needs or wants, rather than guessing what might be useful.\n\nSome ideas for the congratulatory card:\n\n* A heartfelt message expressing your pride and excitement for Alex's achievement\n* A funny anecdote or inside joke to make him smile\n* A motivational quote or message to inspire him in his future endeavors\n* A simple \"Congratulations, Cousin!\" or \"You did it, Alex!\"\n\nFor the gift card, consider a denomination that's reasonable for a tech store, such as $25, $50, or $100. This will give Alex enough flexibility to purchase something useful or put it towards a bigger investment.\n\nRemember to include the card and gift card with the customized briefcase or laptop bag, and you'll have a thoughtful and well-rounded gift that Alex will surely appreciate!\nuser: I'll probably add a card with a simple congratulatory message and a funny joke about engineers. What's a good way to word the message to make it sound more personal and heartfelt?\nassistant: A simple congratulatory message with a dash of humor will surely bring a smile to Alex's face. Here are some tips to make the message sound more personal and heartfelt:\n\n1. **Start with a personal greeting**: Begin the message with a warm greeting, such as \"Dear Alex,\" \"Hey Cousin,\" or \"Dear Engineer Extraordinaire.\"\n2. **Express your pride**: Let Alex know how proud you are of his achievement. You could say something like, \"I'm beyond proud of you for graduating with a degree in engineering!\" or \"Your hard work and dedication have paid off, and I couldn't be prouder!\"\n3. **Add a personal touch**: Mention a fond memory or inside joke you share with Alex to make the message more personal. For example, \"I still remember when you built that crazy robot in high school... who knew it was just the beginning of your engineering journey?\"\n4. **Keep it concise**: Keep the message brief and to the point. You want to express your congratulations and add a personal touch without overwhelming Alex with too much text.\n5. **End with a warm closing**: Close the message with a warm sentiment, such as \"Love, [Your Name],\" \"Best, [Your Name],\" or \"Cheers to your future, Cousin!\"\n\nHere's an example of a message that incorporates these tips:\n\n\"Hey Alex,\n\nI'm beyond proud of you for graduating with a degree in engineering! I still remember when you built that crazy robot in high school... who knew it was just the beginning of your engineering journey? \n\nNow, go forth and change the world (or at least fix my wonky Wi-Fi router). Seriously, I'm thrilled to see you achieve this milestone. You deserve it!\n\nLove, [Your Name]\"\n\nRemember to add a funny joke or pun about engineers to keep the tone light and playful. Here are a few examples:\n\n* \"Why did the engineer cross the road? Because it was a structurally sound decision!\"\n* \"I heard engineers are good at problem-solving. Can you fix my Netflix password?\"\n* \"You're not just an engineer, you're a master builder... of spreadsheets!\"\n\nFeel free to modify these examples to fit your personal style and relationship with Alex. Good luck!\nuser: I was thinking of suggesting some outdoor games and activities for the party, like a backyard obstacle course, a water balloon toss, or a badminton game. Do you think that's a good idea?\nassistant: What a fantastic idea! Outdoor games and activities are a great way to keep guests entertained and create a fun, lively atmosphere at the party! The ones you've suggested are perfect for a middle school graduation party:\n\n1. **Backyard Obstacle Course**: Set up a DIY obstacle course using items like hula hoops, cones, balance beams, and tires. You can also incorporate activities like crawling through tunnels, climbing over foam blocks, or jumping over hurdles.\n2. **Water Balloon Toss**: A classic summer party game that's perfect for a warm day. Fill up water balloons and have the kids stand in two lines facing each other. They need to toss the balloons to their opponent, taking a step back after each successful catch. The last pair standing wins!\n3. **Badminton Game**: Set up a badminton net in the backyard, and you're ready to go! You can also set up a mini tournament with teams or play a casual game for fun.\n\nOther outdoor game ideas you might consider:\n\n* **Lawn Twister**: Use spray paint to draw a Twister board on the lawn, and you're ready to play.\n* **Scavenger Hunt**: Create a list of items for the kids to find around the backyard or neighborhood.\n* **Outdoor Karaoke**: Set up a microphone and speaker, and let the kids show off their singing talents.\n* **Sidewalk Chalk Art**: Set up a designated area for kids to create their own sidewalk chalk art.\n* **Lawn Games**: Consider setting up other lawn games like cornhole, giant Jenga, or a ring toss.\n\nRemember to keep the games and activities age-appropriate and safe for the guests. With these ideas, you'll create an unforgettable and fun celebration for Sophia's middle school graduation party!\nuser: I'm thinking of suggesting a DIY photo booth as another activity for the party. Do you think that's a good idea?\nassistant: A DIY photo booth is an excellent idea! It's a fantastic way to encourage guests to have fun, be creative, and take home some amazing memories from the party. Here's why it's a great idea:\n\n1. **Interactive Fun**: A DIY photo booth is an interactive activity that allows guests to participate and have fun, making it a great way to break the ice and create a lively atmosphere.\n2. **Personalized Memories**: Guests can take home printed or digital copies of their photos as a personalized memento of the party, which they'll cherish for years to come.\n3. **Creative Expression**: A DIY photo booth allows guests to express their creativity, using props, backdrops, and accessories to create unique and hilarious photos.\n4. **Social Media Sharing**: Guests can share their photos on social media, creating a buzz around the party and generating excitement for Sophia's graduation celebration.\n\nTo set up a DIY photo booth, you'll need:\n\n1. **Backdrops**: Create a few different backdrops using colored paper, balloons, or even a customized banner with Sophia's name and graduation year.\n2. **Props**: Gather a variety of fun props like hats, glasses, mustaches, inflatable guitars, and silly accessories.\n3. **Camera**: Use a smartphone or a digital camera with a tripod to take high-quality photos.\n4. **Printing Station**: Set up a printing station with a printer and paper to print out the photos on the spot.\n5. **Signage**: Create a sign that says \"Photo Booth\" or \"Grad's Glamour Shots\" to draw attention to the activity.\n\nTips to make your DIY photo booth a success:\n\n1. **Keep it Simple**: Don't overcomplicate the setup. Keep the backdrops and props simple, and let the guests' creativity shine.\n2. **Designate a Host**: Assign someone to man the photo booth and help guests with props, backdrops, and printing photos.\n3. **Encourage Sharing**: Encourage guests to share their photos on social media using a branded hashtag or a custom Snapchat filter.\n\nWith a DIY photo booth, you'll create an unforgettable experience for Sophia's graduation party guests. It's a great way to capture the memories of this special day and create a fun, lively atmosphere!\n\n        Candidate notes:\n        [0] type=PLAN title=John graduation gift bundle plan summary=For John's college graduation in engineering, the user favored a customized briefcase or laptop bag and planned to add a congratulatory card with a simple message plus a funny engineer joke, with a possible small tech-store gift card from Best Buy or Micro Center to help set up his new workspace. scope=User's gift planning for John (user's cousin) after his college graduation in engineering entities=entity:<0>,entity:<1>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<8> keywords=John,college graduation,engineering,customized briefcase,laptop bag,congratulatory card,engineer joke,Best Buy,Micro Center,tech store gift card tags=gift_plan,graduation,engineering,family evidence=I'll probably add a card with a simple congratulatory message and a funny joke about engineers.\n[1] type=PLAN title=Sophia middle school graduation party activity ideas summary=For Sophia's middle school graduation party, the user was considering outdoor activities such as a backyard obstacle course, water balloon toss, badminton game, and later a DIY photo booth. The assistant framed these as age-appropriate, interactive, memory-making activities, with the DIY photo booth using backdrops, props, a camera/tripod, optional printing station, signage, and possibly a host or...[truncated 17 chars] scope=Activity planning context for Sophia's middle school graduation party entities=entity:<0>,entity:<9>,entity:<10>,entity:<11>,entity:<12>,entity:<13>,entity:<14> keywords=Sophia,middle school graduation party,backyard obstacle course,water balloon toss,badminton,DIY photo booth,backdrops,props,printing station tags=party_plan,graduation,activities,outdoor_games,photo_booth evidence=I'm thinking of suggesting a DIY photo booth as another activity for the party.\n[2] type=CONTEXT title=Rachel master's graduation context summary=The user had just returned from Rachel's master's degree graduation ceremony on 2022-06-21 and described it as amazing, noting that Rachel must be relieved to have completed the degree milestone. scope=Context about the user's attendance at Rachel's master's degree graduation ceremony entities=entity:<15>,entity:<16>,entity:<17> keywords=Rachel,master's degree,graduation ceremony,2022-06-21,amazing tags=personal_context,graduation,friend evidence=I just got back from my friend Rachel's master's degree graduation ceremony yesterday, which was amazing\n\n        Existing active notes:\n        id=hot-path-cc4128f0a9b8-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Emma's graduation ceremony context summary=The user attended Emma's high school graduation ceremony on a sunny Saturday in late May 2022; Emma did not give a speech, but she received several awards for academic achievements. This ceremony experience was emotional for the user and provides personal context for the graduation gift and letter. scope=Context around Emma's high school graduation ceremony and its relevance to the user's gift and letter keywords=Emma,graduation ceremony,late May 2022,academic awards,emotional experience tags=graduation,family_context,ceremony useCount=0\nid=hot-path-cc4128f0a9b8-note-2 type=PLAN status=ACTIVE maturity=FRESH title=Graduation gift and letter plan for Emma summary=For Emma's high school graduation, the user settled on a personalized necklace with her name and graduation year, plus a heartfelt written letter rather than a video message. The intended closing sentence for the letter is: \"Remember, your dreams are within reach, and I'll be cheering you on every step of the way.\" scope=User's planned graduation gift and personal letter for Emma keywords=Emma,graduation gift,personalized necklace,heartfelt letter,dreams within reach,closing sentence tags=graduation,gift_plan,letter useCount=0\nid=hot-path-cc4128f0a9b8-note-3 type=CONTEXT status=ACTIVE maturity=FRESH title=Advice for making Emma's graduation letter special summary=Recommended presentation details for Emma's heartfelt graduation letter included high-quality textured paper such as cotton or linen, archival-quality ink or an elegant pen, optional personal embellishments like a photo, artwork, wax seal, sticker, or small sentimental memento, and a clean layout with whitespace, a matching envelope, and decorative or commemorative postage. scope=Presentation guidance for User's heartfelt graduation letter to Emma keywords=Emma,graduation letter,cotton paper,linen paper,archival ink,wax seal,envelope,embellishments tags=letter_design,graduation,keepsake useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_7ca326fa",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:30b16606fca7e1f6cabdea19e4bdcd82"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct gift plan for cousin John; not covered by existing Emma graduation notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct party activity planning context for Sophia; no existing note covers Sophia or these activities.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct personal context about Rachel's master's graduation attendance; not duplicative of existing Emma ceremony context.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6550,
+                "completionTokens": 148,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
