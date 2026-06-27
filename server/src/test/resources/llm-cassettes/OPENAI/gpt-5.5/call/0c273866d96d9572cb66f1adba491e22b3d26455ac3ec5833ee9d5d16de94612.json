@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "0c273866d96d9572cb66f1adba491e22b3d26455ac3ec5833ee9d5d16de94612",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:ba358f49\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains multiple durable personal facts/preferences and a reusable decision framework for evaluating marketing master's programs, plus richer context from a forced memory write.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable USER entity; no existing candidate is available.\n- mention=Rachel; action=CREATE_NEW; id=entity:<1>; type=PERSON; name=Rachel; reason=Rachel is a concrete person mentioned as the user's friend; no existing candidate is available.\n- mention=marketing; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Marketing; reason=Marketing is a reusable domain concept relevant to the user's degree and work experience.\n- mention=online master's in marketing programs; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Online master's in marketing programs; reason=This category is a reusable concept for later claims about the user's program search.\n- mention=University of Illinois at Urbana-Champaign - Master of Science in Marketing; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=University of Illinois at Urbana-Champaign Master of Science in Marketing; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=Northwestern University - Master of Science in Integrated Marketing Communications; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Northwestern University Master of Science in Integrated Marketing Communications; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=University of Southern California - Master of Science in Marketing; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=University of Southern California Master of Science in Marketing; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=Georgia Tech - Master of Science in Digital Marketing; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Georgia Tech Master of Science in Digital Marketing; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=University of Virginia - Master of Science in Commerce; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=University of Virginia Master of Science in Commerce; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Rachel|marketing master's programs|online master's in marketing programs|University of Illinois at Urbana-Champaign Master of Science in Marketing|Northwestern University Master of Science in Integrated Marketing Communications|University of Southern California Master of Science in Marketing|Georgia Tech Master of Science in Digital Marketing|University of Virginia Master of Science in Commerce\n        text_queries=user considering going back to school for a master's degree in marketing|user has worked in marketing industry for five years|user wants part-time flexible online marketing master's program for working professionals|criteria for evaluating marketing master's programs career services job placement alumni network lifelong learning professional development|Rachel getting married next year\n        predicate_hints=has_goal|has_experience_with|prefers|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:a5e4f669ffff4a9601d558cf2401e009] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:ba358f49:session:1; title=LongMemEval ba358f49 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2022/09/01 (Thu) 08:09\nTranscript:\nuser: I'm looking for some advice on skincare routines for my age group. I've been noticing some fine lines and wrinkles lately, and I want to start taking better care of my skin. By the way, my friend Rachel's getting married next year, and it's got me thinking about my own life goals.\nassistant: Congratulations to Rachel on her upcoming wedding!\n\nNow, let's talk about your skincare concerns! Fine lines and wrinkles are a natural part of aging, but with a consistent and effective skincare routine, you can reduce their appearance and maintain healthy, glowing skin.\n\nSince you didn't mention your specific age, I'll provide general advice applicable to most adults in their 30s, 40s, and 50s. Please keep in mind that individual skin types and concerns may vary, so feel free to adjust these tips based on your personal needs.\n\n**Essential Steps for a Basic Skincare Routine:**\n\n1. **Cleanse**: Wash your face twice a day, morning and night, using a gentle, non-foaming cleanser suitable for your skin type (normal, dry, oily, or combination).\n2. **Exfoliate**: 1-2 times a week, use a chemical exfoliant (alpha-hydroxy acid, beta-hydroxy acid, or enzyme-based) or a physical exfoliant ( gentle scrub or brush) to remove dead skin cells and unclog pores.\n3. **Tone**: Use a toner to balance your skin's pH, tighten pores, and prepare your skin for further products.\n4. **Essence**: Apply an essence, a concentrated serum that delivers active ingredients to the skin.\n5. **Serum**: Use a serum containing active ingredients that target your specific concerns, such as fine lines, wrinkles, dark spots, or acne.\n6. **Moisturize**: Apply a moisturizer that provides hydration, protection, and anti-aging benefits.\n7. **Eye Care**: Use an eye cream or serum to address concerns specific to the delicate skin around your eyes, such as dark circles, puffiness, or fine lines.\n8. **Sunscreen**: Apply a broad-spectrum sunscreen with an SPF of at least 30 daily, even on cloudy days, to prevent further skin damage.\n\n**Additional Tips:**\n\n* **Stay hydrated**: Drink plenty of water throughout the day to plump up your skin from the inside out.\n* **Get enough sleep**: Aim for 7-8 hours of sleep to help your skin regenerate and repair itself.\n* **Eat a balanced diet**: Focus on whole, nutrient-rich foods, including fruits, vegetables, whole grains, lean proteins, and healthy fats.\n* **Manage stress**: High stress levels can lead to skin issues like acne, rosacea, and premature aging. Engage in stress-reducing activities like yoga, meditation, or deep breathing exercises.\n* **Don't smoke**: Smoking can significantly accelerate skin aging and cause wrinkles.\n\n**Product Recommendations:**\n\nFor fine lines and wrinkles, look for products containing:\n\n* Retinol (stimulates collagen production, reduces fine lines)\n* Peptides (boosts collagen, elastin, and hyaluronic acid production)\n* Hyaluronic acid (hydrates and plumps the skin)\n* Vitamin C (antioxidant, brightens and firms the skin)\n* Niacinamide (improves skin elasticity, reduces inflammation)\n\nSome popular, well-reviewed products include:\n\n* Olay Regenerist Micro-Sculpting Cream\n* Neutrogena Rapid Wrinkle Repair Night Moisturizer\n* La Roche-Posay Pigmentclar Eye Cream\n* SkinCeuticals C E Ferulic (antioxidant serum)\n\n**Remember:** Consistency is key! Stick to your routine, and give your skin time to adjust and respond. Be patient, and don't hesitate to consult with a dermatologist if you have specific concerns or questions.\n\nNow, about those life goals... What are some things you've been thinking about accomplishing in the next year or five?\nuser: I've been thinking about going back to school to pursue a master's degree in marketing. I've been working in the industry for five years, and I feel like I need to upgrade my skills to stay competitive. Do you know any good online programs that cater to working professionals?\nassistant: Pursuing a master's degree in marketing is a great way to enhance your skills and stay ahead in the industry! Congratulations on taking the first step towards upskilling.\n\nYes, I can definitely help you with online programs that cater to working professionals. Here are some top-notch online master's in marketing programs that you might find suitable:\n\n1. **University of Illinois at Urbana-Champaign - Master of Science in Marketing**: This program is designed for working professionals and can be completed in 12-24 months. It's a highly rated program with a strong focus on digital marketing, analytics, and strategy.\n2. **Northwestern University - Master of Science in Integrated Marketing Communications**: This program is ideal for professionals with 2-5 years of experience. It's a part-time program that can be completed in 12-18 months, with a focus on integrated marketing communications, brand management, and analytics.\n3. **University of Southern California - Master of Science in Marketing**: This program is designed for working professionals and can be completed in 12-24 months. It covers a wide range of topics, including digital marketing, marketing analytics, and brand management.\n4. **Georgia Tech - Master of Science in Digital Marketing**: This program is a 12-month online program that focuses on digital marketing, analytics, and strategy. It's designed for working professionals and has a strong industry reputation.\n5. **University of Virginia - Master of Science in Commerce**: This program offers a marketing concentration and can be completed in 12-24 months. It's designed for working professionals and covers topics like marketing strategy, brand management, and analytics.\n\nThese programs are all accredited, well-regarded, and offer flexible online learning options. However, it's essential to research each program thoroughly to find the best fit for your goals, budget, and schedule.\n\n**Tips for Online Learning:**\n\n1. **Set a schedule**: Create a dedicated study routine to ensure you stay on track.\n2. **Stay organized**: Use tools like calendars, to-do lists, and project management software to keep yourself organized.\n3. **Engage with your cohort**: Online programs offer opportunities to connect with fellow students and professors. Make the most of these interactions to build your network and learn from others.\n4. **Prioritize self-care**: Online learning can be challenging. Make sure to take breaks, exercise, and prioritize your mental health.\n5. **Seek support**: Don't hesitate to reach out to your university's support services, professors, or classmates if you need help or guidance.\n\nI hope this helps you get started on your search for the perfect online marketing program!\nuser: I'm also considering pursuing a part-time program, so I can continue working while studying. Do you know if any of these programs offer part-time options or flexible scheduling?\nassistant: Pursuing a part-time program can be an excellent way to balance your work and studies. I've checked the programs I mentioned earlier, and here's what I found:\n\n1. **University of Illinois at Urbana-Champaign - Master of Science in Marketing**: They offer a part-time option, which allows you to complete the program in 24-36 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n2. **Northwestern University - Master of Science in Integrated Marketing Communications**: They offer a part-time option, which can be completed in 18-24 months. You can take 1-2 courses per quarter, and they have a flexible scheduling system to accommodate working professionals.\n3. **University of Southern California - Master of Science in Marketing**: They offer a part-time option, which can be completed in 24-36 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n4. **Georgia Tech - Master of Science in Digital Marketing**: They offer a part-time option, which can be completed in 18-24 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n5. **University of Virginia - Master of Science in Commerce**: They offer a part-time option, which can be completed in 24-36 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n\nAll of these programs are designed to accommodate working professionals, and they offer flexible scheduling options to help you balance your work and studies. However, it's essential to check with each program directly to confirm their part-time options and scheduling flexibility.\n\nAdditionally, you may want to consider the following factors when evaluating part-time programs:\n\n* **Course format**: Are the courses offered online, on-campus, or in a hybrid format? Which format works best for your schedule and learning style?\n* **Course load**: How many courses can you take per semester, and what's the recommended course load for part-time students?\n* **Scheduling flexibility**: Can you adjust your course schedule to accommodate your work commitments, or are there set times for classes and assignments?\n* **Support services**: What kind of support services does the program offer for part-time students, such as career counseling, academic advising, and technical support?\n\nBy considering these factors, you can find a part-time program that fits your needs and helps you achieve your goals.\nuser: That's really helpful! I think I'll reach out to these programs directly to get more information about their part-time options and scheduling flexibility. Do you think it's a good idea to also ask about their career services and job placement rates for graduates?\nassistant: You're thinking ahead! Yes, it's essential to ask about career services and job placement rates for graduates. This information can give you a better understanding of the program's commitment to supporting your career goals and the potential return on investment for your education.\n\nHere are some questions you may want to ask about career services and job placement:\n\n* **Career counseling**: What kind of career counseling and coaching services do they offer? Are they one-on-one or group sessions?\n* **Job placement rates**: What are the job placement rates for graduates of the program? Are they tracked and reported publicly?\n* **Career resources**: What kind of career resources do they provide, such as job boards, career fairs, or industry connections?\n* **Networking opportunities**: Are there opportunities to connect with alumni, industry professionals, or other students in the program?\n* **Resume and interview preparation**: Do they offer guidance on resume building, interview preparation, and salary negotiation?\n* **Internship opportunities**: Are internships or capstone projects available to gain practical experience and build your professional portfolio?\n* **Industry connections**: Does the program have strong connections with industry partners, and if so, how do they facilitate those connections for students?\n\nAsking these questions can help you understand the program's commitment to supporting your career goals and the potential outcomes of the program.\n\nAdditionally, you may also want to ask about:\n\n* **Alumni network**: What kind of alumni network does the program have, and how active are they in supporting current students and fellow alumni?\n* **Professional certifications**: Are there any professional certifications or licenses that the program prepares you for, and if so, what's the pass rate for graduates?\n* **Capstone or final project**: Is there a capstone or final project that demonstrates your skills and knowledge, and if so, how is it evaluated?\n\nBy asking these questions, you'll get a better sense of the program's strengths and weaknesses and whether it aligns with your career goals.\nuser: I think I'll also ask about their alumni network and how active they are in supporting current students and fellow alumni. It's great to know that I'll have a strong support system even after I graduate.\nassistant: That's a fantastic idea! The alumni network can be a valuable resource for you, even after you graduate. A strong alumni network can provide:\n\n* **Career opportunities**: Alumni networks can lead to job opportunities, mentorship, and professional connections.\n* **Industry insights**: Alumni can share their experiences, knowledge, and industry insights, helping you stay up-to-date with the latest trends and best practices.\n* **Networking events**: Alumni events, conferences, and webinars can provide opportunities to connect with fellow professionals, build relationships, and expand your network.\n* **Mentorship**: Alumni can offer guidance, advice, and support, helping you navigate your career and overcome challenges.\n* **Lifelong learning**: Alumni networks can provide access to continued education, training, and professional development opportunities.\n\nWhen asking about the alumni network, you may want to ask questions like:\n\n* **Alumni engagement**: What percentage of alumni are actively engaged with the university, and how do they participate?\n* **Alumni events**: What kind of events, webinars, or conferences does the university organize for alumni, and how often do they take place?\n* **Mentorship programs**: Are there formal mentorship programs in place, and if so, how do they match mentors with mentees?\n* **Career resources**: What kind of career resources are available to alumni, such as job boards, career counseling, or resume review?\n* **Social media groups**: Are there social media groups or online forums for alumni to connect, share experiences, and ask questions?\n\nBy asking these questions, you'll get a better sense of the alumni network's strength, engagement, and potential benefits for you as a graduate.\n\nRemember, a strong alumni network can be a valuable asset for your career, so it's essential to consider this factor when choosing a program.\nuser: I think I'll also ask about their approach to lifelong learning and professional development. Since I'm planning to stay in the industry for a long time, I want to make sure the program prepares me for continuous learning and adaptation to new trends and technologies.\nassistant: A forward-thinking approach! Asking about the program's approach to lifelong learning and professional development is crucial in today's rapidly changing industry landscape. You want to ensure that the program prepares you for a long-term career, not just a short-term job.\n\nHere are some questions you may want to ask about lifelong learning and professional development:\n\n* **Curriculum updates**: How often does the program update its curriculum to reflect industry changes, new trends, and emerging technologies?\n* **Faculty expertise**: Are the faculty members actively engaged in industry research, consulting, or practice, ensuring they bring the latest knowledge and best practices to the classroom?\n* **Industry connections**: Does the program have strong connections with industry partners, providing opportunities for guest lectures, case studies, and project collaborations?\n* **Professional development resources**: What kind of resources are available to support your ongoing professional development, such as webinars, workshops, or online courses?\n* **Alumni access**: Do alumni have access to continued education, training, or professional development opportunities, and if so, what kind?\n* **Lifelong learning mindset**: How does the program instill a lifelong learning mindset in its students, and what strategies are taught to help students stay current with industry developments?\n\nBy asking these questions, you'll get a sense of the program's commitment to preparing students for a long-term career in the industry. You want to ensure that the program provides a strong foundation for continuous learning and adaptation, enabling you to stay ahead of the curve and thrive in your profession.\n\nRemember, a program that prioritizes lifelong learning and professional development is more likely to equip you with the skills, knowledge, and mindset needed to succeed in the industry over the long term.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:ba358f49",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:a5e4f669ffff4a9601d558cf2401e009"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:ba358f49\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains multiple durable personal facts/preferences and a reusable decision framework for evaluating marketing master's programs, plus richer context from a forced memory write.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable USER entity; no existing candidate is available.\n- mention=Rachel; action=CREATE_NEW; id=entity:<1>; type=PERSON; name=Rachel; reason=Rachel is a concrete person mentioned as the user's friend; no existing candidate is available.\n- mention=marketing; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Marketing; reason=Marketing is a reusable domain concept relevant to the user's degree and work experience.\n- mention=online master's in marketing programs; action=CREATE_NEW; id=entity:<3>; type=CONCEPT; name=Online master's in marketing programs; reason=This category is a reusable concept for later claims about the user's program search.\n- mention=University of Illinois at Urbana-Champaign - Master of Science in Marketing; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=University of Illinois at Urbana-Champaign Master of Science in Marketing; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=Northwestern University - Master of Science in Integrated Marketing Communications; action=CREATE_NEW; id=entity:<5>; type=PRODUCT; name=Northwestern University Master of Science in Integrated Marketing Communications; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=University of Southern California - Master of Science in Marketing; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=University of Southern California Master of Science in Marketing; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=Georgia Tech - Master of Science in Digital Marketing; action=CREATE_NEW; id=entity:<7>; type=PRODUCT; name=Georgia Tech Master of Science in Digital Marketing; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=University of Virginia - Master of Science in Commerce; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=University of Virginia Master of Science in Commerce; reason=Named graduate program presented as a concrete option; no existing candidate is available.\n- mention=current project; action=CREATE_NEW; id=entity:<9>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Rachel|marketing master's programs|online master's in marketing programs|University of Illinois at Urbana-Champaign Master of Science in Marketing|Northwestern University Master of Science in Integrated Marketing Communications|University of Southern California Master of Science in Marketing|Georgia Tech Master of Science in Digital Marketing|University of Virginia Master of Science in Commerce\n        text_queries=user considering going back to school for a master's degree in marketing|user has worked in marketing industry for five years|user wants part-time flexible online marketing master's program for working professionals|criteria for evaluating marketing master's programs career services job placement alumni network lifelong learning professional development|Rachel getting married next year\n        predicate_hints=has_goal|has_experience_with|prefers|has_constraint\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:a5e4f669ffff4a9601d558cf2401e009] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:ba358f49:session:1; title=LongMemEval ba358f49 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2022/09/01 (Thu) 08:09\nTranscript:\nuser: I'm looking for some advice on skincare routines for my age group. I've been noticing some fine lines and wrinkles lately, and I want to start taking better care of my skin. By the way, my friend Rachel's getting married next year, and it's got me thinking about my own life goals.\nassistant: Congratulations to Rachel on her upcoming wedding!\n\nNow, let's talk about your skincare concerns! Fine lines and wrinkles are a natural part of aging, but with a consistent and effective skincare routine, you can reduce their appearance and maintain healthy, glowing skin.\n\nSince you didn't mention your specific age, I'll provide general advice applicable to most adults in their 30s, 40s, and 50s. Please keep in mind that individual skin types and concerns may vary, so feel free to adjust these tips based on your personal needs.\n\n**Essential Steps for a Basic Skincare Routine:**\n\n1. **Cleanse**: Wash your face twice a day, morning and night, using a gentle, non-foaming cleanser suitable for your skin type (normal, dry, oily, or combination).\n2. **Exfoliate**: 1-2 times a week, use a chemical exfoliant (alpha-hydroxy acid, beta-hydroxy acid, or enzyme-based) or a physical exfoliant ( gentle scrub or brush) to remove dead skin cells and unclog pores.\n3. **Tone**: Use a toner to balance your skin's pH, tighten pores, and prepare your skin for further products.\n4. **Essence**: Apply an essence, a concentrated serum that delivers active ingredients to the skin.\n5. **Serum**: Use a serum containing active ingredients that target your specific concerns, such as fine lines, wrinkles, dark spots, or acne.\n6. **Moisturize**: Apply a moisturizer that provides hydration, protection, and anti-aging benefits.\n7. **Eye Care**: Use an eye cream or serum to address concerns specific to the delicate skin around your eyes, such as dark circles, puffiness, or fine lines.\n8. **Sunscreen**: Apply a broad-spectrum sunscreen with an SPF of at least 30 daily, even on cloudy days, to prevent further skin damage.\n\n**Additional Tips:**\n\n* **Stay hydrated**: Drink plenty of water throughout the day to plump up your skin from the inside out.\n* **Get enough sleep**: Aim for 7-8 hours of sleep to help your skin regenerate and repair itself.\n* **Eat a balanced diet**: Focus on whole, nutrient-rich foods, including fruits, vegetables, whole grains, lean proteins, and healthy fats.\n* **Manage stress**: High stress levels can lead to skin issues like acne, rosacea, and premature aging. Engage in stress-reducing activities like yoga, meditation, or deep breathing exercises.\n* **Don't smoke**: Smoking can significantly accelerate skin aging and cause wrinkles.\n\n**Product Recommendations:**\n\nFor fine lines and wrinkles, look for products containing:\n\n* Retinol (stimulates collagen production, reduces fine lines)\n* Peptides (boosts collagen, elastin, and hyaluronic acid production)\n* Hyaluronic acid (hydrates and plumps the skin)\n* Vitamin C (antioxidant, brightens and firms the skin)\n* Niacinamide (improves skin elasticity, reduces inflammation)\n\nSome popular, well-reviewed products include:\n\n* Olay Regenerist Micro-Sculpting Cream\n* Neutrogena Rapid Wrinkle Repair Night Moisturizer\n* La Roche-Posay Pigmentclar Eye Cream\n* SkinCeuticals C E Ferulic (antioxidant serum)\n\n**Remember:** Consistency is key! Stick to your routine, and give your skin time to adjust and respond. Be patient, and don't hesitate to consult with a dermatologist if you have specific concerns or questions.\n\nNow, about those life goals... What are some things you've been thinking about accomplishing in the next year or five?\nuser: I've been thinking about going back to school to pursue a master's degree in marketing. I've been working in the industry for five years, and I feel like I need to upgrade my skills to stay competitive. Do you know any good online programs that cater to working professionals?\nassistant: Pursuing a master's degree in marketing is a great way to enhance your skills and stay ahead in the industry! Congratulations on taking the first step towards upskilling.\n\nYes, I can definitely help you with online programs that cater to working professionals. Here are some top-notch online master's in marketing programs that you might find suitable:\n\n1. **University of Illinois at Urbana-Champaign - Master of Science in Marketing**: This program is designed for working professionals and can be completed in 12-24 months. It's a highly rated program with a strong focus on digital marketing, analytics, and strategy.\n2. **Northwestern University - Master of Science in Integrated Marketing Communications**: This program is ideal for professionals with 2-5 years of experience. It's a part-time program that can be completed in 12-18 months, with a focus on integrated marketing communications, brand management, and analytics.\n3. **University of Southern California - Master of Science in Marketing**: This program is designed for working professionals and can be completed in 12-24 months. It covers a wide range of topics, including digital marketing, marketing analytics, and brand management.\n4. **Georgia Tech - Master of Science in Digital Marketing**: This program is a 12-month online program that focuses on digital marketing, analytics, and strategy. It's designed for working professionals and has a strong industry reputation.\n5. **University of Virginia - Master of Science in Commerce**: This program offers a marketing concentration and can be completed in 12-24 months. It's designed for working professionals and covers topics like marketing strategy, brand management, and analytics.\n\nThese programs are all accredited, well-regarded, and offer flexible online learning options. However, it's essential to research each program thoroughly to find the best fit for your goals, budget, and schedule.\n\n**Tips for Online Learning:**\n\n1. **Set a schedule**: Create a dedicated study routine to ensure you stay on track.\n2. **Stay organized**: Use tools like calendars, to-do lists, and project management software to keep yourself organized.\n3. **Engage with your cohort**: Online programs offer opportunities to connect with fellow students and professors. Make the most of these interactions to build your network and learn from others.\n4. **Prioritize self-care**: Online learning can be challenging. Make sure to take breaks, exercise, and prioritize your mental health.\n5. **Seek support**: Don't hesitate to reach out to your university's support services, professors, or classmates if you need help or guidance.\n\nI hope this helps you get started on your search for the perfect online marketing program!\nuser: I'm also considering pursuing a part-time program, so I can continue working while studying. Do you know if any of these programs offer part-time options or flexible scheduling?\nassistant: Pursuing a part-time program can be an excellent way to balance your work and studies. I've checked the programs I mentioned earlier, and here's what I found:\n\n1. **University of Illinois at Urbana-Champaign - Master of Science in Marketing**: They offer a part-time option, which allows you to complete the program in 24-36 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n2. **Northwestern University - Master of Science in Integrated Marketing Communications**: They offer a part-time option, which can be completed in 18-24 months. You can take 1-2 courses per quarter, and they have a flexible scheduling system to accommodate working professionals.\n3. **University of Southern California - Master of Science in Marketing**: They offer a part-time option, which can be completed in 24-36 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n4. **Georgia Tech - Master of Science in Digital Marketing**: They offer a part-time option, which can be completed in 18-24 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n5. **University of Virginia - Master of Science in Commerce**: They offer a part-time option, which can be completed in 24-36 months. You can take 1-2 courses per semester, and they have a flexible scheduling system to accommodate working professionals.\n\nAll of these programs are designed to accommodate working professionals, and they offer flexible scheduling options to help you balance your work and studies. However, it's essential to check with each program directly to confirm their part-time options and scheduling flexibility.\n\nAdditionally, you may want to consider the following factors when evaluating part-time programs:\n\n* **Course format**: Are the courses offered online, on-campus, or in a hybrid format? Which format works best for your schedule and learning style?\n* **Course load**: How many courses can you take per semester, and what's the recommended course load for part-time students?\n* **Scheduling flexibility**: Can you adjust your course schedule to accommodate your work commitments, or are there set times for classes and assignments?\n* **Support services**: What kind of support services does the program offer for part-time students, such as career counseling, academic advising, and technical support?\n\nBy considering these factors, you can find a part-time program that fits your needs and helps you achieve your goals.\nuser: That's really helpful! I think I'll reach out to these programs directly to get more information about their part-time options and scheduling flexibility. Do you think it's a good idea to also ask about their career services and job placement rates for graduates?\nassistant: You're thinking ahead! Yes, it's essential to ask about career services and job placement rates for graduates. This information can give you a better understanding of the program's commitment to supporting your career goals and the potential return on investment for your education.\n\nHere are some questions you may want to ask about career services and job placement:\n\n* **Career counseling**: What kind of career counseling and coaching services do they offer? Are they one-on-one or group sessions?\n* **Job placement rates**: What are the job placement rates for graduates of the program? Are they tracked and reported publicly?\n* **Career resources**: What kind of career resources do they provide, such as job boards, career fairs, or industry connections?\n* **Networking opportunities**: Are there opportunities to connect with alumni, industry professionals, or other students in the program?\n* **Resume and interview preparation**: Do they offer guidance on resume building, interview preparation, and salary negotiation?\n* **Internship opportunities**: Are internships or capstone projects available to gain practical experience and build your professional portfolio?\n* **Industry connections**: Does the program have strong connections with industry partners, and if so, how do they facilitate those connections for students?\n\nAsking these questions can help you understand the program's commitment to supporting your career goals and the potential outcomes of the program.\n\nAdditionally, you may also want to ask about:\n\n* **Alumni network**: What kind of alumni network does the program have, and how active are they in supporting current students and fellow alumni?\n* **Professional certifications**: Are there any professional certifications or licenses that the program prepares you for, and if so, what's the pass rate for graduates?\n* **Capstone or final project**: Is there a capstone or final project that demonstrates your skills and knowledge, and if so, how is it evaluated?\n\nBy asking these questions, you'll get a better sense of the program's strengths and weaknesses and whether it aligns with your career goals.\nuser: I think I'll also ask about their alumni network and how active they are in supporting current students and fellow alumni. It's great to know that I'll have a strong support system even after I graduate.\nassistant: That's a fantastic idea! The alumni network can be a valuable resource for you, even after you graduate. A strong alumni network can provide:\n\n* **Career opportunities**: Alumni networks can lead to job opportunities, mentorship, and professional connections.\n* **Industry insights**: Alumni can share their experiences, knowledge, and industry insights, helping you stay up-to-date with the latest trends and best practices.\n* **Networking events**: Alumni events, conferences, and webinars can provide opportunities to connect with fellow professionals, build relationships, and expand your network.\n* **Mentorship**: Alumni can offer guidance, advice, and support, helping you navigate your career and overcome challenges.\n* **Lifelong learning**: Alumni networks can provide access to continued education, training, and professional development opportunities.\n\nWhen asking about the alumni network, you may want to ask questions like:\n\n* **Alumni engagement**: What percentage of alumni are actively engaged with the university, and how do they participate?\n* **Alumni events**: What kind of events, webinars, or conferences does the university organize for alumni, and how often do they take place?\n* **Mentorship programs**: Are there formal mentorship programs in place, and if so, how do they match mentors with mentees?\n* **Career resources**: What kind of career resources are available to alumni, such as job boards, career counseling, or resume review?\n* **Social media groups**: Are there social media groups or online forums for alumni to connect, share experiences, and ask questions?\n\nBy asking these questions, you'll get a better sense of the alumni network's strength, engagement, and potential benefits for you as a graduate.\n\nRemember, a strong alumni network can be a valuable asset for your career, so it's essential to consider this factor when choosing a program.\nuser: I think I'll also ask about their approach to lifelong learning and professional development. Since I'm planning to stay in the industry for a long time, I want to make sure the program prepares me for continuous learning and adaptation to new trends and technologies.\nassistant: A forward-thinking approach! Asking about the program's approach to lifelong learning and professional development is crucial in today's rapidly changing industry landscape. You want to ensure that the program prepares you for a long-term career, not just a short-term job.\n\nHere are some questions you may want to ask about lifelong learning and professional development:\n\n* **Curriculum updates**: How often does the program update its curriculum to reflect industry changes, new trends, and emerging technologies?\n* **Faculty expertise**: Are the faculty members actively engaged in industry research, consulting, or practice, ensuring they bring the latest knowledge and best practices to the classroom?\n* **Industry connections**: Does the program have strong connections with industry partners, providing opportunities for guest lectures, case studies, and project collaborations?\n* **Professional development resources**: What kind of resources are available to support your ongoing professional development, such as webinars, workshops, or online courses?\n* **Alumni access**: Do alumni have access to continued education, training, or professional development opportunities, and if so, what kind?\n* **Lifelong learning mindset**: How does the program instill a lifelong learning mindset in its students, and what strategies are taught to help students stay current with industry developments?\n\nBy asking these questions, you'll get a sense of the program's commitment to preparing students for a long-term career in the industry. You want to ensure that the program provides a strong foundation for continuous learning and adaptation, enabling you to stay ahead of the curve and thrive in your profession.\n\nRemember, a program that prioritizes lifelong learning and professional development is more likely to equip you with the skills, knowledge, and mindset needed to succeed in the industry over the long term.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:ba358f49",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:a5e4f669ffff4a9601d558cf2401e009"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User is considering going back to school for a master's degree in marketing.\",\"User has worked in marketing for five years.\",\"User prefers a part-time flexible online marketing master's program that accommodates working professionals.\",\"User wants to evaluate marketing master's programs by career services, job placement rates, alumni network strength, and lifelong learning/professional development support.\"],\"confidence\":0.91,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I think I'll also ask about their approach to lifelong learning and professional development.\",\"evidence_reason\":\"The transcript shows the user progressively building a program evaluation plan around flexibility, career outcomes, alumni support, and lifelong learning; the quoted line is one explicit component of that plan.\",\"importance\":4,\"keywords\":[\"marketing master's\",\"online program\",\"part-time\",\"career services\",\"job placement\",\"alumni network\",\"lifelong learning\",\"professional development\"],\"note_type\":\"plan\",\"rationale\":\"This captures a reusable multi-criterion decision framework and planned inquiry process, not just one atomic preference or fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's search and evaluation process for online master's in marketing programs\"},\"summary\":\"When evaluating online master's in marketing programs for working professionals, the user intended to contact programs directly about part-time options and scheduling flexibility, then compare career services, job placement rates, alumni network activity, and lifelong learning/professional development support. Useful questions include career counseling, job placement transparency, networking opportunities, internship/capstone options, alumni engagement, mentorship, curriculum updates, faculty industry engagement, and alumni access to continued education.\",\"tags\":[\"education_search\",\"marketing\",\"program_evaluation\"],\"title\":\"Evaluation framework for online master's in marketing programs\",\"valid_from\":\"2022-09-01T08:09:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.82,\"entity_refs\":[{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Here are some top-notch online master's in marketing programs that you might find suitable:\",\"evidence_reason\":\"The assistant introduced and listed five named online marketing-related master's options; later turns discussed their part-time/flexible scheduling characteristics.\",\"importance\":3,\"keywords\":[\"University of Illinois\",\"Northwestern\",\"USC\",\"Georgia Tech\",\"University of Virginia\",\"marketing master's\",\"program shortlist\"],\"note_type\":\"context\",\"rationale\":\"The reusable value is the compact option set with named programs and descriptors; storing only individual claims would lose the shortlist context.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Named program options considered during the user's online marketing master's search\"},\"summary\":\"The discussed shortlist for online/part-time marketing-related master's programs included University of Illinois at Urbana-Champaign Master of Science in Marketing, Northwestern University Master of Science in Integrated Marketing Communications, University of Southern California Master of Science in Marketing, Georgia Tech Master of Science in Digital Marketing, and University of Virginia Master of Science in Commerce with a marketing concentration. The assistant described all as flexible options for working professionals and advised confirming part-time scheduling directly with each program.\",\"tags\":[\"education_search\",\"program_options\",\"marketing\"],\"title\":\"Shortlist of online marketing master's program options\",\"valid_from\":\"2022-09-01T08:09:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7790,
+                "completionTokens": 897,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
