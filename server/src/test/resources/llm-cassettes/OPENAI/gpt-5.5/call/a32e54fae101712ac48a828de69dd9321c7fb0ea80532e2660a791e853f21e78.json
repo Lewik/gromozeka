@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "a32e54fae101712ac48a828de69dd9321c7fb0ea80532e2660a791e853f21e78",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:a1cc6108\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:20\nTranscript:\nuser: I'm considering a career change and I'm not sure what path to take. I've been in my current field for a while, but I'm not sure if it's sustainable long-term. Can you help me explore some options that would be suitable for someone my age? By the way, I just turned 32 last month, so I'm still relatively young, but I want to make a move that will set me up for success in the next few decades.\nassistant: Happy belated birthday! Congratulations on taking the first step towards exploring new career options. 32 is a great age to make a career change, as you've gained valuable experience in your current field and still have plenty of time to build a new career.\n\nTo help you explore suitable options, let's consider a few factors:\n\n1. **Your current skills and strengths**: What are your transferable skills? What are you good at? What do you enjoy doing?\n2. **Your interests and values**: What motivates you? What kind of work environment and culture do you thrive in?\n3. **Job market demand and growth**: Which industries and roles are in demand and expected to grow in the next decade?\n4. **Education and training requirements**: Are you willing and able to invest time and resources in acquiring new skills or certifications?\n\nWith these factors in mind, here are some promising career paths to consider:\n\n1. **Data Science and Analytics**: With the increasing amount of data being generated, companies need professionals who can analyze and interpret data to inform business decisions.\n2. **Cybersecurity**: As technology advances, cybersecurity threats are becoming more sophisticated, making this field a high-growth area.\n3. **Healthcare and Biotechnology**: With an aging population and advancements in medical research, healthcare and biotech are expected to continue growing.\n4. **Renewable Energy and Sustainability**: As concern for the environment grows, careers in renewable energy, sustainability, and environmental science are becoming more in-demand.\n5. **Digital Marketing and E-commerce**: The rise of online shopping and digital marketing has created a need for professionals who can develop and execute effective online strategies.\n6. **Software Development and Engineering**: With the growth of technology, software development and engineering are consistently in high demand.\n7. **Project Management**: As companies take on more complex projects, project managers are needed to oversee and coordinate efforts.\n8. **Artificial Intelligence and Machine Learning**: AI and ML are transforming industries, and professionals with expertise in these areas are in high demand.\n9. **User Experience (UX) Design**: With the focus on user-centered design, UX designers are needed to create intuitive and user-friendly products.\n10. **Online Education and Training**: As online learning platforms grow, professionals with expertise in instructional design, teaching, and training are in demand.\n\nThese are just a few examples, and there are many other fields that might be a good fit for you. Take some time to reflect on your strengths, interests, and values, and research these options further.\n\nTo get started, you can:\n\n* Update your LinkedIn profile and connect with professionals in these fields.\n* Explore job postings and job descriptions to learn more about the day-to-day responsibilities and required skills.\n* Network with people in your desired field through informational interviews or online communities.\n* Consider taking online courses or attending seminars to gain a better understanding of the field and build your skills.\n\nRemember, changing careers takes time and effort, but it's a great opportunity to invest in yourself and set yourself up for long-term success.\n\nWhat resonates with you from this list, or is there another field that you're interested in exploring?\nuser: I'm really interested in Data Science and Analytics. I've always been good with numbers and I'm fascinated by how data can inform business decisions. I've also heard it's a high-paying field, which is important to me since I want to retire early.\nassistant: Data Science and Analytics is a fantastic field that can be very rewarding, both intellectually and financially. With your background in numbers and interest in business decisions, you're already off to a great start.\n\nHere are some exciting aspects of Data Science and Analytics:\n\n1. **High demand**: Data Science and Analytics is a rapidly growing field, with a projected growth rate of 14% from 2020 to 2030, much faster than the average for all occupations.\n2. **High compensation**: Data Scientists and Analysts are among the highest-paid professionals, with median salaries ranging from $80,000 to over $150,000 depending on experience and location.\n3. **Variety of roles**: Data Science and Analytics encompasses a broad range of roles, including:\n\t* Data Analyst: Focuses on data visualization, reporting, and analysis to inform business decisions.\n\t* Data Scientist: Develops and applies machine learning models, algorithms, and statistical techniques to solve complex problems.\n\t* Business Analyst: Uses data analysis to drive business strategy and optimize operations.\n\t* Data Engineer: Designs, builds, and maintains large-scale data systems and architectures.\n4. **Opportunities for advancement**: With experience, you can move into leadership roles, such as Director of Analytics or VP of Data Science, or start your own consulting firm.\n5. **Constant learning**: The field is constantly evolving, with new tools, techniques, and technologies emerging regularly, which means you'll need to stay up-to-date with the latest developments.\n\nTo get started, you'll want to develop a strong foundation in:\n\n1. **Mathematics and statistics**: Linear algebra, calculus, probability, and statistics are essential for data analysis and modeling.\n2. **Programming skills**: Python, R, and SQL are popular languages used in data science. Familiarity with data visualization tools like Tableau, Power BI, or D3.js is also valuable.\n3. **Data management**: Understanding database management systems, data warehousing, and ETL (Extract, Transform, Load) processes is crucial.\n4. **Machine learning and AI**: Knowledge of machine learning algorithms, deep learning, and neural networks will help you develop predictive models and automate tasks.\n5. **Communication and storytelling**: As a Data Scientist or Analyst, you'll need to effectively communicate insights and recommendations to stakeholders, so developing strong communication and storytelling skills is vital.\n\nTo accelerate your transition into Data Science and Analytics:\n\n1. **Take online courses**: Platforms like Coursera, edX, and DataCamp offer a wide range of courses and certifications in data science and analytics.\n2. **Practice with real-world datasets**: Apply your skills to publicly available datasets, such as those on Kaggle or UCI Machine Learning Repository, to build your portfolio.\n3. **Join online communities**: Participate in forums like Reddit's r/data science, r/MachineLearning, and Stack Overflow to network with professionals and stay updated on industry trends.\n4. **Pursue certifications**: Consider obtaining certifications like Certified Data Scientist (CDS) or Certified Analytics Professional (CAP) to demonstrate your expertise.\n5. **Network**: Attend industry events, meetups, and conferences to connect with professionals in the field and learn about new opportunities.\n\nRemember, transitioning to a new field takes time and effort. Focus on building a strong foundation, staying up-to-date with industry developments, and networking with professionals in the field.\n\nWhat's your next step? Do you want to start with online courses, practice with datasets, or explore certifications?\nuser: I think I'll start by taking some online courses to get a solid foundation in data science and analytics. I've heard that Python is a popular language used in data science, so I'll start with that. Do you know of any good resources for learning Python, especially for someone with a background in math? By the way, my grandma, who's 75, is really proud of me for taking the initiative to learn something new, and I'm glad I can show her that age is just a number.\nassistant: That's great to hear that you're taking the first step towards learning Python! With your math background, you'll likely pick up Python quickly. Here are some excellent resources to get you started:\n\n1. **Codecademy's Python Course**: Codecademy offers an interactive and comprehensive Python course that's perfect for beginners. You'll learn the basics, data structures, file input/output, and more.\n2. **Python for Data Science Handbook**: This online book by Jake VanderPlas is a free resource that covers the basics of Python programming and its application in data science. It's an excellent resource for those with a math background.\n3. **Python Data Science Tutorial** by DataCamp: DataCamp offers interactive tutorials and courses on Python for data science. This tutorial covers the basics of Python, data cleaning, visualization, and machine learning.\n4. **Python Crash Course** by Google: This course is designed for beginners and covers the basics of Python programming, including data types, functions, and object-oriented programming.\n5. **Khan Academy's Python Course**: Khan Academy's Python course is a comprehensive resource that covers the basics of Python programming, including data structures, algorithms, and data analysis.\n\nSince you have a math background, you might find the following resources particularly helpful:\n\n1. **Linear Algebra and Calculus with Python**: This course on edX covers the basics of linear algebra and calculus using Python.\n2. **Python for Mathematical Computing**: This course on Coursera covers the use of Python for mathematical computing, including numerical methods, optimization, and visualization.\n\nIt's great to hear that your grandma is proud of you for taking the initiative to learn something new! Age is indeed just a number, and it's never too late to start learning. You can even share your progress with your grandma and show her the cool things you're learning!\n\nAs you start learning Python, remember to:\n\n* Practice regularly to reinforce your learning.\n* Work on projects that interest you, such as analyzing a dataset or building a simple machine learning model.\n* Join online communities, like Reddit's r/learnpython, to connect with other learners and get help when you need it.\n\nHow do you plan to structure your learning process? Will you set aside a specific time each day or week to focus on learning Python?\nuser: I think I'll set aside a few hours each week to focus on learning Python. I'll start with the resources you provided and see which one works best for me. I'll also try to apply what I learn to some personal projects, like analyzing my own finances or tracking my fitness progress. That way, I can see the practical applications of Python and stay motivated. By the way, I've been thinking about my retirement goals, and I'm wondering if you can help me with that. I want to retire by the time I'm 60, but I'm not sure if that's realistic. Can you help me crunch some numbers and come up with a plan?\nassistant: That's a great approach to learning Python! Applying what you learn to personal projects will not only help you retain the information better but also make the learning process more enjoyable. Analyzing your finances and tracking your fitness progress are excellent projects to start with.\n\nNow, let's talk about your retirement goals! Retiring by 60 is an ambitious goal, but it's achievable with a solid plan. To help you crunch some numbers, I'll need to know a bit more about your current financial situation and goals. Please feel free to share the following information:\n\n1. **Current age**: You're 32, so we'll use that as our starting point.\n2. **Current income**: What's your annual income?\n3. **Current savings**: How much do you have saved for retirement so far?\n4. **Retirement goals**: What kind of lifestyle do you envision in retirement? Do you want to travel, pursue hobbies, or simply enjoy time with family and friends?\n5. **Desired retirement income**: How much money do you think you'll need each year to maintain your desired lifestyle in retirement?\n6. **Assumed investment returns**: What kind of returns do you expect from your investments? A common assumption is 4-6% annual returns.\n7. **Inflation assumption**: We'll assume an inflation rate of 2-3% per year.\n\nOnce I have this information, I can help you:\n\n1. Calculate how much you need to save each month to reach your retirement goal.\n2. Determine the best investment strategies to help you grow your savings.\n3. Create a plan to optimize your finances and stay on track.\n\nRemember, retiring by 60 will require discipline, patience, and consistent effort. But with a solid plan, you can increase your chances of achieving your goal.\n\nPlease share the necessary information, and we'll get started on creating a personalized plan for you!\nuser: I'm happy to share the necessary information. My current income is around $80,000 per year, and I have about $50,000 saved up for retirement so far. In retirement, I'd like to travel, pursue hobbies, and spend time with family and friends, so I think I'll need around $60,000 per year to maintain a comfortable lifestyle. I'm hoping to get around 5% annual returns on my investments, and I'm assuming an inflation rate of 2.5% per year.\n\nAlso, I've been thinking about my current expenses and I realized that I can cut back on some unnecessary expenses to free up more money for savings. I'd like to aim to save at least 20% of my income each month towards retirement.\n\nWith that information, can you help me crunch some numbers and come up with a plan to achieve my retirement goal?\nassistant: Thank you for sharing the necessary information! Based on your inputs, I'll create a personalized plan to help you achieve your retirement goal.\n\n**Retirement Calculation:**\n\n1. **Retirement age:** 60\n2. **Retirement income goal:** $60,000 per year\n3. **Current age:** 32\n4. **Current savings:** $50,000\n5. **Assumed investment returns:** 5% per year\n6. **Inflation assumption:** 2.5% per year\n\nUsing a retirement calculator, I've crunched the numbers, and here's a rough estimate of what you'll need to save each month to reach your goal:\n\n**Monthly savings needed:** approximately $850-$1,000\n\nThis amount will help you build a retirement corpus of around $1.2 million to $1.5 million by the time you're 60, assuming a 5% annual return and 2.5% inflation rate.\n\n**Savings Plan:**\n\nTo achieve your goal, I recommend the following plan:\n\n1. **Save 20% of your income:** Aim to save at least 20% of your income each month, which is around $1,333 ($80,000 / 12). This will help you build a solid foundation for your retirement savings.\n2. **Invest wisely:** Consider investing in a tax-advantaged retirement account, such as a 401(k) or IRA, to maximize your savings. You can also explore low-cost index funds or ETFs that align with your risk tolerance and investment goals.\n3. **Monitor and adjust:** Regularly review your progress, and adjust your savings amount or investment strategy as needed to ensure you're on track to meet your goal.\n\n**Additional Tips:**\n\n1. **Take advantage of employer matching:** If your employer offers a 401(k) or other retirement plan matching program, contribute enough to maximize the match. This is essentially free money that can help you reach your goal faster.\n2. **Avoid lifestyle inflation:** As your income increases, avoid the temptation to inflate your lifestyle by spending more on luxuries. Instead, direct excess funds towards your retirement savings.\n3. **Stay disciplined and patient:** Saving for retirement requires discipline and patience. Stay committed to your plan, and you'll be on track to achieving your goal.\n\nBy following this plan, you'll be well on your way to achieving your retirement goal. Remember to review and adjust your plan regularly to ensure you're on track.\n\nHow do you feel about this plan? Are you ready to start working towards your retirement goal?\n\n        Candidate notes:\n        [0] type=DIRECTION title=Career transition direction toward Data Science and Analytics summary=The user is exploring a career change at age 32 and is especially interested in Data Science and Analytics because they are good with numbers, like using data for business decisions, and value high earning potential to support early retirement. Initial exploration framed career fit around transferable skills, interests/values, market demand, and required education or training. scope=User's career-change exploration and preferred target field from the 2023-05-26 session entities=entity:<0>,entity:<1> keywords=career change,Data Science and Analytics,numbers,business decisions,early retirement,age 32 tags=career_change,data_science,analytics,early_retirement evidence=I'm really interested in Data Science and Analytics. I've always been good with numbers and I'm fascinated by how data can inform business decisions.\n[1] type=PLAN title=Python learning plan for data science transition summary=The user plans to learn Python for Data Science and Analytics by setting aside a few hours each week, trying recommended resources, and applying the skills to personal projects such as analyzing finances and tracking fitness progress to stay motivated. scope=User's self-directed Python learning plan for entering Data Science and Analytics entities=entity:<0>,entity:<2>,entity:<3> keywords=Python,data science,online courses,personal projects,finances,fitness tracking tags=learning_plan,python,data_science,personal_projects evidence=I'll also try to apply what I learn to some personal projects, like analyzing my own finances or tracking my fitness progress.\n[2] type=CONTEXT title=Python resources recommended for math-oriented data science learning summary=Recommended Python learning resources included Codecademy's Python Course, Python for Data Science Handbook by Jake VanderPlas, DataCamp's Python Data Science Tutorial, Google's Python Crash Course, Khan Academy's Python Course, plus math-oriented resources Linear Algebra and Calculus with Python on edX and Python for Mathematical Computing on Coursera. scope=Resource list previously provided for the user's Python learning path with a math background entities=entity:<0>,entity:<2> keywords=Codecademy Python Course,Python for Data Science Handbook,Jake VanderPlas,DataCamp,Google Python Crash Course,Khan Academy,edX,Coursera tags=resource_list,python,math_background,data_science evidence=Since you have a math background, you might find the following resources particularly helpful:\n[3] type=PLAN title=Retirement planning parameters and savings strategy toward age 60 summary=For the user's goal to retire at 60, the session used these planning inputs: current age 32, current income about $80,000/year, current retirement savings about $50,000, desired retirement income about $60,000/year, expected investment return 5%, inflation 2.5%, and a target to save at least 20% of income. The assistant estimated monthly savings of roughly $850-$1,000 to build about $1.2M-$1.5M by...[truncated 212 chars] scope=User's retirement planning scenario and savings plan discussed on 2023-05-26 entities=entity:<0>,entity:<4> keywords=retire by 60,income 80000,savings 50000,retirement income 60000,5% returns,2.5% inflation,save 20%,850 1000 monthly tags=retirement_plan,early_retirement,financial_planning,savings_strategy evidence=I'd like to aim to save at least 20% of my income each month towards retirement.\n\n        Existing active notes:\n        id=hot-path-e7aa2ef32f3d-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Retirement planning approach toward age 60 goal summary=The user is approaching retirement planning by reviewing resources and breaking the process into smaller tasks, starting with calculating expected retirement expenses. Relevant considerations discussed include diversified investments, maximizing tax-advantaged accounts such as 401(k), sustainable income streams, long-term care, healthcare costs, catch-up contributions, and periodic review/adjustme...[truncated 3 chars] scope=User's retirement planning context and current planning approach keywords=retirement planning,401(k),retire by 60,expected expenses,catch-up contributions,healthcare costs tags=retirement,financial_planning,career_development useCount=0\nid=hot-path-e7aa2ef32f3d-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Mentorship strategy resources for Alex summary=The user sought guidance for mentoring new intern Alex, with emphasis on clear expectations, a safe and open environment, regular check-ins, autonomy, constructive feedback, and age-appropriate support for a 21-year-old intern. Mentioned resources include The Mentor's Guide by Lois J. Zachary, Harvard Business Review's Mentoring 101, UC Berkeley's 5 C's of Mentoring, and SHRM's Mentorship in the W...[truncated 9 chars] scope=Mentorship context for the user's work with Alex as an intern keywords=Alex,intern,mentorship,The Mentor's Guide,Mentoring 101,5 C's of Mentoring,SHRM tags=mentorship,career_development,work useCount=0\nid=hot-path-e7aa2ef32f3d-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Ageism workplace resources and response themes summary=The user connected their energetic 75-year-old grandma to interest in workplace ageism and older workers' challenges. Discussed resources and response themes include ADEA, APA's Ageism in the Workplace, The Ageism Project, inclusive workplace culture, challenging stereotypes, intergenerational collaboration, development opportunities, flexible work arrangements, and monitoring age-related discrimi...[truncated 7 chars] scope=User's interest in workplace ageism prompted by their grandma's recent 75th birthday keywords=ageism,workplace ageism,older workers,ADEA,APA,Ageism Project,AARP,intergenerational collaboration tags=ageism,workplace_inclusion,family_context useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:a1cc6108",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:059cc9d862969aee1159402a702e683e"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:a1cc6108\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:20\nTranscript:\nuser: I'm considering a career change and I'm not sure what path to take. I've been in my current field for a while, but I'm not sure if it's sustainable long-term. Can you help me explore some options that would be suitable for someone my age? By the way, I just turned 32 last month, so I'm still relatively young, but I want to make a move that will set me up for success in the next few decades.\nassistant: Happy belated birthday! Congratulations on taking the first step towards exploring new career options. 32 is a great age to make a career change, as you've gained valuable experience in your current field and still have plenty of time to build a new career.\n\nTo help you explore suitable options, let's consider a few factors:\n\n1. **Your current skills and strengths**: What are your transferable skills? What are you good at? What do you enjoy doing?\n2. **Your interests and values**: What motivates you? What kind of work environment and culture do you thrive in?\n3. **Job market demand and growth**: Which industries and roles are in demand and expected to grow in the next decade?\n4. **Education and training requirements**: Are you willing and able to invest time and resources in acquiring new skills or certifications?\n\nWith these factors in mind, here are some promising career paths to consider:\n\n1. **Data Science and Analytics**: With the increasing amount of data being generated, companies need professionals who can analyze and interpret data to inform business decisions.\n2. **Cybersecurity**: As technology advances, cybersecurity threats are becoming more sophisticated, making this field a high-growth area.\n3. **Healthcare and Biotechnology**: With an aging population and advancements in medical research, healthcare and biotech are expected to continue growing.\n4. **Renewable Energy and Sustainability**: As concern for the environment grows, careers in renewable energy, sustainability, and environmental science are becoming more in-demand.\n5. **Digital Marketing and E-commerce**: The rise of online shopping and digital marketing has created a need for professionals who can develop and execute effective online strategies.\n6. **Software Development and Engineering**: With the growth of technology, software development and engineering are consistently in high demand.\n7. **Project Management**: As companies take on more complex projects, project managers are needed to oversee and coordinate efforts.\n8. **Artificial Intelligence and Machine Learning**: AI and ML are transforming industries, and professionals with expertise in these areas are in high demand.\n9. **User Experience (UX) Design**: With the focus on user-centered design, UX designers are needed to create intuitive and user-friendly products.\n10. **Online Education and Training**: As online learning platforms grow, professionals with expertise in instructional design, teaching, and training are in demand.\n\nThese are just a few examples, and there are many other fields that might be a good fit for you. Take some time to reflect on your strengths, interests, and values, and research these options further.\n\nTo get started, you can:\n\n* Update your LinkedIn profile and connect with professionals in these fields.\n* Explore job postings and job descriptions to learn more about the day-to-day responsibilities and required skills.\n* Network with people in your desired field through informational interviews or online communities.\n* Consider taking online courses or attending seminars to gain a better understanding of the field and build your skills.\n\nRemember, changing careers takes time and effort, but it's a great opportunity to invest in yourself and set yourself up for long-term success.\n\nWhat resonates with you from this list, or is there another field that you're interested in exploring?\nuser: I'm really interested in Data Science and Analytics. I've always been good with numbers and I'm fascinated by how data can inform business decisions. I've also heard it's a high-paying field, which is important to me since I want to retire early.\nassistant: Data Science and Analytics is a fantastic field that can be very rewarding, both intellectually and financially. With your background in numbers and interest in business decisions, you're already off to a great start.\n\nHere are some exciting aspects of Data Science and Analytics:\n\n1. **High demand**: Data Science and Analytics is a rapidly growing field, with a projected growth rate of 14% from 2020 to 2030, much faster than the average for all occupations.\n2. **High compensation**: Data Scientists and Analysts are among the highest-paid professionals, with median salaries ranging from $80,000 to over $150,000 depending on experience and location.\n3. **Variety of roles**: Data Science and Analytics encompasses a broad range of roles, including:\n\t* Data Analyst: Focuses on data visualization, reporting, and analysis to inform business decisions.\n\t* Data Scientist: Develops and applies machine learning models, algorithms, and statistical techniques to solve complex problems.\n\t* Business Analyst: Uses data analysis to drive business strategy and optimize operations.\n\t* Data Engineer: Designs, builds, and maintains large-scale data systems and architectures.\n4. **Opportunities for advancement**: With experience, you can move into leadership roles, such as Director of Analytics or VP of Data Science, or start your own consulting firm.\n5. **Constant learning**: The field is constantly evolving, with new tools, techniques, and technologies emerging regularly, which means you'll need to stay up-to-date with the latest developments.\n\nTo get started, you'll want to develop a strong foundation in:\n\n1. **Mathematics and statistics**: Linear algebra, calculus, probability, and statistics are essential for data analysis and modeling.\n2. **Programming skills**: Python, R, and SQL are popular languages used in data science. Familiarity with data visualization tools like Tableau, Power BI, or D3.js is also valuable.\n3. **Data management**: Understanding database management systems, data warehousing, and ETL (Extract, Transform, Load) processes is crucial.\n4. **Machine learning and AI**: Knowledge of machine learning algorithms, deep learning, and neural networks will help you develop predictive models and automate tasks.\n5. **Communication and storytelling**: As a Data Scientist or Analyst, you'll need to effectively communicate insights and recommendations to stakeholders, so developing strong communication and storytelling skills is vital.\n\nTo accelerate your transition into Data Science and Analytics:\n\n1. **Take online courses**: Platforms like Coursera, edX, and DataCamp offer a wide range of courses and certifications in data science and analytics.\n2. **Practice with real-world datasets**: Apply your skills to publicly available datasets, such as those on Kaggle or UCI Machine Learning Repository, to build your portfolio.\n3. **Join online communities**: Participate in forums like Reddit's r/data science, r/MachineLearning, and Stack Overflow to network with professionals and stay updated on industry trends.\n4. **Pursue certifications**: Consider obtaining certifications like Certified Data Scientist (CDS) or Certified Analytics Professional (CAP) to demonstrate your expertise.\n5. **Network**: Attend industry events, meetups, and conferences to connect with professionals in the field and learn about new opportunities.\n\nRemember, transitioning to a new field takes time and effort. Focus on building a strong foundation, staying up-to-date with industry developments, and networking with professionals in the field.\n\nWhat's your next step? Do you want to start with online courses, practice with datasets, or explore certifications?\nuser: I think I'll start by taking some online courses to get a solid foundation in data science and analytics. I've heard that Python is a popular language used in data science, so I'll start with that. Do you know of any good resources for learning Python, especially for someone with a background in math? By the way, my grandma, who's 75, is really proud of me for taking the initiative to learn something new, and I'm glad I can show her that age is just a number.\nassistant: That's great to hear that you're taking the first step towards learning Python! With your math background, you'll likely pick up Python quickly. Here are some excellent resources to get you started:\n\n1. **Codecademy's Python Course**: Codecademy offers an interactive and comprehensive Python course that's perfect for beginners. You'll learn the basics, data structures, file input/output, and more.\n2. **Python for Data Science Handbook**: This online book by Jake VanderPlas is a free resource that covers the basics of Python programming and its application in data science. It's an excellent resource for those with a math background.\n3. **Python Data Science Tutorial** by DataCamp: DataCamp offers interactive tutorials and courses on Python for data science. This tutorial covers the basics of Python, data cleaning, visualization, and machine learning.\n4. **Python Crash Course** by Google: This course is designed for beginners and covers the basics of Python programming, including data types, functions, and object-oriented programming.\n5. **Khan Academy's Python Course**: Khan Academy's Python course is a comprehensive resource that covers the basics of Python programming, including data structures, algorithms, and data analysis.\n\nSince you have a math background, you might find the following resources particularly helpful:\n\n1. **Linear Algebra and Calculus with Python**: This course on edX covers the basics of linear algebra and calculus using Python.\n2. **Python for Mathematical Computing**: This course on Coursera covers the use of Python for mathematical computing, including numerical methods, optimization, and visualization.\n\nIt's great to hear that your grandma is proud of you for taking the initiative to learn something new! Age is indeed just a number, and it's never too late to start learning. You can even share your progress with your grandma and show her the cool things you're learning!\n\nAs you start learning Python, remember to:\n\n* Practice regularly to reinforce your learning.\n* Work on projects that interest you, such as analyzing a dataset or building a simple machine learning model.\n* Join online communities, like Reddit's r/learnpython, to connect with other learners and get help when you need it.\n\nHow do you plan to structure your learning process? Will you set aside a specific time each day or week to focus on learning Python?\nuser: I think I'll set aside a few hours each week to focus on learning Python. I'll start with the resources you provided and see which one works best for me. I'll also try to apply what I learn to some personal projects, like analyzing my own finances or tracking my fitness progress. That way, I can see the practical applications of Python and stay motivated. By the way, I've been thinking about my retirement goals, and I'm wondering if you can help me with that. I want to retire by the time I'm 60, but I'm not sure if that's realistic. Can you help me crunch some numbers and come up with a plan?\nassistant: That's a great approach to learning Python! Applying what you learn to personal projects will not only help you retain the information better but also make the learning process more enjoyable. Analyzing your finances and tracking your fitness progress are excellent projects to start with.\n\nNow, let's talk about your retirement goals! Retiring by 60 is an ambitious goal, but it's achievable with a solid plan. To help you crunch some numbers, I'll need to know a bit more about your current financial situation and goals. Please feel free to share the following information:\n\n1. **Current age**: You're 32, so we'll use that as our starting point.\n2. **Current income**: What's your annual income?\n3. **Current savings**: How much do you have saved for retirement so far?\n4. **Retirement goals**: What kind of lifestyle do you envision in retirement? Do you want to travel, pursue hobbies, or simply enjoy time with family and friends?\n5. **Desired retirement income**: How much money do you think you'll need each year to maintain your desired lifestyle in retirement?\n6. **Assumed investment returns**: What kind of returns do you expect from your investments? A common assumption is 4-6% annual returns.\n7. **Inflation assumption**: We'll assume an inflation rate of 2-3% per year.\n\nOnce I have this information, I can help you:\n\n1. Calculate how much you need to save each month to reach your retirement goal.\n2. Determine the best investment strategies to help you grow your savings.\n3. Create a plan to optimize your finances and stay on track.\n\nRemember, retiring by 60 will require discipline, patience, and consistent effort. But with a solid plan, you can increase your chances of achieving your goal.\n\nPlease share the necessary information, and we'll get started on creating a personalized plan for you!\nuser: I'm happy to share the necessary information. My current income is around $80,000 per year, and I have about $50,000 saved up for retirement so far. In retirement, I'd like to travel, pursue hobbies, and spend time with family and friends, so I think I'll need around $60,000 per year to maintain a comfortable lifestyle. I'm hoping to get around 5% annual returns on my investments, and I'm assuming an inflation rate of 2.5% per year.\n\nAlso, I've been thinking about my current expenses and I realized that I can cut back on some unnecessary expenses to free up more money for savings. I'd like to aim to save at least 20% of my income each month towards retirement.\n\nWith that information, can you help me crunch some numbers and come up with a plan to achieve my retirement goal?\nassistant: Thank you for sharing the necessary information! Based on your inputs, I'll create a personalized plan to help you achieve your retirement goal.\n\n**Retirement Calculation:**\n\n1. **Retirement age:** 60\n2. **Retirement income goal:** $60,000 per year\n3. **Current age:** 32\n4. **Current savings:** $50,000\n5. **Assumed investment returns:** 5% per year\n6. **Inflation assumption:** 2.5% per year\n\nUsing a retirement calculator, I've crunched the numbers, and here's a rough estimate of what you'll need to save each month to reach your goal:\n\n**Monthly savings needed:** approximately $850-$1,000\n\nThis amount will help you build a retirement corpus of around $1.2 million to $1.5 million by the time you're 60, assuming a 5% annual return and 2.5% inflation rate.\n\n**Savings Plan:**\n\nTo achieve your goal, I recommend the following plan:\n\n1. **Save 20% of your income:** Aim to save at least 20% of your income each month, which is around $1,333 ($80,000 / 12). This will help you build a solid foundation for your retirement savings.\n2. **Invest wisely:** Consider investing in a tax-advantaged retirement account, such as a 401(k) or IRA, to maximize your savings. You can also explore low-cost index funds or ETFs that align with your risk tolerance and investment goals.\n3. **Monitor and adjust:** Regularly review your progress, and adjust your savings amount or investment strategy as needed to ensure you're on track to meet your goal.\n\n**Additional Tips:**\n\n1. **Take advantage of employer matching:** If your employer offers a 401(k) or other retirement plan matching program, contribute enough to maximize the match. This is essentially free money that can help you reach your goal faster.\n2. **Avoid lifestyle inflation:** As your income increases, avoid the temptation to inflate your lifestyle by spending more on luxuries. Instead, direct excess funds towards your retirement savings.\n3. **Stay disciplined and patient:** Saving for retirement requires discipline and patience. Stay committed to your plan, and you'll be on track to achieving your goal.\n\nBy following this plan, you'll be well on your way to achieving your retirement goal. Remember to review and adjust your plan regularly to ensure you're on track.\n\nHow do you feel about this plan? Are you ready to start working towards your retirement goal?\n\n        Candidate notes:\n        [0] type=DIRECTION title=Career transition direction toward Data Science and Analytics summary=The user is exploring a career change at age 32 and is especially interested in Data Science and Analytics because they are good with numbers, like using data for business decisions, and value high earning potential to support early retirement. Initial exploration framed career fit around transferable skills, interests/values, market demand, and required education or training. scope=User's career-change exploration and preferred target field from the 2023-05-26 session entities=entity:<0>,entity:<1> keywords=career change,Data Science and Analytics,numbers,business decisions,early retirement,age 32 tags=career_change,data_science,analytics,early_retirement evidence=I'm really interested in Data Science and Analytics. I've always been good with numbers and I'm fascinated by how data can inform business decisions.\n[1] type=PLAN title=Python learning plan for data science transition summary=The user plans to learn Python for Data Science and Analytics by setting aside a few hours each week, trying recommended resources, and applying the skills to personal projects such as analyzing finances and tracking fitness progress to stay motivated. scope=User's self-directed Python learning plan for entering Data Science and Analytics entities=entity:<0>,entity:<2>,entity:<3> keywords=Python,data science,online courses,personal projects,finances,fitness tracking tags=learning_plan,python,data_science,personal_projects evidence=I'll also try to apply what I learn to some personal projects, like analyzing my own finances or tracking my fitness progress.\n[2] type=CONTEXT title=Python resources recommended for math-oriented data science learning summary=Recommended Python learning resources included Codecademy's Python Course, Python for Data Science Handbook by Jake VanderPlas, DataCamp's Python Data Science Tutorial, Google's Python Crash Course, Khan Academy's Python Course, plus math-oriented resources Linear Algebra and Calculus with Python on edX and Python for Mathematical Computing on Coursera. scope=Resource list previously provided for the user's Python learning path with a math background entities=entity:<0>,entity:<2> keywords=Codecademy Python Course,Python for Data Science Handbook,Jake VanderPlas,DataCamp,Google Python Crash Course,Khan Academy,edX,Coursera tags=resource_list,python,math_background,data_science evidence=Since you have a math background, you might find the following resources particularly helpful:\n[3] type=PLAN title=Retirement planning parameters and savings strategy toward age 60 summary=For the user's goal to retire at 60, the session used these planning inputs: current age 32, current income about $80,000/year, current retirement savings about $50,000, desired retirement income about $60,000/year, expected investment return 5%, inflation 2.5%, and a target to save at least 20% of income. The assistant estimated monthly savings of roughly $850-$1,000 to build about $1.2M-$1.5M by...[truncated 212 chars] scope=User's retirement planning scenario and savings plan discussed on 2023-05-26 entities=entity:<0>,entity:<4> keywords=retire by 60,income 80000,savings 50000,retirement income 60000,5% returns,2.5% inflation,save 20%,850 1000 monthly tags=retirement_plan,early_retirement,financial_planning,savings_strategy evidence=I'd like to aim to save at least 20% of my income each month towards retirement.\n\n        Existing active notes:\n        id=hot-path-e7aa2ef32f3d-note-3 type=PLAN status=ACTIVE maturity=FRESH title=Retirement planning approach toward age 60 goal summary=The user is approaching retirement planning by reviewing resources and breaking the process into smaller tasks, starting with calculating expected retirement expenses. Relevant considerations discussed include diversified investments, maximizing tax-advantaged accounts such as 401(k), sustainable income streams, long-term care, healthcare costs, catch-up contributions, and periodic review/adjustme...[truncated 3 chars] scope=User's retirement planning context and current planning approach keywords=retirement planning,401(k),retire by 60,expected expenses,catch-up contributions,healthcare costs tags=retirement,financial_planning,career_development useCount=0\nid=hot-path-e7aa2ef32f3d-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Mentorship strategy resources for Alex summary=The user sought guidance for mentoring new intern Alex, with emphasis on clear expectations, a safe and open environment, regular check-ins, autonomy, constructive feedback, and age-appropriate support for a 21-year-old intern. Mentioned resources include The Mentor's Guide by Lois J. Zachary, Harvard Business Review's Mentoring 101, UC Berkeley's 5 C's of Mentoring, and SHRM's Mentorship in the W...[truncated 9 chars] scope=Mentorship context for the user's work with Alex as an intern keywords=Alex,intern,mentorship,The Mentor's Guide,Mentoring 101,5 C's of Mentoring,SHRM tags=mentorship,career_development,work useCount=0\nid=hot-path-e7aa2ef32f3d-note-4 type=CONTEXT status=ACTIVE maturity=FRESH title=Ageism workplace resources and response themes summary=The user connected their energetic 75-year-old grandma to interest in workplace ageism and older workers' challenges. Discussed resources and response themes include ADEA, APA's Ageism in the Workplace, The Ageism Project, inclusive workplace culture, challenging stereotypes, intergenerational collaboration, development opportunities, flexible work arrangements, and monitoring age-related discrimi...[truncated 7 chars] scope=User's interest in workplace ageism prompted by their grandma's recent 75th birthday keywords=ageism,workplace ageism,older workers,ADEA,APA,Ageism Project,AARP,intergenerational collaboration tags=ageism,workplace_inclusion,family_context useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:a1cc6108",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:059cc9d862969aee1159402a702e683e"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.7,\"to_note_id\":\"hot-path-e7aa2ef32f3d-note-3\"}],\"patch\":null,\"reason\":\"New distinct reusable context about the user's career transition target and motivation; existing notes only cover retirement, mentorship, and ageism.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path-e7aa2ef32f3d-note-3\"}],\"patch\":null,\"reason\":\"New distinct plan for learning Python through weekly study and personal projects; not captured by existing notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":2,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.4,\"to_note_id\":\"hot-path-e7aa2ef32f3d-note-3\"}],\"patch\":null,\"reason\":\"New reusable resource list for Python/data science learning with a math background; no existing active note covers this.\",\"target_note_id\":null},{\"action\":\"supersede\",\"candidate_index\":3,\"links_to_create\":[],\"patch\":null,\"reason\":\"Candidate provides a more specific current version of the same retirement planning goal, adding concrete financial inputs, assumptions, savings target, and corpus estimate.\",\"target_note_id\":\"hot-path-e7aa2ef32f3d-note-3\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7691,
+                "completionTokens": 328,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
