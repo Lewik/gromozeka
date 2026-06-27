@@ -701,6 +701,8 @@ class LlmMemoryReadSelectorTest {
         assertTrue(prompt.contains("qualifiers_json"), prompt)
         assertTrue(prompt.contains("Rachel and Mike"), prompt)
         assertTrue(prompt.contains("A shared anchor can connect candidates only when it explicitly identifies the same fully-qualified target"), prompt)
+        assertTrue(prompt.contains("Keep anchor-level metadata candidates when they can supply a missing requested detail"), prompt)
+        assertTrue(prompt.contains("Reject the bridge when retrieved memory has competing anchors or competing values for the same target"), prompt)
     }
 
     @Test
