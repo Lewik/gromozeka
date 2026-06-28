@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.AiRuntime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
+import java.net.ConnectException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -22,6 +23,24 @@ class MemoryLlmRuntimeRetryTest {
         runtime.callMemoryStageWithRetry(
             request = AiRuntimeRequest(systemPrompts = emptyList(), messages = emptyList()),
             stageName = "write-router",
+            logContext = "test",
+            maxAttempts = 3,
+            timeoutMs = 10_000,
+        )
+
+        assertEquals(2, runtime.calls)
+    }
+
+    @Test
+    fun transportConnectFailuresAreRetried() = runBlocking {
+        val runtime = EventuallySuccessfulRuntime(
+            failuresBeforeSuccess = 1,
+            error = ConnectException(),
+        )
+
+        runtime.callMemoryStageWithRetry(
+            request = AiRuntimeRequest(systemPrompts = emptyList(), messages = emptyList()),
+            stageName = "claim-extractor",
             logContext = "test",
             maxAttempts = 3,
             timeoutMs = 10_000,
