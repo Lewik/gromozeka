@@ -59,6 +59,11 @@ internal class LlmMemoryQuestionAnswerer(
                 require(answer.sufficiency in setOf("answered", "insufficient", "conflicting")) {
                     "Unsupported memory question sufficiency: ${answer.sufficiency}"
                 }
+                validateAnswerMatchesExplicitReasoningConclusion(
+                    answer = answer.answer,
+                    reasoning = answer.reasoning,
+                    sufficiency = answer.sufficiency,
+                )
                 validateElapsedLeadTimeAnswer(
                     question = question,
                     reasoning = answer.reasoning,
@@ -139,6 +144,56 @@ private fun validateElapsedLeadTimeAnswer(
     )
 }
 
+private fun validateAnswerMatchesExplicitReasoningConclusion(
+    answer: String,
+    reasoning: String,
+    sufficiency: String,
+) {
+    if (sufficiency != "answered") return
+
+    val conclusion = reasoning.explicitAnswerConclusion() ?: return
+    val normalizedAnswer = answer.normalizedAnswerForConsistency()
+    val normalizedConclusion = conclusion.normalizedAnswerForConsistency()
+    if (normalizedAnswer.isBlank() || normalizedConclusion.isBlank()) return
+
+    if (normalizedAnswer == normalizedConclusion) return
+    if (normalizedAnswer in normalizedConclusion || normalizedConclusion in normalizedAnswer) return
+
+    error(
+        "Answer field contradicts the explicit reasoning conclusion. " +
+            "The answer field is '$answer', but reasoning concludes '$conclusion'. " +
+            "Return the explicit conclusion in answer, or set sufficiency to conflicting if memory is inconsistent."
+    )
+}
+
+private fun String.explicitAnswerConclusion(): String? =
+    explicitAnswerConclusionRegexes
+        .firstNotNullOfOrNull { regex ->
+            regex.find(this)?.groupValues?.getOrNull(1)
+        }
+        ?.trimAnswerConclusion()
+
+private fun String.trimAnswerConclusion(): String {
+    val delimiters = listOf("\n", ". ", "; ", " but ", " however ")
+    val shortened = delimiters.fold(trim().trimAnswerQuotes()) { current, delimiter ->
+        current.substringBefore(delimiter)
+    }
+    return shortened
+        .trim()
+        .trimEnd('.', ',', ';', ':')
+        .trim()
+        .trimAnswerQuotes()
+}
+
+private fun String.trimAnswerQuotes(): String =
+    trim('"', '\'', '`', '“', '”', '‘', '’')
+
+private fun String.normalizedAnswerForConsistency(): String =
+    lowercase()
+        .replace(Regex("""[^\p{L}\p{N}]+"""), " ")
+        .replace(Regex("""\s+"""), " ")
+        .trim()
+
 private fun String.asksForElapsedAgo(): Boolean =
     elapsedAgoQuestionRegex.containsMatchIn(this)
 
@@ -153,6 +208,11 @@ private val leadTimeCueRegex =
     Regex("""\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(?:day|days|week|weeks|month|months|year|years)\s+(?:in advance|ahead of|prior to|before)\b""", RegexOption.IGNORE_CASE)
 private val leadTimeDerivationCueRegex =
     Regex("""(?:\+|\b(?:add|adds|added|adding|plus|sum|sums|summed|combine|combines|combined|total|totals|together|altogether)\b)""", RegexOption.IGNORE_CASE)
+private val explicitAnswerConclusionRegexes = listOf(
+    Regex("""\banswer field must match (?:the )?(?:computed )?conclusion:\s*([^\n.]+)""", RegexOption.IGNORE_CASE),
+    Regex("""\b(?:computed|final) conclusion:\s*([^\n.]+)""", RegexOption.IGNORE_CASE),
+    Regex("""\b(?:final answer|answer)\s+(?:is|should be|must be)\s*:?\s*([^\n.]+)""", RegexOption.IGNORE_CASE),
+)
 
 internal data class MemoryQuestionAnswerResult(
     val readResult: MemoryReadResult,

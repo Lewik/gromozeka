@@ -156,6 +156,47 @@ class LlmMemoryQuestionAnswererTest {
         assertTrue(runtime.prompts.last().contains("Elapsed-time answer uses a lead-time phrase"), runtime.prompts.last())
     }
 
+    @Test
+    fun repairsAnswerThatContradictsExplicitReasoningConclusion() = runBlocking {
+        val runtime = CapturingRuntime(
+            responses = listOf(
+                """
+                {
+                  "answer": "The Nightingale",
+                  "reasoning": "The selected memory says The Hate U Give was finished before The Nightingale. Comparing both items, The Hate U Give came first. However, the answer field must match the computed conclusion: The Hate U Give.",
+                  "sufficiency": "answered",
+                  "evidence_refs": ["claim:claim-hate-u-give", "claim:claim-nightingale"],
+                  "counted_items": [],
+                  "excluded_refs": []
+                }
+                """.trimIndent(),
+                """
+                {
+                  "answer": "The Hate U Give",
+                  "reasoning": "The selected memory says The Hate U Give was finished before The Nightingale, so the final answer is The Hate U Give.",
+                  "sufficiency": "answered",
+                  "evidence_refs": ["claim:claim-hate-u-give", "claim:claim-nightingale"],
+                  "counted_items": [],
+                  "excluded_refs": []
+                }
+                """.trimIndent(),
+            )
+        )
+
+        val result = LlmMemoryQuestionAnswerer(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+        ).answer(
+            question = "Which book did I finish first, The Hate U Give or The Nightingale?",
+            readResult = defaultReadResult(),
+            conversationId = Conversation.Id("conversation"),
+        )
+
+        assertEquals("The Hate U Give", result.answer)
+        assertEquals(2, runtime.prompts.size)
+        assertTrue(runtime.prompts.last().contains("Answer field contradicts the explicit reasoning conclusion"), runtime.prompts.last())
+    }
+
     private class CapturingRuntime(
         responses: List<String> = listOf(defaultResponse),
     ) : AiRuntime {
@@ -204,3 +245,42 @@ class LlmMemoryQuestionAnswererTest {
         }
     }
 }
+
+private fun defaultReadResult(): MemoryReadResult =
+    MemoryReadResult(
+        plan = MemoryReadPlan(),
+        retrievedHits = emptyList(),
+        runtimePrompt = "The Hate U Give was finished before The Nightingale.",
+        trace = MemoryReadTrace(
+            selectedHits = listOf(
+                MemoryReadTrace.Hit(
+                    ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "claim-hate-u-give"),
+                    score = 1.0,
+                    summary = "The user finished The Hate U Give before book club.",
+                    predicate = "completed_content",
+                    status = "ACTIVE",
+                ),
+                MemoryReadTrace.Hit(
+                    ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "claim-nightingale"),
+                    score = 0.9,
+                    summary = "The user finished The Nightingale later.",
+                    predicate = "completed_content",
+                    status = "ACTIVE",
+                ),
+            ),
+            selectorDecisions = listOf(
+                MemoryReadTrace.SelectorDecision(
+                    ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "claim-hate-u-give"),
+                    selected = true,
+                    rank = 1,
+                    reason = "direct temporal evidence",
+                ),
+                MemoryReadTrace.SelectorDecision(
+                    ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "claim-nightingale"),
+                    selected = false,
+                    rank = Int.MAX_VALUE,
+                    reason = "less direct rejected anchor",
+                ),
+            ),
+        ),
+    )
