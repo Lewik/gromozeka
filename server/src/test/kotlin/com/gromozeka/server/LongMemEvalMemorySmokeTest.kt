@@ -21,6 +21,10 @@ import com.gromozeka.server.testsupport.app.sanitizePathSegment
 import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteSettings
 import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteUsageReporter
 import com.gromozeka.shared.uuid.uuid7
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.channels.FileLock
+import java.nio.channels.OverlappingFileLockException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -81,6 +85,12 @@ class LongMemEvalMemorySmokeTest {
             return@runBlocking
         }
 
+        acquireLongMemEvalRunLock().use {
+            runLongMemEvalMemorySmokeLocked()
+        }
+    }
+
+    private suspend fun runLongMemEvalMemorySmokeLocked() {
         val dataFile = resolveDataFile()
         assertTrue(
             dataFile.exists(),
@@ -224,6 +234,38 @@ class LongMemEvalMemorySmokeTest {
                 "Expected answer was not supported by memory_context and gold evidence was not fully selected for ${failedCases.size}/${caseResults.size} cases. " +
                     "Artifact: $summaryPath"
             )
+        }
+    }
+
+    private fun acquireLongMemEvalRunLock(): LongMemEvalRunLock {
+        val root = Path.of("build", "test-artifacts", "longmemeval")
+        Files.createDirectories(root)
+        val channel = FileChannel.open(root.resolve("run.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE)
+        val lock = try {
+            channel.tryLock()
+        } catch (_: OverlappingFileLockException) {
+            null
+        }
+        if (lock == null) {
+            channel.close()
+            error("Another LongMemEval memory smoke run is already active. Stop it before starting a new one.")
+        }
+        channel.truncate(0)
+        channel.write(
+            ByteBuffer.wrap(
+                "pid=${ProcessHandle.current().pid()} startedAt=${Clock.System.now()}\n".encodeToByteArray()
+            )
+        )
+        return LongMemEvalRunLock(channel = channel, lock = lock)
+    }
+
+    private class LongMemEvalRunLock(
+        private val channel: FileChannel,
+        private val lock: FileLock,
+    ) : AutoCloseable {
+        override fun close() {
+            lock.release()
+            channel.close()
         }
     }
 
@@ -742,7 +784,6 @@ class LongMemEvalMemorySmokeTest {
         return filter { entry ->
             tokens.any { token ->
                 entry.questionId == token ||
-                    entry.questionId.contains(token, ignoreCase = true) ||
                     entry.questionType.equals(token, ignoreCase = true)
             }
         }
