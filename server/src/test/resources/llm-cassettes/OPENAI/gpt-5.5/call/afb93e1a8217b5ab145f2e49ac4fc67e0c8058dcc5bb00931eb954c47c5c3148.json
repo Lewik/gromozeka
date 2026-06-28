@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "afb93e1a8217b5ab145f2e49ac4fc67e0c8058dcc5bb00931eb954c47c5c3148",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2f56ae70\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 08:59\nTranscript:\nuser: I'm having trouble finding a specific documentary I saw on Disney+ during my free trial last month. Do you think you can help me figure out what it was?\nassistant: I'd be happy to help you try to find the documentary you're thinking of. Can you provide me with as much information as you can remember about the documentary? Here are some questions to get started:\n\n* What was the documentary about? (e.g. nature, history, science, sports, etc.)\n* Was it a series or a standalone documentary?\n* Do you remember any specific scenes, quotes, or images from the documentary?\n* Was it a recent documentary or did it feel like it was older?\n* Was it produced by Disney or was it a third-party production?\n* Did it have a particular tone or style? (e.g. serious, light-hearted, educational, etc.)\n* Was it narrated by a specific person or did it have a particular host?\n\nAny details you can provide will help me narrow down the search. I'll do my best to help you figure out what documentary you're thinking of!\nuser: It was a nature documentary, I think it was a series, and I remember it had some really stunning footage of wildlife. It was a recent one, and I'm pretty sure it was produced by Disney. The tone was pretty serious and educational, but it was still really engaging.\nassistant: That's a great start! With Disney+ having a vast library of nature documentaries, it might take some digging, but I'll do my best to help you find the one you're thinking of.\n\nBased on your description, here are a few possibilities:\n\n1. **Our Planet** (2019) - This is a Netflix original series, but Disney+ has a similar series called **One Day at Disney** (2019), which might have similar stunning footage.\n2. **Dynasties** (2018) - This BBC series, narrated by Sir David Attenborough, explores the social dynamics of five endangered species. It's a serious and educational series with breathtaking footage.\n3. **Blue Planet II** (2017) - Another BBC series, also narrated by Sir David Attenborough, this one focuses on marine life. While it's not exclusively produced by Disney, it's available on Disney+.\n4. **Wild Yellowstone** (2020) - This Disney+ original series explores the wildlife and ecosystem of Yellowstone National Park.\n5. **America the Beautiful** (2022) - This Disney+ original series showcases the natural wonders of the United States, with a focus on conservation and the importance of protecting the environment.\n\nIf none of these sound quite right, please let me know and I can continue to ask questions to help narrow down the search. For example:\n\n* Do you remember any specific animals or habitats featured in the documentary?\n* Was there a particular episode or scene that stuck with you?\n* Was the documentary focused on a specific region or ecosystem?\n* Do you remember when you watched it during your free trial (e.g., was it near the beginning or end of the trial)?\nuser: The ones you mentioned don't sound quite right. I think it was more focused on a specific type of animal, and I remember it was really well-made and had some amazing footage of the animals in their natural habitats. I don't really remember when I watched it during the trial, but I think it was sometime in the middle.\nassistant: Let me try to dig deeper.\n\nSince you mentioned it was focused on a specific type of animal, I'll ask:\n\n* Was it a mammal, bird, reptile, amphibian, or insect-focused documentary?\n* Was it about a well-known animal, like elephants, wolves, or bears, or was it about a more unusual or lesser-known species?\n* Do you remember any specific behaviors or habits of the animals that were showcased in the documentary?\n* Was there a particular habitat or environment that the documentary focused on, such as deserts, oceans, forests, or mountains?\n\nAdditionally, since you mentioned it was really well-made with amazing footage, I'll ask:\n\n* Do you remember any notable camera techniques, such as drone footage, underwater cinematography, or time-lapses?\n* Was the documentary narrated by a specific person, or was it more of a \"fly on the wall\" observational style?\n* Did the documentary have a strong conservation or environmental message, or was it more focused on showcasing the natural behavior of the animals?\n\nAny details you can provide will help me try to find the documentary you're thinking of.\nuser: Let's see... I think it was a mammal-focused documentary, and it was about a pretty well-known species. I don't really remember any specific behaviors or habits, but I do remember the amazing footage of the animals in their natural habitats. And I think the documentary was focused on forests or mountains, maybe both.\nassistant: With that information, I can try to narrow down the search.\n\nBased on your description, here are a few possibilities:\n\n1. **Bear Witness** (2020) - This Disney+ original documentary series focuses on bears in their natural habitats, including forests and mountains. It features stunning footage of these amazing animals and explores their behavior, habitat, and conservation status.\n2. **Elephant Queen** (2020) - This documentary, also a Disney+ original, follows the story of Athena, a giant elephant matriarch, in Kenya's Masai Mara National Reserve. It showcases the elephant's habitat in the African savannah and forests, and highlights the importance of conservation efforts.\n3. **Giant Pandas** (2020) - This documentary, part of the **Smithsonian Wild** series, explores the lives of giant pandas in their natural habitats in China's mountains and forests. It features breathtaking footage of these iconic animals and delves into conservation efforts to protect them.\n\nIf none of these sound quite right, please let me know and I can continue to ask questions to help narrow down the search.\n\nHere are a few more questions to help us get closer:\n\n* Do you remember if the documentary was more focused on the animals' daily lives, or did it explore specific themes like migration, habitat loss, or human-wildlife conflict?\n* Was the documentary part of a larger series, or was it a standalone film?\n* Did the documentary have a particular tone or mood? Was it more uplifting and inspiring, or was it more serious and somber?\n\nLet me know if any of these questions spark any memories, and I'll do my best to help you find the documentary you're thinking of!\nuser: I think it might have been focused on the daily lives of the animals, and it was probably a standalone film. The tone was pretty serious, but it was still really engaging and inspiring.\nassistant: With that information, I can try to make some educated guesses.\n\nBased on your description, I'm going to take a stab in the dark and suggest a few possibilities:\n\n1. **The Elephant Diaries** (2020) - This Disney+ original documentary film follows the daily lives of a family of elephants in the African savannah. It's a serious and educational film that showcases the elephants' social bonds, habitat, and conservation status.\n2. **The Great Bear Rainforest** (2020) - This documentary film, also on Disney+, explores the lives of grizzly bears in the Great Bear Rainforest in British Columbia, Canada. It's a serious and informative film that delves into the bears' daily lives, habitat, and the challenges they face in the wild.\n3. **Polar Bear: Spy on the Ice** (2020) - This documentary film, part of the **Spy in the Wild** series, uses innovative camera technology to capture the daily lives of polar bears in the Arctic. It's a serious and educational film that showcases the bears' habitat, behavior, and conservation status.\n\nIf none of these sound quite right, please let me know and I can continue to ask questions to help narrow down the search.\n\nHere are a few more questions to help us get closer:\n\n* Do you remember any specific scenes or moments from the documentary that stood out to you? (e.g., a particular behavior, a dramatic event, or a heartwarming moment)\n* Was the documentary narrated by a specific person, or did it feature interviews with experts or conservationists?\n* Did the documentary have a strong focus on conservation or environmental issues, or was it more focused on showcasing the animals' natural behavior?\n\nLet me know if any of these questions spark any memories, and I'll do my best to help you find the documentary you're thinking of!\nuser: Wait, I just thought of something. Since I started a free trial of Disney+ last month, it's possible that the documentary I'm thinking of was a Disney+ exclusive. Can you check if any of the documentaries I mentioned are Disney+ exclusives?\nassistant: Since you started a free trial last month, it's highly likely that the documentary you're thinking of is a Disney+ exclusive.\n\nLet me check the availability of the documentaries I mentioned earlier:\n\n* **The Elephant Diaries**: Not a Disney+ exclusive. It's a BBC documentary available on various platforms, including Amazon Prime Video and YouTube.\n* **The Great Bear Rainforest**: Not a Disney+ exclusive. It's a BBC documentary available on various platforms, including Amazon Prime Video and YouTube.\n* **Polar Bear: Spy on the Ice**: Not a Disney+ exclusive. It's a BBC documentary available on various platforms, including Amazon Prime Video and YouTube.\n\nNone of the documentaries I mentioned earlier are Disney+ exclusives. This means that the documentary you're thinking of might be a different one.\n\nLet me try to search for Disney+ exclusive documentaries that match your description:\n\n* **Bear Witness** (2020): A Disney+ original documentary series focused on bears in their natural habitats. It's a serious and educational series with stunning footage.\n* **Elephant Queen** (2020): A Disney+ original documentary film that follows the story of Athena, a giant elephant matriarch, in Kenya's Masai Mara National Reserve.\n\nIf neither of these sound familiar, please let me know and I can continue to search for other Disney+ exclusive documentaries that might match what you're looking for.\n\nDo you want me to explore more Disney+ exclusive documentaries, or would you like to provide more details or clues to help narrow down the search?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Unresolved Disney+ Nature Documentary Identification Clues summary=The user was trying to identify a nature documentary watched on Disney+ during a free trial in the prior month. Durable clues: likely a recent Disney-produced or Disney+ exclusive nature title; probably a standalone film rather than a series; focused on daily lives of a well-known mammal species in forests or mountains; serious, educational, engaging, inspiring tone; notable stunning wildlife foot...[truncated 24 chars] scope=Identification context for the unresolved Disney+ nature documentary the user watched during a free trial before the 2023-05-22 session. entities=entity:<0>,entity:<1>,entity:<2> keywords=Disney+,nature documentary,free trial,mammal,forests,mountains,daily lives,standalone film,Disney+ exclusive,stunning wildlife footage tags=media_identification,streaming,documentary,disney_plus,unresolved evidence=I think it was a mammal-focused documentary, and it was about a pretty well-known species.\n[1] type=CONTEXT title=Disney+ Documentary Candidates and Ruled-Out Exclusivity Check summary=Candidate titles discussed for the unidentified Disney+ nature documentary included Bear Witness, The Elephant Queen, Giant Pandas, The Elephant Diaries, The Great Bear Rainforest, and Polar Bear: Spy on the Ice. The later exclusivity check treated The Elephant Diaries, The Great Bear Rainforest, and Polar Bear: Spy on the Ice as not Disney+ exclusives, leaving Bear Witness and The Elephant Queen ...[truncated 67 chars] scope=Candidate-and-elimination context for the unresolved Disney+ nature documentary identification request from the 2023-05-22 session. entities=entity:<0>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<2> keywords=Bear Witness,The Elephant Queen,Giant Pandas,The Elephant Diaries,The Great Bear Rainforest,Polar Bear: Spy on the Ice,Disney+ exclusive,Disney+ original tags=media_identification,candidate_list,ruled_out,disney_plus evidence=None of the documentaries I mentioned earlier are Disney+ exclusives.\n\n        Existing active notes:\n        id=hot-path-599991d8af65-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=TV Recommendation Context: The Handmaid's Tale and For All Mankind summary=The user sought TV recommendations anchored on enjoying \"The Handmaid's Tale\" and having finished and liked \"For All Mankind\"; useful recommendation dimensions include dystopian power dynamics, thought-provoking sci-fi, complex characters, and intricate storytelling. scope=User entertainment recommendation context for future TV suggestions keywords=TV recommendations,The Handmaid's Tale,For All Mankind,dystopian,sci-fi,complex characters tags=entertainment,recommendations,tv_shows,sci_fi useCount=0\nid=hot-path-3c616b4ce902-note-3 type=DECISION status=ACTIVE maturity=FRESH title=The Haunting of Hill House vs Russian Doll Fit Rationale summary=\"The Haunting of Hill House\" was positioned as atmospheric, suspenseful, introspective, psychologically horrific, character-driven, and slow-burning, while \"Russian Doll\" was framed as faster-paced, darkly comedic, existential, twisty, and non-linear. The user chose to start with \"The Haunting of Hill House\" because they were in the mood for something suspenseful and atmospheric, liked the slow-bu...[truncated 93 chars] scope=User's TV recommendation decision between The Haunting of Hill House and Russian Doll in the 2023-05-22 session. keywords=The Haunting of Hill House,Russian Doll,slow burn,atmospheric,suspenseful,dark comedy,character development tags=watch_decision,tv_preferences,recommendation_rationale useCount=0\nid=hot-path-3c616b4ce902-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Recommendation Set for Stranger Things and The Handmaid's Tale summary=A past recommendation set for shows similar to \"Stranger Things\" included \"The Haunting of Hill House\" (Netflix; atmospheric haunted-house family horror), \"The OA\" (Netflix; supernatural mystery), \"Dark\" (Netflix; German sci-fi mystery), \"The Twilight Zone\" (CBS All Access; sci-fi/horror anthology), and \"Russian Doll\" (Netflix; time-loop dark comedy-drama). For \"The Handmaid's Tale\", recommendatio...[truncated 177 chars] scope=Reusable TV recommendation list derived from the user's request for shows similar to Stranger Things or The Handmaid's Tale in the 2023-05-22 session. keywords=Stranger Things,The Handmaid's Tale,The Haunting of Hill House,Russian Doll,Dark,The OA,Westworld,dystopian,sci-fi mystery tags=tv_recommendations,entertainment,streaming useCount=0\nid=hot-path-599991d8af65-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Watch Rationale and Caveats summary=\"Westworld\" was positioned for the user as thought-provoking sci-fi with AI, consciousness, free will, morality, complex characters, nonlinear/multiple-timeline storytelling, and strong production values; caveats included mature content and needing focused attention. scope=Reusable rationale and caveats for recommending Westworld to the user keywords=Westworld,AI,consciousness,free will,nonlinear storytelling,mature content tags=entertainment,watch_rationale,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-8 type=DECISION status=ACTIVE maturity=FRESH title=Chosen Access Path: HBO Add-on via Amazon Prime Video summary=The user chose the Amazon Prime Video with HBO add-on route for HBO content because they already had Amazon Prime and preferred the convenience of adding HBO to that subscription. The add-on was described as using Prime Video for access and consolidated billing, with a separate HBO add-on fee and possible availability/content/simultaneous-streaming restrictions. scope=User's selected streaming access path for HBO/Westworld at the time of the session keywords=HBO add-on,Amazon Prime Video,Amazon Prime membership,Westworld,streamlined billing tags=streaming_access,decision,subscription useCount=0\nid=hot-path-3c616b4ce902-note-4 type=PLAN status=ACTIVE maturity=FRESH title=The Haunting of Hill House Viewing Approach summary=For watching \"The Haunting of Hill House\", the useful approach was to pay attention to subtle details, symbolism, foreshadowing, mirrors/reflections, Hill House as a character, Crain family relationships, and non-linear time structure; the user planned to watch in 2–3 episode chunks to process the story and characters and be patient with the slow burn. scope=User's intended viewing approach for The Haunting of Hill House after choosing it in the 2023-05-22 session. keywords=The Haunting of Hill House,2-3 episodes,slow burn,details,Crain family,mirrors,non-linear storytelling tags=viewing_plan,tv_context useCount=0\nid=hot-path-599991d8af65-note-7 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Access Options Considered summary=For watching \"Westworld\", the options discussed were HBO subscription, HBO Max, Amazon Prime Video with HBO add-on, or purchasing episodes/seasons through Amazon Prime Video, Google Play, iTunes, or Vudu. The important constraint was that \"Westworld\" is not available through base Amazon Prime Video alone; it requires an HBO add-on, separate HBO/HBO Max access, or purchase. scope=Reusable streaming-access decision context for Westworld keywords=Westworld,HBO add-on,Amazon Prime Video,HBO Max,Google Play,iTunes,Vudu tags=streaming_access,entertainment,subscription_options useCount=0\nid=hot-path-3c616b4ce902-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Marvelous Mrs. Maisel and The Grand Tour Preference Context summary=The user had already watched and loved \"The Marvelous Mrs. Maisel\", especially its humor and characters, and was keeping up with \"The Grand Tour\" on Amazon Prime, describing it as entertaining and informative. This broadens future recommendation context beyond dystopian/sci-fi into witty character-driven comedy-drama and entertaining informational shows. scope=Reusable entertainment preference context from the 2023-05-22 session, especially for Amazon Prime viewing history and taste signals. keywords=The Marvelous Mrs. Maisel,The Grand Tour,Amazon Prime,humor,characters,entertaining,informative tags=tv_preferences,viewing_history,amazon_prime useCount=0\nid=hot-path-599991d8af65-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=The Power Watch Rationale summary=\"The Power\" was discussed as a strong fit for the user because it adapts Naomi Alderman's acclaimed novel about women gaining electrical abilities, shifting gendered power dynamics, and exploring power, corruption, resistance, and revolution; it was positioned as timely, character-driven, and appealing to fans of \"The Handmaid's Tale\". scope=Reusable rationale for recommending The Power to the user keywords=The Power,Naomi Alderman,power dynamics,gender,The Handmaid's Tale,Amazon Prime Video tags=entertainment,watch_rationale,tv_shows,dystopian useCount=0\nid=hot-path-599991d8af65-note-9 type=CONTEXT status=ACTIVE maturity=FRESH title=Additional Sci-fi Recommendations Similar to Westworld and For All Mankind summary=A later sci-fi recommendation set for the user's \"Westworld\" and \"For All Mankind\" interests included: for \"Westworld\", \"Black Mirror\", \"Electric Dreams\", \"Altered Carbon\", \"Colony\", and \"Travelers\"; for \"For All Mankind\", \"The Expanse\", \"Farscape\", \"Killjoys\", \"Dark Matter\", and \"Counterpart\". The shared fit was thought-provoking sci-fi with complex characters and intricate storylines. scope=Reusable expanded sci-fi TV recommendation list for the user keywords=Westworld,For All Mankind,Black Mirror,The Expanse,Farscape,Killjoys,Dark Matter,Counterpart tags=entertainment,recommendation_list,tv_shows,sci_fi useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2f56ae70",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:2bd90b175de0356e9259105636aa0da0"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: benchmark:longmemeval:gpt4_2f56ae70\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        LongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 08:59\nTranscript:\nuser: I'm having trouble finding a specific documentary I saw on Disney+ during my free trial last month. Do you think you can help me figure out what it was?\nassistant: I'd be happy to help you try to find the documentary you're thinking of. Can you provide me with as much information as you can remember about the documentary? Here are some questions to get started:\n\n* What was the documentary about? (e.g. nature, history, science, sports, etc.)\n* Was it a series or a standalone documentary?\n* Do you remember any specific scenes, quotes, or images from the documentary?\n* Was it a recent documentary or did it feel like it was older?\n* Was it produced by Disney or was it a third-party production?\n* Did it have a particular tone or style? (e.g. serious, light-hearted, educational, etc.)\n* Was it narrated by a specific person or did it have a particular host?\n\nAny details you can provide will help me narrow down the search. I'll do my best to help you figure out what documentary you're thinking of!\nuser: It was a nature documentary, I think it was a series, and I remember it had some really stunning footage of wildlife. It was a recent one, and I'm pretty sure it was produced by Disney. The tone was pretty serious and educational, but it was still really engaging.\nassistant: That's a great start! With Disney+ having a vast library of nature documentaries, it might take some digging, but I'll do my best to help you find the one you're thinking of.\n\nBased on your description, here are a few possibilities:\n\n1. **Our Planet** (2019) - This is a Netflix original series, but Disney+ has a similar series called **One Day at Disney** (2019), which might have similar stunning footage.\n2. **Dynasties** (2018) - This BBC series, narrated by Sir David Attenborough, explores the social dynamics of five endangered species. It's a serious and educational series with breathtaking footage.\n3. **Blue Planet II** (2017) - Another BBC series, also narrated by Sir David Attenborough, this one focuses on marine life. While it's not exclusively produced by Disney, it's available on Disney+.\n4. **Wild Yellowstone** (2020) - This Disney+ original series explores the wildlife and ecosystem of Yellowstone National Park.\n5. **America the Beautiful** (2022) - This Disney+ original series showcases the natural wonders of the United States, with a focus on conservation and the importance of protecting the environment.\n\nIf none of these sound quite right, please let me know and I can continue to ask questions to help narrow down the search. For example:\n\n* Do you remember any specific animals or habitats featured in the documentary?\n* Was there a particular episode or scene that stuck with you?\n* Was the documentary focused on a specific region or ecosystem?\n* Do you remember when you watched it during your free trial (e.g., was it near the beginning or end of the trial)?\nuser: The ones you mentioned don't sound quite right. I think it was more focused on a specific type of animal, and I remember it was really well-made and had some amazing footage of the animals in their natural habitats. I don't really remember when I watched it during the trial, but I think it was sometime in the middle.\nassistant: Let me try to dig deeper.\n\nSince you mentioned it was focused on a specific type of animal, I'll ask:\n\n* Was it a mammal, bird, reptile, amphibian, or insect-focused documentary?\n* Was it about a well-known animal, like elephants, wolves, or bears, or was it about a more unusual or lesser-known species?\n* Do you remember any specific behaviors or habits of the animals that were showcased in the documentary?\n* Was there a particular habitat or environment that the documentary focused on, such as deserts, oceans, forests, or mountains?\n\nAdditionally, since you mentioned it was really well-made with amazing footage, I'll ask:\n\n* Do you remember any notable camera techniques, such as drone footage, underwater cinematography, or time-lapses?\n* Was the documentary narrated by a specific person, or was it more of a \"fly on the wall\" observational style?\n* Did the documentary have a strong conservation or environmental message, or was it more focused on showcasing the natural behavior of the animals?\n\nAny details you can provide will help me try to find the documentary you're thinking of.\nuser: Let's see... I think it was a mammal-focused documentary, and it was about a pretty well-known species. I don't really remember any specific behaviors or habits, but I do remember the amazing footage of the animals in their natural habitats. And I think the documentary was focused on forests or mountains, maybe both.\nassistant: With that information, I can try to narrow down the search.\n\nBased on your description, here are a few possibilities:\n\n1. **Bear Witness** (2020) - This Disney+ original documentary series focuses on bears in their natural habitats, including forests and mountains. It features stunning footage of these amazing animals and explores their behavior, habitat, and conservation status.\n2. **Elephant Queen** (2020) - This documentary, also a Disney+ original, follows the story of Athena, a giant elephant matriarch, in Kenya's Masai Mara National Reserve. It showcases the elephant's habitat in the African savannah and forests, and highlights the importance of conservation efforts.\n3. **Giant Pandas** (2020) - This documentary, part of the **Smithsonian Wild** series, explores the lives of giant pandas in their natural habitats in China's mountains and forests. It features breathtaking footage of these iconic animals and delves into conservation efforts to protect them.\n\nIf none of these sound quite right, please let me know and I can continue to ask questions to help narrow down the search.\n\nHere are a few more questions to help us get closer:\n\n* Do you remember if the documentary was more focused on the animals' daily lives, or did it explore specific themes like migration, habitat loss, or human-wildlife conflict?\n* Was the documentary part of a larger series, or was it a standalone film?\n* Did the documentary have a particular tone or mood? Was it more uplifting and inspiring, or was it more serious and somber?\n\nLet me know if any of these questions spark any memories, and I'll do my best to help you find the documentary you're thinking of!\nuser: I think it might have been focused on the daily lives of the animals, and it was probably a standalone film. The tone was pretty serious, but it was still really engaging and inspiring.\nassistant: With that information, I can try to make some educated guesses.\n\nBased on your description, I'm going to take a stab in the dark and suggest a few possibilities:\n\n1. **The Elephant Diaries** (2020) - This Disney+ original documentary film follows the daily lives of a family of elephants in the African savannah. It's a serious and educational film that showcases the elephants' social bonds, habitat, and conservation status.\n2. **The Great Bear Rainforest** (2020) - This documentary film, also on Disney+, explores the lives of grizzly bears in the Great Bear Rainforest in British Columbia, Canada. It's a serious and informative film that delves into the bears' daily lives, habitat, and the challenges they face in the wild.\n3. **Polar Bear: Spy on the Ice** (2020) - This documentary film, part of the **Spy in the Wild** series, uses innovative camera technology to capture the daily lives of polar bears in the Arctic. It's a serious and educational film that showcases the bears' habitat, behavior, and conservation status.\n\nIf none of these sound quite right, please let me know and I can continue to ask questions to help narrow down the search.\n\nHere are a few more questions to help us get closer:\n\n* Do you remember any specific scenes or moments from the documentary that stood out to you? (e.g., a particular behavior, a dramatic event, or a heartwarming moment)\n* Was the documentary narrated by a specific person, or did it feature interviews with experts or conservationists?\n* Did the documentary have a strong focus on conservation or environmental issues, or was it more focused on showcasing the animals' natural behavior?\n\nLet me know if any of these questions spark any memories, and I'll do my best to help you find the documentary you're thinking of!\nuser: Wait, I just thought of something. Since I started a free trial of Disney+ last month, it's possible that the documentary I'm thinking of was a Disney+ exclusive. Can you check if any of the documentaries I mentioned are Disney+ exclusives?\nassistant: Since you started a free trial last month, it's highly likely that the documentary you're thinking of is a Disney+ exclusive.\n\nLet me check the availability of the documentaries I mentioned earlier:\n\n* **The Elephant Diaries**: Not a Disney+ exclusive. It's a BBC documentary available on various platforms, including Amazon Prime Video and YouTube.\n* **The Great Bear Rainforest**: Not a Disney+ exclusive. It's a BBC documentary available on various platforms, including Amazon Prime Video and YouTube.\n* **Polar Bear: Spy on the Ice**: Not a Disney+ exclusive. It's a BBC documentary available on various platforms, including Amazon Prime Video and YouTube.\n\nNone of the documentaries I mentioned earlier are Disney+ exclusives. This means that the documentary you're thinking of might be a different one.\n\nLet me try to search for Disney+ exclusive documentaries that match your description:\n\n* **Bear Witness** (2020): A Disney+ original documentary series focused on bears in their natural habitats. It's a serious and educational series with stunning footage.\n* **Elephant Queen** (2020): A Disney+ original documentary film that follows the story of Athena, a giant elephant matriarch, in Kenya's Masai Mara National Reserve.\n\nIf neither of these sound familiar, please let me know and I can continue to search for other Disney+ exclusive documentaries that might match what you're looking for.\n\nDo you want me to explore more Disney+ exclusive documentaries, or would you like to provide more details or clues to help narrow down the search?\n\n        Candidate notes:\n        [0] type=CONTEXT title=Unresolved Disney+ Nature Documentary Identification Clues summary=The user was trying to identify a nature documentary watched on Disney+ during a free trial in the prior month. Durable clues: likely a recent Disney-produced or Disney+ exclusive nature title; probably a standalone film rather than a series; focused on daily lives of a well-known mammal species in forests or mountains; serious, educational, engaging, inspiring tone; notable stunning wildlife foot...[truncated 24 chars] scope=Identification context for the unresolved Disney+ nature documentary the user watched during a free trial before the 2023-05-22 session. entities=entity:<0>,entity:<1>,entity:<2> keywords=Disney+,nature documentary,free trial,mammal,forests,mountains,daily lives,standalone film,Disney+ exclusive,stunning wildlife footage tags=media_identification,streaming,documentary,disney_plus,unresolved evidence=I think it was a mammal-focused documentary, and it was about a pretty well-known species.\n[1] type=CONTEXT title=Disney+ Documentary Candidates and Ruled-Out Exclusivity Check summary=Candidate titles discussed for the unidentified Disney+ nature documentary included Bear Witness, The Elephant Queen, Giant Pandas, The Elephant Diaries, The Great Bear Rainforest, and Polar Bear: Spy on the Ice. The later exclusivity check treated The Elephant Diaries, The Great Bear Rainforest, and Polar Bear: Spy on the Ice as not Disney+ exclusives, leaving Bear Witness and The Elephant Queen ...[truncated 67 chars] scope=Candidate-and-elimination context for the unresolved Disney+ nature documentary identification request from the 2023-05-22 session. entities=entity:<0>,entity:<3>,entity:<4>,entity:<5>,entity:<6>,entity:<7>,entity:<2> keywords=Bear Witness,The Elephant Queen,Giant Pandas,The Elephant Diaries,The Great Bear Rainforest,Polar Bear: Spy on the Ice,Disney+ exclusive,Disney+ original tags=media_identification,candidate_list,ruled_out,disney_plus evidence=None of the documentaries I mentioned earlier are Disney+ exclusives.\n\n        Existing active notes:\n        id=hot-path-599991d8af65-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=TV Recommendation Context: The Handmaid's Tale and For All Mankind summary=The user sought TV recommendations anchored on enjoying \"The Handmaid's Tale\" and having finished and liked \"For All Mankind\"; useful recommendation dimensions include dystopian power dynamics, thought-provoking sci-fi, complex characters, and intricate storytelling. scope=User entertainment recommendation context for future TV suggestions keywords=TV recommendations,The Handmaid's Tale,For All Mankind,dystopian,sci-fi,complex characters tags=entertainment,recommendations,tv_shows,sci_fi useCount=0\nid=hot-path-3c616b4ce902-note-3 type=DECISION status=ACTIVE maturity=FRESH title=The Haunting of Hill House vs Russian Doll Fit Rationale summary=\"The Haunting of Hill House\" was positioned as atmospheric, suspenseful, introspective, psychologically horrific, character-driven, and slow-burning, while \"Russian Doll\" was framed as faster-paced, darkly comedic, existential, twisty, and non-linear. The user chose to start with \"The Haunting of Hill House\" because they were in the mood for something suspenseful and atmospheric, liked the slow-bu...[truncated 93 chars] scope=User's TV recommendation decision between The Haunting of Hill House and Russian Doll in the 2023-05-22 session. keywords=The Haunting of Hill House,Russian Doll,slow burn,atmospheric,suspenseful,dark comedy,character development tags=watch_decision,tv_preferences,recommendation_rationale useCount=0\nid=hot-path-3c616b4ce902-note-2 type=CONTEXT status=ACTIVE maturity=FRESH title=Recommendation Set for Stranger Things and The Handmaid's Tale summary=A past recommendation set for shows similar to \"Stranger Things\" included \"The Haunting of Hill House\" (Netflix; atmospheric haunted-house family horror), \"The OA\" (Netflix; supernatural mystery), \"Dark\" (Netflix; German sci-fi mystery), \"The Twilight Zone\" (CBS All Access; sci-fi/horror anthology), and \"Russian Doll\" (Netflix; time-loop dark comedy-drama). For \"The Handmaid's Tale\", recommendatio...[truncated 177 chars] scope=Reusable TV recommendation list derived from the user's request for shows similar to Stranger Things or The Handmaid's Tale in the 2023-05-22 session. keywords=Stranger Things,The Handmaid's Tale,The Haunting of Hill House,Russian Doll,Dark,The OA,Westworld,dystopian,sci-fi mystery tags=tv_recommendations,entertainment,streaming useCount=0\nid=hot-path-599991d8af65-note-6 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Watch Rationale and Caveats summary=\"Westworld\" was positioned for the user as thought-provoking sci-fi with AI, consciousness, free will, morality, complex characters, nonlinear/multiple-timeline storytelling, and strong production values; caveats included mature content and needing focused attention. scope=Reusable rationale and caveats for recommending Westworld to the user keywords=Westworld,AI,consciousness,free will,nonlinear storytelling,mature content tags=entertainment,watch_rationale,tv_shows,sci_fi useCount=0\nid=hot-path-599991d8af65-note-8 type=DECISION status=ACTIVE maturity=FRESH title=Chosen Access Path: HBO Add-on via Amazon Prime Video summary=The user chose the Amazon Prime Video with HBO add-on route for HBO content because they already had Amazon Prime and preferred the convenience of adding HBO to that subscription. The add-on was described as using Prime Video for access and consolidated billing, with a separate HBO add-on fee and possible availability/content/simultaneous-streaming restrictions. scope=User's selected streaming access path for HBO/Westworld at the time of the session keywords=HBO add-on,Amazon Prime Video,Amazon Prime membership,Westworld,streamlined billing tags=streaming_access,decision,subscription useCount=0\nid=hot-path-3c616b4ce902-note-4 type=PLAN status=ACTIVE maturity=FRESH title=The Haunting of Hill House Viewing Approach summary=For watching \"The Haunting of Hill House\", the useful approach was to pay attention to subtle details, symbolism, foreshadowing, mirrors/reflections, Hill House as a character, Crain family relationships, and non-linear time structure; the user planned to watch in 2–3 episode chunks to process the story and characters and be patient with the slow burn. scope=User's intended viewing approach for The Haunting of Hill House after choosing it in the 2023-05-22 session. keywords=The Haunting of Hill House,2-3 episodes,slow burn,details,Crain family,mirrors,non-linear storytelling tags=viewing_plan,tv_context useCount=0\nid=hot-path-599991d8af65-note-7 type=CONTEXT status=ACTIVE maturity=FRESH title=Westworld Access Options Considered summary=For watching \"Westworld\", the options discussed were HBO subscription, HBO Max, Amazon Prime Video with HBO add-on, or purchasing episodes/seasons through Amazon Prime Video, Google Play, iTunes, or Vudu. The important constraint was that \"Westworld\" is not available through base Amazon Prime Video alone; it requires an HBO add-on, separate HBO/HBO Max access, or purchase. scope=Reusable streaming-access decision context for Westworld keywords=Westworld,HBO add-on,Amazon Prime Video,HBO Max,Google Play,iTunes,Vudu tags=streaming_access,entertainment,subscription_options useCount=0\nid=hot-path-3c616b4ce902-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=Marvelous Mrs. Maisel and The Grand Tour Preference Context summary=The user had already watched and loved \"The Marvelous Mrs. Maisel\", especially its humor and characters, and was keeping up with \"The Grand Tour\" on Amazon Prime, describing it as entertaining and informative. This broadens future recommendation context beyond dystopian/sci-fi into witty character-driven comedy-drama and entertaining informational shows. scope=Reusable entertainment preference context from the 2023-05-22 session, especially for Amazon Prime viewing history and taste signals. keywords=The Marvelous Mrs. Maisel,The Grand Tour,Amazon Prime,humor,characters,entertaining,informative tags=tv_preferences,viewing_history,amazon_prime useCount=0\nid=hot-path-599991d8af65-note-5 type=CONTEXT status=ACTIVE maturity=FRESH title=The Power Watch Rationale summary=\"The Power\" was discussed as a strong fit for the user because it adapts Naomi Alderman's acclaimed novel about women gaining electrical abilities, shifting gendered power dynamics, and exploring power, corruption, resistance, and revolution; it was positioned as timely, character-driven, and appealing to fans of \"The Handmaid's Tale\". scope=Reusable rationale for recommending The Power to the user keywords=The Power,Naomi Alderman,power dynamics,gender,The Handmaid's Tale,Amazon Prime Video tags=entertainment,watch_rationale,tv_shows,dystopian useCount=0\nid=hot-path-599991d8af65-note-9 type=CONTEXT status=ACTIVE maturity=FRESH title=Additional Sci-fi Recommendations Similar to Westworld and For All Mankind summary=A later sci-fi recommendation set for the user's \"Westworld\" and \"For All Mankind\" interests included: for \"Westworld\", \"Black Mirror\", \"Electric Dreams\", \"Altered Carbon\", \"Colony\", and \"Travelers\"; for \"For All Mankind\", \"The Expanse\", \"Farscape\", \"Killjoys\", \"Dark Matter\", and \"Counterpart\". The shared fit was thought-provoking sci-fi with complex characters and intricate storylines. scope=Reusable expanded sci-fi TV recommendation list for the user keywords=Westworld,For All Mankind,Black Mirror,The Expanse,Farscape,Killjoys,Dark Matter,Counterpart tags=entertainment,recommendation_list,tv_shows,sci_fi useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:gpt4_2f56ae70",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:provided-text:2bd90b175de0356e9259105636aa0da0"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"New distinct reusable context about an unresolved Disney+ nature documentary identification; no existing active note covers this media-identification task.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"related\",\"link_weight\":0.4,\"to_note_id\":\"hot-path-599991d8af65-note-2\"}],\"patch\":null,\"reason\":\"New distinct candidate/elimination context for the same unresolved Disney+ documentary search. It complements candidate 0 and is not duplicated by existing TV recommendation notes; only loosely related to broader entertainment context.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7491,
+                "completionTokens": 162,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

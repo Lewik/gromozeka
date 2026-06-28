@@ -90,6 +90,9 @@ tasks.register("downloadLongMemEvalData") {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    if (System.getProperty("gromozeka.longmemeval") == "true") {
+        reports.junitXml.required.set(false)
+    }
 
     System.getProperty("gromozeka.memory.e2e")?.let {
         systemProperty("gromozeka.memory.e2e", it)
