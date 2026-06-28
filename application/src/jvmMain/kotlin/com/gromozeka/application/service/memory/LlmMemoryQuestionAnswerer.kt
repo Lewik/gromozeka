@@ -59,6 +59,11 @@ internal class LlmMemoryQuestionAnswerer(
                 require(answer.sufficiency in setOf("answered", "insufficient", "conflicting")) {
                     "Unsupported memory question sufficiency: ${answer.sufficiency}"
                 }
+                validateElapsedLeadTimeAnswer(
+                    question = question,
+                    reasoning = answer.reasoning,
+                    sufficiency = answer.sufficiency,
+                )
             },
         )
 
@@ -115,6 +120,39 @@ internal class LlmMemoryQuestionAnswerer(
             )
     }
 }
+
+private fun validateElapsedLeadTimeAnswer(
+    question: String,
+    reasoning: String,
+    sufficiency: String,
+) {
+    if (sufficiency != "answered") return
+    if (!question.asksForElapsedAgo()) return
+
+    if (!reasoning.containsLeadTimeCue()) return
+    if (reasoning.containsLeadTimeDerivationCue()) return
+
+    error(
+        "Elapsed-time answer uses a lead-time phrase without deriving it from an anchor. " +
+            "For an 'ago' question, do not use N in advance/before/prior to as the final elapsed answer; " +
+            "identify the anchor timing and combine offsets, or set sufficiency to insufficient."
+    )
+}
+
+private fun String.asksForElapsedAgo(): Boolean =
+    elapsedAgoQuestionRegex.containsMatchIn(this)
+
+private fun String.containsLeadTimeCue(): Boolean =
+    leadTimeCueRegex.containsMatchIn(this)
+
+private fun String.containsLeadTimeDerivationCue(): Boolean =
+    leadTimeDerivationCueRegex.containsMatchIn(this)
+
+private val elapsedAgoQuestionRegex = Regex("""\b(?:how many|how long|when)\b[\s\S]*\bago\b""", RegexOption.IGNORE_CASE)
+private val leadTimeCueRegex =
+    Regex("""\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(?:day|days|week|weeks|month|months|year|years)\s+(?:in advance|ahead of|prior to|before)\b""", RegexOption.IGNORE_CASE)
+private val leadTimeDerivationCueRegex =
+    Regex("""(?:\+|\b(?:add|adds|added|adding|plus|sum|sums|summed|combine|combines|combined|total|totals|together|altogether)\b)""", RegexOption.IGNORE_CASE)
 
 internal data class MemoryQuestionAnswerResult(
     val readResult: MemoryReadResult,

@@ -77,8 +77,90 @@ class LlmMemoryQuestionAnswererTest {
         assertTrue(!prompt.contains("less direct rejected anchor"), prompt)
     }
 
-    private class CapturingRuntime : AiRuntime {
+    @Test
+    fun repairsElapsedAgoAnswerThatUsesLeadTimeWithoutAnchorDerivation() = runBlocking {
+        val runtime = CapturingRuntime(
+            responses = listOf(
+                """
+                {
+                  "answer": "Three months ago.",
+                  "reasoning": "The relevant memory says the venue was reserved three months in advance. The selected memory directly gives that booking lead time. Final conclusion: three months ago.",
+                  "sufficiency": "answered",
+                  "evidence_refs": ["claim:reservation-lead-time"],
+                  "counted_items": [],
+                  "excluded_refs": []
+                }
+                """.trimIndent(),
+                """
+                {
+                  "answer": "Five months ago.",
+                  "reasoning": "The reservation happened three months before the workshop, and the workshop was two months before the question date, so 3 + 2 = 5 months ago.",
+                  "sufficiency": "answered",
+                  "evidence_refs": ["claim:reservation-lead-time", "source:workshop"],
+                  "counted_items": [],
+                  "excluded_refs": []
+                }
+                """.trimIndent(),
+            )
+        )
+        val readResult = MemoryReadResult(
+            plan = MemoryReadPlan(),
+            retrievedHits = emptyList(),
+            runtimePrompt = """
+                The venue was reserved three months in advance of the workshop.
+                The workshop happened two months before the question date.
+            """.trimIndent(),
+            trace = MemoryReadTrace(
+                selectedHits = listOf(
+                    MemoryReadTrace.Hit(
+                        ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "reservation-lead-time"),
+                        score = 1.0,
+                        summary = "The user's venue reservation was made three months in advance of the workshop.",
+                        predicate = "metric_observation",
+                        status = "ACTIVE",
+                    ),
+                    MemoryReadTrace.Hit(
+                        ref = MemoryItemRef(MemoryItemRef.Type.SOURCE, "workshop"),
+                        score = 0.9,
+                        summary = "The workshop happened two months before the question date.",
+                    ),
+                ),
+                selectorDecisions = listOf(
+                    MemoryReadTrace.SelectorDecision(
+                        ref = MemoryItemRef(MemoryItemRef.Type.CLAIM, "reservation-lead-time"),
+                        selected = true,
+                        rank = 1,
+                        reason = "lead time operand",
+                    ),
+                    MemoryReadTrace.SelectorDecision(
+                        ref = MemoryItemRef(MemoryItemRef.Type.SOURCE, "workshop"),
+                        selected = true,
+                        rank = 2,
+                        reason = "anchor timing operand",
+                    ),
+                ),
+            ),
+        )
+
+        val result = LlmMemoryQuestionAnswerer(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+        ).answer(
+            question = "How many months ago did I reserve the workshop venue?",
+            readResult = readResult,
+            conversationId = Conversation.Id("conversation"),
+        )
+
+        assertEquals("Five months ago.", result.answer)
+        assertEquals(2, runtime.prompts.size)
+        assertTrue(runtime.prompts.last().contains("Elapsed-time answer uses a lead-time phrase"), runtime.prompts.last())
+    }
+
+    private class CapturingRuntime(
+        responses: List<String> = listOf(defaultResponse),
+    ) : AiRuntime {
         val prompts = mutableListOf<String>()
+        private val responses = ArrayDeque(responses)
         override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
 
         override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
@@ -97,16 +179,7 @@ class LlmMemoryQuestionAnswererTest {
                         content = listOf(
                             Conversation.Message.ContentItem.AssistantMessage(
                                 Conversation.Message.StructuredText(
-                                    """
-                                    {
-                                      "answer": "The Hate U Give",
-                                      "reasoning": "The selected memory says The Hate U Give was finished before The Nightingale, so the final answer is The Hate U Give.",
-                                      "sufficiency": "answered",
-                                      "evidence_refs": ["claim:claim-hate-u-give", "claim:claim-nightingale"],
-                                      "counted_items": [],
-                                      "excluded_refs": []
-                                    }
-                                    """.trimIndent()
+                                    responses.removeFirst()
                                 )
                             )
                         )
@@ -116,5 +189,18 @@ class LlmMemoryQuestionAnswererTest {
         }
 
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+
+        companion object {
+            private val defaultResponse = """
+                {
+                  "answer": "The Hate U Give",
+                  "reasoning": "The selected memory says The Hate U Give was finished before The Nightingale, so the final answer is The Hate U Give.",
+                  "sufficiency": "answered",
+                  "evidence_refs": ["claim:claim-hate-u-give", "claim:claim-nightingale"],
+                  "counted_items": [],
+                  "excluded_refs": []
+                }
+            """.trimIndent()
+        }
     }
 }
