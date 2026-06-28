@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "889e3db02ea9d82059a766c4d8624facc8b7c0903150c9059dd045da3ad19ea0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Who did I go with to the music event last Saturday?\n\n                                Question date:\n                                2023/04/22 (Sat) 11:24\n\n                                Noisy expected-answer label:\n                                my parents\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_d6585ce9\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-fb9263f4927f-claim-4 [ACTIVE] attended_event family=attended_event: The user saw Queen live with Adam Lambert at the Prudential Center in Newark, New Jersey, with the user's parents on or shortly before 2023-04-15.; scope=User concert attendance history; context=\"The user mentioned this while asking for rock playlist recommendations and saying they were craving more classic rock sound.\"; evidence=DIRECT source=external:provided-text:9b4e522c7bc3203cc0596f81cbeaa3b8 quote=\"just saw them live with Adam Lambert at the Prudential Center in Newark, NJ with my parents\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:9b4e522c7bc3203cc0596f81cbeaa3b8 [external_record ref=longmemeval:gpt4_d6585ce9:session:5 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 19:13\nTranscript:\nuser: I'm looking for some recommendations for rock music playlists on streaming services. I've been listening to a lot of Queen lately, actually just saw them live with Adam Lambert at the Prudential Center in Newark, NJ with my parents, and I'm craving more of that classic rock sound....\n...These playlists should give you a good starting point to explore and discover new music. You might also consider checking out playlists created by other users or radio stations on these platforms, as they can often introduce you to new artists and hidden gems.\n\nEnjoy your musical journey, and I hope you find some new favorite tracks!\nuser: I'm also interested in discovering new artists and bands. Do you have any recommendations for indie rock or alternative bands that I might enjoy? I recently attended a music festival in Brooklyn that featured some of my favorite indie bands, and I'm always on the lookout for new sounds....\n...2. **Rival Sons**: With their blend of blues, rock, and psychedelia, Rival Sons are a great fit for fans of classic rock. Their music features catchy hooks, soaring vocals, and face-melting guitar solos....\n...user: I'd like to know more about the current indie rock scene. Are there any popular indie rock festivals or concerts happening in the coming months that I should check out?\nassistant: The current indie rock scene is thriving, with a wide range of festivals and concerts happening throughout the year. Here are some popular indie rock festivals and concerts you might want to check out in the coming months:\n\n**Festivals:**\n\n1. **Coachella Valley Music and Arts Festival** (Indio, CA, April 10-12 & 17-19): While not exclusively an indie rock festival, Coachella features a diverse lineup with many indie rock and alternative acts....\n...3. **Pale Waves**: The Manchester-based indie rock band is on their \"Who Am I?\" tour, with dates in the US and Europe through May.\n\nThese are just a few examples of the many amazing indie rock festivals and concerts happening in the coming months. Be sure to check out local listings and music blogs for more information on upcoming events in your area.\nuser: I've been to a music festival in Brooklyn recently, featuring some of my favorite indie bands, and I'm always on the lookout for new sounds. I'd love to know more about the current indie rock scene. Are there any popular indie rock festivals or concerts happening in the coming months that I should check out?...\n...3. **Outside Lands Music and Arts Festival** (San Francisco, CA, August 7-9): A three-day festival featuring indie rock, alternative, and electronic acts like Paul Simon, Childish Gambino, and Twenty One Pilots....\n...These are just a few examples of the many amazing indie rock festivals and concerts happening in the coming months. Be sure to check out local listings and music blogs for more information on upcoming events in your area.\n\nWhich of these festivals or concerts caught your attention?\nuser: I'm really interested in the Panorama Music Festival in NYC. I've heard great things about it, and the lineup looks amazing. I'd love to know more about the festival's atmosphere and what to expect from the event. Also, do you have any tips on how to make the most out of the festival experience?\nassistant: Panorama Music Festival is an amazing event! Held on Randall's Island Park in NYC, it's a three-day festival featuring a diverse lineup of indie rock, alternative, electronic, and hip-hop acts. Here's what you can expect from the festival's atmosphere and some tips to make the most out of your experience:\n\n**Atmosphere:**\n\n* Panorama Music Festival has a laid-back, summer-vibes atmosphere, with a focus on music, art, and food....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_d6585ce9",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Who did I go with to the music event last Saturday?\n\n                                Question date:\n                                2023/04/22 (Sat) 11:24\n\n                                Noisy expected-answer label:\n                                my parents\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_d6585ce9\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-fb9263f4927f-claim-4 [ACTIVE] attended_event family=attended_event: The user saw Queen live with Adam Lambert at the Prudential Center in Newark, New Jersey, with the user's parents on or shortly before 2023-04-15.; scope=User concert attendance history; context=\"The user mentioned this while asking for rock playlist recommendations and saying they were craving more classic rock sound.\"; evidence=DIRECT source=external:provided-text:9b4e522c7bc3203cc0596f81cbeaa3b8 quote=\"just saw them live with Adam Lambert at the Prudential Center in Newark, NJ with my parents\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:9b4e522c7bc3203cc0596f81cbeaa3b8 [external_record ref=longmemeval:gpt4_d6585ce9:session:5 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 19:13\nTranscript:\nuser: I'm looking for some recommendations for rock music playlists on streaming services. I've been listening to a lot of Queen lately, actually just saw them live with Adam Lambert at the Prudential Center in Newark, NJ with my parents, and I'm craving more of that classic rock sound....\n...These playlists should give you a good starting point to explore and discover new music. You might also consider checking out playlists created by other users or radio stations on these platforms, as they can often introduce you to new artists and hidden gems.\n\nEnjoy your musical journey, and I hope you find some new favorite tracks!\nuser: I'm also interested in discovering new artists and bands. Do you have any recommendations for indie rock or alternative bands that I might enjoy? I recently attended a music festival in Brooklyn that featured some of my favorite indie bands, and I'm always on the lookout for new sounds....\n...2. **Rival Sons**: With their blend of blues, rock, and psychedelia, Rival Sons are a great fit for fans of classic rock. Their music features catchy hooks, soaring vocals, and face-melting guitar solos....\n...user: I'd like to know more about the current indie rock scene. Are there any popular indie rock festivals or concerts happening in the coming months that I should check out?\nassistant: The current indie rock scene is thriving, with a wide range of festivals and concerts happening throughout the year. Here are some popular indie rock festivals and concerts you might want to check out in the coming months:\n\n**Festivals:**\n\n1. **Coachella Valley Music and Arts Festival** (Indio, CA, April 10-12 & 17-19): While not exclusively an indie rock festival, Coachella features a diverse lineup with many indie rock and alternative acts....\n...3. **Pale Waves**: The Manchester-based indie rock band is on their \"Who Am I?\" tour, with dates in the US and Europe through May.\n\nThese are just a few examples of the many amazing indie rock festivals and concerts happening in the coming months. Be sure to check out local listings and music blogs for more information on upcoming events in your area.\nuser: I've been to a music festival in Brooklyn recently, featuring some of my favorite indie bands, and I'm always on the lookout for new sounds. I'd love to know more about the current indie rock scene. Are there any popular indie rock festivals or concerts happening in the coming months that I should check out?...\n...3. **Outside Lands Music and Arts Festival** (San Francisco, CA, August 7-9): A three-day festival featuring indie rock, alternative, and electronic acts like Paul Simon, Childish Gambino, and Twenty One Pilots....\n...These are just a few examples of the many amazing indie rock festivals and concerts happening in the coming months. Be sure to check out local listings and music blogs for more information on upcoming events in your area.\n\nWhich of these festivals or concerts caught your attention?\nuser: I'm really interested in the Panorama Music Festival in NYC. I've heard great things about it, and the lineup looks amazing. I'd love to know more about the festival's atmosphere and what to expect from the event. Also, do you have any tips on how to make the most out of the festival experience?\nassistant: Panorama Music Festival is an amazing event! Held on Randall's Island Park in NYC, it's a three-day festival featuring a diverse lineup of indie rock, alternative, electronic, and hip-hop acts. Here's what you can expect from the festival's atmosphere and some tips to make the most out of your experience:\n\n**Atmosphere:**\n\n* Panorama Music Festival has a laid-back, summer-vibes atmosphere, with a focus on music, art, and food....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_d6585ce9",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You went with your parents.\",\"reason\":\"The retrieved memory says the user saw Queen live with Adam Lambert at the Prudential Center with their parents on or shortly before 2023-04-15, which matches last Saturday relative to 2023-04-22.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1919,
+                "completionTokens": 148,
+                "thinkingTokens": 69,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

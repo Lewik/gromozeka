@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "1e858ea45804aba34ab8991c22129f72797b44d6887abe9e1579d8821a475c6a",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking back to our previous conversation about the Radiation Amplified zombie, and I was wondering if you remembered what we finally decided to name it?\n\n                                Question date:\n                                2023/05/30 (Tue) 04:27\n\n                                Noisy expected-answer label:\n                                Fissionator.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:561fabcd\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-64a51b7c5e90-claim-10 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The user strongly liked the Fissionator name, especially with a clunky mechanical-looking design based on a host infected while wearing protective clothing in a radiated environment.; scope=Fissionator naming and design direction from imported session dated 2023-05-28.; context=\"Imported past chat where the user selected a one-word name direction for the enemy concept.\"; evidence=IMPORTED source=external:provided-text:a5a9c6adb137ac047ae37eec58459a83 quote=\"Fissionator is a REALLY cool one, especially if it's given a more clunky, mechanical-looking design.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a5a9c6adb137ac047ae37eec58459a83 [external_record ref=longmemeval:561fabcd:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 06:10\nTranscript:\nassistant: Sure, I'd be happy to help!\n\nSo for the Radiation Amplified, I envision it being a zombie that has been heavily mutated by radiation exposure. It could have glowing green eyes, an emaciated body with patches of fur falling out, and possibly even some kind of glowing aura around it.\n\nIn terms of gameplay, the Radiation Amplified could emit a toxic aura that damages players over time if they get too close, similar to the Nova Gas zombies from Black Ops. Additionally, its attacks could have a chance to inflict radiation poisoning on the player, causing their screen to distort and blur similar to Cosmic Cleanse, but in a way that's more disorienting and harder to see through.\n\nAs for a name, how about \"Radialisk\"? It's a play on words between \"radial\" (as in radiation) and \"hydralisk\" (a creature from the Starcraft game series), which could give the zombie a sci-fi feel to fit with the radiation theme.\nuser: Hmm, not sure about a name referencing other games. Any other name ideas?\nassistant: Sure, how about \"Contaminated Colossus\" or \"Irradiated Behemoth\"? These names play on the theme of radiation and the Amplified's large size.\nuser: Contaminated Colossus is a good one! How about a few one-word names that might flow off the tongue a little better?\nassistant: Sure, here are some potential one-word names for the Radiation Amplified:\n\n1. Radik\n2. Irradon\n3. Nucleus\n4. Fissionator\n5. Radiatron\n6. Isotopos\n7. Meltdrone\n8. Contamino\n9. Gamma-Giant\n10. Glowing Goliath\n\nI hope these help!\nuser: Fissionator is a REALLY cool one, especially if it's given a more clunky, mechanical-looking design. Perhaps it's made to look like the host was infected while working in a radiated environment and thus had protective clothing on? This could make the name sounding machine-like make a little more sense\nassistant: That's a great idea! The protective gear could also add an extra layer of difficulty to defeating the Fissionator, as it could potentially deflect certain types of attacks or make it harder to target weak points.\n\nAs for gameplay elements, the Fissionator could emit bursts of radiation that would not only cause damage to players, but also create temporary radioactive zones on the map that would continue to damage players who step into them. This would force players to constantly adapt and move around the map, as certain areas could become too dangerous to remain in for extended periods of time.\n\nAdditionally, the Fissionator's attacks could have a chance to temporarily disrupt the player's weapons or equipment, adding an extra layer of unpredictability and challenge.\n\nWhat do you think?\nuser: Those sound like great ideas! How about mine?\n\nThe Fissionator could have an area-of-effect attack; the closer you get to it the more damage you take over time. This would also give an extra purpose to the vision-distortion it causes; not only is it a hindrance to the player, it's also a warning to not get any closer without risking your life. Perhaps the AoE damage would be nullified by Cosmic Cleanse, bht the vision effect would only be partially negated, leaving some of the challenge present if you get too close.\n\nAs for the Fissionator's attacks, I like the idea of them causing radiation poisoning! Maybe to add to this, the Fissionators death causes a radioactive burst that turns zombies into radioactive ones, upping their damage and making them, too, give the radiation effect when they attack the player. To signal this, maybe they could get a light green glow and you could see the slime-parasite within the host body reacting violently to the sudden radiation exposure\nassistant: I really like your ideas for the Fissionator! The AoE attack would definitely make it a formidable enemy and add a new level of challenge to the map. I also think the radiation poisoning effect fits well with the theme, and the idea of turning zombies into radioactive ones when it dies is a great way to introduce new enemies and keep the gameplay fresh.\n\nThe visual of the slime-parasite reacting to the radiation burst is also a nice touch, and adds a bit of horror to the encounter. Overall, I think the Fissionator would make a great addition to the game, and your ideas for its abilities and appearance are excellent.\nuser: Can you give me some ideas for what you think the Fissionator could look like? I imagine it to be a slower, lumbering threat that causes stress less from being directly deadly, but rather from the passive radiation it emits and its ability to transform zombies on death\nassistant: Sure! Based on the description you provided, here are a few ideas for what the Fissionator could look like:\n\n1. A humanoid figure wearing a bulky, outdated radiation suit, with a tank of radioactive material on its back. The suit could have a rusty, industrial look to it, with warning symbols and labels all over.\n2. A large, mutated creature that resembles a cross between a gorilla and a turtle, with a tough, scaly shell on its back. The shell could be covered in glowing, radioactive crystals that emit a faint green light.\n3. A robotic construct that resembles a cross between a tank and a spider, with multiple legs and a large, glowing core at its center. The core could emit radiation in a wide area, and the legs could allow it to move slowly but steadily towards the player.\n4. A massive, rusted-out vehicle that has been converted into a makeshift radiation cannon. The vehicle could be stationary, but would fire off bursts of radiation that slowly move towards the player, forcing them to constantly adjust their position.\n\nHope these ideas help!\nuser: Let's try keeping the green-ooze parasite and human host theme as much as possible, please. Feel free to go all out with body horror and describing potential deformations from the parasite and radiation!\nassistant: Sure thing! Here are some potential design elements for the Fissionator:\n\n* The host body could be bloated and disfigured, with large tumors and blisters covering the skin. The skin itself could have a sickly green tint, as if it's being irradiated from within.\n* The parasite could be visible under the skin, writhing and pulsating in a disturbing way. It could be slimy and amorphous, constantly shifting and changing shape.\n* The host's eyes could be milky and glazed over, or maybe they're glowing with an eerie green light.\n* The Fissionator could have a hunched, lurching gait, as if its mutated body is too heavy to move properly.\n* Its movements could be jerky and spasmodic, as if it's in constant pain.\n* It could emit a low, guttural growl, or maybe it makes no noise at all aside from the sound of its heavy breathing.\n\nAs for the radiation effects, here are some ideas for how that could manifest:\n\n* The Fissionator could leave a trail of green, glowing slime wherever it goes. This slime could be dangerous to touch, causing radiation damage over time.\n* Its attacks could leave a lingering radiation field in their wake, causing damage to anyone standing in the affected area.\n* On death, the Fissionator could explode in a burst of radiation that transforms nearby zombies into radioactive ones, as you mentioned earlier.\n* Maybe its radiation effects are powerful enough to even affect the environment itself, causing objects to become irradiated and dangerous to touch.\n\nI hope these ideas help!\nuser: Those all sound terrifying and wonderful! I think it would also be creepy if the slime-parasite could be see writhing and probing violently out of a large gash in the Fissionators neck, as if looking for a new host to escape the uncontrolled radiation. This would also be a cool way to show its attack against the player; the parasite is trying to worm its way into the player's mouth, slowing player movement as it tries to break free from this radioactive prison\nassistant: Oh wow, that would be quite an unsettling visual! The idea of the parasite trying to infect the player definitely adds an extra layer of horror to the Fissionator. Another idea for the Fissionator's appearance could be that it has a bulky, heavily-armored suit that's been fused to its body due to the radiation. The suit could have a glowing green energy core that's constantly pulsing with radiation, and maybe the Fissionator's attacks could involve it unleashing bursts of radioactive energy from the core. The suit could also have various tools and weapons built into it, such as drills and saws, which could make for some interesting attack patterns.\nuser: I love the idea of the protective suit being melted into the Fissionators host! It adds to the horror of the design, and also gives a reason as tk why the parasite hasn't just left to seek a new host on its own; the suit melded to the flesh has trapped it inside the host\nassistant: Yes, exactly! It adds a layer of intrigue to the Fissionator's design and backstory. Perhaps the protective suit was designed specifically to withstand high levels of radiation, but it was never intended to be worn for extended periods of time. This would explain why the suit ultimately fused to the host's flesh and why the parasite was unable to escape on its own. Additionally, the Fissionator's movements could be slow and lumbering due to the weight of the suit and the parasite's influence over the host's movements.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Fissionator; Concept named Fissionator.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "561fabcd",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was thinking back to our previous conversation about the Radiation Amplified zombie, and I was wondering if you remembered what we finally decided to name it?\n\n                                Question date:\n                                2023/05/30 (Tue) 04:27\n\n                                Noisy expected-answer label:\n                                Fissionator.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:561fabcd\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-64a51b7c5e90-claim-10 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The user strongly liked the Fissionator name, especially with a clunky mechanical-looking design based on a host infected while wearing protective clothing in a radiated environment.; scope=Fissionator naming and design direction from imported session dated 2023-05-28.; context=\"Imported past chat where the user selected a one-word name direction for the enemy concept.\"; evidence=IMPORTED source=external:provided-text:a5a9c6adb137ac047ae37eec58459a83 quote=\"Fissionator is a REALLY cool one, especially if it's given a more clunky, mechanical-looking design.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a5a9c6adb137ac047ae37eec58459a83 [external_record ref=longmemeval:561fabcd:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 06:10\nTranscript:\nassistant: Sure, I'd be happy to help!\n\nSo for the Radiation Amplified, I envision it being a zombie that has been heavily mutated by radiation exposure. It could have glowing green eyes, an emaciated body with patches of fur falling out, and possibly even some kind of glowing aura around it.\n\nIn terms of gameplay, the Radiation Amplified could emit a toxic aura that damages players over time if they get too close, similar to the Nova Gas zombies from Black Ops. Additionally, its attacks could have a chance to inflict radiation poisoning on the player, causing their screen to distort and blur similar to Cosmic Cleanse, but in a way that's more disorienting and harder to see through.\n\nAs for a name, how about \"Radialisk\"? It's a play on words between \"radial\" (as in radiation) and \"hydralisk\" (a creature from the Starcraft game series), which could give the zombie a sci-fi feel to fit with the radiation theme.\nuser: Hmm, not sure about a name referencing other games. Any other name ideas?\nassistant: Sure, how about \"Contaminated Colossus\" or \"Irradiated Behemoth\"? These names play on the theme of radiation and the Amplified's large size.\nuser: Contaminated Colossus is a good one! How about a few one-word names that might flow off the tongue a little better?\nassistant: Sure, here are some potential one-word names for the Radiation Amplified:\n\n1. Radik\n2. Irradon\n3. Nucleus\n4. Fissionator\n5. Radiatron\n6. Isotopos\n7. Meltdrone\n8. Contamino\n9. Gamma-Giant\n10. Glowing Goliath\n\nI hope these help!\nuser: Fissionator is a REALLY cool one, especially if it's given a more clunky, mechanical-looking design. Perhaps it's made to look like the host was infected while working in a radiated environment and thus had protective clothing on? This could make the name sounding machine-like make a little more sense\nassistant: That's a great idea! The protective gear could also add an extra layer of difficulty to defeating the Fissionator, as it could potentially deflect certain types of attacks or make it harder to target weak points.\n\nAs for gameplay elements, the Fissionator could emit bursts of radiation that would not only cause damage to players, but also create temporary radioactive zones on the map that would continue to damage players who step into them. This would force players to constantly adapt and move around the map, as certain areas could become too dangerous to remain in for extended periods of time.\n\nAdditionally, the Fissionator's attacks could have a chance to temporarily disrupt the player's weapons or equipment, adding an extra layer of unpredictability and challenge.\n\nWhat do you think?\nuser: Those sound like great ideas! How about mine?\n\nThe Fissionator could have an area-of-effect attack; the closer you get to it the more damage you take over time. This would also give an extra purpose to the vision-distortion it causes; not only is it a hindrance to the player, it's also a warning to not get any closer without risking your life. Perhaps the AoE damage would be nullified by Cosmic Cleanse, bht the vision effect would only be partially negated, leaving some of the challenge present if you get too close.\n\nAs for the Fissionator's attacks, I like the idea of them causing radiation poisoning! Maybe to add to this, the Fissionators death causes a radioactive burst that turns zombies into radioactive ones, upping their damage and making them, too, give the radiation effect when they attack the player. To signal this, maybe they could get a light green glow and you could see the slime-parasite within the host body reacting violently to the sudden radiation exposure\nassistant: I really like your ideas for the Fissionator! The AoE attack would definitely make it a formidable enemy and add a new level of challenge to the map. I also think the radiation poisoning effect fits well with the theme, and the idea of turning zombies into radioactive ones when it dies is a great way to introduce new enemies and keep the gameplay fresh.\n\nThe visual of the slime-parasite reacting to the radiation burst is also a nice touch, and adds a bit of horror to the encounter. Overall, I think the Fissionator would make a great addition to the game, and your ideas for its abilities and appearance are excellent.\nuser: Can you give me some ideas for what you think the Fissionator could look like? I imagine it to be a slower, lumbering threat that causes stress less from being directly deadly, but rather from the passive radiation it emits and its ability to transform zombies on death\nassistant: Sure! Based on the description you provided, here are a few ideas for what the Fissionator could look like:\n\n1. A humanoid figure wearing a bulky, outdated radiation suit, with a tank of radioactive material on its back. The suit could have a rusty, industrial look to it, with warning symbols and labels all over.\n2. A large, mutated creature that resembles a cross between a gorilla and a turtle, with a tough, scaly shell on its back. The shell could be covered in glowing, radioactive crystals that emit a faint green light.\n3. A robotic construct that resembles a cross between a tank and a spider, with multiple legs and a large, glowing core at its center. The core could emit radiation in a wide area, and the legs could allow it to move slowly but steadily towards the player.\n4. A massive, rusted-out vehicle that has been converted into a makeshift radiation cannon. The vehicle could be stationary, but would fire off bursts of radiation that slowly move towards the player, forcing them to constantly adjust their position.\n\nHope these ideas help!\nuser: Let's try keeping the green-ooze parasite and human host theme as much as possible, please. Feel free to go all out with body horror and describing potential deformations from the parasite and radiation!\nassistant: Sure thing! Here are some potential design elements for the Fissionator:\n\n* The host body could be bloated and disfigured, with large tumors and blisters covering the skin. The skin itself could have a sickly green tint, as if it's being irradiated from within.\n* The parasite could be visible under the skin, writhing and pulsating in a disturbing way. It could be slimy and amorphous, constantly shifting and changing shape.\n* The host's eyes could be milky and glazed over, or maybe they're glowing with an eerie green light.\n* The Fissionator could have a hunched, lurching gait, as if its mutated body is too heavy to move properly.\n* Its movements could be jerky and spasmodic, as if it's in constant pain.\n* It could emit a low, guttural growl, or maybe it makes no noise at all aside from the sound of its heavy breathing.\n\nAs for the radiation effects, here are some ideas for how that could manifest:\n\n* The Fissionator could leave a trail of green, glowing slime wherever it goes. This slime could be dangerous to touch, causing radiation damage over time.\n* Its attacks could leave a lingering radiation field in their wake, causing damage to anyone standing in the affected area.\n* On death, the Fissionator could explode in a burst of radiation that transforms nearby zombies into radioactive ones, as you mentioned earlier.\n* Maybe its radiation effects are powerful enough to even affect the environment itself, causing objects to become irradiated and dangerous to touch.\n\nI hope these ideas help!\nuser: Those all sound terrifying and wonderful! I think it would also be creepy if the slime-parasite could be see writhing and probing violently out of a large gash in the Fissionators neck, as if looking for a new host to escape the uncontrolled radiation. This would also be a cool way to show its attack against the player; the parasite is trying to worm its way into the player's mouth, slowing player movement as it tries to break free from this radioactive prison\nassistant: Oh wow, that would be quite an unsettling visual! The idea of the parasite trying to infect the player definitely adds an extra layer of horror to the Fissionator. Another idea for the Fissionator's appearance could be that it has a bulky, heavily-armored suit that's been fused to its body due to the radiation. The suit could have a glowing green energy core that's constantly pulsing with radiation, and maybe the Fissionator's attacks could involve it unleashing bursts of radioactive energy from the core. The suit could also have various tools and weapons built into it, such as drills and saws, which could make for some interesting attack patterns.\nuser: I love the idea of the protective suit being melted into the Fissionators host! It adds to the horror of the design, and also gives a reason as tk why the parasite hasn't just left to seek a new host on its own; the suit melded to the flesh has trapped it inside the host\nassistant: Yes, exactly! It adds a layer of intrigue to the Fissionator's design and backstory. Perhaps the protective suit was designed specifically to withstand high levels of radiation, but it was never intended to be worn for extended periods of time. This would explain why the suit ultimately fused to the host's flesh and why the parasite was unable to escape on its own. Additionally, the Fissionator's movements could be slow and lumbering due to the weight of the suit and the parasite's influence over the host's movements.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Fissionator; Concept named Fissionator.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "561fabcd",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Fissionator.\",\"reason\":\"The retrieved chat shows the user selected and repeatedly developed the Radiation Amplified concept under the name “Fissionator.”\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3122,
+                "completionTokens": 75,
+                "thinkingTokens": 21,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

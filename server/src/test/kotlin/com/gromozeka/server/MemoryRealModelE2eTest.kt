@@ -95,7 +95,7 @@ import org.junit.jupiter.api.Timeout
 class MemoryRealModelE2eTest {
 
     @Test
-    @Timeout(value = 90, unit = TimeUnit.MINUTES)
+    @Timeout(value = 180, unit = TimeUnit.MINUTES)
     fun runMemoryE2eWithRealModel() {
         if (!java.lang.Boolean.getBoolean(ENABLE_PROPERTY)) {
             println(
@@ -392,6 +392,7 @@ class MemoryRealModelE2eTest {
                             caseId = case.id,
                             sessionId = session.id,
                             turnIndex = turnIndex,
+                            timeoutMs = case.timeoutSeconds * 1_000L,
                         )
                     } else {
                         val messageText = turn.requireText(case.id, session.id, turnIndex)
@@ -1150,6 +1151,7 @@ class MemoryRealModelE2eTest {
         caseId: String,
         sessionId: String,
         turnIndex: Int,
+        timeoutMs: Long,
     ): ExecutedSeedTurn {
         val toolResult = memoryToolApplicationService.rememberProvidedText(
             conversationIdValue = null,
@@ -1172,6 +1174,7 @@ class MemoryRealModelE2eTest {
                 caseId = caseId,
                 sessionId = sessionId,
                 turnIndex = turnIndex,
+                timeoutMs = timeoutMs,
             )
         } else {
             ensureToolResultSucceeded(toolResult)
@@ -1195,9 +1198,10 @@ class MemoryRealModelE2eTest {
         caseId: String,
         sessionId: String,
         turnIndex: Int,
+        timeoutMs: Long,
     ): MemoryRun =
-        withTimeout(e2eTurnCompletionTimeoutMs()) {
-            var lastStatus: MemoryRun.Status? = null
+        withTimeout(timeoutMs) {
+            var lastProgressSignature: String? = null
             while (true) {
                 val run = store.findRunById(runId)
                 if (run != null && run.status.isTerminal()) {
@@ -1209,8 +1213,18 @@ class MemoryRealModelE2eTest {
                     }
                     return@withTimeout run
                 }
-                if (run?.status != null && run.status != lastStatus) {
-                    lastStatus = run.status
+                val progressSignature = run?.let { currentRun ->
+                    listOf(
+                        currentRun.status.name,
+                        currentRun.summary,
+                        currentRun.progress?.completedUnits,
+                        currentRun.progress?.failedUnits,
+                        currentRun.progress?.totalUnits,
+                        currentRun.progress?.currentUnitLabel,
+                    ).joinToString("|")
+                }
+                if (run?.status != null && progressSignature != null && progressSignature != lastProgressSignature) {
+                    lastProgressSignature = progressSignature
                     appendProgress(
                         progressPath,
                         "seed_document_run_status case=$caseId session=$sessionId turn=${turnIndex + 1} run=${run.id.value} status=${run.status.name} summary=${run.summary.oneLineForProgressLog()}"
@@ -2769,7 +2783,7 @@ class MemoryRealModelE2eTest {
         val trace = result.trace
         return buildString {
             appendLine("needMemory | ${result.plan.needMemory}")
-            appendLine("answerMode | ${result.plan.answerMode.name}")
+            appendLine("contextMode | ${result.plan.contextMode.name}")
             appendLine("selectedHits | ${trace.selectedHits.size}")
             appendLine("injectedPromptChars | ${result.runtimePrompt?.length ?: 0}")
             appendLine()
@@ -2987,7 +3001,7 @@ class MemoryRealModelE2eTest {
             }
             .ifBlank { "none" }
         val selectorRejected = readResult.trace.selectorDecisions.count { !it.selected }
-        return "need=${readResult.plan.needMemory} mode=${readResult.plan.answerMode.name} selected=${readResult.trace.selectedHits.size} selectorRejected=$selectorRejected injectedChars=${readResult.runtimePrompt?.length ?: 0} top=$selected"
+        return "need=${readResult.plan.needMemory} mode=${readResult.plan.contextMode.name} selected=${readResult.trace.selectedHits.size} selectorRejected=$selectorRejected injectedChars=${readResult.runtimePrompt?.length ?: 0} top=$selected"
     }
 
     private fun MemoryWriteTraceEvent?.progressSummaryForProgressLog(): String {

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "80ab1fa3de0f433c4cd91b6f3e025fed632551532e7e65d074d8b3c299793e2f",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How much did I spend on a designer handbag?\n\n                                Question date:\n                                2023/05/29 (Mon) 21:17\n\n                                Expected answer:\n                                $800\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:7527f7e2\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d1abf70d59a4-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user spent $800 on a designer handbag last month.; scope=User spending facts from the imported past chat session dated 2023-05-26.; evidence=DIRECT source=external:provided-text:960fe3ad793ddb8626e555758f25dc53 quote=\"I remember buying a designer handbag for a pretty penny - $800, to be exact.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:960fe3ad793ddb8626e555758f25dc53 [external_record ref=longmemeval:7527f7e2:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 23:56...\n...How does this sound? Is there a specific step you'd like to focus on or have questions about?\nuser: I think I'd like to start tracking my expenses. Can you recommend any good budgeting apps? I've been using my credit card a lot lately, and I'm pretty sure I spent a lot on luxury items last month. I remember buying a designer handbag for a pretty penny - $800, to be exact....\n...1. **Mint**: A free app that connects to your bank accounts, credit cards, and investments to track your spending, creates a budget, and sets financial goals. It also offers bill tracking and alerts, investment tracking, and even credit score monitoring....\n...Now, about that designer handbag... $800 is a significant expense, and it's great that you're aware of it. When tracking your expenses, it's essential to be honest with yourself about your spending habits. Consider categorizing that handbag as a luxury item or a \"want\" rather than a \"need.\" This will help you identify areas where you can cut back and allocate your funds more wisely.\n\nRemember, the goal of tracking your expenses is to understand where your money is going and make conscious decisions about how you want to spend it. It's not about depriving yourself of things you enjoy, but about being mindful of your spending habits and making intentional choices....\n...1. **Expensive habits**: Shopping at high-end stores can be a costly habit, especially if you're buying luxury items regularly. Those $800 handbags and designer clothing can add up quickly!\n2. **Impulse purchases**: Upscale stores are designed to make you feel luxurious and tempted to splurge. It's easy to get caught up in the moment and make impulse purchases, which can blow your budget....\n...1. **Set a budget**: Decide how much you're willing to spend on luxury items each month and stick to it....\n...user: I think it's a good idea to set some boundaries. I've been doing some research and found that there are some affordable alternatives to high-end brands that offer similar quality at a lower price point. I've started browsing online at stores like H&M and Uniqlo, and was surprised at how many stylish pieces I could find. I'm also considering canceling my subscription to a monthly beauty box, which was costing me $50 a month. While it was fun to receive a new package every month, I realized that I wasn't using most of the products and was just accumulating a bunch of samples. Instead, I've started buying beauty products at a discount store, where I can find similar products at a fraction of the cost.\nassistant: You're taking control of your spending habits and making conscious choices about where you want to allocate your money! That's fantastic!...\n...Canceling your monthly beauty box subscription is also a smart move. It's great that you realized you weren't using most of the products and were just accumulating samples. By buying beauty products at a discount store, you're being more intentional with your purchases and saving money in the process....\n...2. **Use cashback apps**: Consider using cashback apps like Rakuten (formerly known as Ebates), TopCashback, or Ibotta for your online purchases. You can earn a percentage of your purchase back as cash or credit....\n...4. **Practice the 30-wear rule**: Before buying a new piece of clothing, ask yourself if you'll wear it at least 30 times. This can help you determine if the purchase is worth the cost....\n...1. **Set a grocery budget**: Determine how much you want to spend on groceries each week and stick to it....\n...* Stir-frying: Quickly cooking ingredients in a wok or large skillet with a small amount of oil....\n...How do you feel about trying out some of these recipes and techniques? Do you have any specific questions about meal prepping or cooking in general?\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "7527f7e2",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How much did I spend on a designer handbag?\n\n                                Question date:\n                                2023/05/29 (Mon) 21:17\n\n                                Expected answer:\n                                $800\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:7527f7e2\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-d1abf70d59a4-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user spent $800 on a designer handbag last month.; scope=User spending facts from the imported past chat session dated 2023-05-26.; evidence=DIRECT source=external:provided-text:960fe3ad793ddb8626e555758f25dc53 quote=\"I remember buying a designer handbag for a pretty penny - $800, to be exact.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:960fe3ad793ddb8626e555758f25dc53 [external_record ref=longmemeval:7527f7e2:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 23:56...\n...How does this sound? Is there a specific step you'd like to focus on or have questions about?\nuser: I think I'd like to start tracking my expenses. Can you recommend any good budgeting apps? I've been using my credit card a lot lately, and I'm pretty sure I spent a lot on luxury items last month. I remember buying a designer handbag for a pretty penny - $800, to be exact....\n...1. **Mint**: A free app that connects to your bank accounts, credit cards, and investments to track your spending, creates a budget, and sets financial goals. It also offers bill tracking and alerts, investment tracking, and even credit score monitoring....\n...Now, about that designer handbag... $800 is a significant expense, and it's great that you're aware of it. When tracking your expenses, it's essential to be honest with yourself about your spending habits. Consider categorizing that handbag as a luxury item or a \"want\" rather than a \"need.\" This will help you identify areas where you can cut back and allocate your funds more wisely.\n\nRemember, the goal of tracking your expenses is to understand where your money is going and make conscious decisions about how you want to spend it. It's not about depriving yourself of things you enjoy, but about being mindful of your spending habits and making intentional choices....\n...1. **Expensive habits**: Shopping at high-end stores can be a costly habit, especially if you're buying luxury items regularly. Those $800 handbags and designer clothing can add up quickly!\n2. **Impulse purchases**: Upscale stores are designed to make you feel luxurious and tempted to splurge. It's easy to get caught up in the moment and make impulse purchases, which can blow your budget....\n...1. **Set a budget**: Decide how much you're willing to spend on luxury items each month and stick to it....\n...user: I think it's a good idea to set some boundaries. I've been doing some research and found that there are some affordable alternatives to high-end brands that offer similar quality at a lower price point. I've started browsing online at stores like H&M and Uniqlo, and was surprised at how many stylish pieces I could find. I'm also considering canceling my subscription to a monthly beauty box, which was costing me $50 a month. While it was fun to receive a new package every month, I realized that I wasn't using most of the products and was just accumulating a bunch of samples. Instead, I've started buying beauty products at a discount store, where I can find similar products at a fraction of the cost.\nassistant: You're taking control of your spending habits and making conscious choices about where you want to allocate your money! That's fantastic!...\n...Canceling your monthly beauty box subscription is also a smart move. It's great that you realized you weren't using most of the products and were just accumulating samples. By buying beauty products at a discount store, you're being more intentional with your purchases and saving money in the process....\n...2. **Use cashback apps**: Consider using cashback apps like Rakuten (formerly known as Ebates), TopCashback, or Ibotta for your online purchases. You can earn a percentage of your purchase back as cash or credit....\n...4. **Practice the 30-wear rule**: Before buying a new piece of clothing, ask yourself if you'll wear it at least 30 times. This can help you determine if the purchase is worth the cost....\n...1. **Set a grocery budget**: Determine how much you want to spend on groceries each week and stick to it....\n...* Stir-frying: Quickly cooking ingredients in a wok or large skillet with a small amount of oil....\n...How do you feel about trying out some of these recipes and techniques? Do you have any specific questions about meal prepping or cooking in general?\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "7527f7e2",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"$800\",\"reason\":\"The retrieved claim and source excerpt explicitly state the user bought a designer handbag for $800.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1705,
+                "completionTokens": 66,
+                "thinkingTokens": 18,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

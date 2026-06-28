@@ -244,6 +244,9 @@ class ConversationEngineService(
             throw e
         } catch (e: Exception) {
             log.error(e) { "Chat call error" }
+            if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
+                throw e
+            }
             ensureRuntimeTaskOwner(conversationId, task.id, workerId)
             val errorMessage = AiConversationMessageMapper
                 .createErrorMessage(conversationId, e.message ?: "Unknown error")
@@ -561,6 +564,9 @@ class ConversationEngineService(
                 }
                 log.warn(error) {
                     "$recallFailureLogPrefix: conversation=${conversationId.value} target=${userMessage.id.value} error=${error.message}"
+                }
+                if (java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast")) {
+                    throw error
                 }
             }.getOrNull()
         } else {

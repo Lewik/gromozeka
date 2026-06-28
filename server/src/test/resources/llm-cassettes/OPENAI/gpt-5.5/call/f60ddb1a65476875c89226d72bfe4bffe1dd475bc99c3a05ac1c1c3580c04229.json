@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "f60ddb1a65476875c89226d72bfe4bffe1dd475bc99c3a05ac1c1c3580c04229",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:08f4fc43\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable dated personal events, faith/community involvement, plans/preferences around volunteering and Bible study group activities, plus reusable rationale and suggestions for organizing a food drive with Psalms integration.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity as subject.\n- mention=local soup kitchen; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=Local soup kitchen; reason=Concrete recurring local organization referenced multiple times; no existing candidates.\n- mention=Ash Wednesday service at the cathedral on February 1st; action=CREATE_NEW; id=entity:<2>; type=OTHER; name=Ash Wednesday service at the cathedral on February 1st; reason=Specific event that may be object of an attendance claim; no existing candidates.\n- mention=cathedral; action=CREATE_NEW; id=entity:<3>; type=LOCATION; name=Cathedral; reason=Concrete place referenced as service location; no existing candidates, but name is generic.\n- mention=Bible study group; action=CREATE_NEW; id=entity:<4>; type=ORGANIZATION; name=User's Bible study group; reason=Concrete recurring group belonging to the user; first-person possessive supports user-specific canonicalization.\n- mention=Book of Psalms; action=CREATE_NEW; id=entity:<5>; type=DOCUMENT; name=Book of Psalms; reason=Durable religious text discussed as the subject of the group's study.\n- mention=Psalm 146; action=CREATE_NEW; id=entity:<6>; type=DOCUMENT; name=Psalm 146; reason=Specific reusable religious text proposed for inclusion with donations.\n- mention=God; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=God; reason=Referenced as part of faith-related beliefs and prayers; no existing candidates.\n- mention=food drive; action=CREATE_NEW; id=entity:<8>; type=OTHER; name=Bible study group food drive for local soup kitchen; reason=Concrete planned initiative likely to receive later claims about planning and purpose.\n- mention=prayer service before delivering donations; action=CREATE_NEW; id=entity:<9>; type=OTHER; name=Prayer service before delivering food drive donations; reason=Concrete proposed event that may be the object of later planning claims.\n- mention=current project; action=CREATE_NEW; id=entity:<10>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Bible study group|local soup kitchen|cathedral|Ash Wednesday service|Book of Psalms|Psalm 146\n        text_queries=Ash Wednesday service at the cathedral on February 1st|volunteered at a local soup kitchen recently|Bible study group organize a food drive local soup kitchen|incorporate Psalms Psalm 146 into food donations prayer service|Lenten season food shelter homeless volunteering\n        predicate_hints=attended_event|has_goal|responsible_for|prefers|believes\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:08f4fc43:session:1; title=LongMemEval 08f4fc43 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/02/20 (Mon) 12:15\nTranscript:\nuser: I'm planning to volunteer at a local soup kitchen this weekend and I was wondering if you could give me some tips on how to make a positive impact during my time there. By the way, I just came from the Ash Wednesday service at the cathedral on February 1st, and it really made me reflect on the importance of giving back to the community.\nassistant: What a wonderful way to put your faith into action! Volunteering at a soup kitchen is a great way to make a positive impact in your community, and I'm happy to provide you with some tips to make the most of your experience.\n\n**Before You Go**\n\n1. **Confirm the details**: Double-check the soup kitchen's schedule, dress code, and any specific tasks or roles they may have assigned to you.\n2. **Prepare yourself mentally**: Reflect on your motivations and expectations. Remember that you're there to serve others, and be open to learning from the experience.\n\n**During Your Shift**\n\n1. **Be respectful and empathetic**: Treat everyone you meet with kindness, respect, and compassion. Remember that the individuals you're serving may be struggling with various challenges, so a smile and a friendly demeanor can go a long way.\n2. **Follow instructions**: Pay attention to the staff and supervisors, and follow their guidance on tasks, protocols, and safety procedures.\n3. **Be flexible**: Be prepared to adapt to changing situations or unexpected tasks. Soup kitchens often face last-minute challenges, so flexibility is key.\n4. **Engage with the clients**: Take the time to chat with the people you're serving, listen to their stories, and show genuine interest in their lives.\n5. **Work as a team**: Collaborate with other volunteers and staff to ensure a smooth operation. Offer to help with tasks outside of your assigned role if needed.\n\n**Additional Tips**\n\n1. **Arrive early**: Get there a little early to get settled, receive any necessary training, and get familiar with the facility.\n2. **Dress appropriately**: Wear comfortable, practical clothing and shoes that can withstand the demands of a busy kitchen.\n3. **Bring a positive attitude**: Your enthusiasm and energy can be contagious and help create a welcoming atmosphere.\n4. **Be mindful of boundaries**: Respect the clients' personal space and privacy, and avoid asking intrusive or sensitive questions.\n5. **Follow up**: After your volunteer shift, consider sending a thank-you note or email to the soup kitchen staff, expressing your appreciation for the opportunity to serve.\n\nIt's wonderful that you were inspired by the Ash Wednesday service to give back to your community. Your time at the soup kitchen will undoubtedly make a positive impact, and I'm sure you'll find it a rewarding experience.\n\nRemember to take care of yourself, too, and enjoy the opportunity to make a difference in the lives of others!\nuser: I'll definitely keep those tips in mind, thanks. I'm also curious, do you know of any specific organizations or charities that focus on providing food and shelter to the homeless during the Lenten season? I'd love to explore ways to get involved beyond just volunteering at the soup kitchen.\nassistant: What a great question! There are many organizations and charities that focus on providing food and shelter to the homeless during the Lenten season. Here are a few examples:\n\n1. **Catholic Charities**: A network of organizations that provide a range of services, including food, shelter, and housing assistance, to vulnerable populations, including the homeless.\n2. **The Salvation Army**: A Christian non-profit that offers a variety of programs, including food and shelter services, to people in need.\n3. **Feeding America**: A network of food banks that provide food to food-insecure individuals, including the homeless.\n4. **National Coalition for the Homeless**: A national organization that advocates for policies and programs to address homelessness, and provides resources and support to local organizations serving the homeless.\n5. **Society of St. Vincent de Paul**: A Catholic organization that provides a range of services, including food, shelter, and housing assistance, to people in need.\n\nThese organizations often have local chapters or affiliates that you can get involved with. You can search online for the specific organization and your location to find out more information.\n\nIn addition to these organizations, you might consider exploring local initiatives and charities in your area that focus on addressing homelessness and food insecurity. Some examples might include:\n\n* **Food banks**: Many communities have food banks that collect and distribute food to those in need. You could consider volunteering or donating to these organizations.\n* **Homeless shelters**: Local homeless shelters often provide temporary housing and other essential services to people experiencing homelessness. You could consider volunteering, donating, or organizing a drive to collect essential items like clothing, toiletries, or bedding.\n* **Soup kitchens**: In addition to volunteering at a soup kitchen, you could consider organizing a food drive or fundraisers to support their operations.\n* **Faith-based organizations**: Many faith-based organizations, such as churches, synagogues, or mosques, have outreach programs or ministries that focus on serving the homeless and hungry. You could consider getting involved with these initiatives.\n\nSome specific ways you could get involved beyond volunteering at a soup kitchen might include:\n\n* Organizing a food drive or fundraiser to support a local food bank or soup kitchen\n* Participating in a community clean-up or outreach event to serve the homeless\n* Advocating for policies and programs that address homelessness and food insecurity in your community\n* Educating yourself and others about the issues surrounding homelessness and food insecurity\n* Donating gently used clothing, toiletries, or other essential items to a local shelter or outreach organization\n\nRemember to always research an organization's mission, values, and financial transparency before getting involved or donating.\nuser: I was thinking of reaching out to my Bible study group to see if we could organize a food drive or fundraiser to support a local organization that helps the homeless. Do you think that's a good idea, and do you have any suggestions for how to make it a success?\nassistant: What a wonderful idea! Organizing a food drive or fundraiser with your Bible study group is a great way to live out your faith and make a positive impact in your community. Here are some suggestions to help make it a success:\n\n**Choose a Local Organization**: Research and select a local organization that aligns with your group's values and goals. Ensure they are reputable, transparent, and have a strong track record of serving the homeless population. You can check websites like Charity Navigator, GuideStar, or the Better Business Bureau's Wise Giving Alliance to verify an organization's credibility.\n\n**Set Clear Goals and Objectives**: Define what you want to achieve with your food drive or fundraiser. Is it to collect a certain amount of food, raise a specific amount of money, or serve a certain number of people? Having clear goals will help guide your efforts and give your group a sense of accomplishment.\n\n**Communicate Effectively**: Spread the word about your initiative within your Bible study group, and consider reaching out to other church groups, friends, and family to join in. Create a Facebook event, email chain, or use a group messaging app to keep everyone informed and engaged.\n\n**Decide on a Food Drive or Fundraiser**: You can either organize a food drive, where you collect non-perishable items, or a fundraiser, where you raise money to support the organization. Consider the organization's specific needs and what would be most beneficial to them.\n\n**Food Drive Ideas**:\n\n* Designate a collection point, such as a church or community center, where people can drop off donations.\n* Create a list of most-needed items, such as canned goods, toiletries, or warm clothing.\n* Set up a sorting and packing system to ensure donations are organized and easily transportable.\n\n**Fundraiser Ideas**:\n\n* Host a bake sale, potluck, or charity dinner, with proceeds going towards the local organization.\n* Organize a charity walk, run, or bike ride, where participants collect pledges for each mile completed.\n* Create a crowdfunding campaign on platforms like GoFundMe or Kickstarter.\n\n**Logistical Considerations**:\n\n* Ensure you have a plan for transporting and storing donated items.\n* Arrange for a few group members to help with sorting, packing, and delivering donations.\n* Set a deadline for the food drive or fundraiser to create a sense of urgency and focus.\n\n**Prayer and Reflection**: Don't forget to weave prayer and reflection into your efforts. Set aside time for your group to pray for the homeless population, the organization you're supporting, and the success of your initiative. Reflect on the experience and how it relates to your faith, and discuss ways to continue serving the community beyond this event.\n\n**Follow-up and Evaluation**: After the event, take time to:\n\n* Thank everyone involved and acknowledge their contributions.\n* Evaluate the success of your initiative, including the amount of food collected or funds raised.\n* Consider sharing the experience with your church or community, inspiring others to get involved.\n* Reflect on what worked well and what could be improved for future initiatives.\n\nBy following these steps, you'll be well on your way to hosting a successful food drive or fundraiser that makes a meaningful impact in your community.\nuser: That's really helpful, thank you! I think I'll suggest to my Bible study group that we organize a food drive to support a local soup kitchen that I volunteered at recently. Since I attended the Ash Wednesday service at the cathedral on February 1st, I've been thinking a lot about the importance of giving back to the community, and this seems like a great way to put that into action.\nassistant: What a wonderful idea! Organizing a food drive with your Bible study group is a great way to live out your faith and make a positive impact in your community. It's even more meaningful that you have a personal connection to the soup kitchen, having volunteered there recently.\n\nAsh Wednesday is a powerful reminder of our mortality and our responsibility to serve others. It's wonderful that you're taking that message to heart and putting it into action. By organizing a food drive, you'll not only be helping those in need, but also fostering a sense of community and compassion within your Bible study group.\n\nRemember to keep the focus on serving others and glorifying God, rather than seeking recognition or praise. As you plan and execute the food drive, be sure to pray for guidance, wisdom, and humility. Ask God to bless your efforts and multiply your impact.\n\nAs you reflect on the experience, consider journaling or sharing with your group about what you've learned and how you've grown. How has serving others impacted your faith and your relationships with others? What are some ways you can continue to live out your faith in service to others?\n\nRemember, every small act of service can have a profound impact when done with a willing heart and a spirit of humility. You're not only feeding the hungry, but also feeding your own soul and deepening your connection with God.\n\nMay God bless your efforts and use them to bring hope and joy to those in need!\nuser: I'll make sure to keep that in mind as we plan and execute the food drive. I think it's also a great opportunity for our Bible study group to come together and bond over a shared goal. We can use this experience to build stronger relationships with each other and with God.\n\nI was also thinking, since we're going through the Book of Psalms in our Bible study, maybe we could incorporate some of the psalms into our food drive. We could print out copies of Psalm 146, which talks about God's care for the poor and needy, and include them with the food donations. Or we could even have a prayer service before we deliver the donations to the soup kitchen, using some of the psalms to guide our prayers.\n\nWhat do you think?\nassistant: I think that's a wonderful idea! Incorporating the Book of Psalms into your food drive is a great way to tie in your Bible study with your service project. It's a beautiful way to connect the spiritual with the practical, and to remind yourselves that serving others is an act of worship.\n\nPrinting out copies of Psalm 146 and including them with the food donations is a thoughtful gesture that can bring encouragement and hope to those who receive them. It's a tangible reminder that they are not forgotten, and that God cares for them deeply.\n\nHaving a prayer service before delivering the donations is also a great idea. Using the psalms to guide your prayers can help you to focus on God's character and His heart for the poor and needy. It can also be a powerful way to ask for God's blessing on your efforts, and to seek His guidance and wisdom as you serve.\n\nPsalm 146 is a great choice, but you might also consider other psalms that speak to God's care for the poor and needy, such as Psalm 68:5-6, Psalm 72:12-14, or Psalm 112:4-5. You could also consider using Psalm 103, which speaks to God's compassion and mercy towards all people.\n\nRemember to take time to reflect on the psalms and how they relate to your service project. Ask yourselves questions like: What do these psalms teach us about God's character? How do they inspire us to serve others? How can we embody the values and attitudes expressed in these psalms as we serve?\n\nBy incorporating the Book of Psalms into your food drive, you'll not only be serving the physical needs of others, but also nourishing their souls with the hope and encouragement of God's Word.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:08f4fc43",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:08f4fc43\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable dated personal events, faith/community involvement, plans/preferences around volunteering and Bible study group activities, plus reusable rationale and suggestions for organizing a food drive with Psalms integration.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements need the stable namespace-level user entity as subject.\n- mention=local soup kitchen; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=Local soup kitchen; reason=Concrete recurring local organization referenced multiple times; no existing candidates.\n- mention=Ash Wednesday service at the cathedral on February 1st; action=CREATE_NEW; id=entity:<2>; type=OTHER; name=Ash Wednesday service at the cathedral on February 1st; reason=Specific event that may be object of an attendance claim; no existing candidates.\n- mention=cathedral; action=CREATE_NEW; id=entity:<3>; type=LOCATION; name=Cathedral; reason=Concrete place referenced as service location; no existing candidates, but name is generic.\n- mention=Bible study group; action=CREATE_NEW; id=entity:<4>; type=ORGANIZATION; name=User's Bible study group; reason=Concrete recurring group belonging to the user; first-person possessive supports user-specific canonicalization.\n- mention=Book of Psalms; action=CREATE_NEW; id=entity:<5>; type=DOCUMENT; name=Book of Psalms; reason=Durable religious text discussed as the subject of the group's study.\n- mention=Psalm 146; action=CREATE_NEW; id=entity:<6>; type=DOCUMENT; name=Psalm 146; reason=Specific reusable religious text proposed for inclusion with donations.\n- mention=God; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=God; reason=Referenced as part of faith-related beliefs and prayers; no existing candidates.\n- mention=food drive; action=CREATE_NEW; id=entity:<8>; type=OTHER; name=Bible study group food drive for local soup kitchen; reason=Concrete planned initiative likely to receive later claims about planning and purpose.\n- mention=prayer service before delivering donations; action=CREATE_NEW; id=entity:<9>; type=OTHER; name=Prayer service before delivering food drive donations; reason=Concrete proposed event that may be the object of later planning claims.\n- mention=current project; action=CREATE_NEW; id=entity:<10>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Bible study group|local soup kitchen|cathedral|Ash Wednesday service|Book of Psalms|Psalm 146\n        text_queries=Ash Wednesday service at the cathedral on February 1st|volunteered at a local soup kitchen recently|Bible study group organize a food drive local soup kitchen|incorporate Psalms Psalm 146 into food donations prayer service|Lenten season food shelter homeless volunteering\n        predicate_hints=attended_event|has_goal|responsible_for|prefers|believes\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:08f4fc43:session:1; title=LongMemEval 08f4fc43 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/02/20 (Mon) 12:15\nTranscript:\nuser: I'm planning to volunteer at a local soup kitchen this weekend and I was wondering if you could give me some tips on how to make a positive impact during my time there. By the way, I just came from the Ash Wednesday service at the cathedral on February 1st, and it really made me reflect on the importance of giving back to the community.\nassistant: What a wonderful way to put your faith into action! Volunteering at a soup kitchen is a great way to make a positive impact in your community, and I'm happy to provide you with some tips to make the most of your experience.\n\n**Before You Go**\n\n1. **Confirm the details**: Double-check the soup kitchen's schedule, dress code, and any specific tasks or roles they may have assigned to you.\n2. **Prepare yourself mentally**: Reflect on your motivations and expectations. Remember that you're there to serve others, and be open to learning from the experience.\n\n**During Your Shift**\n\n1. **Be respectful and empathetic**: Treat everyone you meet with kindness, respect, and compassion. Remember that the individuals you're serving may be struggling with various challenges, so a smile and a friendly demeanor can go a long way.\n2. **Follow instructions**: Pay attention to the staff and supervisors, and follow their guidance on tasks, protocols, and safety procedures.\n3. **Be flexible**: Be prepared to adapt to changing situations or unexpected tasks. Soup kitchens often face last-minute challenges, so flexibility is key.\n4. **Engage with the clients**: Take the time to chat with the people you're serving, listen to their stories, and show genuine interest in their lives.\n5. **Work as a team**: Collaborate with other volunteers and staff to ensure a smooth operation. Offer to help with tasks outside of your assigned role if needed.\n\n**Additional Tips**\n\n1. **Arrive early**: Get there a little early to get settled, receive any necessary training, and get familiar with the facility.\n2. **Dress appropriately**: Wear comfortable, practical clothing and shoes that can withstand the demands of a busy kitchen.\n3. **Bring a positive attitude**: Your enthusiasm and energy can be contagious and help create a welcoming atmosphere.\n4. **Be mindful of boundaries**: Respect the clients' personal space and privacy, and avoid asking intrusive or sensitive questions.\n5. **Follow up**: After your volunteer shift, consider sending a thank-you note or email to the soup kitchen staff, expressing your appreciation for the opportunity to serve.\n\nIt's wonderful that you were inspired by the Ash Wednesday service to give back to your community. Your time at the soup kitchen will undoubtedly make a positive impact, and I'm sure you'll find it a rewarding experience.\n\nRemember to take care of yourself, too, and enjoy the opportunity to make a difference in the lives of others!\nuser: I'll definitely keep those tips in mind, thanks. I'm also curious, do you know of any specific organizations or charities that focus on providing food and shelter to the homeless during the Lenten season? I'd love to explore ways to get involved beyond just volunteering at the soup kitchen.\nassistant: What a great question! There are many organizations and charities that focus on providing food and shelter to the homeless during the Lenten season. Here are a few examples:\n\n1. **Catholic Charities**: A network of organizations that provide a range of services, including food, shelter, and housing assistance, to vulnerable populations, including the homeless.\n2. **The Salvation Army**: A Christian non-profit that offers a variety of programs, including food and shelter services, to people in need.\n3. **Feeding America**: A network of food banks that provide food to food-insecure individuals, including the homeless.\n4. **National Coalition for the Homeless**: A national organization that advocates for policies and programs to address homelessness, and provides resources and support to local organizations serving the homeless.\n5. **Society of St. Vincent de Paul**: A Catholic organization that provides a range of services, including food, shelter, and housing assistance, to people in need.\n\nThese organizations often have local chapters or affiliates that you can get involved with. You can search online for the specific organization and your location to find out more information.\n\nIn addition to these organizations, you might consider exploring local initiatives and charities in your area that focus on addressing homelessness and food insecurity. Some examples might include:\n\n* **Food banks**: Many communities have food banks that collect and distribute food to those in need. You could consider volunteering or donating to these organizations.\n* **Homeless shelters**: Local homeless shelters often provide temporary housing and other essential services to people experiencing homelessness. You could consider volunteering, donating, or organizing a drive to collect essential items like clothing, toiletries, or bedding.\n* **Soup kitchens**: In addition to volunteering at a soup kitchen, you could consider organizing a food drive or fundraisers to support their operations.\n* **Faith-based organizations**: Many faith-based organizations, such as churches, synagogues, or mosques, have outreach programs or ministries that focus on serving the homeless and hungry. You could consider getting involved with these initiatives.\n\nSome specific ways you could get involved beyond volunteering at a soup kitchen might include:\n\n* Organizing a food drive or fundraiser to support a local food bank or soup kitchen\n* Participating in a community clean-up or outreach event to serve the homeless\n* Advocating for policies and programs that address homelessness and food insecurity in your community\n* Educating yourself and others about the issues surrounding homelessness and food insecurity\n* Donating gently used clothing, toiletries, or other essential items to a local shelter or outreach organization\n\nRemember to always research an organization's mission, values, and financial transparency before getting involved or donating.\nuser: I was thinking of reaching out to my Bible study group to see if we could organize a food drive or fundraiser to support a local organization that helps the homeless. Do you think that's a good idea, and do you have any suggestions for how to make it a success?\nassistant: What a wonderful idea! Organizing a food drive or fundraiser with your Bible study group is a great way to live out your faith and make a positive impact in your community. Here are some suggestions to help make it a success:\n\n**Choose a Local Organization**: Research and select a local organization that aligns with your group's values and goals. Ensure they are reputable, transparent, and have a strong track record of serving the homeless population. You can check websites like Charity Navigator, GuideStar, or the Better Business Bureau's Wise Giving Alliance to verify an organization's credibility.\n\n**Set Clear Goals and Objectives**: Define what you want to achieve with your food drive or fundraiser. Is it to collect a certain amount of food, raise a specific amount of money, or serve a certain number of people? Having clear goals will help guide your efforts and give your group a sense of accomplishment.\n\n**Communicate Effectively**: Spread the word about your initiative within your Bible study group, and consider reaching out to other church groups, friends, and family to join in. Create a Facebook event, email chain, or use a group messaging app to keep everyone informed and engaged.\n\n**Decide on a Food Drive or Fundraiser**: You can either organize a food drive, where you collect non-perishable items, or a fundraiser, where you raise money to support the organization. Consider the organization's specific needs and what would be most beneficial to them.\n\n**Food Drive Ideas**:\n\n* Designate a collection point, such as a church or community center, where people can drop off donations.\n* Create a list of most-needed items, such as canned goods, toiletries, or warm clothing.\n* Set up a sorting and packing system to ensure donations are organized and easily transportable.\n\n**Fundraiser Ideas**:\n\n* Host a bake sale, potluck, or charity dinner, with proceeds going towards the local organization.\n* Organize a charity walk, run, or bike ride, where participants collect pledges for each mile completed.\n* Create a crowdfunding campaign on platforms like GoFundMe or Kickstarter.\n\n**Logistical Considerations**:\n\n* Ensure you have a plan for transporting and storing donated items.\n* Arrange for a few group members to help with sorting, packing, and delivering donations.\n* Set a deadline for the food drive or fundraiser to create a sense of urgency and focus.\n\n**Prayer and Reflection**: Don't forget to weave prayer and reflection into your efforts. Set aside time for your group to pray for the homeless population, the organization you're supporting, and the success of your initiative. Reflect on the experience and how it relates to your faith, and discuss ways to continue serving the community beyond this event.\n\n**Follow-up and Evaluation**: After the event, take time to:\n\n* Thank everyone involved and acknowledge their contributions.\n* Evaluate the success of your initiative, including the amount of food collected or funds raised.\n* Consider sharing the experience with your church or community, inspiring others to get involved.\n* Reflect on what worked well and what could be improved for future initiatives.\n\nBy following these steps, you'll be well on your way to hosting a successful food drive or fundraiser that makes a meaningful impact in your community.\nuser: That's really helpful, thank you! I think I'll suggest to my Bible study group that we organize a food drive to support a local soup kitchen that I volunteered at recently. Since I attended the Ash Wednesday service at the cathedral on February 1st, I've been thinking a lot about the importance of giving back to the community, and this seems like a great way to put that into action.\nassistant: What a wonderful idea! Organizing a food drive with your Bible study group is a great way to live out your faith and make a positive impact in your community. It's even more meaningful that you have a personal connection to the soup kitchen, having volunteered there recently.\n\nAsh Wednesday is a powerful reminder of our mortality and our responsibility to serve others. It's wonderful that you're taking that message to heart and putting it into action. By organizing a food drive, you'll not only be helping those in need, but also fostering a sense of community and compassion within your Bible study group.\n\nRemember to keep the focus on serving others and glorifying God, rather than seeking recognition or praise. As you plan and execute the food drive, be sure to pray for guidance, wisdom, and humility. Ask God to bless your efforts and multiply your impact.\n\nAs you reflect on the experience, consider journaling or sharing with your group about what you've learned and how you've grown. How has serving others impacted your faith and your relationships with others? What are some ways you can continue to live out your faith in service to others?\n\nRemember, every small act of service can have a profound impact when done with a willing heart and a spirit of humility. You're not only feeding the hungry, but also feeding your own soul and deepening your connection with God.\n\nMay God bless your efforts and use them to bring hope and joy to those in need!\nuser: I'll make sure to keep that in mind as we plan and execute the food drive. I think it's also a great opportunity for our Bible study group to come together and bond over a shared goal. We can use this experience to build stronger relationships with each other and with God.\n\nI was also thinking, since we're going through the Book of Psalms in our Bible study, maybe we could incorporate some of the psalms into our food drive. We could print out copies of Psalm 146, which talks about God's care for the poor and needy, and include them with the food donations. Or we could even have a prayer service before we deliver the donations to the soup kitchen, using some of the psalms to guide our prayers.\n\nWhat do you think?\nassistant: I think that's a wonderful idea! Incorporating the Book of Psalms into your food drive is a great way to tie in your Bible study with your service project. It's a beautiful way to connect the spiritual with the practical, and to remind yourselves that serving others is an act of worship.\n\nPrinting out copies of Psalm 146 and including them with the food donations is a thoughtful gesture that can bring encouragement and hope to those who receive them. It's a tangible reminder that they are not forgotten, and that God cares for them deeply.\n\nHaving a prayer service before delivering the donations is also a great idea. Using the psalms to guide your prayers can help you to focus on God's character and His heart for the poor and needy. It can also be a powerful way to ask for God's blessing on your efforts, and to seek His guidance and wisdom as you serve.\n\nPsalm 146 is a great choice, but you might also consider other psalms that speak to God's care for the poor and needy, such as Psalm 68:5-6, Psalm 72:12-14, or Psalm 112:4-5. You could also consider using Psalm 103, which speaks to God's compassion and mercy towards all people.\n\nRemember to take time to reflect on the psalms and how they relate to your service project. Ask yourselves questions like: What do these psalms teach us about God's character? How do they inspire us to serve others? How can we embody the values and attitudes expressed in these psalms as we serve?\n\nBy incorporating the Book of Psalms into your food drive, you'll not only be serving the physical needs of others, but also nourishing their souls with the hope and encouragement of God's Word.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:08f4fc43",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User plans to suggest organizing a food drive to their Bible study group.\",\"The food drive would support a local soup kitchen where the user volunteered recently.\",\"The user's motivation is connected to the Ash Wednesday service at the cathedral on February 1st.\",\"The user's Bible study group is going through the Book of Psalms.\",\"The user is considering including Psalm 146 copies with food donations or holding a prayer service before delivery.\"],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<8>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<5>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<8>\",\"role\":\"subject\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"maybe we could incorporate some of the psalms into our food drive. We could print out copies of Psalm 146\",\"evidence_reason\":\"The target message explicitly describes the proposed food drive and the specific idea of incorporating Psalms, especially Psalm 146, into the donations or prayer service.\",\"importance\":4,\"keywords\":[\"Bible study group\",\"food drive\",\"local soup kitchen\",\"Ash Wednesday\",\"Book of Psalms\",\"Psalm 146\",\"prayer service\"],\"note_type\":\"plan\",\"rationale\":\"This captures a multi-step plan and rationale connecting service, faith formation, group bonding, and Psalms integration; it is more reusable as a contextual plan than as a single atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's Bible study group's planned food drive supporting the local soup kitchen.\"},\"summary\":\"The user planned to ask their Bible study group to organize a food drive for the local soup kitchen where they recently volunteered, motivated by reflection after the Ash Wednesday service at the cathedral on February 1st. The plan includes using the food drive as a shared faith/community-building activity and possibly integrating the Book of Psalms through Psalm 146 handouts or a prayer service before delivering donations.\",\"tags\":[\"faith\",\"volunteering\",\"community_service\",\"food_drive\",\"psalms\"],\"title\":\"Bible study food drive plan with Psalms integration\",\"valid_from\":\"2023-02-20T12:15:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<8>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"Designate a collection point, such as a church or community center, where people can drop off donations.\",\"evidence_reason\":\"The assistant provided a reusable procedure for organizing the food drive, including goals, communication, logistics, prayer/reflection, and follow-up evaluation.\",\"importance\":3,\"keywords\":[\"food drive planning\",\"local organization\",\"collection point\",\"most-needed items\",\"sorting\",\"transporting donations\",\"prayer and reflection\",\"follow-up evaluation\"],\"note_type\":\"direction\",\"rationale\":\"This is procedural guidance and organizing rationale rather than a clean fact about the user; preserving it as a note supports future planning of the same food drive.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Guidance applicable to organizing the user's Bible study group food drive or similar faith-based service initiatives.\"},\"summary\":\"Recommended approach for the Bible study group's food drive: choose a reputable local organization, set clear goals, communicate broadly, coordinate collection and transport logistics, include prayer/reflection, and follow up by thanking contributors and evaluating results. Suggested food-drive mechanics include a designated collection point, a most-needed-items list, and sorting/packing before delivery.\",\"tags\":[\"planning\",\"community_service\",\"food_drive\",\"volunteering\",\"faith_based\"],\"title\":\"Recommended structure for successful faith-based food drive\",\"valid_from\":\"2023-02-20T12:15:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"Psalm 146 was considered for inclusion with food donations.\",\"The Bible study group is studying the Book of Psalms.\"],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Psalm 146 is a great choice, but you might also consider other psalms\",\"evidence_reason\":\"The target message directly records the recommendation to use Psalm 146 and consider additional psalms for the food drive and prayer service.\",\"importance\":3,\"keywords\":[\"Psalm 146\",\"Psalm 68:5-6\",\"Psalm 72:12-14\",\"Psalm 112:4-5\",\"Psalm 103\",\"prayer service\",\"God's care for the poor\",\"Book of Psalms\"],\"note_type\":\"direction\",\"rationale\":\"This is a reusable curated set of text options and application guidance for a planned faith-based event, not just a single factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Applies to the user's Bible study group's idea of incorporating the Book of Psalms into its food drive and prayer service.\"},\"summary\":\"For integrating Psalms into the food drive, Psalm 146 was endorsed as a fitting text about God's care for the poor and needy; additional suggested passages were Psalm 68:5-6, Psalm 72:12-14, Psalm 112:4-5, and Psalm 103. The recommended use is to connect the group's Book of Psalms study with service through handouts, prayer before delivery, and reflection on God's character and concern for vulnerable people.\",\"tags\":[\"psalms\",\"prayer\",\"faith\",\"food_drive\",\"bible_study\"],\"title\":\"Psalms options for food drive prayer and encouragement\",\"valid_from\":\"2023-02-20T12:15:00+02:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4983,
+                "completionTokens": 1463,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2304
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

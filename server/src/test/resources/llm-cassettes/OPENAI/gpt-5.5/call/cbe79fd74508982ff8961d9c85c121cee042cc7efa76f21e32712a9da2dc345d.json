@@ -1,0 +1,531 @@
+{
+    "version": 1,
+    "hash": "cbe79fd74508982ff8961d9c85c121cee042cc7efa76f21e32712a9da2dc345d",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: project:<0>\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: Memory Handoff Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n\n        Candidate notes:\n        [0] type=DOC_DIGEST title=Memory v3 retention and forgetting policy summary=In `Memory Handoff Data Model`, `v3` requires an explicit retention policy: low-use notes may move to `cold`, old resolved items to `archived`, sensitive source data should support soft/hard delete on request, and historical claims can remain explainable while rarely participating in top retrieval. Useful retention fields include `retention_class`, `expires_at`, `deleted_at`, and `archived_at`. scope=Memory Handoff Data Model, section 02. Data Model / 6. Retention / forgetting in agent_memory_handoff/02_data_model.md entities=entity:<0>,entity:<1>,entity:<2>,entity:<3> keywords=Memory Handoff Data Model,retention policy,forgetting,cold,archived,sensitive source data,retention_class,expires_at,deleted_at,archived_at tags=doc_digest,memory_v3,retention evidence=`v3` требует явной retention policy.\n[1] type=DOC_DIGEST title=Recommended schema field descriptions for Note, Claim, Task, and Profile summary=In `Memory Handoff Data Model`, recommended Pydantic/schema descriptions emphasize self-contained `Note.summary`, scoped memory boundaries via `scope_json`, `Note.maturity_score` for stability/reuse, stand-alone `Claim.normalized_text`, `Claim.retrieval_state` as search temperature distinct from truth, observable `Task.acceptance_criteria_json`, and low-confidence or omitted `Profile.soft_signals`...[truncated 1 chars] scope=Memory Handoff Data Model, section 02. Data Model / 7. Recommended field descriptions для schema / Pydantic in agent_memory_handoff/02_data_model.md entities=entity:<0>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6> keywords=Memory Handoff Data Model,schema,Pydantic,Note.summary,scope_json,maturity_score,Claim.normalized_text,retrieval_state,Task.acceptance_criteria_json,Profile.soft_signals tags=doc_digest,schema_fields,pydantic,memory_v3 evidence=Recommended field descriptions для schema / Pydantic\n\n        Existing active notes:\n        id=hot-path:note:<0> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Note stores reusable intermediate semantic fragments, not hard facts summary=In `Memory Handoff Data Model`, `Note` is an intermediate semantic memory fragment for important retrieval-useful material that should not yet be cemented as a final claim, source, or chain-of-thought. Typical uses include design directions, decision rationales, evolving plans, hypotheses, lessons, tactics, doc digests, and contextual framing, with invariants that one note equals one self-containe...[truncated 68 chars] scope=Memory Handoff Data Model, section 3.4 `Note` in agent_memory_handoff/02_data_model.md keywords=Note,semantic memory fragment,candidate_claims_json,design direction,decision rationale,doc digests tags=memory_model,note,semantic_memory useCount=0\nid=hot-path:note:<1> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Claim is the atomic relation layer for factual retrieval and reconciliation summary=In `Memory Handoff Data Model`, `Claim` represents an atomic fact or relation edge and is the key table for factual answers, predicate-based reconciliation, and explainable retrieval. Its invariants emphasize one predicate application per claim, standalone meaning without the original chat, explicit statements over inference, normalized relative time, and using a `Note` instead of a weak claim whe...[truncated 25 chars] scope=Memory Handoff Data Model, section 3.5 `Claim` in agent_memory_handoff/02_data_model.md keywords=Claim,predicate application,factual answers,predicate-based reconciliation,explainable retrieval,relative time,Note tags=doc_digest,memory_model,claim useCount=0\nid=hot-path:note:<2> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Source is the immutable evidence layer for re-check and explainability summary=In `Memory Handoff Data Model`, `Source` is the raw knowledge source for chat turns, tool outputs, imported notes, and external records; it serves as the primary evidence layer for re-check and explainability. Its invariants require no silent mutation, separate `observed_at` from ingestion time, `content_hash` for dedupe, and an explicit delete policy. scope=Memory Handoff Data Model, section 3.1 `Source` in agent_memory_handoff/02_data_model.md keywords=Memory Handoff Data Model,Source,evidence layer,observed_at,content_hash,delete policy,re-check,explainability tags=memory_model,source,evidence_layer useCount=0\nid=hot-path:note:<3> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Claim and Note serve different memory roles summary=In `Memory Handoff Data Model`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The section warns that storing everything as `Claim` creates false precision, while storing everything as `Note` creates overly ...[truncated 12 chars] scope=Memory Handoff Data Model, section 02. Data Model / 4. Почему `Note` не заменяет `Claim` in agent_memory_handoff/02_data_model.md keywords=Memory Handoff Data Model,Claim,Note,false precision,soft memory,reconciliation,richer retrieval,decision history tags=doc_digest,memory_model,claim,note useCount=0\nid=hot-path:note:<4> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Profile is a compact rebuildable projection, not source of truth summary=In `Memory Handoff Data Model`, `Profile` is a compact always-in-context projection built over explicit user instructions, stable claims, and selected long-lived context, not the source of truth. It should stay short, prefer explicit facts over inference, leave disputed facts in claims or notes, and be rebuildable. scope=Memory Handoff Data Model, section 3.6 `Profile` in agent_memory_handoff/02_data_model.md keywords=Profile,always-in-context projection,projection layer,explicit user instructions,stable claims,long-lived context,rebuildable tags=doc_digest,memory_model,profile useCount=0\nid=hot-path:note:<5> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=PredicateCatalog configures reconciliation semantics for predicates summary=In `Memory Handoff Data Model`, `PredicateCatalog` is not a memory item but a reconciliation config that records per-predicate cardinality, temporal semantics, conflict handling, projection sync behavior, default importance, and active status. It is needed because different predicates replace or coexist differently, may be time-scoped or status-like, and may feed profile or task projections. scope=Memory Handoff Data Model, section 3.3 `PredicateCatalog` in agent_memory_handoff/02_data_model.md keywords=PredicateCatalog,reconciliation,cardinality,temporal_policy,conflict_policy,profile_sync,task_sync tags=memory_model,reconciliation,predicate_catalog useCount=0\nid=hot-path:note:<6> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Memory v3 data model layers and cross-cutting concerns summary=In `Memory Handoff Data Model`, the `v3` memory data model is organized into `Source` as the evidence layer, `Entity` and `Claim` as the graph-shaped semantic layer, `Note` as the rich intermediate layer, `Profile`, `Task`, and `Episode` as projections/operational memory, and `MemoryRun` as the audit layer. The model is designed to support typed memory, lineage, temporal truth, reconcilable update...[truncated 133 chars] scope=Memory Handoff Data Model, section 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля keywords=Memory Handoff Data Model,v3,Source,Entity,Claim,Note,Profile,Task,Episode,MemoryRun,scope,retrieval lifecycle tags=memory_v3,data_model,layers useCount=0\nid=hot-path:note:<7> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Note maturity lifecycle and adjustment signals summary=In `Memory Handoff Data Model`, `Note` should have a maturity model with recommended stages `fresh`, `stabilizing`, `mature`, and `consolidated`. Maturity can increase when a note is used in retrieval, supported by multiple sources, survives without supersede, or covers recurring rationale questions; it can decrease or reset due to contradiction, supersede, scope drift, or long-term disuse. scope=Memory Handoff Data Model, section 02. Data Model / 5. Note maturity in agent_memory_handoff/02_data_model.md keywords=Memory Handoff Data Model,Note maturity,fresh,stabilizing,mature,consolidated,contradiction,supersede,scope drift,long-term disuse tags=doc_digest,memory_model,note_maturity,lifecycle useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:document-section:b1884322449ac1e6ad4a00ca77dddf4a"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: project:<0>\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: Memory Handoff Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n\n        Candidate notes:\n        [0] type=DOC_DIGEST title=Memory v3 retention and forgetting policy summary=In `Memory Handoff Data Model`, `v3` requires an explicit retention policy: low-use notes may move to `cold`, old resolved items to `archived`, sensitive source data should support soft/hard delete on request, and historical claims can remain explainable while rarely participating in top retrieval. Useful retention fields include `retention_class`, `expires_at`, `deleted_at`, and `archived_at`. scope=Memory Handoff Data Model, section 02. Data Model / 6. Retention / forgetting in agent_memory_handoff/02_data_model.md entities=entity:<0>,entity:<1>,entity:<2>,entity:<3> keywords=Memory Handoff Data Model,retention policy,forgetting,cold,archived,sensitive source data,retention_class,expires_at,deleted_at,archived_at tags=doc_digest,memory_v3,retention evidence=`v3` требует явной retention policy.\n[1] type=DOC_DIGEST title=Recommended schema field descriptions for Note, Claim, Task, and Profile summary=In `Memory Handoff Data Model`, recommended Pydantic/schema descriptions emphasize self-contained `Note.summary`, scoped memory boundaries via `scope_json`, `Note.maturity_score` for stability/reuse, stand-alone `Claim.normalized_text`, `Claim.retrieval_state` as search temperature distinct from truth, observable `Task.acceptance_criteria_json`, and low-confidence or omitted `Profile.soft_signals`...[truncated 1 chars] scope=Memory Handoff Data Model, section 02. Data Model / 7. Recommended field descriptions для schema / Pydantic in agent_memory_handoff/02_data_model.md entities=entity:<0>,entity:<2>,entity:<3>,entity:<4>,entity:<5>,entity:<6> keywords=Memory Handoff Data Model,schema,Pydantic,Note.summary,scope_json,maturity_score,Claim.normalized_text,retrieval_state,Task.acceptance_criteria_json,Profile.soft_signals tags=doc_digest,schema_fields,pydantic,memory_v3 evidence=Recommended field descriptions для schema / Pydantic\n\n        Existing active notes:\n        id=hot-path:note:<0> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Note stores reusable intermediate semantic fragments, not hard facts summary=In `Memory Handoff Data Model`, `Note` is an intermediate semantic memory fragment for important retrieval-useful material that should not yet be cemented as a final claim, source, or chain-of-thought. Typical uses include design directions, decision rationales, evolving plans, hypotheses, lessons, tactics, doc digests, and contextual framing, with invariants that one note equals one self-containe...[truncated 68 chars] scope=Memory Handoff Data Model, section 3.4 `Note` in agent_memory_handoff/02_data_model.md keywords=Note,semantic memory fragment,candidate_claims_json,design direction,decision rationale,doc digests tags=memory_model,note,semantic_memory useCount=0\nid=hot-path:note:<1> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Claim is the atomic relation layer for factual retrieval and reconciliation summary=In `Memory Handoff Data Model`, `Claim` represents an atomic fact or relation edge and is the key table for factual answers, predicate-based reconciliation, and explainable retrieval. Its invariants emphasize one predicate application per claim, standalone meaning without the original chat, explicit statements over inference, normalized relative time, and using a `Note` instead of a weak claim whe...[truncated 25 chars] scope=Memory Handoff Data Model, section 3.5 `Claim` in agent_memory_handoff/02_data_model.md keywords=Claim,predicate application,factual answers,predicate-based reconciliation,explainable retrieval,relative time,Note tags=doc_digest,memory_model,claim useCount=0\nid=hot-path:note:<2> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Source is the immutable evidence layer for re-check and explainability summary=In `Memory Handoff Data Model`, `Source` is the raw knowledge source for chat turns, tool outputs, imported notes, and external records; it serves as the primary evidence layer for re-check and explainability. Its invariants require no silent mutation, separate `observed_at` from ingestion time, `content_hash` for dedupe, and an explicit delete policy. scope=Memory Handoff Data Model, section 3.1 `Source` in agent_memory_handoff/02_data_model.md keywords=Memory Handoff Data Model,Source,evidence layer,observed_at,content_hash,delete policy,re-check,explainability tags=memory_model,source,evidence_layer useCount=0\nid=hot-path:note:<3> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Claim and Note serve different memory roles summary=In `Memory Handoff Data Model`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The section warns that storing everything as `Claim` creates false precision, while storing everything as `Note` creates overly ...[truncated 12 chars] scope=Memory Handoff Data Model, section 02. Data Model / 4. Почему `Note` не заменяет `Claim` in agent_memory_handoff/02_data_model.md keywords=Memory Handoff Data Model,Claim,Note,false precision,soft memory,reconciliation,richer retrieval,decision history tags=doc_digest,memory_model,claim,note useCount=0\nid=hot-path:note:<4> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Profile is a compact rebuildable projection, not source of truth summary=In `Memory Handoff Data Model`, `Profile` is a compact always-in-context projection built over explicit user instructions, stable claims, and selected long-lived context, not the source of truth. It should stay short, prefer explicit facts over inference, leave disputed facts in claims or notes, and be rebuildable. scope=Memory Handoff Data Model, section 3.6 `Profile` in agent_memory_handoff/02_data_model.md keywords=Profile,always-in-context projection,projection layer,explicit user instructions,stable claims,long-lived context,rebuildable tags=doc_digest,memory_model,profile useCount=0\nid=hot-path:note:<5> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=PredicateCatalog configures reconciliation semantics for predicates summary=In `Memory Handoff Data Model`, `PredicateCatalog` is not a memory item but a reconciliation config that records per-predicate cardinality, temporal semantics, conflict handling, projection sync behavior, default importance, and active status. It is needed because different predicates replace or coexist differently, may be time-scoped or status-like, and may feed profile or task projections. scope=Memory Handoff Data Model, section 3.3 `PredicateCatalog` in agent_memory_handoff/02_data_model.md keywords=PredicateCatalog,reconciliation,cardinality,temporal_policy,conflict_policy,profile_sync,task_sync tags=memory_model,reconciliation,predicate_catalog useCount=0\nid=hot-path:note:<6> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Memory v3 data model layers and cross-cutting concerns summary=In `Memory Handoff Data Model`, the `v3` memory data model is organized into `Source` as the evidence layer, `Entity` and `Claim` as the graph-shaped semantic layer, `Note` as the rich intermediate layer, `Profile`, `Task`, and `Episode` as projections/operational memory, and `MemoryRun` as the audit layer. The model is designed to support typed memory, lineage, temporal truth, reconcilable update...[truncated 133 chars] scope=Memory Handoff Data Model, section 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля keywords=Memory Handoff Data Model,v3,Source,Entity,Claim,Note,Profile,Task,Episode,MemoryRun,scope,retrieval lifecycle tags=memory_v3,data_model,layers useCount=0\nid=hot-path:note:<7> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Note maturity lifecycle and adjustment signals summary=In `Memory Handoff Data Model`, `Note` should have a maturity model with recommended stages `fresh`, `stabilizing`, `mature`, and `consolidated`. Maturity can increase when a note is used in retrieval, supported by multiple sources, survives without supersede, or covers recurring rationale questions; it can decrease or reset due to contradiction, supersede, scope drift, or long-term disuse. scope=Memory Handoff Data Model, section 02. Data Model / 5. Note maturity in agent_memory_handoff/02_data_model.md keywords=Memory Handoff Data Model,Note maturity,fresh,stabilizing,mature,consolidated,contradiction,supersede,scope drift,long-term disuse tags=doc_digest,memory_model,note_maturity,lifecycle useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:document-section:b1884322449ac1e6ad4a00ca77dddf4a"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.8,\"to_note_id\":\"hot-path:note:<6>\"},{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path:note:<2>\"},{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path:note:<7>\"}],\"patch\":null,\"reason\":\"Adds a distinct retention/forgetting policy fragment not already captured by existing model-layer or maturity notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.7,\"to_note_id\":\"hot-path:note:<0>\"},{\"link_type\":\"refines\",\"link_weight\":0.7,\"to_note_id\":\"hot-path:note:<1>\"},{\"link_type\":\"refines\",\"link_weight\":0.7,\"to_note_id\":\"hot-path:note:<4>\"},{\"link_type\":\"related\",\"link_weight\":0.6,\"to_note_id\":\"hot-path:note:<7>\"}],\"patch\":null,\"reason\":\"Captures distinct recommended schema/Pydantic field descriptions across memory object types; existing notes describe roles and lifecycles but not these field-level description guidelines.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5658,
+                "completionTokens": 422,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

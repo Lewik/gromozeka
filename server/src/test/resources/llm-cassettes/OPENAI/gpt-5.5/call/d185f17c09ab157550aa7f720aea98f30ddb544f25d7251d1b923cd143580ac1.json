@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "d185f17c09ab157550aa7f720aea98f30ddb544f25d7251d1b923cd143580ac1",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Where did I redeem a $5 coupon on coffee creamer?\n\n                                Question date:\n                                2023/05/30 (Tue) 01:13\n\n                                Expected answer:\n                                Target\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:51a45a95\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-4d247b8c1e73-claim-7 [ACTIVE] works_with family=works_with: The user shops at Target frequently, about every other week.; scope=User's shopping habits; evidence=DIRECT source=external:provided-text:14ca996aaf79dd8d9d8aab7bf8feb9dd quote=\"I shop at Target pretty frequently, maybe every other week.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:14ca996aaf79dd8d9d8aab7bf8feb9dd [external_record ref=longmemeval:51a45a95:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 07:11\nTranscript:\nuser: I'm trying to organize my coupons and receipts, do you have any tips on the best way to do that?\nassistant: The eternal quest for coupon and receipt organization! I'm happy to help. Here are some tips to help you tame the chaos:\n\n**Coupon Organization:**\n\n1. **Coupon Binder:** Invest in a three-ring binder or a small accordion file with labeled sections for different categories (e.g., food, household, personal \n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 07:11\nTranscript:\nuser: I'm trying to organize my coupons and receipts, do you have any tips on the best way to do that?\nassistant: The eternal quest for coupon and receipt organization! I'm happy to help. Here are some tips to help you tame the chaos:\n\n**Coupon Organization:**\n\n1. **Coupon Binder:** Invest in a three-ring binder or a small accordion file with labeled sections for different categories (e.g., food, household, personal care, etc.). This will help you keep your coupons organized and easily accessible.\n2. **Coupon Clipping:** Clip coupons as soon as you receive them, and sort them into their respective categories. You can also consider using a coupon clipping service or a coupon app like Fetch Rewards or Ibotta.\n3. **Expiration Dates:** Organize your coupons by expiration date, with the soonest expiring coupons in the front. This ensures you use them before they expire.\n4. **Store-Specific Coupons:** Keep separate sections for store-specific coupons, like those for your local grocery store or favorite retailer.\n5. **Digital Coupons:** If you receive digital coupons via email or apps, consider printing them out and adding them to your binder or storing them digitally in a designated folder on your phone or computer.\n\n**Receipt Organization:**\n\n1. **Receipt File:** Designate a file or folder specifically for receipts, and separate them into categories (e.g., groceries, entertainment, clothing, etc.).\n2. **Digital Receipts:** Take advantage of digital receipts whenever possible, and store them in a designated email folder or app like Shoeboxed or Receipt Bank.\n3. **Receipt Scanner:** Consider investing in a receipt scanner or using a mobile app like Neat or Genius Scan to digitize your paper receipts.\n4. **Label and Date:** Label each receipt with the date, sto...\n...Capital, or YNAB (You Need a Budget) to track your expenses and stay on top of your finances.\n4. **Go Digital:** Consider digitizing your entire coupon and receipt system using apps like Expense Manager or Pocketbook to simplify your organization process.\n\nRemember, the key to successful coupon and receipt organization is to create a system that works for you and stick to it. Happy organizing!\nuser: I like the idea of using a binder with labeled sections. I've been using the Cartwheel app from Target and it's been really helpful for saving money on household items.\nassistant: The Cartwheel app is a fantastic tool for saving money on household items and more at Target. Using a binder with labeled sections is a great way to organize your coupons and receipts, and it's easy to customize to fit your specific needs.\n\nHere are a few more tips to help you make the most of your binder system:\n\n1. **Color-code your sections:** Use different colored tabs or stickers to differentiate between categories, like food, household, personal care, etc. This makes it easy to find what you need at a glance.\n2. **Use clear plastic sleeves:** Add clear plastic sleeves to your binder to store your coupons and receipts. This keeps them clean and prevents them from getting damaged or lost.\n3. **Keep a \"To-Use\" section:** Designate a section for coupons and offers that you plan to use on your next shopp...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Target; Organization named Target.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "51a45a95",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Where did I redeem a $5 coupon on coffee creamer?\n\n                                Question date:\n                                2023/05/30 (Tue) 01:13\n\n                                Expected answer:\n                                Target\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:51a45a95\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-4d247b8c1e73-claim-7 [ACTIVE] works_with family=works_with: The user shops at Target frequently, about every other week.; scope=User's shopping habits; evidence=DIRECT source=external:provided-text:14ca996aaf79dd8d9d8aab7bf8feb9dd quote=\"I shop at Target pretty frequently, maybe every other week.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:14ca996aaf79dd8d9d8aab7bf8feb9dd [external_record ref=longmemeval:51a45a95:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 07:11\nTranscript:\nuser: I'm trying to organize my coupons and receipts, do you have any tips on the best way to do that?\nassistant: The eternal quest for coupon and receipt organization! I'm happy to help. Here are some tips to help you tame the chaos:\n\n**Coupon Organization:**\n\n1. **Coupon Binder:** Invest in a three-ring binder or a small accordion file with labeled sections for different categories (e.g., food, household, personal \n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 07:11\nTranscript:\nuser: I'm trying to organize my coupons and receipts, do you have any tips on the best way to do that?\nassistant: The eternal quest for coupon and receipt organization! I'm happy to help. Here are some tips to help you tame the chaos:\n\n**Coupon Organization:**\n\n1. **Coupon Binder:** Invest in a three-ring binder or a small accordion file with labeled sections for different categories (e.g., food, household, personal care, etc.). This will help you keep your coupons organized and easily accessible.\n2. **Coupon Clipping:** Clip coupons as soon as you receive them, and sort them into their respective categories. You can also consider using a coupon clipping service or a coupon app like Fetch Rewards or Ibotta.\n3. **Expiration Dates:** Organize your coupons by expiration date, with the soonest expiring coupons in the front. This ensures you use them before they expire.\n4. **Store-Specific Coupons:** Keep separate sections for store-specific coupons, like those for your local grocery store or favorite retailer.\n5. **Digital Coupons:** If you receive digital coupons via email or apps, consider printing them out and adding them to your binder or storing them digitally in a designated folder on your phone or computer.\n\n**Receipt Organization:**\n\n1. **Receipt File:** Designate a file or folder specifically for receipts, and separate them into categories (e.g., groceries, entertainment, clothing, etc.).\n2. **Digital Receipts:** Take advantage of digital receipts whenever possible, and store them in a designated email folder or app like Shoeboxed or Receipt Bank.\n3. **Receipt Scanner:** Consider investing in a receipt scanner or using a mobile app like Neat or Genius Scan to digitize your paper receipts.\n4. **Label and Date:** Label each receipt with the date, sto...\n...Capital, or YNAB (You Need a Budget) to track your expenses and stay on top of your finances.\n4. **Go Digital:** Consider digitizing your entire coupon and receipt system using apps like Expense Manager or Pocketbook to simplify your organization process.\n\nRemember, the key to successful coupon and receipt organization is to create a system that works for you and stick to it. Happy organizing!\nuser: I like the idea of using a binder with labeled sections. I've been using the Cartwheel app from Target and it's been really helpful for saving money on household items.\nassistant: The Cartwheel app is a fantastic tool for saving money on household items and more at Target. Using a binder with labeled sections is a great way to organize your coupons and receipts, and it's easy to customize to fit your specific needs.\n\nHere are a few more tips to help you make the most of your binder system:\n\n1. **Color-code your sections:** Use different colored tabs or stickers to differentiate between categories, like food, household, personal care, etc. This makes it easy to find what you need at a glance.\n2. **Use clear plastic sleeves:** Add clear plastic sleeves to your binder to store your coupons and receipts. This keeps them clean and prevents them from getting damaged or lost.\n3. **Keep a \"To-Use\" section:** Designate a section for coupons and offers that you plan to use on your next shopp...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Target; Organization named Target.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "51a45a95",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Target\",\"reason\":\"The context mentions the user shops at Target and uses Target's Cartwheel app, but it does not state that a $5 coffee creamer coupon was redeemed there.\",\"supported\":false}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1609,
+                "completionTokens": 206,
+                "thinkingTokens": 144,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

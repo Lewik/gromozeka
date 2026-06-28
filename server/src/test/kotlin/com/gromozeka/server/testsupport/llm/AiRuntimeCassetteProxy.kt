@@ -1567,6 +1567,7 @@ private fun Map<String, Any?>.rehydrateDynamicMetadata(
     messageIndex: Int? = null,
 ): Map<String, Any?> {
     return mapValues { (key, value) -> value.rehydrateDynamicMetadataValue(key, context, messageIndex) }
+        .dropUnverifiableReplayMetadata()
         .toSortedMap()
 }
 
@@ -1603,6 +1604,51 @@ private fun Any?.rehydrateDynamicMetadataValue(
         else -> this
     }
 }
+
+private fun Map<String, Any?>.dropUnverifiableReplayMetadata(): Map<String, Any?> =
+    entries
+        .mapNotNull { (key, value) ->
+            if (key == "encrypted_content") null else key to value.dropUnverifiableReplayMetadataValue()
+        }
+        .toMap()
+
+private fun Any?.dropUnverifiableReplayMetadataValue(): Any? =
+    when (this) {
+        is Map<*, *> -> entries
+            .mapNotNull { (key, value) ->
+                (key as? String)
+                    ?.takeIf { it != "encrypted_content" }
+                    ?.let { it to value.dropUnverifiableReplayMetadataValue() }
+            }
+            .toMap()
+            .toSortedMap()
+        is Iterable<*> -> map { it.dropUnverifiableReplayMetadataValue() }
+        is Array<*> -> map { it.dropUnverifiableReplayMetadataValue() }
+        is JsonObject -> JsonObject(
+            entries
+                .mapNotNull { (key, value) ->
+                    if (key == "encrypted_content") null else key to value.dropUnverifiableReplayJsonMetadata()
+                }
+                .toMap()
+                .toSortedMap()
+        )
+        is JsonArray -> JsonArray(map { it.dropUnverifiableReplayJsonMetadata() })
+        else -> this
+    }
+
+private fun JsonElement.dropUnverifiableReplayJsonMetadata(): JsonElement =
+    when (this) {
+        is JsonObject -> JsonObject(
+            entries
+                .mapNotNull { (key, value) ->
+                    if (key == "encrypted_content") null else key to value.dropUnverifiableReplayJsonMetadata()
+                }
+                .toMap()
+                .toSortedMap()
+        )
+        is JsonArray -> JsonArray(map { it.dropUnverifiableReplayJsonMetadata() })
+        else -> this
+    }
 
 private fun Map<String, Any?>.toJsonObject(): JsonObject {
     return JsonObject(

@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.memory.MemoryReadResult
 import com.gromozeka.domain.model.memory.MemoryReadTrace
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -35,6 +36,33 @@ class MemoryToolResultRendererTest {
         assertEquals("claim-b", selectedRefs[0].jsonObject.getValue("id").jsonPrimitive.content)
         assertEquals("direct answer", selectedRefs[0].jsonObject.getValue("selection_reason").jsonPrimitive.content)
         assertEquals("claim-a", selectedRefs[1].jsonObject.getValue("id").jsonPrimitive.content)
+    }
+
+    @Test
+    fun selectedRefsDoNotExposeRejectedDecisionsAsSelectionReasons() {
+        val selectedBySafetyHit = traceHit(id = "claim-safety", summary = "Safety-selected claim")
+        val result = MemoryReadResult(
+            plan = MemoryReadPlan(),
+            retrievedHits = emptyList(),
+            runtimePrompt = "memory context",
+            trace = MemoryReadTrace(
+                selectedHits = listOf(selectedBySafetyHit),
+                selectorDecisions = listOf(
+                    MemoryReadTrace.SelectorDecision(
+                        ref = selectedBySafetyHit.ref,
+                        selected = false,
+                        rank = Int.MAX_VALUE,
+                        reason = "rejected as less direct",
+                    )
+                ),
+            ),
+        )
+
+        val root = Json.parseToJsonElement(MemoryToolResultRenderer.enrichContextResultJsonString(result)).jsonObject
+        val selectedRef = root.getValue("selected_refs").jsonArray.single().jsonObject
+
+        assertEquals("claim-safety", selectedRef.getValue("id").jsonPrimitive.content)
+        assertTrue("selection_reason" !in selectedRef)
     }
 
     private fun traceHit(

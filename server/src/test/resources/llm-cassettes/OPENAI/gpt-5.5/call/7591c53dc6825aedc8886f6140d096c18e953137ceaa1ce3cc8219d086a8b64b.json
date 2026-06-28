@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "7591c53dc6825aedc8886f6140d096c18e953137ceaa1ce3cc8219d086a8b64b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many shirts did I pack for my 5-day trip to Costa Rica?\n\n                                Question date:\n                                2023/05/30 (Tue) 20:28\n\n                                Noisy expected-answer label:\n                                7\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:af8d2e46\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-609a6b239819-claim-6 [ACTIVE] current_metric_value family=current_metric_value: On the user's last trip to Costa Rica, the user packed 7 shirts and wore only 3 shirts.; scope=User's packing benchmark for the Costa Rica trip discussed on 2023-05-27.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts.\"\n- claim hot-path-609a6b239819-claim-7 [ACTIVE] current_metric_value family=current_metric_value: On the user's last trip to Costa Rica, the user packed 5 pairs of shorts and wore only 2 pairs.; scope=User's packing benchmark for the Costa Rica trip discussed on 2023-05-27.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts.\"\n- claim hot-path-609a6b239819-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has traveled to Costa Rica.; scope=User's travel history.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"on my last trip to Costa Rica\"\n- claim hot-path-609a6b239819-claim-4 [ACTIVE] has_goal family=has_goal: The user is trying to get better at packing for trips and wants to pack more essentials and fewer just-in-case items.; scope=User's reusable travel-packing goals and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I've been trying to get better at packing, but I still tend to overpack.\"\n- claim hot-path-609a6b239819-claim-8 [ACTIVE] has_goal family=has_goal: The user is trying to get better at packing toiletries more efficiently.; scope=User's reusable travel-packing goals and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I've also been trying to get better at packing my toiletries more efficiently.\"\n- claim hot-path-609a6b239819-claim-10 [ACTIVE] works_with family=works_with: The user uses a packing cube to stay organized when packing toiletries.; scope=User's reusable travel-packing tools and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized.\"\n- claim hot-path-609a6b239819-claim-9 [ACTIVE] works_with family=works_with: The user uses travel-sized toiletry bottles to stay organized when packing toiletries.; scope=User's reusable travel-packing tools and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized.\"\n\n            Retrieved notes:\n            - note hot-path-609a6b239819-note-2 [LESSON/ACTIVE]: Packing lesson from Costa Rica overpacking; The user's Costa Rica trip is a reusable calibration example for reducing overpacking: they packed 7 shirts and 5 pairs of shorts but only wore 3 shirts and 2 shorts, suggesting future trip packing should emphasize essentials and fewer \"just in case\" clothing items.; scope=User's travel packing strategy and future packing advice; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"on my last trip to Costa Rica, I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts\"\n- note hot-path-609a6b239819-note-3 [CONTEXT/ACTIVE]: Toiletry organization approach with bottles and packing cube; For toiletries, the user has found travel-sized toiletry bottles and a packing cube helpful for staying organized, so future packing guidance can build on that existing system rather than proposing it from scratch.; scope=User's toiletry packing organization habits; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized.\"\n\n            Retrieved evidence:\n            - source external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 [external_record ref=longmemeval:af8d2e46:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 23:54\nTranscript:\nuser: I'm trying to get better at packing for my trips. Can you help me come up with a list of essentials to pack for a 3-day business trip?\nassistant: Packing for a 3-day business trip can be a breeze with a little planning. Here's a list of essentials to get you started:\n\n**Clothing:**\n\n* 2-3 business shirts or blouses (quick-drying and wrinkle-resistant)...\n...* Consider packing clothing items that can be easily ironed or steamed to save time....\n...* Leave some extra space in your luggage for any items you might purchase during your trip.\n\nRemember to check with your airline for any specific luggage restrictions or requirements before your trip. Safe travels!...\n...assistant: Packing the right items in your carry-on versus checked luggage can make a big difference in your travel experience. Here are some general guidelines to help you decide:...\n...Remember to check with your airline for specific carry-on and checked luggage size and weight restrictions before your trip. Happy packing!...\n...3. **Use packing cubes:** Use packing cubes or small bags to organize your clothes and keep them visible....\n...By following these tips, you'll be well on your way to packing clothes strategically and creating a versatile wardrobe for your trip!\nuser: That's really helpful! I've been trying to get better at packing, but I still tend to overpack. Like, on my last trip to Costa Rica, I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts. I guess I need to work on packing more essentials and fewer \"just in case\" items.\nassistant: I'm glad I could help! It's great that you're aware of your packing habits and willing to make changes. Overpacking is a common mistake, especially when we're excited about a trip or worried about not having the right clothes.\n\nIt's fantastic that you have a concrete example from your last trip to work with. Analyzing what you actually wore versus what you packed can be a great way to refine your packing strategy.\n\nHere are a few takeaways from your experience:\n\n1. **You likely need fewer tops:** 3 out of 7 shirts is a pretty low usage rate. Consider packing 2-3 versatile tops that can be mixed and matched with your bottoms....\n...3. **Focus on essentials:** Instead of packing \"just in case\" items, focus on bringing essentials that you know you'll need and use. For example, if you're going to Costa Rica, you might prioritize packing:\n\t* 1-2 lightweight, quick-drying shirts...\n...5. **Consider a packing list:** Write down the activities you plan to do and the clothes you think you'll need for each activity. This can help you identify what's essential and what's not.\n\nRemember, the key to packing efficiently is to strike a balance between bringing what you need and avoiding overpacking. With practice, you'll get better at judging what's essential and what's just \"nice to have.\"\nuser: I think I'm starting to get the hang of this packing thing! Thanks for the advice. I've also been trying to get better at packing my toiletries more efficiently. I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized....\n...**Packing cube:** A packing cube is an excellent tool for keeping your toiletries organized and easy to find. It helps you keep all your toiletries in one place, making it easier to grab what you need quickly. Plus, it can help you compress your toiletries to make the most of your luggage space....\n...Remember, the key to packing toiletries efficiently is to strike a balance between bringing what you need and avoiding overpacking. With your travel-sized toiletry bottles and packing cube, you're off to a great start!...\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Costa Rica; Location named Costa Rica.\n- entity entity:<1> [PRODUCT]: Packing cube; Product named Packing cube.\n- entity entity:<2> [PRODUCT]: Travel-sized toiletry bottles; Product named Travel-sized toiletry bottles.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "af8d2e46",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many shirts did I pack for my 5-day trip to Costa Rica?\n\n                                Question date:\n                                2023/05/30 (Tue) 20:28\n\n                                Noisy expected-answer label:\n                                7\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:af8d2e46\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-609a6b239819-claim-6 [ACTIVE] current_metric_value family=current_metric_value: On the user's last trip to Costa Rica, the user packed 7 shirts and wore only 3 shirts.; scope=User's packing benchmark for the Costa Rica trip discussed on 2023-05-27.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts.\"\n- claim hot-path-609a6b239819-claim-7 [ACTIVE] current_metric_value family=current_metric_value: On the user's last trip to Costa Rica, the user packed 5 pairs of shorts and wore only 2 pairs.; scope=User's packing benchmark for the Costa Rica trip discussed on 2023-05-27.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts.\"\n- claim hot-path-609a6b239819-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has traveled to Costa Rica.; scope=User's travel history.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"on my last trip to Costa Rica\"\n- claim hot-path-609a6b239819-claim-4 [ACTIVE] has_goal family=has_goal: The user is trying to get better at packing for trips and wants to pack more essentials and fewer just-in-case items.; scope=User's reusable travel-packing goals and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I've been trying to get better at packing, but I still tend to overpack.\"\n- claim hot-path-609a6b239819-claim-8 [ACTIVE] has_goal family=has_goal: The user is trying to get better at packing toiletries more efficiently.; scope=User's reusable travel-packing goals and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I've also been trying to get better at packing my toiletries more efficiently.\"\n- claim hot-path-609a6b239819-claim-10 [ACTIVE] works_with family=works_with: The user uses a packing cube to stay organized when packing toiletries.; scope=User's reusable travel-packing tools and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized.\"\n- claim hot-path-609a6b239819-claim-9 [ACTIVE] works_with family=works_with: The user uses travel-sized toiletry bottles to stay organized when packing toiletries.; scope=User's reusable travel-packing tools and habits.; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized.\"\n\n            Retrieved notes:\n            - note hot-path-609a6b239819-note-2 [LESSON/ACTIVE]: Packing lesson from Costa Rica overpacking; The user's Costa Rica trip is a reusable calibration example for reducing overpacking: they packed 7 shirts and 5 pairs of shorts but only wore 3 shirts and 2 shorts, suggesting future trip packing should emphasize essentials and fewer \"just in case\" clothing items.; scope=User's travel packing strategy and future packing advice; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"on my last trip to Costa Rica, I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts\"\n- note hot-path-609a6b239819-note-3 [CONTEXT/ACTIVE]: Toiletry organization approach with bottles and packing cube; For toiletries, the user has found travel-sized toiletry bottles and a packing cube helpful for staying organized, so future packing guidance can build on that existing system rather than proposing it from scratch.; scope=User's toiletry packing organization habits; evidence=DIRECT source=external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 quote=\"I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized.\"\n\n            Retrieved evidence:\n            - source external:provided-text:f68bce65d4d4f7377ecdb0047a18c443 [external_record ref=longmemeval:af8d2e46:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 23:54\nTranscript:\nuser: I'm trying to get better at packing for my trips. Can you help me come up with a list of essentials to pack for a 3-day business trip?\nassistant: Packing for a 3-day business trip can be a breeze with a little planning. Here's a list of essentials to get you started:\n\n**Clothing:**\n\n* 2-3 business shirts or blouses (quick-drying and wrinkle-resistant)...\n...* Consider packing clothing items that can be easily ironed or steamed to save time....\n...* Leave some extra space in your luggage for any items you might purchase during your trip.\n\nRemember to check with your airline for any specific luggage restrictions or requirements before your trip. Safe travels!...\n...assistant: Packing the right items in your carry-on versus checked luggage can make a big difference in your travel experience. Here are some general guidelines to help you decide:...\n...Remember to check with your airline for specific carry-on and checked luggage size and weight restrictions before your trip. Happy packing!...\n...3. **Use packing cubes:** Use packing cubes or small bags to organize your clothes and keep them visible....\n...By following these tips, you'll be well on your way to packing clothes strategically and creating a versatile wardrobe for your trip!\nuser: That's really helpful! I've been trying to get better at packing, but I still tend to overpack. Like, on my last trip to Costa Rica, I brought 7 shirts and 5 pairs of shorts, but I only ended up wearing 3 of the shirts and 2 of the shorts. I guess I need to work on packing more essentials and fewer \"just in case\" items.\nassistant: I'm glad I could help! It's great that you're aware of your packing habits and willing to make changes. Overpacking is a common mistake, especially when we're excited about a trip or worried about not having the right clothes.\n\nIt's fantastic that you have a concrete example from your last trip to work with. Analyzing what you actually wore versus what you packed can be a great way to refine your packing strategy.\n\nHere are a few takeaways from your experience:\n\n1. **You likely need fewer tops:** 3 out of 7 shirts is a pretty low usage rate. Consider packing 2-3 versatile tops that can be mixed and matched with your bottoms....\n...3. **Focus on essentials:** Instead of packing \"just in case\" items, focus on bringing essentials that you know you'll need and use. For example, if you're going to Costa Rica, you might prioritize packing:\n\t* 1-2 lightweight, quick-drying shirts...\n...5. **Consider a packing list:** Write down the activities you plan to do and the clothes you think you'll need for each activity. This can help you identify what's essential and what's not.\n\nRemember, the key to packing efficiently is to strike a balance between bringing what you need and avoiding overpacking. With practice, you'll get better at judging what's essential and what's just \"nice to have.\"\nuser: I think I'm starting to get the hang of this packing thing! Thanks for the advice. I've also been trying to get better at packing my toiletries more efficiently. I invested in some travel-sized toiletry bottles and a packing cube, which has really helped me stay organized....\n...**Packing cube:** A packing cube is an excellent tool for keeping your toiletries organized and easy to find. It helps you keep all your toiletries in one place, making it easier to grab what you need quickly. Plus, it can help you compress your toiletries to make the most of your luggage space....\n...Remember, the key to packing toiletries efficiently is to strike a balance between bringing what you need and avoiding overpacking. With your travel-sized toiletry bottles and packing cube, you're off to a great start!...\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Costa Rica; Location named Costa Rica.\n- entity entity:<1> [PRODUCT]: Packing cube; Product named Packing cube.\n- entity entity:<2> [PRODUCT]: Travel-sized toiletry bottles; Product named Travel-sized toiletry bottles.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "af8d2e46",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"7 shirts\",\"reason\":\"The retrieved memory explicitly says the user brought 7 shirts on their last trip to Costa Rica.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2834,
+                "completionTokens": 99,
+                "thinkingTokens": 50,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

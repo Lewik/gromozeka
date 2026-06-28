@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "27120760dd0bf5ae0d12f1fdc0888f570ac81549d8c085027b281b6155a711fe",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many items of clothing do I need to pick up or return from a store?\n\n                                Question date:\n                                2023/02/15 (Wed) 19:47\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0a995998\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-81d4fde232b4-claim-4 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the dry cleaning for their navy blue blazer.; scope=Applies to the user's dry-cleaning errand for the navy blue blazer from this session.; evidence=DIRECT source=external:provided-text:1991b24e465cc7c4d035ae3a3b325442 quote=\"I still need to pick up my dry cleaning for the navy blue blazer\"\n- claim hot-path-9b7a94388618-claim-11 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the larger-size replacement boots from Zara.; scope=User's concrete clothing-related errands from the February 15, 2023 conversation.; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I just haven't had a chance to pick them up yet\"\n- claim hot-path-9b7a94388618-claim-10 [ACTIVE] pending_return family=pending_return: The user needs to return boots to Zara.; scope=User's concrete clothing-related errands from the February 15, 2023 conversation.; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I need to return some boots to Zara\"\n\n            Retrieved notes:\n            - note hot-path-9b7a94388618-note-2 [PLAN/ACTIVE]: Seasonal closet rotation with winter boxes and spring clothes; For the User's closet organization project, the reusable approach from the 2023-02-15 session is seasonal rotation: declutter and group clothing, assign categories a home, store winter clothes/accessories such as the thick grey scarf and gloves in labeled boxes/bins or other storage at home, and bring out spring items such as the yellow sundress. Useful details include cleaning and drying items before storage, labeling boxes by contents/season, using sturdy breathable containers, and keeping cross-season layering items accessible.; scope=User's closet organization project, especially post-holiday cleanup and winter-clothes storage; evidence=SUMMARIZED source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"It's been a mess since the holidays and I still have winter clothes to put away.\"\n\n            Retrieved evidence:\n            - source external:provided-text:196013f63fba96efe4a670763eafe70b [external_record ref=longmemeval:0a995998:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 07:47\nTranscript:\nuser: I'm looking for some organization tips for my closet. It's been a mess since the holidays and I still have winter clothes to put away.\nassistant: The post-holiday closet chaos is real! Don't worry, I'm here to help you get your closet organized and tidy again. Here are some practical tips to get you started:\n\n1. **Purge and declutter**: Begin by taking everything out of your closet and sorting items into three \n...[matching excerpts]...\n\n            Retrieved entities:\n            - entity entity:<0> [PROJECT]: User's closet organization project; Project named User's closet organization project.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0a995998",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many items of clothing do I need to pick up or return from a store?\n\n                                Question date:\n                                2023/02/15 (Wed) 19:47\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0a995998\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-81d4fde232b4-claim-4 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the dry cleaning for their navy blue blazer.; scope=Applies to the user's dry-cleaning errand for the navy blue blazer from this session.; evidence=DIRECT source=external:provided-text:1991b24e465cc7c4d035ae3a3b325442 quote=\"I still need to pick up my dry cleaning for the navy blue blazer\"\n- claim hot-path-9b7a94388618-claim-11 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the larger-size replacement boots from Zara.; scope=User's concrete clothing-related errands from the February 15, 2023 conversation.; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I just haven't had a chance to pick them up yet\"\n- claim hot-path-9b7a94388618-claim-10 [ACTIVE] pending_return family=pending_return: The user needs to return boots to Zara.; scope=User's concrete clothing-related errands from the February 15, 2023 conversation.; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I need to return some boots to Zara\"\n\n            Retrieved notes:\n            - note hot-path-9b7a94388618-note-2 [PLAN/ACTIVE]: Seasonal closet rotation with winter boxes and spring clothes; For the User's closet organization project, the reusable approach from the 2023-02-15 session is seasonal rotation: declutter and group clothing, assign categories a home, store winter clothes/accessories such as the thick grey scarf and gloves in labeled boxes/bins or other storage at home, and bring out spring items such as the yellow sundress. Useful details include cleaning and drying items before storage, labeling boxes by contents/season, using sturdy breathable containers, and keeping cross-season layering items accessible.; scope=User's closet organization project, especially post-holiday cleanup and winter-clothes storage; evidence=SUMMARIZED source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"It's been a mess since the holidays and I still have winter clothes to put away.\"\n\n            Retrieved evidence:\n            - source external:provided-text:196013f63fba96efe4a670763eafe70b [external_record ref=longmemeval:0a995998:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 07:47\nTranscript:\nuser: I'm looking for some organization tips for my closet. It's been a mess since the holidays and I still have winter clothes to put away.\nassistant: The post-holiday closet chaos is real! Don't worry, I'm here to help you get your closet organized and tidy again. Here are some practical tips to get you started:\n\n1. **Purge and declutter**: Begin by taking everything out of your closet and sorting items into three \n...[matching excerpts]...\n\n            Retrieved entities:\n            - entity entity:<0> [PROJECT]: User's closet organization project; Project named User's closet organization project.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0a995998",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"3\",\"reason\":\"The memory lists three clothing-related pickup/return tasks: pick up a navy blazer, pick up replacement boots, and return boots to Zara.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1333,
+                "completionTokens": 141,
+                "thinkingTokens": 84,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

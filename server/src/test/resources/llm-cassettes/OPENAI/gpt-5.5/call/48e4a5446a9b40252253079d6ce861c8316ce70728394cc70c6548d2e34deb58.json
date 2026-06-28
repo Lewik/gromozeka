@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "48e4a5446a9b40252253079d6ce861c8316ce70728394cc70c6548d2e34deb58",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What should I serve for dinner this weekend with my homegrown ingredients?\n\n                                Question date:\n                                2023/05/24 (Wed) 10:29\n\n                                Expected answer:\n                                The user would prefer dinner suggestions that incorporate their homegrown cherry tomatoes and herbs like basil and mint, highlighting recipes that showcase their garden produce. They might not prefer suggestions that do not utilize these specific ingredients or do not emphasize the use of homegrown elements.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:06f04340\n            Context mode: MIXED\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a618775a7cdc-claim-8 [ACTIVE] has_experience_with family=has_experience_with: The user has harvested cherry tomatoes from their garden.; scope=User gardening experience; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've even harvested some cherry tomatoes from my garden.\"\n- claim hot-path-a618775a7cdc-claim-4 [ACTIVE] has_goal family=has_goal: The user wants new recipe ideas that use fresh basil and mint.; scope=User cooking interests across conversations; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I'm trying to find some new recipe ideas that use fresh basil and mint.\"\n- claim hot-path-a618775a7cdc-claim-7 [ACTIVE] grows family=grows: The user's garden grows cherry tomatoes.; scope=User's garden; evidence=INFERRED source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've even harvested some cherry tomatoes from my garden.\"\n- claim hot-path-a618775a7cdc-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has been using basil in their cooking.; scope=User cooking and herb-use context; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've been using basil and mint in my cooking lately.\"\n- claim hot-path-a618775a7cdc-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has been using mint in their cooking.; scope=User cooking and herb-use context; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've been using basil and mint in my cooking lately.\"\n\n            Retrieved notes:\n            - note hot-path-a618775a7cdc-note-2 [CONTEXT/ACTIVE]: Cherry tomato companion planting context; In the May 2023 garden discussion, the user had fresh basil and mint in their cooking routine and had harvested cherry tomatoes from their garden. Companion-plant advice for their cherry tomatoes focused on pollinator support and pest pressure reduction using plants such as borage, chives, marigold, oregano, parsley, radish, nasturtium, and dill, with perimeter/trap-crop placement and attention to spacing and moisture.; scope=Applies to future gardening advice about the user's garden and cherry tomato companion planting.; evidence=SUMMARIZED source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've been using basil and mint in my cooking lately. I've even harvested some cherry tomatoes from my garden.\"\n\n            Retrieved evidence:\n            - source external:provided-text:b82fda02af7048264aa2f8be780060ef [external_record ref=longmemeval:06f04340:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm trying to find some new recipe ideas that use fresh basil and mint. Can you suggest any?\nassistant: What a refreshing combination! Fresh basil and mint can add a bright, herbaceous flavor to many dishes. Here are some recipe ideas that feature these two herbs as main attractions:...\n...1. **Mint Chutney**: Similar to the basil chutney, but with a cooling twist. Use it as a dip for snacks or as a sauce for grilled meats or vegetables....\n...These are just a few ideas to get you started. Feel free to experiment and combine basil and mint in your own unique ways!\nuser: What are some good companion plants for tomatoes?\nassistant: Tomatoes are one of the most popular garden fruits (yes, they're a fruit!), and they benefit from being paired with certain companion plants that can enhance their growth, flavor, and overall health. Here are some good companion plants for tomatoes:\n\n1. **Basil**: Planting basil near tomatoes is a classic combination. Basil repels pests that target tomatoes, such as whiteflies and aphids, and adds flavor to many tomato-based dishes....\n...7. **Carrots**: Planting carrots near tomatoes can help to break up compacted soil and improve its structure, which benefits tomato roots....\n...Some plants to avoid planting near tomatoes include:...\n...Remember to plant companion plants according to their growing requirements and space needs. Happy gardening!\nuser: I've been using basil and mint in my cooking lately. I've even harvested some cherry tomatoes from my garden. Do you have any suggestions for companion plants that could help my cherry tomatoes grow better?...\n...When planting companion plants with cherry tomatoes, keep the following tips in mind:\n\n* Plant companion plants around the perimeter of your cherry tomato bed to create a \"trap crop\" effect, where pests are attracted to the companion plants instead of the cherry tomatoes.\n* Plant companion plants at the same time as your cherry tomatoes, or slightly before, to give them a head start.\n* Make sure to plant companion plants according to their growing requirements and space needs....\n...By incorporating these companion plants into your garden, you can create a thriving ecosystem that benefits your cherry tomatoes and adds flavor and beauty to your cooking!...\n...3. **Use neem oil on young plants**: Neem oil is especially effective on young plants, as it can help prevent aphid infestations from taking hold....\n...3. **Provide food and shelter**: Ladybugs need food and shelter to thrive. Provide them with pollen-rich flowers, aphid-infested plants, and sheltered areas like under leaves or on stems....\n...3. **Provide food and shelter**: Lacewings need food and shelter to thrive. Provide them with pollen-rich flowers, aphid-infested plants, and sheltered areas like under leaves or on stems....\n...2. **Release them at the right time**: Release natural predators when aphid populations are present, but not too severe. This ensures the predators have a steady food supply.\n3. **Provide a welcoming environment**: Ensure your garden has a diverse range of plants, including flowers that provide pollen and nectar for the predators....\n...2. **Release them at the right time**: Release beneficial insects when aphid populations are present, but not too severe. This ensures the beneficial insects have a steady food supply.\n3. **Provide a welcoming environment**: Ensure your garden has a diverse range of plants, including flowers that provide pollen and nectar for the beneficial insects....\n...I think introducing beneficial insects like ladybugs or lacewings is a great idea! It's a natural, non-toxic, and environmentally friendly way to control aphid populations in your garden. Just remember to choose the right species, release them at the right time, provide a welcoming environment, and monitor and maintain your garden regularly. Good luck!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Basil; Concept named Basil.\n- entity entity:<1> [CONCEPT]: Cherry tomatoes; Concept named Cherry tomatoes.\n- entity entity:<2> [CONCEPT]: Mint; Concept named Mint.\n- entity entity:<3> [LOCATION]: User's garden; Location named User's garden.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "06f04340",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What should I serve for dinner this weekend with my homegrown ingredients?\n\n                                Question date:\n                                2023/05/24 (Wed) 10:29\n\n                                Expected answer:\n                                The user would prefer dinner suggestions that incorporate their homegrown cherry tomatoes and herbs like basil and mint, highlighting recipes that showcase their garden produce. They might not prefer suggestions that do not utilize these specific ingredients or do not emphasize the use of homegrown elements.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:06f04340\n            Context mode: MIXED\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-a618775a7cdc-claim-8 [ACTIVE] has_experience_with family=has_experience_with: The user has harvested cherry tomatoes from their garden.; scope=User gardening experience; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've even harvested some cherry tomatoes from my garden.\"\n- claim hot-path-a618775a7cdc-claim-4 [ACTIVE] has_goal family=has_goal: The user wants new recipe ideas that use fresh basil and mint.; scope=User cooking interests across conversations; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I'm trying to find some new recipe ideas that use fresh basil and mint.\"\n- claim hot-path-a618775a7cdc-claim-7 [ACTIVE] grows family=grows: The user's garden grows cherry tomatoes.; scope=User's garden; evidence=INFERRED source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've even harvested some cherry tomatoes from my garden.\"\n- claim hot-path-a618775a7cdc-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has been using basil in their cooking.; scope=User cooking and herb-use context; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've been using basil and mint in my cooking lately.\"\n- claim hot-path-a618775a7cdc-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has been using mint in their cooking.; scope=User cooking and herb-use context; evidence=DIRECT source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've been using basil and mint in my cooking lately.\"\n\n            Retrieved notes:\n            - note hot-path-a618775a7cdc-note-2 [CONTEXT/ACTIVE]: Cherry tomato companion planting context; In the May 2023 garden discussion, the user had fresh basil and mint in their cooking routine and had harvested cherry tomatoes from their garden. Companion-plant advice for their cherry tomatoes focused on pollinator support and pest pressure reduction using plants such as borage, chives, marigold, oregano, parsley, radish, nasturtium, and dill, with perimeter/trap-crop placement and attention to spacing and moisture.; scope=Applies to future gardening advice about the user's garden and cherry tomato companion planting.; evidence=SUMMARIZED source=external:provided-text:b82fda02af7048264aa2f8be780060ef quote=\"I've been using basil and mint in my cooking lately. I've even harvested some cherry tomatoes from my garden.\"\n\n            Retrieved evidence:\n            - source external:provided-text:b82fda02af7048264aa2f8be780060ef [external_record ref=longmemeval:06f04340:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm trying to find some new recipe ideas that use fresh basil and mint. Can you suggest any?\nassistant: What a refreshing combination! Fresh basil and mint can add a bright, herbaceous flavor to many dishes. Here are some recipe ideas that feature these two herbs as main attractions:...\n...1. **Mint Chutney**: Similar to the basil chutney, but with a cooling twist. Use it as a dip for snacks or as a sauce for grilled meats or vegetables....\n...These are just a few ideas to get you started. Feel free to experiment and combine basil and mint in your own unique ways!\nuser: What are some good companion plants for tomatoes?\nassistant: Tomatoes are one of the most popular garden fruits (yes, they're a fruit!), and they benefit from being paired with certain companion plants that can enhance their growth, flavor, and overall health. Here are some good companion plants for tomatoes:\n\n1. **Basil**: Planting basil near tomatoes is a classic combination. Basil repels pests that target tomatoes, such as whiteflies and aphids, and adds flavor to many tomato-based dishes....\n...7. **Carrots**: Planting carrots near tomatoes can help to break up compacted soil and improve its structure, which benefits tomato roots....\n...Some plants to avoid planting near tomatoes include:...\n...Remember to plant companion plants according to their growing requirements and space needs. Happy gardening!\nuser: I've been using basil and mint in my cooking lately. I've even harvested some cherry tomatoes from my garden. Do you have any suggestions for companion plants that could help my cherry tomatoes grow better?...\n...When planting companion plants with cherry tomatoes, keep the following tips in mind:\n\n* Plant companion plants around the perimeter of your cherry tomato bed to create a \"trap crop\" effect, where pests are attracted to the companion plants instead of the cherry tomatoes.\n* Plant companion plants at the same time as your cherry tomatoes, or slightly before, to give them a head start.\n* Make sure to plant companion plants according to their growing requirements and space needs....\n...By incorporating these companion plants into your garden, you can create a thriving ecosystem that benefits your cherry tomatoes and adds flavor and beauty to your cooking!...\n...3. **Use neem oil on young plants**: Neem oil is especially effective on young plants, as it can help prevent aphid infestations from taking hold....\n...3. **Provide food and shelter**: Ladybugs need food and shelter to thrive. Provide them with pollen-rich flowers, aphid-infested plants, and sheltered areas like under leaves or on stems....\n...3. **Provide food and shelter**: Lacewings need food and shelter to thrive. Provide them with pollen-rich flowers, aphid-infested plants, and sheltered areas like under leaves or on stems....\n...2. **Release them at the right time**: Release natural predators when aphid populations are present, but not too severe. This ensures the predators have a steady food supply.\n3. **Provide a welcoming environment**: Ensure your garden has a diverse range of plants, including flowers that provide pollen and nectar for the predators....\n...2. **Release them at the right time**: Release beneficial insects when aphid populations are present, but not too severe. This ensures the beneficial insects have a steady food supply.\n3. **Provide a welcoming environment**: Ensure your garden has a diverse range of plants, including flowers that provide pollen and nectar for the beneficial insects....\n...I think introducing beneficial insects like ladybugs or lacewings is a great idea! It's a natural, non-toxic, and environmentally friendly way to control aphid populations in your garden. Just remember to choose the right species, release them at the right time, provide a welcoming environment, and monitor and maintain your garden regularly. Good luck!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Basil; Concept named Basil.\n- entity entity:<1> [CONCEPT]: Cherry tomatoes; Concept named Cherry tomatoes.\n- entity entity:<2> [CONCEPT]: Mint; Concept named Mint.\n- entity entity:<3> [LOCATION]: User's garden; Location named User's garden.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "06f04340",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest weekend dinner recipes that showcase the user's homegrown cherry tomatoes along with fresh basil and mint, since they have harvested cherry tomatoes and want recipe ideas using basil and mint.\",\"reason\":\"The retrieved claims directly state the user grows/harvested cherry tomatoes and wants new recipe ideas using fresh basil and mint.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2318,
+                "completionTokens": 136,
+                "thinkingTokens": 50,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

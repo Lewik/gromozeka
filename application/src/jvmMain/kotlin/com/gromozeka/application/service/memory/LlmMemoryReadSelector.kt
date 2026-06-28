@@ -45,7 +45,7 @@ class LlmMemoryReadSelector(
                 batchLabel = null,
                 passMode = ReadSelectorPassMode.FINAL_SELECTION,
             )
-            val finalSafetyAddedHits = request.finalSelectionSafetyAddedHits(result.selectedHits)
+            val finalSafetyAddedHits = request.finalSelectionSafetyAddedHits(result.selectedHits, result.decisions)
             val finalSelectedHits = (result.selectedHits + finalSafetyAddedHits)
                 .distinctBy { it.toReadSelectorItemRef() }
             return result.copy(
@@ -159,7 +159,7 @@ class LlmMemoryReadSelector(
             passMode = ReadSelectorPassMode.FINAL_SELECTION,
         )
         val finalRequest = request.copy(candidateHits = survivors)
-        val finalSafetyAddedHits = finalRequest.finalSelectionSafetyAddedHits(finalResult.selectedHits)
+        val finalSafetyAddedHits = finalRequest.finalSelectionSafetyAddedHits(finalResult.selectedHits, finalResult.decisions)
         val finalSelectedHits = (finalResult.selectedHits + finalSafetyAddedHits)
             .distinctBy { it.toReadSelectorItemRef() }
         traceStages += readSelectorTraceStage(
@@ -210,7 +210,7 @@ class LlmMemoryReadSelector(
 
         log.info {
             "Memory read selector LLM call: namespace=${request.readRequest.namespace.value} " +
-                "candidates=${request.candidateHits.size} answerMode=${request.plan.answerMode.name} " +
+                "candidates=${request.candidateHits.size} contextMode=${request.plan.contextMode.name} " +
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}$logSuffix"
         }
         log.info {
@@ -301,30 +301,7 @@ class LlmMemoryReadSelector(
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
         - For advice, improvement, troubleshooting, or "how should I do better" questions, select concrete user-specific successes, failures, constraints, goals, preferences, and prior attempts. Do not drop a specific successful/failed example merely because a broader experience claim was selected.
         - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.
-        - For count, list, "how many", and COMPLETE_SET questions, do not require exact target wording. Select plausible action, lifecycle, ownership, ordering, delivery, repair, completion, attendance, and status variants when they may contribute a separate answer item.
-        - For aggregate total/count questions, when compatible metric_observation, current_metric_value, or other explicit numeric aggregate candidates are available, treat those numeric operands as the counted inventory. Reject separate singular POSSESSION or owns candidates unless the candidate explicitly says the singular item belongs to the same counted aggregate and is not already covered by a numeric operand.
-        - For increase, decrease, change, delta, difference, gain, loss, or net-movement questions, keep compatible baseline/previous and later/current/final numeric operands for the same metric or aggregate. A baseline operand is relevant even when it is not the final value; rejecting it can make the arithmetic impossible.
-        - For historical aggregate totals across metric_observation candidates, keep every distinct observed operand. Do not collapse two metric_observation candidates merely because they share the same named subject; different attempt, event, condition, session, source, date, difficulty, route, measurement context, or wording can be separate operands. Reject one as duplicate only when it is the same measurement slot or the memory explicitly says it corrects, replaces, retracts, or repeats the other.
-        - Apply latest/current-value replacement logic to current_metric_value candidates, not to independent metric_observation candidates. A newer metric_observation does not make an older metric_observation stale by itself.
-        - For imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, keep otherwise matching explicit numeric operands instead of rejecting them solely as future or outside-window.
-        - For project leadership, ownership, or responsibility count/list questions, select explicit responsible_for, lead/led/managed/owned, team-leadership, solo-project, or user-owned-project candidates. Treat plain works_on_project, generic project association, research topic, paper, poster, broad interest, "my research", or "working on research" candidates as supporting or exclusion context unless they explicitly say the user owns, leads, is responsible for, or is the sole actor on that project.
-        - For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, keep evidence-backed variants that may satisfy the requested category even when the source uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not keep merely adjacent examples.
-        - For count/list questions scoped before, prior to, until, or at a commitment/decision about a named target, keep the named target as boundary context but do not treat it as a prior alternative/item unless the question explicitly asks to include the target itself. This remains true even when the named target has its own matching action before the boundary event.
-        - For replaced/fixed/upgraded functional-slot counts, keep paired evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.
-        - For indirect replacement/upgrade evidence, keep both sides of the functional slot when memory connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word "replace".
-        - Treat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of "newer or more capable item introduced for a routine" plus "older same-domain item removed from inventory" is relevant replacement/upgrade evidence unless memory explicitly says the items are unrelated.
-        - For room or area item count/list questions, keep fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects when retrieved memory explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the question says so.
-        - For acquisition-style count/list questions, keep concrete physical or digital items when memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; reject mere mentions, interests, recommendations, or assistant-only suggestions.
-        - For acquisition-style count/list questions, POSSESSION semantic claims are strong typed evidence when the possessed item fits the requested category.
-        - For acquisition-style count/list questions, selected ACTIVE "owns" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.
-        - Explicitly ordered, reserved, or preordered concrete items are acquisition evidence when the requested category fits; pending delivery, receipt, or pickup only excludes the item when the target specifically asks for completed receipt, delivery, pickup, or current possession after a contradictory later status.
-        - First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Keep it unless the question specifically asks for purchase/download transaction details such as price, store, payment, download source, or exact date.
-        - Treat "how many X did I buy/download/acquire/get" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.
-        - For furniture or furnishing count/list questions, treat large movable household furnishings used for sleeping, seating, storage, surfaces, or workspace functions as category-fitting even when memory names only the concrete subtype. Do not count small decor, textiles, accessories, or decorative covers unless the question asks for them.
-        - For broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.
-        - For broad counts of music works or releases, a user-owned or downloaded vinyl record, CD, cassette, digital copy, or music download can count as an album/EP/release item unless retrieved memory explicitly identifies it as only a single track, playlist, non-audio merchandise, or the question asks for a narrower format or subtype.
-        - For broad health-related device count/list questions, keep user-attributed monitoring, treatment, assistive, accessibility, therapeutic, and health-support devices when memory indicates ownership, wearing, reliance, regular use, usage frequency, or usage duration. Do not narrow "health-related" to only tracking or treatment devices unless the question asks for that narrower subtype.
-        - In count/list questions, broad category labels are category-fit tests, not exact-word qualifiers. Do not reject a plausible counted item solely because memory names a member, carrier, copy, or concrete instance instead of repeating the category label.
+        ${MemoryReadPromptPolicy.selectorCountAndCategoryRules()}
         - For specifically qualified questions, keep sources or candidates needed to satisfy every explicit qualifier in the question. Do not select only a simpler direct claim when it conflicts with a required qualifier such as ingredient, place, date, participant, role, job title, position, source, color, amount, or relation.
         - A shared anchor can connect candidates only when it explicitly identifies the same fully-qualified target. Do not treat related work, roles, job titles, positions, artifacts, projects, events, routes, or relationships as interchangeable merely because they share a topic, venue, person, or generic label. A different job role, role title, or position title is a different qualified target unless retrieved memory explicitly says the titles refer to the same role.
         - Keep anchor-level metadata candidates when they can supply a missing requested detail for an already matched target: for example a venue, publisher, conference, program, service, route, or event date, deadline, schedule, price, policy, or threshold. This is allowed only when another candidate explicitly links the asked target to the same named anchor and the metadata is not tied to a different named target. Reject the bridge when retrieved memory has competing anchors or competing values for the same target.
@@ -333,6 +310,7 @@ class LlmMemoryReadSelector(
         - For relative-duration questions that name an anchor event, such as "how many days/weeks/months ago did X when/at the time Y", keep the dated candidate for X and the dated anchor event Y. Do not default to the current/question date when the wording asks for the interval as of another remembered event.
         - For questions asking how long the user had been doing an activity when an anchor event happened, keep explicit start/begin/first-participation evidence for that activity even when an as-of duration or tenure candidate also exists. Do not reject the start event as less direct; it can be the required duration-to-anchor operand.
         - When one candidate gives a relative time anchored to another event, select the anchor event timing candidate too. A lead time or offset alone is not sufficient for "when" or "how long ago" questions.
+        - When a candidate says something was booked, reserved, prepared, started, finished, or decided N days/weeks/months in advance, before, or after another remembered event, that candidate supplies an offset, not elapsed time from the current/question date. For "how long ago" or "when" answers, keep the remembered event timing and source/question-date anchor needed to convert that offset.
         - For relative-time arithmetic, a selected set is insufficient unless it includes every explicit anchor needed to compute the answer. Rejecting an event-date or question-date anchor as "not needed" is incorrect when another selected candidate only gives a lead time, offset, or duration.
         - For derived duration answers, keep every operand needed for the calculation even when an operand is not itself the final answer. Examples: current role tenure may require both total company tenure and time before promotion to the current role; membership duration may require both join date and target date; recurring activity totals may require each contributing count.
         - For formal education timeline or duration questions from one education stage to completion of another, keep intermediate formal education credentials, institutions, enrollment, transfer, and completion milestones. Endpoints or direct degree-duration claims alone may undercount the elapsed formal education path.
@@ -349,7 +327,7 @@ class LlmMemoryReadSelector(
         - For named-date or relative-window questions with broad or noisy action wording, target-period relevance can beat literal verb matching. Keep target-period lifecycle variants such as plans, checklists, appointments, requests, estimates, recommendations, setup discussions, or other object-matching lifecycle evidence before outside-period completed actions only when the requested action/status is not itself a required qualifier. Preserve lifecycle state instead of treating plans, bookings, or recommendations as completed user-experienced events.
         - For place-visit questions, treat user-attended venue events such as lectures, guided tours, exhibits, appointments, or behind-the-scenes tours at that venue as visit evidence when the venue and target time match. Prefer the venue/time match over a more literal "visited" or "guided tour" event from a different time period.
         - Do not infer that an unrelated explicit date satisfies a named date such as Valentine's Day, birthday, holiday, or anniversary. If date evidence conflicts, select enough candidates to expose the conflict.
-        - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.
+        - When Planned context mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.
         - When candidates disagree about a current/usual value, schedule, time, preference, or constraint, select enough candidates to expose the conflict and prefer the newer relevant active typed memory or its supporting source evidence.
         - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.
         - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.
@@ -360,7 +338,7 @@ class LlmMemoryReadSelector(
         - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.
         - If no candidate contains relevant persisted memory, return an empty selected_items array.
 
-        Planned answer mode: ${request.plan.answerMode.name}
+        Planned context mode: ${request.plan.contextMode.name}
         Planned coverage mode: ${request.plan.coverageMode.name}
         Require evidence fallback: ${request.plan.requireEvidenceFallback}
         Retrieval budget: ${request.plan.retrievalBudget.renderForReadSelector()}
@@ -581,10 +559,10 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
         emptyList()
     }
     val evidenceSupportedTypedLeaders = evidenceSupportedTypedSafetySurvivors(plan)
-    val modeLeaders = when (plan.answerMode) {
-        MemoryReadPlan.AnswerMode.RATIONALE -> filterIsInstance<MemoryStore.SearchHit.NoteHit>() +
+    val modeLeaders = when (plan.contextMode) {
+        MemoryReadPlan.ContextMode.RATIONALE -> filterIsInstance<MemoryStore.SearchHit.NoteHit>() +
             filterIsInstance<MemoryStore.SearchHit.EpisodeHit>()
-        MemoryReadPlan.AnswerMode.ACTION_ITEM -> filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
+        MemoryReadPlan.ContextMode.ACTION_ITEM -> filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
         else -> emptyList()
     }
         .sortedByReadSelectorStrength(plan)
@@ -605,13 +583,18 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
 
 private fun MemoryReadSelectionRequest.finalSelectionSafetyAddedHits(
     selectedHits: List<MemoryStore.SearchHit>,
+    decisions: List<MemoryReadSelectionResult.Decision>,
 ): List<MemoryStore.SearchHit> {
     if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) return emptyList()
 
     val selectedRefs = selectedHits.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+    val rejectedRefs = decisions
+        .filterNot { it.selected }
+        .mapTo(mutableSetOf()) { it.ref }
     return candidateHits
         .readSelectorSafetySurvivors(plan)
         .filterNot { it.toReadSelectorItemRef() in selectedRefs }
+        .filterNot { it.toReadSelectorItemRef() in rejectedRefs }
 }
 
 private fun String.withFinalSafetySummary(safetyAddedHits: List<MemoryStore.SearchHit>): String =
@@ -727,6 +710,7 @@ private fun List<MemoryStore.SearchHit>.sortedByReadSelectorStrength(
             .thenByDescending { it.score }
             .thenByDescending { it.readSelectorImportance() }
             .thenBy { it.toReadSelectorItemRef().type.name }
+            .thenBy { it.contentStableSortKey() }
             .thenBy { it.toReadSelectorItemRef().id }
     )
 

@@ -65,7 +65,7 @@ The intended write flow is:
 The intended read flow is:
 
 1. decide whether memory is needed at all
-2. choose answer mode: `factual`, `rationale`, `task`, or `mixed`
+2. choose context mode: `factual`, `rationale`, `task`, or `mixed`
 3. retrieve bounded memory slices by type
 4. fall back to evidence when uncertainty or conflict matters
 5. compose the answer without flattening note-like memory into false certainty

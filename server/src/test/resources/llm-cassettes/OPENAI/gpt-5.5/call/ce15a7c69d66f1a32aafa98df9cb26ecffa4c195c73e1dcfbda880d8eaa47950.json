@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "ce15a7c69d66f1a32aafa98df9cb26ecffa4c195c73e1dcfbda880d8eaa47950",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I attend the Maundy Thursday service at the Episcopal Church?\n\n                                Question date:\n                                2023/04/10 (Mon) 07:43\n\n                                Noisy expected-answer label:\n                                4 days.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_b5700ca9\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-556a879d1ba7-claim-10 [ACTIVE] attended_event family=attended_event: The user attended the Maundy Thursday service at the Episcopal Church on 2023-04-06.; scope=User religious/community event attendance; context=\"During the volunteer-opportunity chat, the user mentioned attending the Maundy Thursday service at the Episcopal Church that same day.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I got to attend the Maundy Thursday service at the Episcopal Church today\"\n- claim hot-path-556a879d1ba7-claim-12 [ACTIVE] has_goal family=has_goal: The user wants opportunities for their church group to adopt a specific project or program at the food bank.; scope=User church group food bank volunteering goals; context=\"The user specifically asked about project or program adoption options for their church group at the food bank.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"are there any opportunities for my church group to adopt a specific project or program at the food bank\"\n- claim hot-path-556a879d1ba7-claim-11 [ACTIVE] has_goal family=has_goal: The user wants to invite friends to join them in volunteering at the food bank.; scope=User food bank volunteering goals; context=\"The user asked about group volunteer opportunities with their church or community at the food bank.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I'd love to invite some friends to join me in volunteering at the food bank.\"\n- claim hot-path-556a879d1ba7-claim-7 [ACTIVE] has_constraint family=has_constraint: The user is available for volunteering on weekdays, preferably in the evenings.; scope=User volunteer scheduling constraints; context=\"The user described availability while asking for local volunteer opportunities.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I'm available on weekdays, preferably in the evenings\"\n- claim hot-path-556a879d1ba7-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to find more ways to give back to the community through local volunteer opportunities.; scope=User volunteer interests and goals; context=\"The user opened the chat by asking for information on local volunteer opportunities after helping at an Easter Egg Hunt event.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I'm interested in finding more ways to give back to the community\"\n- claim hot-path-556a879d1ba7-claim-13 [ACTIVE] has_goal family=has_goal: The user's church group wants to make a more significant impact and contribute to the food bank's mission.; scope=User church group food bank volunteering goals; context=\"The user described the church group's motivation for adopting a food bank project or program.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"We're looking for ways to make a more significant impact and contribute to the food bank's mission.\"\n- claim hot-path-556a879d1ba7-claim-8 [ACTIVE] has_constraint family=has_constraint: The user is open to committing to a regular volunteer schedule.; scope=User volunteer commitment constraints; context=\"The user described commitment flexibility while asking for local volunteer opportunities.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I don't mind committing to a regular schedule\"\n- claim hot-path-556a879d1ba7-claim-4 [ACTIVE] attended_event family=attended_event: The user helped out at an Easter Egg Hunt event in the week before 2023-04-06.; scope=User volunteering history; context=\"In a past chat about finding local volunteer opportunities, the user said they had just helped out at an Easter Egg Hunt event last week.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I just helped out at an Easter Egg Hunt event last week\"\n\n            Retrieved notes:\n            - note hot-path-556a879d1ba7-note-3 [PLAN/ACTIVE]: Church group project-adoption options at the food bank; The user's church group wants a higher-impact way to support the food bank and can consider adopting specific projects or programs such as a Food Drive, Special Event Support, Garden Project, Backpack Program, Food Sortation, or a Fundraising Campaign. The reusable approach is to match a project to the group's interests and skills, contact the food bank coordinator or program manager, then develop and execute a plan with goals and a timeline.; scope=Applies to selecting and organizing a specific food bank project or program for the user's church group to adopt.; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"We're looking for ways to make a more significant impact and contribute to the food bank's mission.\"\n- note hot-path-556a879d1ba7-note-2 [PLAN/ACTIVE]: Food bank group volunteering path for user's church group; The user's church or community group can pursue group volunteering at the local food bank through its Group Volunteer Program for groups of 5–20 people, with flexible scheduling and shared tasks such as sorting/packing donations, food distribution, and special events. The suggested organizing workflow is to gather interest, choose a date, contact the volunteer coordinator, promote the event, and arrive prepared to volunteer together.; scope=Applies to planning group volunteer activities for the user's church/community group at the local food bank.; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"The food bank has a Group Volunteer Program that allows groups of 5-20 people to volunteer together.\"\n\n            Retrieved evidence:\n            - source external:provided-text:b922ee47bf2eca6834baf9d39468f008 [external_record ref=longmemeval:gpt4_b5700ca9:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/06 (Thu) 19:35...\n...4. Do you have any availability constraints (e.g., weekdays, weekends, mornings, afternoons)?...\n...user: I'm open to various causes, but I think I'd prefer something related to community service or helping the underprivileged. I'm available on weekdays, preferably in the evenings, and I don't mind committing to a regular schedule.\nassistant: Wonderful! There are many organizations that focus on community service and helping the underprivileged that could use your time and energy. Here are a few local opportunities that might interest you:\n\n1. **Food Bank Volunteer**: The local food bank is always looking for volunteers to help sort and package food donations, as well as assist with distributions. They have evening shifts available on weekdays. This is a great way to help those in need and make a tangible impact in your community.\n2. **Soup Kitchen Assistant**: The community soup kitchen provides meals to those who are struggling financially. They need volunteers to help prepare and serve meals, as well as clean up afterwards. They have evening shifts available on weekdays.\n3. **Homeless Shelter Support**: The local homeless shelter provides temporary housing and support services to individuals in need. They need volunteers to help with evening activities, such as serving dinner, leading workshops, or simply providing companionship....\n...These are just a few examples, but there are many more organizations and opportunities available. I can provide you with more information and contact details if any of these interest you....\n...The food bank is open Monday to Friday, and they have various shifts available in the evenings ( typically 4:00 pm - 7:00 pm). You can choose a regular schedule that fits your availability, such as:\n\n* One evening per week (e.g., every Monday from 4:00 pm - 7:00 pm)\n* Two evenings per week (e.g., every Tuesday and Thursday from 4:00 pm - 7:00 pm)\n* Flexible schedule (e.g., you can volunteer on an as-needed basis, with a minimum of 2 hours per month)...\n...user: Yes, I'd like to take the next step. Please provide me with the contact information and application form. I'm looking forward to volunteering at the food bank and making a difference in my community. By the way, I'm glad I got to attend the Maundy Thursday service at the Episcopal Church today, it was a beautiful and moving experience....\n...* If you have any questions or concerns, don't hesitate to reach out to the food bank's volunteer coordinator....\n...And I'm glad to hear that the Maundy Thursday service at the Episcopal Church was a beautiful and moving experience for you. It's wonderful that you're finding ways to connect with your community and nurture your spirit....\n...assistant: What a wonderful idea! Volunteering with a group from your church or community is a great way to bond, serve together, and make a greater impact. Many organizations, including the food bank, welcome group volunteers and often have special programs or events for groups.\n\n**Group Volunteering at the Food Bank:**\n\nThe food bank has a Group Volunteer Program that allows groups of 5-20 people to volunteer together. They offer flexible scheduling, including weekdays, evenings, and weekends, to accommodate your group's needs....\n...2. Choose a date: Select a date and time that works for your group, and ensure it aligns with the food bank's availability....\n...6. **Fundraising Campaign:** Create a fundraising campaign to support the food bank's programs and services. Your group can organize bake sales, charity runs, or online fundraising events to raise money and awareness....\n...* Increased visibility and recognition for your church group's community service efforts...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Backpack Program; Concept named Backpack Program.\n- entity entity:<1> [CONCEPT]: Food drive; Concept named Food drive.\n- entity entity:<2> [CONCEPT]: Garden Project; Concept named Garden Project.\n- entity entity:<3> [ORGANIZATION]: Local food bank; Organization named Local food bank.\n- entity entity:<4> [ORGANIZATION]: User's church group; Organization named User's church group.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_b5700ca9",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I attend the Maundy Thursday service at the Episcopal Church?\n\n                                Question date:\n                                2023/04/10 (Mon) 07:43\n\n                                Noisy expected-answer label:\n                                4 days.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_b5700ca9\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-556a879d1ba7-claim-10 [ACTIVE] attended_event family=attended_event: The user attended the Maundy Thursday service at the Episcopal Church on 2023-04-06.; scope=User religious/community event attendance; context=\"During the volunteer-opportunity chat, the user mentioned attending the Maundy Thursday service at the Episcopal Church that same day.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I got to attend the Maundy Thursday service at the Episcopal Church today\"\n- claim hot-path-556a879d1ba7-claim-12 [ACTIVE] has_goal family=has_goal: The user wants opportunities for their church group to adopt a specific project or program at the food bank.; scope=User church group food bank volunteering goals; context=\"The user specifically asked about project or program adoption options for their church group at the food bank.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"are there any opportunities for my church group to adopt a specific project or program at the food bank\"\n- claim hot-path-556a879d1ba7-claim-11 [ACTIVE] has_goal family=has_goal: The user wants to invite friends to join them in volunteering at the food bank.; scope=User food bank volunteering goals; context=\"The user asked about group volunteer opportunities with their church or community at the food bank.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I'd love to invite some friends to join me in volunteering at the food bank.\"\n- claim hot-path-556a879d1ba7-claim-7 [ACTIVE] has_constraint family=has_constraint: The user is available for volunteering on weekdays, preferably in the evenings.; scope=User volunteer scheduling constraints; context=\"The user described availability while asking for local volunteer opportunities.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I'm available on weekdays, preferably in the evenings\"\n- claim hot-path-556a879d1ba7-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to find more ways to give back to the community through local volunteer opportunities.; scope=User volunteer interests and goals; context=\"The user opened the chat by asking for information on local volunteer opportunities after helping at an Easter Egg Hunt event.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I'm interested in finding more ways to give back to the community\"\n- claim hot-path-556a879d1ba7-claim-13 [ACTIVE] has_goal family=has_goal: The user's church group wants to make a more significant impact and contribute to the food bank's mission.; scope=User church group food bank volunteering goals; context=\"The user described the church group's motivation for adopting a food bank project or program.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"We're looking for ways to make a more significant impact and contribute to the food bank's mission.\"\n- claim hot-path-556a879d1ba7-claim-8 [ACTIVE] has_constraint family=has_constraint: The user is open to committing to a regular volunteer schedule.; scope=User volunteer commitment constraints; context=\"The user described commitment flexibility while asking for local volunteer opportunities.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I don't mind committing to a regular schedule\"\n- claim hot-path-556a879d1ba7-claim-4 [ACTIVE] attended_event family=attended_event: The user helped out at an Easter Egg Hunt event in the week before 2023-04-06.; scope=User volunteering history; context=\"In a past chat about finding local volunteer opportunities, the user said they had just helped out at an Easter Egg Hunt event last week.\"; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"I just helped out at an Easter Egg Hunt event last week\"\n\n            Retrieved notes:\n            - note hot-path-556a879d1ba7-note-3 [PLAN/ACTIVE]: Church group project-adoption options at the food bank; The user's church group wants a higher-impact way to support the food bank and can consider adopting specific projects or programs such as a Food Drive, Special Event Support, Garden Project, Backpack Program, Food Sortation, or a Fundraising Campaign. The reusable approach is to match a project to the group's interests and skills, contact the food bank coordinator or program manager, then develop and execute a plan with goals and a timeline.; scope=Applies to selecting and organizing a specific food bank project or program for the user's church group to adopt.; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"We're looking for ways to make a more significant impact and contribute to the food bank's mission.\"\n- note hot-path-556a879d1ba7-note-2 [PLAN/ACTIVE]: Food bank group volunteering path for user's church group; The user's church or community group can pursue group volunteering at the local food bank through its Group Volunteer Program for groups of 5–20 people, with flexible scheduling and shared tasks such as sorting/packing donations, food distribution, and special events. The suggested organizing workflow is to gather interest, choose a date, contact the volunteer coordinator, promote the event, and arrive prepared to volunteer together.; scope=Applies to planning group volunteer activities for the user's church/community group at the local food bank.; evidence=DIRECT source=external:provided-text:b922ee47bf2eca6834baf9d39468f008 quote=\"The food bank has a Group Volunteer Program that allows groups of 5-20 people to volunteer together.\"\n\n            Retrieved evidence:\n            - source external:provided-text:b922ee47bf2eca6834baf9d39468f008 [external_record ref=longmemeval:gpt4_b5700ca9:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/06 (Thu) 19:35...\n...4. Do you have any availability constraints (e.g., weekdays, weekends, mornings, afternoons)?...\n...user: I'm open to various causes, but I think I'd prefer something related to community service or helping the underprivileged. I'm available on weekdays, preferably in the evenings, and I don't mind committing to a regular schedule.\nassistant: Wonderful! There are many organizations that focus on community service and helping the underprivileged that could use your time and energy. Here are a few local opportunities that might interest you:\n\n1. **Food Bank Volunteer**: The local food bank is always looking for volunteers to help sort and package food donations, as well as assist with distributions. They have evening shifts available on weekdays. This is a great way to help those in need and make a tangible impact in your community.\n2. **Soup Kitchen Assistant**: The community soup kitchen provides meals to those who are struggling financially. They need volunteers to help prepare and serve meals, as well as clean up afterwards. They have evening shifts available on weekdays.\n3. **Homeless Shelter Support**: The local homeless shelter provides temporary housing and support services to individuals in need. They need volunteers to help with evening activities, such as serving dinner, leading workshops, or simply providing companionship....\n...These are just a few examples, but there are many more organizations and opportunities available. I can provide you with more information and contact details if any of these interest you....\n...The food bank is open Monday to Friday, and they have various shifts available in the evenings ( typically 4:00 pm - 7:00 pm). You can choose a regular schedule that fits your availability, such as:\n\n* One evening per week (e.g., every Monday from 4:00 pm - 7:00 pm)\n* Two evenings per week (e.g., every Tuesday and Thursday from 4:00 pm - 7:00 pm)\n* Flexible schedule (e.g., you can volunteer on an as-needed basis, with a minimum of 2 hours per month)...\n...user: Yes, I'd like to take the next step. Please provide me with the contact information and application form. I'm looking forward to volunteering at the food bank and making a difference in my community. By the way, I'm glad I got to attend the Maundy Thursday service at the Episcopal Church today, it was a beautiful and moving experience....\n...* If you have any questions or concerns, don't hesitate to reach out to the food bank's volunteer coordinator....\n...And I'm glad to hear that the Maundy Thursday service at the Episcopal Church was a beautiful and moving experience for you. It's wonderful that you're finding ways to connect with your community and nurture your spirit....\n...assistant: What a wonderful idea! Volunteering with a group from your church or community is a great way to bond, serve together, and make a greater impact. Many organizations, including the food bank, welcome group volunteers and often have special programs or events for groups.\n\n**Group Volunteering at the Food Bank:**\n\nThe food bank has a Group Volunteer Program that allows groups of 5-20 people to volunteer together. They offer flexible scheduling, including weekdays, evenings, and weekends, to accommodate your group's needs....\n...2. Choose a date: Select a date and time that works for your group, and ensure it aligns with the food bank's availability....\n...6. **Fundraising Campaign:** Create a fundraising campaign to support the food bank's programs and services. Your group can organize bake sales, charity runs, or online fundraising events to raise money and awareness....\n...* Increased visibility and recognition for your church group's community service efforts...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Backpack Program; Concept named Backpack Program.\n- entity entity:<1> [CONCEPT]: Food drive; Concept named Food drive.\n- entity entity:<2> [CONCEPT]: Garden Project; Concept named Garden Project.\n- entity entity:<3> [ORGANIZATION]: Local food bank; Organization named Local food bank.\n- entity entity:<4> [ORGANIZATION]: User's church group; Organization named User's church group.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_b5700ca9",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"4 days ago.\",\"reason\":\"The memory states the user attended the Maundy Thursday service on 2023-04-06, which is four days before the question date 2023-04-10.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3102,
+                "completionTokens": 111,
+                "thinkingTokens": 43,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

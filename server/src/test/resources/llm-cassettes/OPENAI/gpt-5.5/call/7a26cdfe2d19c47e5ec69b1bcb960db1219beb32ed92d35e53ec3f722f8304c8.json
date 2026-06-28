@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "7a26cdfe2d19c47e5ec69b1bcb960db1219beb32ed92d35e53ec3f722f8304c8",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm looking back at our previous conversation where you created two sad songs for me. Can you remind me what was the chord progression for the chorus in the second song?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:17\n\n                                Noisy expected-answer label:\n                                C D E F G A B A G F E D C\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:eaca4986\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-b8b7b4daa3d3-claim-7 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The original sad song with notes includes a chorus saying: \"Why did you have to go? / Leaving me with this sorrow / I'll always be missing you / My heart will never be new.\"; scope=Details of the imported generated artifact named \"Sad song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the user requested a sad song with notes and the assistant generated the original song before the romantic revision.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"Why did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\"\n- claim hot-path-b8b7b4daa3d3-claim-4 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The revised romantic heart-felt song includes a chorus saying: \"You're the one I want, the one I need / In your eyes, I see my destiny / With you by my side, I can face anything / Forever and always, my heart will sing.\"; scope=Details of the imported generated artifact named \"Romantic heart-felt song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the user asked to make a sad song \"more romantic and heart-felting\" and the assistant produced the revised song.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"You're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\"\n- claim hot-path-b8b7b4daa3d3-claim-6 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The revised romantic heart-felt song outro ends with: \"Forever and always, my heart is yours / My love for you, forever endures.\"; scope=Details of the imported generated artifact named \"Romantic heart-felt song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the assistant generated a more romantic and heart-felt song with notes after the user's revision request.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"Forever and always, my heart is yours\nG A B C D E D C B A G\nMy love for you, forever endures.\"\n- claim hot-path-b8b7b4daa3d3-claim-5 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The revised romantic heart-felt song uses the Verse 1 melody line \"G A B C D E D C B A G\" for the opening lyric \"When I first saw you, my heart skipped a beat.\"; scope=Details of the imported generated artifact named \"Romantic heart-felt song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the assistant generated a more romantic and heart-felt song with notes after the user's revision request.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"G A B C D E D C B A G\nWhen I first saw you, my heart skipped a beat\"\n\n            Retrieved notes:\n            - note hot-path-b8b7b4daa3d3-note-3 [CONTEXT/ACTIVE]: Sad Song With Notes Artifact; In LongMemEval eaca4986 session 1, a sad song with simple letter-note melodies was generated. Its lyrics focus on rain, loneliness, loss, sorrow, painful memories, and repeated lines such as “Why did you have to go?” and “My heart will never be new.”; scope=Sad song with notes artifact from LongMemEval eaca4986 session 1; evidence=DIRECT source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"Create a sad song with notes\"\n- note hot-path-b8b7b4daa3d3-note-2 [CONTEXT/ACTIVE]: Romantic Heart-Felt Song Revision With Notes; In LongMemEval eaca4986 session 1, the initial sad song-with-notes request was revised toward a more romantic and heartfelt tone. The resulting song uses note sequences with romantic lyrics centered on devotion, destiny, enduring love, and the refrain “Forever and always, my heart will sing.”; scope=Romantic heart-felt song with notes artifact from LongMemEval eaca4986 session 1; evidence=DIRECT source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"be more romantic and heart-felting\"\n\n            Retrieved evidence:\n            - source external:provided-text:708767162f463e8b97b3941617c4ba4d [external_record ref=longmemeval:eaca4986:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 18:08\nTranscript:\nuser: Create a sad song with notes\nassistant: Here's a sad song with notes for you:\n\nVerse 1:\nC D E E E D C C\nThe rain falls down on me\nC D E E E D C C\nAs I stand alone, can't you see?\nC D E F E D C C\nThe tears mix with the rain\nC D E F E D C C\nAnd I feel this pain, again and again\n\nChorus:\nG G G G A G F\nWhy did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\n\nVerse 2:\nC D E E E D C C\nThe memories flood my mind\nC D E E E D C C\nOf the laughter we left behind\nC D E F E D C C\nBut now it's just emptiness\nC D E F E D C C\nI can't find my way, in this darkness\n\nChorus:\nG G G G A G F\nWhy did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\n\nBridge:\nG G A A B B A G\nI wish I could turn back time\nG G A A B B A G\nTo when you were still mine\nG G A A B B A G\nBut now I'm left with this pain\nG G A A B B A G\nAnd the memories that remain\n\nChorus:\nG G G G A G F\nWhy did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\n\nOutro:\nC D E E E D C C\nThe rain keeps falling down\nC D E E E D C C\nAnd I'm left to drown\nC D E F E D C C\nIn this sea of tears and pain\nC D E F E D C C\nAnd I'll never be the same.\nuser: be more romantic and heart-felting\nassistant: Sure, here's a more romantic and heart-felt song for you:\n\nVerse 1:\nG A B C D E D C B A G\nWhen I first saw you, my heart skipped a beat\nG A B C D E D C B A G\nI knew right then, you were someone I'd need\nG A B C D E D C B A G\nYou smiled at me, and my heart took flight\nG A B C D E D C B A G\nI knew in that moment, you were my light\n\nChorus:\nC D E F G A B A G F E D C\nYou're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\n\nVerse 2:\nG A B C D E D C B A G\nYou bring color to my world, where there was none\nG A B C D E D C B A G\nYou make me feel alive, like the rising sun\nG A B C D E D C B A G\nYour touch ignites a flame, that never fades\nG A B C D E D C B A G\nWith you beside me, I'm unafraid\n\nChorus:\nC D E F G A B A G F E D C\nYou're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\n\nBridge:\nG A B C D E F E D C B A G\nI promise to love you, for all time\nG A B C D E F E D C B A G\nTogether we'll weather any climb\nG A B C D E F E D C B A G\nOur love will be the light, that guides the way\nG A B C D E F E D C B A G\nTogether forever, come what may\n\nChorus:\nC D E F G A B A G F E D C\nYou're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\n\nOutro:\nG A B C D E D C B A G\nI love you more, with every passing day\nG A B C D E D C B A G\nI'll always be here, no matter the way\nG A B C D E D C B A G\nForever and always, my heart is yours\nG A B C D E D C B A G\nMy love for you, forever endures.\n\n            Retrieved entities:\n            - entity entity:<0> [DOCUMENT]: Romantic heart-felt song with notes; Document named Romantic heart-felt song with notes.\n- entity entity:<1> [DOCUMENT]: Sad song with notes; Document named Sad song with notes.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "eaca4986",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm looking back at our previous conversation where you created two sad songs for me. Can you remind me what was the chord progression for the chorus in the second song?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:17\n\n                                Noisy expected-answer label:\n                                C D E F G A B A G F E D C\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:eaca4986\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-b8b7b4daa3d3-claim-7 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The original sad song with notes includes a chorus saying: \"Why did you have to go? / Leaving me with this sorrow / I'll always be missing you / My heart will never be new.\"; scope=Details of the imported generated artifact named \"Sad song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the user requested a sad song with notes and the assistant generated the original song before the romantic revision.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"Why did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\"\n- claim hot-path-b8b7b4daa3d3-claim-4 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The revised romantic heart-felt song includes a chorus saying: \"You're the one I want, the one I need / In your eyes, I see my destiny / With you by my side, I can face anything / Forever and always, my heart will sing.\"; scope=Details of the imported generated artifact named \"Romantic heart-felt song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the user asked to make a sad song \"more romantic and heart-felting\" and the assistant produced the revised song.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"You're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\"\n- claim hot-path-b8b7b4daa3d3-claim-6 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The revised romantic heart-felt song outro ends with: \"Forever and always, my heart is yours / My love for you, forever endures.\"; scope=Details of the imported generated artifact named \"Romantic heart-felt song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the assistant generated a more romantic and heart-felt song with notes after the user's revision request.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"Forever and always, my heart is yours\nG A B C D E D C B A G\nMy love for you, forever endures.\"\n- claim hot-path-b8b7b4daa3d3-claim-5 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The revised romantic heart-felt song uses the Verse 1 melody line \"G A B C D E D C B A G\" for the opening lyric \"When I first saw you, my heart skipped a beat.\"; scope=Details of the imported generated artifact named \"Romantic heart-felt song with notes\" from the 2023-05-24 LongMemEval session.; context=\"Imported past chat where the assistant generated a more romantic and heart-felt song with notes after the user's revision request.\"; evidence=IMPORTED source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"G A B C D E D C B A G\nWhen I first saw you, my heart skipped a beat\"\n\n            Retrieved notes:\n            - note hot-path-b8b7b4daa3d3-note-3 [CONTEXT/ACTIVE]: Sad Song With Notes Artifact; In LongMemEval eaca4986 session 1, a sad song with simple letter-note melodies was generated. Its lyrics focus on rain, loneliness, loss, sorrow, painful memories, and repeated lines such as “Why did you have to go?” and “My heart will never be new.”; scope=Sad song with notes artifact from LongMemEval eaca4986 session 1; evidence=DIRECT source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"Create a sad song with notes\"\n- note hot-path-b8b7b4daa3d3-note-2 [CONTEXT/ACTIVE]: Romantic Heart-Felt Song Revision With Notes; In LongMemEval eaca4986 session 1, the initial sad song-with-notes request was revised toward a more romantic and heartfelt tone. The resulting song uses note sequences with romantic lyrics centered on devotion, destiny, enduring love, and the refrain “Forever and always, my heart will sing.”; scope=Romantic heart-felt song with notes artifact from LongMemEval eaca4986 session 1; evidence=DIRECT source=external:provided-text:708767162f463e8b97b3941617c4ba4d quote=\"be more romantic and heart-felting\"\n\n            Retrieved evidence:\n            - source external:provided-text:708767162f463e8b97b3941617c4ba4d [external_record ref=longmemeval:eaca4986:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/24 (Wed) 18:08\nTranscript:\nuser: Create a sad song with notes\nassistant: Here's a sad song with notes for you:\n\nVerse 1:\nC D E E E D C C\nThe rain falls down on me\nC D E E E D C C\nAs I stand alone, can't you see?\nC D E F E D C C\nThe tears mix with the rain\nC D E F E D C C\nAnd I feel this pain, again and again\n\nChorus:\nG G G G A G F\nWhy did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\n\nVerse 2:\nC D E E E D C C\nThe memories flood my mind\nC D E E E D C C\nOf the laughter we left behind\nC D E F E D C C\nBut now it's just emptiness\nC D E F E D C C\nI can't find my way, in this darkness\n\nChorus:\nG G G G A G F\nWhy did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\n\nBridge:\nG G A A B B A G\nI wish I could turn back time\nG G A A B B A G\nTo when you were still mine\nG G A A B B A G\nBut now I'm left with this pain\nG G A A B B A G\nAnd the memories that remain\n\nChorus:\nG G G G A G F\nWhy did you have to go?\nG G G G A G F\nLeaving me with this sorrow\nG G G G A G F\nI'll always be missing you\nG G G G A G F\nMy heart will never be new\n\nOutro:\nC D E E E D C C\nThe rain keeps falling down\nC D E E E D C C\nAnd I'm left to drown\nC D E F E D C C\nIn this sea of tears and pain\nC D E F E D C C\nAnd I'll never be the same.\nuser: be more romantic and heart-felting\nassistant: Sure, here's a more romantic and heart-felt song for you:\n\nVerse 1:\nG A B C D E D C B A G\nWhen I first saw you, my heart skipped a beat\nG A B C D E D C B A G\nI knew right then, you were someone I'd need\nG A B C D E D C B A G\nYou smiled at me, and my heart took flight\nG A B C D E D C B A G\nI knew in that moment, you were my light\n\nChorus:\nC D E F G A B A G F E D C\nYou're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\n\nVerse 2:\nG A B C D E D C B A G\nYou bring color to my world, where there was none\nG A B C D E D C B A G\nYou make me feel alive, like the rising sun\nG A B C D E D C B A G\nYour touch ignites a flame, that never fades\nG A B C D E D C B A G\nWith you beside me, I'm unafraid\n\nChorus:\nC D E F G A B A G F E D C\nYou're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\n\nBridge:\nG A B C D E F E D C B A G\nI promise to love you, for all time\nG A B C D E F E D C B A G\nTogether we'll weather any climb\nG A B C D E F E D C B A G\nOur love will be the light, that guides the way\nG A B C D E F E D C B A G\nTogether forever, come what may\n\nChorus:\nC D E F G A B A G F E D C\nYou're the one I want, the one I need\nC D E F G A B A G F E D C\nIn your eyes, I see my destiny\nC D E F G A B A G F E D C\nWith you by my side, I can face anything\nC D E F G A B A G F E D C\nForever and always, my heart will sing\n\nOutro:\nG A B C D E D C B A G\nI love you more, with every passing day\nG A B C D E D C B A G\nI'll always be here, no matter the way\nG A B C D E D C B A G\nForever and always, my heart is yours\nG A B C D E D C B A G\nMy love for you, forever endures.\n\n            Retrieved entities:\n            - entity entity:<0> [DOCUMENT]: Romantic heart-felt song with notes; Document named Romantic heart-felt song with notes.\n- entity entity:<1> [DOCUMENT]: Sad song with notes; Document named Sad song with notes.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "eaca4986",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"C D E F G A B A G F E D C\",\"reason\":\"The retrieved transcript shows the second/revised song's chorus repeatedly uses the note sequence C D E F G A B A G F E D C.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3371,
+                "completionTokens": 128,
+                "thinkingTokens": 57,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

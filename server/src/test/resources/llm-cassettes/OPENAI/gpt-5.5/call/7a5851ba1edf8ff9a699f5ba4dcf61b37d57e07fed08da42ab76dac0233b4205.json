@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "7a5851ba1edf8ff9a699f5ba4dcf61b37d57e07fed08da42ab76dac0233b4205",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long have I had my cat, Luna?\n\n                                Question date:\n                                2023/11/30 (Thu) 03:32\n\n                                Noisy expected-answer label:\n                                9 months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e61a7584\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-3fdb1cfea35d-claim-9 [ACTIVE] has_pet_duration family=has_pet_duration: The user had had Luna for about 9 months as of 2023-11-30.; scope=User's ownership history for Luna.; context=\"The user stated this during a chat about Luna's activity, engagement, and playtime routine.\"; evidence=DIRECT source=external:provided-text:e1e95248d2f301d6c735ac076e32d861 quote=\"I've had my cat, Luna, for about 9 months now\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e1e95248d2f301d6c735ac076e32d861 [external_record ref=longmemeval:e61a7584:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/11/30 (Thu) 11:13...\n...2. **Tricky Treat Ball**: This treat-dispensing ball will keep Luna's problem-solving skills sharp. Fill it with her favorite treats, and she'll have to figure out how to get them out by rolling, pushing, and pawing at the ball....\n...6. **Tug Toys with Hiding Compartments**: Toys like the West Paw Design's Tux Interactive Dog Toy or the Pet Zone Treat Wobbler have hiding compartments that encourage Luna to problem-solve and tug to get the treats out....\n...8. **Interactive Plush Toys**: Toys like the Pet Zone Treat Trix or the Outward Hound's Sensory Plush Toy have hidden treats or squeakers that encourage Luna to problem-solve and engage in play....\n...Remember to rotate toys regularly to keep things fresh and exciting for Luna. You can also try hiding toys around the house or yard to encourage her to search and problem-solve. Have fun shopping!...\n...3. **Two-way audio**: This feature allows you to talk to Luna remotely, which can be comforting for her....\n...7. **Power and connectivity**: Consider wireless cameras for easy placement, and look for cameras with long battery life or AC power options....\n...user: I've had my cat, Luna, for about 9 months now, and I've been trying to keep her active and engaged. I've set up her cat tree, and she loves climbing up and down it. I've also been rotating her toys every week to keep things fresh for her. Do you think the interactive toys you recommended would be a good addition to her playtime routine?...\n...Since Luna enjoys climbing and playing on her cat tree, she may particularly enjoy interactive toys that encourage vertical play, such as:\n\n1. **Cat towers with interactive elements**: Look for cat towers with built-in puzzle toys, treat dispensers, or hidden compartments that challenge Luna to climb and problem-solve....\n...4. **Encourage playtime**: Make time for playtime with Luna, using the interactive toys to encourage her to engage and have fun.\n\nBy incorporating interactive toys into Luna's playtime routine, you can help provide a more stimulating and engaging environment, which can lead to a happier and healthier cat....\n...1. **SmartCat Multi-Level Cat Climber**: This is a popular and highly-rated climbing wall that provides multiple levels for your cat to climb, scratch, and play. It's sturdy, easy to assemble, and has a modern design that fits well with most home decor.\n2. **Go Pet Club Cat Climbing Wall**: This climbing wall is another great option that offers multiple levels, scratching posts, and hideaways for your cat to enjoy. It's also easy to assemble and has a compact design that fits well in smaller spaces....\n...2. **FurHaven Wall-Mounted Cat Toy**: This wall-mounted toy provides a variety of interactive features, including a bell, feather teaser, and treat dispenser. It's easy to install and can be adjusted to different heights to suit your cat's preferences.\n3. **Kong Wobbler Wall Toy**: This wall-mounted toy is a great option for cats who love to problem-solve and figure out how to get treats out. It has a weighted base that provides a fun and challenging way for your cat to play....\n...3. **FurHaven**: FurHaven is a brand that specializes in creating high-quality, interactive cat toys and climbing structures that provide mental and physical stimulation for cats....\n...assistant: I'm so glad you're excited about the Petcube Interactive Wall Toy! It's definitely a great option for cats who love to play and problem-solve. The remote-controlled laser pointer and treat dispenser features will likely provide hours of entertainment for Luna....\n...Also, don't forget to rotate the toy regularly to keep things fresh and exciting for Luna. You can try moving it to different locations or swapping it out with other toys to keep her engaged and stimulated.\n\nIf you have any more questions or need further recommendations, feel free to ask! I'm always here to help....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e61a7584",
+                "questionType": "knowledge-update"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long have I had my cat, Luna?\n\n                                Question date:\n                                2023/11/30 (Thu) 03:32\n\n                                Noisy expected-answer label:\n                                9 months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e61a7584\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-3fdb1cfea35d-claim-9 [ACTIVE] has_pet_duration family=has_pet_duration: The user had had Luna for about 9 months as of 2023-11-30.; scope=User's ownership history for Luna.; context=\"The user stated this during a chat about Luna's activity, engagement, and playtime routine.\"; evidence=DIRECT source=external:provided-text:e1e95248d2f301d6c735ac076e32d861 quote=\"I've had my cat, Luna, for about 9 months now\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e1e95248d2f301d6c735ac076e32d861 [external_record ref=longmemeval:e61a7584:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/11/30 (Thu) 11:13...\n...2. **Tricky Treat Ball**: This treat-dispensing ball will keep Luna's problem-solving skills sharp. Fill it with her favorite treats, and she'll have to figure out how to get them out by rolling, pushing, and pawing at the ball....\n...6. **Tug Toys with Hiding Compartments**: Toys like the West Paw Design's Tux Interactive Dog Toy or the Pet Zone Treat Wobbler have hiding compartments that encourage Luna to problem-solve and tug to get the treats out....\n...8. **Interactive Plush Toys**: Toys like the Pet Zone Treat Trix or the Outward Hound's Sensory Plush Toy have hidden treats or squeakers that encourage Luna to problem-solve and engage in play....\n...Remember to rotate toys regularly to keep things fresh and exciting for Luna. You can also try hiding toys around the house or yard to encourage her to search and problem-solve. Have fun shopping!...\n...3. **Two-way audio**: This feature allows you to talk to Luna remotely, which can be comforting for her....\n...7. **Power and connectivity**: Consider wireless cameras for easy placement, and look for cameras with long battery life or AC power options....\n...user: I've had my cat, Luna, for about 9 months now, and I've been trying to keep her active and engaged. I've set up her cat tree, and she loves climbing up and down it. I've also been rotating her toys every week to keep things fresh for her. Do you think the interactive toys you recommended would be a good addition to her playtime routine?...\n...Since Luna enjoys climbing and playing on her cat tree, she may particularly enjoy interactive toys that encourage vertical play, such as:\n\n1. **Cat towers with interactive elements**: Look for cat towers with built-in puzzle toys, treat dispensers, or hidden compartments that challenge Luna to climb and problem-solve....\n...4. **Encourage playtime**: Make time for playtime with Luna, using the interactive toys to encourage her to engage and have fun.\n\nBy incorporating interactive toys into Luna's playtime routine, you can help provide a more stimulating and engaging environment, which can lead to a happier and healthier cat....\n...1. **SmartCat Multi-Level Cat Climber**: This is a popular and highly-rated climbing wall that provides multiple levels for your cat to climb, scratch, and play. It's sturdy, easy to assemble, and has a modern design that fits well with most home decor.\n2. **Go Pet Club Cat Climbing Wall**: This climbing wall is another great option that offers multiple levels, scratching posts, and hideaways for your cat to enjoy. It's also easy to assemble and has a compact design that fits well in smaller spaces....\n...2. **FurHaven Wall-Mounted Cat Toy**: This wall-mounted toy provides a variety of interactive features, including a bell, feather teaser, and treat dispenser. It's easy to install and can be adjusted to different heights to suit your cat's preferences.\n3. **Kong Wobbler Wall Toy**: This wall-mounted toy is a great option for cats who love to problem-solve and figure out how to get treats out. It has a weighted base that provides a fun and challenging way for your cat to play....\n...3. **FurHaven**: FurHaven is a brand that specializes in creating high-quality, interactive cat toys and climbing structures that provide mental and physical stimulation for cats....\n...assistant: I'm so glad you're excited about the Petcube Interactive Wall Toy! It's definitely a great option for cats who love to play and problem-solve. The remote-controlled laser pointer and treat dispenser features will likely provide hours of entertainment for Luna....\n...Also, don't forget to rotate the toy regularly to keep things fresh and exciting for Luna. You can try moving it to different locations or swapping it out with other toys to keep her engaged and stimulated.\n\nIf you have any more questions or need further recommendations, feel free to ask! I'm always here to help....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e61a7584",
+                "questionType": "knowledge-update"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You had had Luna for about 9 months as of 2023-11-30.\",\"reason\":\"The retrieved claim and source quote directly state the user had Luna for about 9 months on that date.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1869,
+                "completionTokens": 89,
+                "thinkingTokens": 22,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

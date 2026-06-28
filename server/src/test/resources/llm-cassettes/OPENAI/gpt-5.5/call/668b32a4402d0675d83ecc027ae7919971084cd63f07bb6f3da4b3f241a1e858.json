@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "668b32a4402d0675d83ecc027ae7919971084cd63f07bb6f3da4b3f241a1e858",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What was the airline that I flied with on Valentine's day?\n\n                                Question date:\n                                2023/03/02 (Thu) 21:56\n\n                                Noisy expected-answer label:\n                                American Airlines\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_f420262d\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1d887f0d7092-claim-12 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The assistant-produced itinerary says the user's outbound flight was booked as JetBlue B6 1018 from BOS at 7:00 AM to FLL at 10:35 AM with a randomly assigned seat and seat selection possible at check-in 24 hours prior.; scope=Applies to the booked outbound leg in the imported 2023-02-14 travel-planning transcript.; context=\"Imported assistant itinerary generated after the user asked to book the JetBlue BOS-to-FLL flight.\"; evidence=IMPORTED source=external:provided-text:39a6ef18e54cb7d9a08bc0a693a6028e quote=\"Flight Number: B6 1018\n* Departure: Boston Logan International Airport (BOS) - 7:00 AM\n* Arrival: Fort Lauderdale-Hollywood International Airport (FLL) - 10:35 AM\n* Seat: Randomly assigned\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:39a6ef18e54cb7d9a08bc0a693a6028e [external_record ref=longmemeval:gpt4_f420262d:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/14 (Tue) 12:04\nTranscript:\n...Session date: 2023/02/14 (Tue) 12:04\nTranscript:\nuser: I'm looking to book a new flight from Boston to Miami, and I was wondering if you could help me find the best deals. By the way, I'm still recovering from my American Airlines flight from LAX to JFK, which was delayed by 2 hours due to bad weather conditions.\nassistant: Sorry to hear that your last flight with American Airlines was delayed due to bad weather conditions! I'm happy to help you find a better experience for your upcoming flight from Boston to Miami....\n...1. What are your travel dates? Are you flexible with your travel dates or do you have specific dates in mind?...\n...* Be flexible with your travel dates, as prices can vary depending on the day of the week and time of year....\n...* Book in advance, as prices tend to increase closer to the flight date.\n\nLet me know if you have any questions or if there's anything else I can do to assist you!\nuser: I'm looking to travel on a weekday, preferably in the morning, and I'm open to any airline. I've got a Delta SkyMiles card, but I'm not sure if it's the best option for this route. Also, I'm not opposed to considering Fort Lauderdale airport instead of Miami.\nassistant: With your flexibility, I can definitely find you some good options.\n\nI've searched for flights from Boston to Miami (MIA) and Fort Lauderdale (FLL) on weekdays, morning departures, and considering all airlines. Here are some results:...\n...If you prefer to fly with a more traditional airline, JetBlue's non-stop flights from BOS to MIA or FLL are good options. Their prices are competitive, and you'll get free live TV and Wi-Fi on board....\n...user: I'm leaning towards the JetBlue option from BOS to FLL, but I'm a bit worried about the lack of seat selection and limited amenities. Can you tell me more about their seat selection process and what kind of amenities I can expect on this flight? Also, since I had a bad experience with American Airlines' in-flight entertainment system on my previous flight from New York to Los Angeles, I'd like to know if JetBlue's system is any better....\n...JetBlue's in-flight entertainment system, called \"Fly-Fi,\" is highly rated by passengers. You can access a wide selection of movies, TV shows, and games on your personal device (phone, tablet, or laptop) through their free Wi-Fi network. The system is user-friendly, and you can even pause and resume your content where you left off.\n\nIn comparison to American Airlines, JetBlue's system is generally considered more reliable and user-friendly. However, it's worth noting that JetBlue's system is designed for personal devices, so you won't find seat-back screens like you might on some American Airlines flights.\n\nConsidering your previous experience with American Airlines' in-flight entertainment system, you might appreciate JetBlue's more modern and reliable approach....\n...user: That's helpful to know. I think I'll take the JetBlue option from BOS to FLL. Can you book the flight for me and also help me check if I can use my Delta SkyMiles to upgrade to a higher class on my return flight from FLL to BOS, which I haven't booked yet?\nassistant: I'd be happy to help you with that.\n\n**Booking your JetBlue flight from BOS to FLL:**\nI've booked your JetBlue flight from Boston (BOS) to Fort Lauderdale (FLL) on the morning of your preferred day. Here are the details:...\n...user: I think I'll book the return flight on Delta and hope to upgrade using my SkyMiles. Can you book the flight for me and also remind me to check the upgrade options regularly? Additionally, I'd like to know if there's any way to get notified if an upgrade becomes available....\n...* Be flexible with your travel dates and times to increase the chances of an upgrade....\n...user: I'd like to ask about travel insurance for my trip. Can you tell me more about the options and prices?...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_f420262d",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What was the airline that I flied with on Valentine's day?\n\n                                Question date:\n                                2023/03/02 (Thu) 21:56\n\n                                Noisy expected-answer label:\n                                American Airlines\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_f420262d\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1d887f0d7092-claim-12 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The assistant-produced itinerary says the user's outbound flight was booked as JetBlue B6 1018 from BOS at 7:00 AM to FLL at 10:35 AM with a randomly assigned seat and seat selection possible at check-in 24 hours prior.; scope=Applies to the booked outbound leg in the imported 2023-02-14 travel-planning transcript.; context=\"Imported assistant itinerary generated after the user asked to book the JetBlue BOS-to-FLL flight.\"; evidence=IMPORTED source=external:provided-text:39a6ef18e54cb7d9a08bc0a693a6028e quote=\"Flight Number: B6 1018\n* Departure: Boston Logan International Airport (BOS) - 7:00 AM\n* Arrival: Fort Lauderdale-Hollywood International Airport (FLL) - 10:35 AM\n* Seat: Randomly assigned\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:39a6ef18e54cb7d9a08bc0a693a6028e [external_record ref=longmemeval:gpt4_f420262d:session:3 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/14 (Tue) 12:04\nTranscript:\n...Session date: 2023/02/14 (Tue) 12:04\nTranscript:\nuser: I'm looking to book a new flight from Boston to Miami, and I was wondering if you could help me find the best deals. By the way, I'm still recovering from my American Airlines flight from LAX to JFK, which was delayed by 2 hours due to bad weather conditions.\nassistant: Sorry to hear that your last flight with American Airlines was delayed due to bad weather conditions! I'm happy to help you find a better experience for your upcoming flight from Boston to Miami....\n...1. What are your travel dates? Are you flexible with your travel dates or do you have specific dates in mind?...\n...* Be flexible with your travel dates, as prices can vary depending on the day of the week and time of year....\n...* Book in advance, as prices tend to increase closer to the flight date.\n\nLet me know if you have any questions or if there's anything else I can do to assist you!\nuser: I'm looking to travel on a weekday, preferably in the morning, and I'm open to any airline. I've got a Delta SkyMiles card, but I'm not sure if it's the best option for this route. Also, I'm not opposed to considering Fort Lauderdale airport instead of Miami.\nassistant: With your flexibility, I can definitely find you some good options.\n\nI've searched for flights from Boston to Miami (MIA) and Fort Lauderdale (FLL) on weekdays, morning departures, and considering all airlines. Here are some results:...\n...If you prefer to fly with a more traditional airline, JetBlue's non-stop flights from BOS to MIA or FLL are good options. Their prices are competitive, and you'll get free live TV and Wi-Fi on board....\n...user: I'm leaning towards the JetBlue option from BOS to FLL, but I'm a bit worried about the lack of seat selection and limited amenities. Can you tell me more about their seat selection process and what kind of amenities I can expect on this flight? Also, since I had a bad experience with American Airlines' in-flight entertainment system on my previous flight from New York to Los Angeles, I'd like to know if JetBlue's system is any better....\n...JetBlue's in-flight entertainment system, called \"Fly-Fi,\" is highly rated by passengers. You can access a wide selection of movies, TV shows, and games on your personal device (phone, tablet, or laptop) through their free Wi-Fi network. The system is user-friendly, and you can even pause and resume your content where you left off.\n\nIn comparison to American Airlines, JetBlue's system is generally considered more reliable and user-friendly. However, it's worth noting that JetBlue's system is designed for personal devices, so you won't find seat-back screens like you might on some American Airlines flights.\n\nConsidering your previous experience with American Airlines' in-flight entertainment system, you might appreciate JetBlue's more modern and reliable approach....\n...user: That's helpful to know. I think I'll take the JetBlue option from BOS to FLL. Can you book the flight for me and also help me check if I can use my Delta SkyMiles to upgrade to a higher class on my return flight from FLL to BOS, which I haven't booked yet?\nassistant: I'd be happy to help you with that.\n\n**Booking your JetBlue flight from BOS to FLL:**\nI've booked your JetBlue flight from Boston (BOS) to Fort Lauderdale (FLL) on the morning of your preferred day. Here are the details:...\n...user: I think I'll book the return flight on Delta and hope to upgrade using my SkyMiles. Can you book the flight for me and also remind me to check the upgrade options regularly? Additionally, I'd like to know if there's any way to get notified if an upgrade becomes available....\n...* Be flexible with your travel dates and times to increase the chances of an upgrade....\n...user: I'd like to ask about travel insurance for my trip. Can you tell me more about the options and prices?...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_f420262d",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"American Airlines\",\"reason\":\"The retrieved Valentine's Day transcript explicitly mentions the user's prior flight was with American Airlines, while JetBlue was only the newly booked option.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2017,
+                "completionTokens": 572,
+                "thinkingTokens": 516,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

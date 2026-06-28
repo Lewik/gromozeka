@@ -148,7 +148,7 @@ class LlmMemoryReadPlanner(
 
         log.info {
             "Memory read need verifier rejected no-memory plan: namespace=${request.namespace.value} " +
-                "mode=${verifier.answerMode} needsSource=${verifier.needsSource} " +
+                "mode=${verifier.contextMode} needsSource=${verifier.needsSource} " +
                 "query=${verifier.query.oneLineForReadMemoryLog(300)} reason=${verifier.reason.oneLineForReadMemoryLog(300)}"
         }
         return verifier.toFallbackPlan(request)
@@ -172,7 +172,7 @@ class LlmMemoryReadPlanner(
         Return JSON:
         {
           "needs_memory": true,
-          "answer_mode": "factual | rationale | action_item | mixed",
+          "context_mode": "factual | rationale | action_item | mixed",
           "needs_source": false,
           "query": "short memory search query",
           "reason": "short explanation"
@@ -212,8 +212,8 @@ class LlmMemoryReadPlanner(
     private data class ReadPlannerResponse(
         @SerialName("need_memory")
         val needMemory: Boolean = false,
-        @SerialName("answer_mode")
-        val answerMode: String = "mixed",
+        @SerialName("context_mode")
+        val contextMode: String = "mixed",
         @SerialName("coverage_mode")
         val coverageMode: String = "minimal",
         @SerialName("core_blocks")
@@ -228,7 +228,7 @@ class LlmMemoryReadPlanner(
         fun toPlan(): MemoryReadPlan =
             MemoryReadPlan(
                 needMemory = needMemory,
-                answerMode = answerMode.toAnswerMode(),
+                contextMode = contextMode.toContextMode(),
                 coverageMode = coverageMode.toCoverageMode(),
                 coreBlocks = coreBlocks.mapNotNull { it.toCoreBlock() }.toSet(),
                 retrievalBudget = retrievalBudget.toBudget(),
@@ -291,8 +291,8 @@ class LlmMemoryReadPlanner(
     private data class ReadNeedVerifierResponse(
         @SerialName("needs_memory")
         val needsMemory: Boolean = false,
-        @SerialName("answer_mode")
-        val answerMode: String = "factual",
+        @SerialName("context_mode")
+        val contextMode: String = "factual",
         @SerialName("needs_source")
         val needsSource: Boolean = false,
         val query: String = "",
@@ -302,7 +302,7 @@ class LlmMemoryReadPlanner(
             val searchQuery = query.trim().ifBlank { request.targetMessageText().trim() }
             return MemoryReadPlan(
                 needMemory = true,
-                answerMode = answerMode.toAnswerMode(),
+                contextMode = contextMode.toContextMode(),
                 coreBlocks = emptySet(),
                 retrievalBudget = MemoryRetrievalBudget(
                     claims = 4,
@@ -372,7 +372,7 @@ class LlmMemoryReadPlanner(
             Return JSON:
             {
               "need_memory": true,
-              "answer_mode": "factual | rationale | action_item | mixed",
+              "context_mode": "factual | rationale | action_item | mixed",
               "coverage_mode": "minimal | complete_set",
               "core_blocks": ["profile", "action_items"],
               "retrieval_budget": {
@@ -446,7 +446,7 @@ class LlmMemoryReadPlanner(
 }
 
 private fun MemoryReadPlan.withRationaleNoteRequest(request: MemoryReadRequest): MemoryReadPlan {
-    if (!needMemory || answerMode != MemoryReadPlan.AnswerMode.RATIONALE) {
+    if (!needMemory || contextMode != MemoryReadPlan.ContextMode.RATIONALE) {
         return this
     }
     if (retrievalRequests.any { it.memoryType == MemorySemanticType.NOTE }) {
@@ -461,7 +461,7 @@ private fun MemoryReadPlan.withRationaleNoteRequest(request: MemoryReadRequest):
         retrievalRequests = listOf(
             MemoryReadPlan.RetrievalRequest(
                 memoryType = MemorySemanticType.NOTE,
-                why = "Rationale answer mode requires note-first retrieval.",
+                why = "Rationale context mode requires note-first retrieval.",
                 query = query,
                 topK = retrievalBudget.notes.takeIf { it > 0 } ?: 4,
             )
@@ -667,12 +667,12 @@ private fun String.requiresFactualRecallSourceFallback(): Boolean {
         normalized.contains("default")
 }
 
-private fun String.toAnswerMode(): MemoryReadPlan.AnswerMode =
+private fun String.toContextMode(): MemoryReadPlan.ContextMode =
     when (trim().lowercase().replace("-", "_")) {
-        "factual", "fact" -> MemoryReadPlan.AnswerMode.FACTUAL
-        "rationale", "reasoning", "why" -> MemoryReadPlan.AnswerMode.RATIONALE
-        "action_item", "action_items", "actionitem", "actionitems", "task", "tasks" -> MemoryReadPlan.AnswerMode.ACTION_ITEM
-        else -> MemoryReadPlan.AnswerMode.MIXED
+        "factual", "fact" -> MemoryReadPlan.ContextMode.FACTUAL
+        "rationale", "reasoning", "why" -> MemoryReadPlan.ContextMode.RATIONALE
+        "action_item", "action_items", "actionitem", "actionitems", "task", "tasks" -> MemoryReadPlan.ContextMode.ACTION_ITEM
+        else -> MemoryReadPlan.ContextMode.MIXED
     }
 
 private fun String.toCoverageMode(): MemoryReadPlan.CoverageMode =

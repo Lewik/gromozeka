@@ -51,8 +51,10 @@
             "selectedContainsNone": ["BookNest primary export format is CSV."],
             "sourceSafetySuppressedSourcesMin": 1,
             "sourceSafetySuppressedSourcesMax": 1,
-            "sourceSafetyRestoredTypedHitsMax": 0,
+            "sourceSafetyRestoredTypedHitsMin": 1,
+            "sourceSafetyRestoredTypedHitsMax": 1,
             "sourceSafetySuppressedContainsAll": ["SOURCE", "BookNest", "CSV"],
+            "sourceSafetyRestoredContainsAll": ["CLAIM", "BookNest", "Parquet"],
             "injectedPromptContainsAll": ["BookNest", "Parquet"],
             "injectedPromptContainsNone": ["BookNest primary export format is CSV."]
           }

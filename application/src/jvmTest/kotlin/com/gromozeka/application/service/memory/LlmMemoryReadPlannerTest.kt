@@ -26,7 +26,7 @@ class LlmMemoryReadPlannerTest {
             """
             {
               "need_memory": true,
-              "answer_mode": "factual",
+              "context_mode": "factual",
               "coverage_mode": "minimal",
               "core_blocks": [],
               "retrieval_budget": {
@@ -89,7 +89,7 @@ class LlmMemoryReadPlannerTest {
             """
             {
               "need_memory": true,
-              "answer_mode": "factual",
+              "context_mode": "factual",
               "coverage_mode": "complete_set",
               "core_blocks": [],
               "retrieval_budget": {
@@ -134,7 +134,7 @@ class LlmMemoryReadPlannerTest {
             """
             {
               "need_memory": true,
-              "answer_mode": "factual",
+              "context_mode": "factual",
               "coverage_mode": "complete_set",
               "core_blocks": [],
               "retrieval_budget": {
@@ -180,7 +180,7 @@ class LlmMemoryReadPlannerTest {
             """
             {
               "need_memory": false,
-              "answer_mode": "factual",
+              "context_mode": "factual",
               "coverage_mode": "minimal",
               "core_blocks": [],
               "retrieval_budget": {
@@ -197,7 +197,7 @@ class LlmMemoryReadPlannerTest {
             """
             {
               "needs_memory": true,
-              "answer_mode": "factual",
+              "context_mode": "factual",
               "needs_source": true,
               "query": "Orlando dessert shop giant milkshakes previous recommendation",
               "reason": "The target asks for prior conversation recall."
@@ -229,7 +229,7 @@ class LlmMemoryReadPlannerTest {
             """
             {
               "need_memory": true,
-              "answer_mode": "factual",
+              "context_mode": "factual",
               "coverage_mode": "minimal",
               "core_blocks": [],
               "retrieval_budget": {
@@ -277,7 +277,7 @@ class LlmMemoryReadPlannerTest {
             """
             {
               "need_memory": true,
-              "answer_mode": "factual",
+              "context_mode": "factual",
               "coverage_mode": "minimal",
               "core_blocks": [],
               "retrieval_budget": {

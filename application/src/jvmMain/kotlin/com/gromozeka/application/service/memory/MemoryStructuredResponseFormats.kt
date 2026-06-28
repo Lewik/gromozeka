@@ -397,7 +397,7 @@ internal object MemoryStructuredResponseFormats {
         description = "Plan runtime memory retrieval for the current target user request.",
         schema = objectSchema(
             "need_memory" to booleanSchema(),
-            "answer_mode" to stringEnumSchema("factual", "rationale", "action_item", "mixed"),
+            "context_mode" to stringEnumSchema("factual", "rationale", "action_item", "mixed"),
             "coverage_mode" to stringEnumSchema("minimal", "complete_set"),
             "core_blocks" to arraySchema(stringEnumSchema("profile", "action_items", "session_summary")),
             "retrieval_budget" to objectSchema(
@@ -427,7 +427,7 @@ internal object MemoryStructuredResponseFormats {
         description = "Verify a no-memory read plan and decide whether recall is actually needed.",
         schema = objectSchema(
             "needs_memory" to booleanSchema(),
-            "answer_mode" to stringEnumSchema("factual", "rationale", "action_item", "mixed"),
+            "context_mode" to stringEnumSchema("factual", "rationale", "action_item", "mixed"),
             "needs_source" to booleanSchema(),
             "query" to stringSchema(),
             "reason" to stringSchema(),
@@ -455,6 +455,19 @@ internal object MemoryStructuredResponseFormats {
                 )
             ),
             "summary" to stringSchema(),
+        ),
+    )
+
+    val ReadQuestionAnswer = AiResponseFormat.JsonSchema(
+        name = "memory_read_question_answer",
+        description = "Answer a direct question using only selected runtime memory context.",
+        schema = objectSchema(
+            "answer" to stringSchema(),
+            "reasoning" to stringSchema(),
+            "sufficiency" to stringEnumSchema("answered", "insufficient", "conflicting"),
+            "evidence_refs" to arraySchema(stringSchema()),
+            "counted_items" to arraySchema(stringSchema()),
+            "excluded_refs" to arraySchema(stringSchema()),
         ),
     )
 }

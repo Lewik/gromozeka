@@ -36,7 +36,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(sources = 4),
                     retrievalRequests = listOf(
@@ -86,7 +86,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1, sources = 1),
                     retrievalRequests = listOf(
@@ -143,7 +143,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                     retrievalRequests = listOf(
@@ -199,7 +199,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                     retrievalRequests = listOf(
@@ -222,15 +222,15 @@ class RuntimeMemoryReadPipelineTest {
     }
 
     @Test
-    fun runtimePromptTreatsMusicCarriersAsBroadReleaseItems() = runBlocking {
+    fun runtimePromptTreatsContentCarriersAsBroadWorkItems() = runBlocking {
         val source = source(
-            id = "source-music-carrier",
-            text = "The user got a signed vinyl record after the show.",
+            id = "source-content-carrier",
+            text = "The user got a signed personal media copy after the show.",
         )
         val claim = claim(
-            id = "claim-music-carrier",
+            id = "claim-content-carrier",
             sourceId = source.id,
-            text = "The user owns a signed vinyl record after the show.",
+            text = "The user owns a signed personal media copy after the show.",
             predicate = "owns",
         )
         val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(sources = listOf(source), claims = listOf(claim)))
@@ -239,14 +239,14 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
                             memoryType = MemorySemanticType.CLAIM,
-                            why = "Need acquired music release evidence.",
-                            query = "music albums EPs purchased downloaded",
+                            why = "Need acquired content item evidence.",
+                            query = "creative works content items acquired",
                             topK = 1,
                         )
                     ),
@@ -254,11 +254,11 @@ class RuntimeMemoryReadPipelineTest {
             ),
         )
 
-        val result = pipeline.read(readRequest("How many music albums or EPs have I purchased or downloaded?"))
+        val result = pipeline.read(readRequest("How many creative works or content items have I acquired?"))
         val prompt = result.runtimePrompt.orEmpty()
 
-        assertTrue(prompt.contains("For broad counts of music works or releases"), prompt)
-        assertTrue(prompt.contains("vinyl record, CD, cassette, digital copy, or music download"), prompt)
+        assertTrue(prompt.contains("For broad counts of works or content items"), prompt)
+        assertTrue(prompt.contains("physical or digital carrier, copy, file, license, or collection item"), prompt)
     }
 
     @Test
@@ -279,7 +279,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                     retrievalRequests = listOf(
@@ -325,7 +325,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                     retrievalRequests = listOf(
@@ -373,7 +373,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                     retrievalRequests = listOf(
@@ -417,7 +417,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(sources = 1),
                     retrievalRequests = listOf(
@@ -453,7 +453,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(sources = 1),
                     retrievalRequests = listOf(
@@ -495,7 +495,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(sources = 1),
                     retrievalRequests = listOf(
@@ -536,7 +536,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                     retrievalRequests = listOf(
@@ -576,7 +576,7 @@ class RuntimeMemoryReadPipelineTest {
             planner = FixedMemoryReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(

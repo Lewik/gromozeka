@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "51b95a2789d300509f7cbd9566ca9ed5e1c8c89282baa167a1029c3203928b3b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long was I in Japan for?\n\n                                Question date:\n                                2023/05/28 (Sun) 23:29\n\n                                Noisy expected-answer label:\n                                two weeks\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:19b5f2b3\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ef24398baa17-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has prior travel experience in Japan from a two-week solo trip a few months before 2023-05-26.; scope=User travel history as of the 2023-05-26 imported chat.; context=\"The user said they had been in Japan a few months earlier and spent two weeks traveling solo around the country.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I spent two weeks traveling solo around the country\"\n- claim hot-path-ef24398baa17-claim-7 [ACTIVE] has_experience_with family=has_experience_with: The user has stayed in Kyoto-related budget travel accommodations such as small hostels and guesthouses during a solo Japan trip.; scope=User accommodation experience and travel style from the imported 2023-05-26 chat.; context=\"The user asked for budget-friendly Kyoto stays and then said they stayed in small hostels and guesthouses during their solo trip to Japan.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I stayed in small hostels and guesthouses during my solo trip to Japan\"\n- claim hot-path-ef24398baa17-claim-4 [ACTIVE] has_goal family=has_goal: The user was planning a trip to Asia and considering visiting Japan, Kyoto, South Korea, Seoul, and the Korean Demilitarized Zone.; scope=User travel planning context from the imported 2023-05-26 chat session.; context=\"In a 2023-05-26 travel-planning chat, the user asked for Kyoto attractions, budget stays, Kyoto-area onsen, Asia destinations, Seoul food recommendations, and DMZ tours.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I'm planning a trip to Asia and I'm considering visiting Japan.\"\n- claim hot-path-ef24398baa17-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has visited Fushimi Inari Shrine in Japan.; scope=User travel history as of the 2023-05-26 imported chat.; context=\"The user said they visited Fushimi Inari Shrine while in Japan a few months before the 2023-05-26 chat.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I actually visited Fushimi Inari Shrine\"\n\n            Retrieved notes:\n            - note hot-path-ef24398baa17-note-2 [CONTEXT/ACTIVE]: Asia travel planning context after Japan trip; The user is planning or considering broader Asia travel after a prior solo Japan trip, with South Korea/Seoul and the Korean Demilitarized Zone as potential next destinations. Seoul planning emphasis includes food, while DMZ interest centers on guided tours and historical/political attractions.; scope=User's Asia travel planning preferences and destination context from LongMemEval 19b5f2b3 session 1; evidence=SUMMARIZED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I'm actually thinking of visiting South Korea. I've heard great things about Seoul and the food there.\"\n- note hot-path-ef24398baa17-note-3 [CONTEXT/ACTIVE]: Japan solo travel accommodation and onsen style; During a two-week solo trip around Japan, the user found small hostels and guesthouses useful for meeting other travelers, and had a memorable mountain onsen experience. Future Japan/Kyoto recommendations should consider budget-friendly social lodging and onsen/hot spring options, especially scenic or mountain settings.; scope=User's Japan travel style and lodging/onsen preferences from LongMemEval 19b5f2b3 session 1; evidence=SUMMARIZED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I stayed in small hostels and guesthouses during my solo trip to Japan, and it was a great way to meet other travelers.\"\n\n            Retrieved evidence:\n            - source external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb [external_record ref=longmemeval:19b5f2b3:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 02:46\nTranscript:\nuser: I'm planning a trip to Asia and I'm considering visiting Japan. Can you recommend some must-see attractions in Kyoto?...\n...5. **Gion District**: This traditional quarter is known for its geisha culture, traditional Japanese architecture, and lively atmosphere. Take a stroll down Hanami-koji Street, the main street of Gion....\n...10. **Nishiki Market**: A narrow shopping street known as \"Kyoto's Kitchen,\" offering a variety of local food, fresh seafood, and Japanese snacks.\n\nAdditional tips:\n\n* Consider purchasing a Kyoto City Bus Pass or a prepaid IC card (like ICOCA or Suica) for convenient travel around the city....\n...These are just a few of the many amazing attractions Kyoto has to offer. With so much to see and experience, you're sure to have an unforgettable trip!\nuser: I actually visited Fushimi Inari Shrine when I was in Japan a few months ago. I spent two weeks traveling solo around the country and it was an incredible experience. Can you recommend some good places to stay in Kyoto that are budget-friendly?...\n...4. **Airbnb**: Renting an apartment or room through Airbnb can be a great way to save money, especially if you're traveling with friends or staying for an extended period. Prices vary depending on the location and amenities, but you can find deals starting from around ¥2,000 (around $18 USD) per night.\n\nRemember to book your accommodations well in advance, especially during peak travel seasons (March-May and September-November)....\n...* Be prepared for smaller rooms and shared facilities, as this is often the case in budget-friendly accommodations in Japan.\n\nI hope this helps you find a comfortable and affordable place to stay in Kyoto!\nuser: I stayed in small hostels and guesthouses during my solo trip to Japan, and it was a great way to meet other travelers. Speaking of which, do you have any recommendations for good onsen (hot springs) in the Kyoto area? I visited one in the mountains during my trip and it was amazing....\n...2. **Yunessun**: A hot spring resort located in Kameoka, about 30 minutes from Kyoto Station by train. They offer a variety of baths, including a wine bath, coffee bath, and a hot spring with a view of the surrounding mountains....\n...* Tattoos: Many onsen in Japan still have a no-tattoo policy. If you have a tattoo, consider covering it with bandages or looking for tattoo-friendly onsen....\n...I'm glad you had a great experience at the onsen during your previous trip, and I hope you get to enjoy another relaxing soak during your next visit to Kyoto!\nuser: I'm actually considering visiting other parts of Asia after Japan. Do you have any recommendations for must-see destinations in Asia?...\n...2. **Ha Long Bay, Vietnam**: Cruise through emerald waters and limestone karsts in this stunning bay....\n...1. **Great Wall of China, China**: Walk or hike along the ancient series of fortifications....\n...These are just a few of the many incredible destinations in Asia. Consider your interests, budget, and travel style to narrow down your options.\n\nRemember to research each country's visa requirements, vaccinations, and travel restrictions before planning your trip.\n\nWhich region or country are you most interested in exploring next?\nuser: I'm actually thinking of visiting South Korea. I've heard great things about Seoul and the food there. Do you have any recommendations for must-try dishes or restaurants in Seoul?...\n...user: I'm thinking of visiting the Demilitarized Zone (DMZ) between North and South Korea. Do you have any recommendations for guided tours or attractions in the area?...\n...1. **DMZ Tour**: This is a popular and highly-rated tour that takes you to the Joint Security Area, the Third Tunnel, and the Dora Observatory. You'll learn about the history of the Korean War and the current situation on the peninsula....\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Asia; Location named Asia.\n- entity entity:<1> [LOCATION]: Fushimi Inari Shrine; Location named Fushimi Inari Shrine.\n- entity entity:<2> [LOCATION]: Japan; Location named Japan.\n- entity entity:<3> [LOCATION]: Kyoto; Location named Kyoto.\n- entity entity:<4> [LOCATION]: South Korea; Location named South Korea.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "19b5f2b3",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long was I in Japan for?\n\n                                Question date:\n                                2023/05/28 (Sun) 23:29\n\n                                Noisy expected-answer label:\n                                two weeks\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:19b5f2b3\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-ef24398baa17-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has prior travel experience in Japan from a two-week solo trip a few months before 2023-05-26.; scope=User travel history as of the 2023-05-26 imported chat.; context=\"The user said they had been in Japan a few months earlier and spent two weeks traveling solo around the country.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I spent two weeks traveling solo around the country\"\n- claim hot-path-ef24398baa17-claim-7 [ACTIVE] has_experience_with family=has_experience_with: The user has stayed in Kyoto-related budget travel accommodations such as small hostels and guesthouses during a solo Japan trip.; scope=User accommodation experience and travel style from the imported 2023-05-26 chat.; context=\"The user asked for budget-friendly Kyoto stays and then said they stayed in small hostels and guesthouses during their solo trip to Japan.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I stayed in small hostels and guesthouses during my solo trip to Japan\"\n- claim hot-path-ef24398baa17-claim-4 [ACTIVE] has_goal family=has_goal: The user was planning a trip to Asia and considering visiting Japan, Kyoto, South Korea, Seoul, and the Korean Demilitarized Zone.; scope=User travel planning context from the imported 2023-05-26 chat session.; context=\"In a 2023-05-26 travel-planning chat, the user asked for Kyoto attractions, budget stays, Kyoto-area onsen, Asia destinations, Seoul food recommendations, and DMZ tours.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I'm planning a trip to Asia and I'm considering visiting Japan.\"\n- claim hot-path-ef24398baa17-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has visited Fushimi Inari Shrine in Japan.; scope=User travel history as of the 2023-05-26 imported chat.; context=\"The user said they visited Fushimi Inari Shrine while in Japan a few months before the 2023-05-26 chat.\"; evidence=IMPORTED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I actually visited Fushimi Inari Shrine\"\n\n            Retrieved notes:\n            - note hot-path-ef24398baa17-note-2 [CONTEXT/ACTIVE]: Asia travel planning context after Japan trip; The user is planning or considering broader Asia travel after a prior solo Japan trip, with South Korea/Seoul and the Korean Demilitarized Zone as potential next destinations. Seoul planning emphasis includes food, while DMZ interest centers on guided tours and historical/political attractions.; scope=User's Asia travel planning preferences and destination context from LongMemEval 19b5f2b3 session 1; evidence=SUMMARIZED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I'm actually thinking of visiting South Korea. I've heard great things about Seoul and the food there.\"\n- note hot-path-ef24398baa17-note-3 [CONTEXT/ACTIVE]: Japan solo travel accommodation and onsen style; During a two-week solo trip around Japan, the user found small hostels and guesthouses useful for meeting other travelers, and had a memorable mountain onsen experience. Future Japan/Kyoto recommendations should consider budget-friendly social lodging and onsen/hot spring options, especially scenic or mountain settings.; scope=User's Japan travel style and lodging/onsen preferences from LongMemEval 19b5f2b3 session 1; evidence=SUMMARIZED source=external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb quote=\"I stayed in small hostels and guesthouses during my solo trip to Japan, and it was a great way to meet other travelers.\"\n\n            Retrieved evidence:\n            - source external:provided-text:5f151e9ac2ae7d7bbb38a842fa2103cb [external_record ref=longmemeval:19b5f2b3:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 02:46\nTranscript:\nuser: I'm planning a trip to Asia and I'm considering visiting Japan. Can you recommend some must-see attractions in Kyoto?...\n...5. **Gion District**: This traditional quarter is known for its geisha culture, traditional Japanese architecture, and lively atmosphere. Take a stroll down Hanami-koji Street, the main street of Gion....\n...10. **Nishiki Market**: A narrow shopping street known as \"Kyoto's Kitchen,\" offering a variety of local food, fresh seafood, and Japanese snacks.\n\nAdditional tips:\n\n* Consider purchasing a Kyoto City Bus Pass or a prepaid IC card (like ICOCA or Suica) for convenient travel around the city....\n...These are just a few of the many amazing attractions Kyoto has to offer. With so much to see and experience, you're sure to have an unforgettable trip!\nuser: I actually visited Fushimi Inari Shrine when I was in Japan a few months ago. I spent two weeks traveling solo around the country and it was an incredible experience. Can you recommend some good places to stay in Kyoto that are budget-friendly?...\n...4. **Airbnb**: Renting an apartment or room through Airbnb can be a great way to save money, especially if you're traveling with friends or staying for an extended period. Prices vary depending on the location and amenities, but you can find deals starting from around ¥2,000 (around $18 USD) per night.\n\nRemember to book your accommodations well in advance, especially during peak travel seasons (March-May and September-November)....\n...* Be prepared for smaller rooms and shared facilities, as this is often the case in budget-friendly accommodations in Japan.\n\nI hope this helps you find a comfortable and affordable place to stay in Kyoto!\nuser: I stayed in small hostels and guesthouses during my solo trip to Japan, and it was a great way to meet other travelers. Speaking of which, do you have any recommendations for good onsen (hot springs) in the Kyoto area? I visited one in the mountains during my trip and it was amazing....\n...2. **Yunessun**: A hot spring resort located in Kameoka, about 30 minutes from Kyoto Station by train. They offer a variety of baths, including a wine bath, coffee bath, and a hot spring with a view of the surrounding mountains....\n...* Tattoos: Many onsen in Japan still have a no-tattoo policy. If you have a tattoo, consider covering it with bandages or looking for tattoo-friendly onsen....\n...I'm glad you had a great experience at the onsen during your previous trip, and I hope you get to enjoy another relaxing soak during your next visit to Kyoto!\nuser: I'm actually considering visiting other parts of Asia after Japan. Do you have any recommendations for must-see destinations in Asia?...\n...2. **Ha Long Bay, Vietnam**: Cruise through emerald waters and limestone karsts in this stunning bay....\n...1. **Great Wall of China, China**: Walk or hike along the ancient series of fortifications....\n...These are just a few of the many incredible destinations in Asia. Consider your interests, budget, and travel style to narrow down your options.\n\nRemember to research each country's visa requirements, vaccinations, and travel restrictions before planning your trip.\n\nWhich region or country are you most interested in exploring next?\nuser: I'm actually thinking of visiting South Korea. I've heard great things about Seoul and the food there. Do you have any recommendations for must-try dishes or restaurants in Seoul?...\n...user: I'm thinking of visiting the Demilitarized Zone (DMZ) between North and South Korea. Do you have any recommendations for guided tours or attractions in the area?...\n...1. **DMZ Tour**: This is a popular and highly-rated tour that takes you to the Joint Security Area, the Third Tunnel, and the Dora Observatory. You'll learn about the history of the Korean War and the current situation on the peninsula....\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Asia; Location named Asia.\n- entity entity:<1> [LOCATION]: Fushimi Inari Shrine; Location named Fushimi Inari Shrine.\n- entity entity:<2> [LOCATION]: Japan; Location named Japan.\n- entity entity:<3> [LOCATION]: Kyoto; Location named Kyoto.\n- entity entity:<4> [LOCATION]: South Korea; Location named South Korea.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "19b5f2b3",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You were in Japan for two weeks.\",\"reason\":\"The retrieved memory explicitly states the user spent two weeks traveling solo around Japan.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2771,
+                "completionTokens": 70,
+                "thinkingTokens": 20,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

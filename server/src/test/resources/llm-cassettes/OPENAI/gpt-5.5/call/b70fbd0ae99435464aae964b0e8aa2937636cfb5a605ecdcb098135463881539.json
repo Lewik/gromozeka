@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "b70fbd0ae99435464aae964b0e8aa2937636cfb5a605ecdcb098135463881539",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been feeling a bit stuck with my paintings lately. Do you have any ideas on how I can find new inspiration?\n\n                                Question date:\n                                2023/05/27 (Sat) 01:37\n\n                                Expected answer:\n                                The user would prefer responses that build upon their existing sources of inspiration, such as revisiting Instagram art accounts or exploring new techniques from online tutorials. They might also appreciate suggestions that revisit previous themes they found enjoyable, like painting flowers. The user would not prefer generic or vague suggestions for finding inspiration, and would likely appreciate responses that utilize their recent 30-day painting challenge experience.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6b7dfb22\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile benchmark:longmemeval:6b7dfb22:profile:<0> Profile for User (USER).\nStable facts:\n- The user wants to determine how to price their paintings for online sale.\n- The user wants to set up a small studio space in their apartment for painting.\n- The user's painting studio setup is constrained to a small space in their apartment.\n- The user wants to learn how to paint realistic flowers.\n- The user wants to incorporate more texture into their paintings.\n- The user wants to improve how they photograph their artwork for online sales.\n- The user wants to stay motivated and focused while working on projects.\n- The user sometimes gets distracted or loses momentum midway through a project.\n- The user recently started a 30-day painting challenge.\n- The user wants recommendations for good brands of acrylic paints and acrylic brushes.\n- The user uses Instagram as a source of inspiration for flower paintings.\n- The user wants to learn palette knife techniques for creating interesting textures in paintings.\n- The user has researched online art sales and painting pricing.\n- The user has looked at online tutorials about setting up an apartment painting studio, but is not sure where to start.\n- The user thinks breaking a project into smaller tasks and setting deadlines will help them stay on track.\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0ab19d4a4f0f-claim-6 [ACTIVE] works_with family=works_with: The user uses Instagram as a source of inspiration for flower paintings.; scope=User's art inspiration sources from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I've been looking at a lot of flower paintings on Instagram\"\n- claim hot-path-0ab19d4a4f0f-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to incorporate more texture into their paintings.; scope=User's painting-style goals from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I'm trying to incorporate more texture into my paintings\"\n- claim hot-path-0ab19d4a4f0f-claim-17 [ACTIVE] works_with family=works_with: The user recently started a 30-day painting challenge.; scope=User's current art-practice activities from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"recently started a 30-day painting challenge\"\n- claim hot-path-0ab19d4a4f0f-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to learn how to paint realistic flowers.; scope=User's painting-learning interests from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I was wondering if you could give me some tips on how to paint realistic flowers?\"\n- claim hot-path-0ab19d4a4f0f-claim-16 [ACTIVE] has_constraint family=has_constraint: The user sometimes gets distracted or loses momentum midway through a project.; scope=User's recurring creative productivity challenge from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I sometimes find myself getting distracted or losing steam midway through a project.\"\n\n            Retrieved notes:\n            - note hot-path-0ab19d4a4f0f-note-3 [DIRECTION/ACTIVE]: Chosen motivation strategy for painting projects; For painting projects, the user identified breaking projects into smaller tasks and setting personal deadlines as especially useful for staying on track, alongside their recent 30-day painting challenge and social-media inspiration.; scope=User's preferred motivation and focus approach for creative painting projects; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"breaking my project down into smaller tasks and setting deadlines for myself will really help me stay on track\"\n\n            Retrieved evidence:\n            - source external:provided-text:df756935779d059c3fe2f40660e32a6f [external_record ref=longmemeval:6b7dfb22:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some art supply recommendations. What are some good brands for acrylic paints and brushes?...\n...* Always read reviews and do your research before investing in art supplies. You may find that certain brands or products work better for your specific needs and style.\n\nI hope this helps you get started on your acrylic painting journey!\nuser: I've been looking at a lot of flower paintings on Instagram and I was wondering if you could give me some tips on how to paint realistic flowers?\nassistant: Flower paintings are so beautiful and delicate! Painting realistic flowers requires attention to detail, practice, and some techniques to achieve the soft, delicate, and intricate textures and colors of real flowers. Here are some tips to help you get started:...\n...Create a soft, gradient-like underpainting to establish the overall color and value of the flower. Use a large, flat brush and thin paint to block in the shapes and colors....\n...user: I'm trying to incorporate more texture into my paintings, so I was wondering if you could recommend some techniques for using palette knives to create interesting textures?\nassistant: Palette knives are an excellent tool for adding texture to your paintings! They can help you achieve a wide range of effects, from thick, impasto strokes to smooth, blended surfaces. Here are some techniques to get you started:...\n...user: What are some tips on how to price my paintings for online sale? I've been doing some research, but I'm still unsure about how to determine the prices.\nassistant: Pricing your artwork can be a challenging task, especially when selling online. Here are some tips to help you determine the prices for your paintings:...\n...user: I've been thinking about selling my paintings online and I was wondering if you could give me some tips on how to take good photos of my artwork. I've tried taking photos before, but they never seem to turn out right.\nassistant: Taking good photos of your artwork is crucial for selling online! It's great that you're thinking about improving your photography skills. Here are some tips to help you take high-quality photos of your paintings:...\n...The more you practice, the better you'll become at taking photos of your artwork. Experiment with different lighting setups, camera settings, and editing techniques to find what works best for you....\n...user: I'm thinking of setting up a small studio space in my apartment, and I was wondering if you could give me some tips on how to optimize the space for painting. I've been looking at some online tutorials, but I'm not sure where to start....\n...**3. Prioritize Natural Light:**...\n...Personalize your studio space with items that reflect your personality and style. This will help you feel more connected to your creative space and inspire you to produce your best work....\n...user: Do you have any suggestions for how to stay motivated and focused while working on a project? I sometimes find myself getting distracted or losing steam midway through a project. I have been getting inspiration from social media and recently started a 30-day painting challenge....\n...7. **Seek Inspiration**: Continue finding inspiration from social media, art communities, or other sources. Engage with content that excites you and keeps you motivated....\n...user: Those are great suggestions for staying motivated and focused while working on a project. I think breaking my project down into smaller tasks and setting deadlines for myself will really help me stay on track. You've been a huge help!\n\nIf you have any more advice or tips, feel free to share them. Otherwise, I think I'm ready to get started!\nassistant: I'm glad I could help. Remember, setting up a studio space and starting a new project can be a process, and it's okay to take your time and figure things out as you go. Don't be afraid to experiment and try new things – it's all part of the creative process....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: 30-day painting challenge; Concept named 30-day painting challenge.\n- entity entity:<1> [SERVICE]: Instagram; Service named Instagram.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6b7dfb22",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been feeling a bit stuck with my paintings lately. Do you have any ideas on how I can find new inspiration?\n\n                                Question date:\n                                2023/05/27 (Sat) 01:37\n\n                                Expected answer:\n                                The user would prefer responses that build upon their existing sources of inspiration, such as revisiting Instagram art accounts or exploring new techniques from online tutorials. They might also appreciate suggestions that revisit previous themes they found enjoyable, like painting flowers. The user would not prefer generic or vague suggestions for finding inspiration, and would likely appreciate responses that utilize their recent 30-day painting challenge experience.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6b7dfb22\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile benchmark:longmemeval:6b7dfb22:profile:<0> Profile for User (USER).\nStable facts:\n- The user wants to determine how to price their paintings for online sale.\n- The user wants to set up a small studio space in their apartment for painting.\n- The user's painting studio setup is constrained to a small space in their apartment.\n- The user wants to learn how to paint realistic flowers.\n- The user wants to incorporate more texture into their paintings.\n- The user wants to improve how they photograph their artwork for online sales.\n- The user wants to stay motivated and focused while working on projects.\n- The user sometimes gets distracted or loses momentum midway through a project.\n- The user recently started a 30-day painting challenge.\n- The user wants recommendations for good brands of acrylic paints and acrylic brushes.\n- The user uses Instagram as a source of inspiration for flower paintings.\n- The user wants to learn palette knife techniques for creating interesting textures in paintings.\n- The user has researched online art sales and painting pricing.\n- The user has looked at online tutorials about setting up an apartment painting studio, but is not sure where to start.\n- The user thinks breaking a project into smaller tasks and setting deadlines will help them stay on track.\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0ab19d4a4f0f-claim-6 [ACTIVE] works_with family=works_with: The user uses Instagram as a source of inspiration for flower paintings.; scope=User's art inspiration sources from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I've been looking at a lot of flower paintings on Instagram\"\n- claim hot-path-0ab19d4a4f0f-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to incorporate more texture into their paintings.; scope=User's painting-style goals from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I'm trying to incorporate more texture into my paintings\"\n- claim hot-path-0ab19d4a4f0f-claim-17 [ACTIVE] works_with family=works_with: The user recently started a 30-day painting challenge.; scope=User's current art-practice activities from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"recently started a 30-day painting challenge\"\n- claim hot-path-0ab19d4a4f0f-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to learn how to paint realistic flowers.; scope=User's painting-learning interests from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I was wondering if you could give me some tips on how to paint realistic flowers?\"\n- claim hot-path-0ab19d4a4f0f-claim-16 [ACTIVE] has_constraint family=has_constraint: The user sometimes gets distracted or loses momentum midway through a project.; scope=User's recurring creative productivity challenge from the imported 2023-05-23 chat session.; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"I sometimes find myself getting distracted or losing steam midway through a project.\"\n\n            Retrieved notes:\n            - note hot-path-0ab19d4a4f0f-note-3 [DIRECTION/ACTIVE]: Chosen motivation strategy for painting projects; For painting projects, the user identified breaking projects into smaller tasks and setting personal deadlines as especially useful for staying on track, alongside their recent 30-day painting challenge and social-media inspiration.; scope=User's preferred motivation and focus approach for creative painting projects; evidence=DIRECT source=external:provided-text:df756935779d059c3fe2f40660e32a6f quote=\"breaking my project down into smaller tasks and setting deadlines for myself will really help me stay on track\"\n\n            Retrieved evidence:\n            - source external:provided-text:df756935779d059c3fe2f40660e32a6f [external_record ref=longmemeval:6b7dfb22:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for some art supply recommendations. What are some good brands for acrylic paints and brushes?...\n...* Always read reviews and do your research before investing in art supplies. You may find that certain brands or products work better for your specific needs and style.\n\nI hope this helps you get started on your acrylic painting journey!\nuser: I've been looking at a lot of flower paintings on Instagram and I was wondering if you could give me some tips on how to paint realistic flowers?\nassistant: Flower paintings are so beautiful and delicate! Painting realistic flowers requires attention to detail, practice, and some techniques to achieve the soft, delicate, and intricate textures and colors of real flowers. Here are some tips to help you get started:...\n...Create a soft, gradient-like underpainting to establish the overall color and value of the flower. Use a large, flat brush and thin paint to block in the shapes and colors....\n...user: I'm trying to incorporate more texture into my paintings, so I was wondering if you could recommend some techniques for using palette knives to create interesting textures?\nassistant: Palette knives are an excellent tool for adding texture to your paintings! They can help you achieve a wide range of effects, from thick, impasto strokes to smooth, blended surfaces. Here are some techniques to get you started:...\n...user: What are some tips on how to price my paintings for online sale? I've been doing some research, but I'm still unsure about how to determine the prices.\nassistant: Pricing your artwork can be a challenging task, especially when selling online. Here are some tips to help you determine the prices for your paintings:...\n...user: I've been thinking about selling my paintings online and I was wondering if you could give me some tips on how to take good photos of my artwork. I've tried taking photos before, but they never seem to turn out right.\nassistant: Taking good photos of your artwork is crucial for selling online! It's great that you're thinking about improving your photography skills. Here are some tips to help you take high-quality photos of your paintings:...\n...The more you practice, the better you'll become at taking photos of your artwork. Experiment with different lighting setups, camera settings, and editing techniques to find what works best for you....\n...user: I'm thinking of setting up a small studio space in my apartment, and I was wondering if you could give me some tips on how to optimize the space for painting. I've been looking at some online tutorials, but I'm not sure where to start....\n...**3. Prioritize Natural Light:**...\n...Personalize your studio space with items that reflect your personality and style. This will help you feel more connected to your creative space and inspire you to produce your best work....\n...user: Do you have any suggestions for how to stay motivated and focused while working on a project? I sometimes find myself getting distracted or losing steam midway through a project. I have been getting inspiration from social media and recently started a 30-day painting challenge....\n...7. **Seek Inspiration**: Continue finding inspiration from social media, art communities, or other sources. Engage with content that excites you and keeps you motivated....\n...user: Those are great suggestions for staying motivated and focused while working on a project. I think breaking my project down into smaller tasks and setting deadlines for myself will really help me stay on track. You've been a huge help!\n\nIf you have any more advice or tips, feel free to share them. Otherwise, I think I'm ready to get started!\nassistant: I'm glad I could help. Remember, setting up a studio space and starting a new project can be a process, and it's okay to take your time and figure things out as you go. Don't be afraid to experiment and try new things – it's all part of the creative process....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: 30-day painting challenge; Concept named 30-day painting challenge.\n- entity entity:<1> [SERVICE]: Instagram; Service named Instagram.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6b7dfb22",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The user would likely appreciate inspiration suggestions tied to their existing art practice: revisit Instagram flower-painting accounts, try texture/palette-knife or other tutorial-based techniques, return to realistic flowers, and use their recent 30-day painting challenge for prompts and momentum rather than receiving vague generic advice.\",\"reason\":\"The memory directly records Instagram flower inspiration, goals around realistic flowers and texture techniques, and a recent 30-day painting challenge, which support the expected personalized direction.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2627,
+                "completionTokens": 179,
+                "thinkingTokens": 61,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

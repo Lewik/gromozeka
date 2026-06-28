@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "955f746cc91ddda013305aec98ada1681880fd77e98b9820d3d388863e839157",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many months passed between the completion of my undergraduate degree and the submission of my master's thesis?\n\n                                Question date:\n                                2023/07/01 (Sat) 13:31\n\n                                Noisy expected-answer label:\n                                6 months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_21adecb5\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-371d4e06ba53-claim-5 [ACTIVE] completed_degree family=completed_degree: The user completed an undergraduate degree in computer science by 2022-11-17.; scope=User educational background as of the imported 2022-11-17 chat session.; context=\"The user mentioned this as background while asking for deep learning resources.\"; evidence=DIRECT source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I just completed my undergraduate degree in computer science\"\n- claim hot-path-7462de92d91a-claim-4 [ACTIVE] completed_degree family=completed_degree: The user submitted a master's thesis in computer science on 2023-05-15.; scope=Educational milestone for the user.; context=\"The user mentioned this while asking for NLP research paper recommendations to stay up-to-date with the field.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"I just submitted my master's thesis on computer science today\"\n- claim hot-path-7462de92d91a-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to stay up-to-date with the latest developments in natural language processing research.; scope=User's ongoing research-learning interests in NLP.; context=\"The user asked for recommendations on NLP research papers to read after submitting a master's thesis in computer science.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"I'm looking to stay up-to-date with the latest developments in the field\"\n- claim hot-path-371d4e06ba53-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has a solid foundation in computer science concepts.; scope=User technical background as of the imported 2022-11-17 chat session.; context=\"The user stated this while asking for beginner deep learning resources after completing a CS undergraduate degree.\"; evidence=DIRECT source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I have a solid foundation in CS concepts\"\n- claim hot-path-7462de92d91a-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to explore using BERT-based models for intent detection in customer feedback.; scope=User's ongoing NLP and customer-feedback modeling interests.; context=\"The user asked how to adapt BERT for intent detection and what datasets are typically used.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"explore the use of BERT-based models for intent detection in customer feedback\"\n- claim hot-path-7462de92d91a-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to explore using BERT-based models for sentiment analysis in customer feedback.; scope=User's ongoing NLP and customer-feedback modeling interests.; context=\"The user asked how BERT can be fine-tuned for sentiment analysis tasks and what datasets are typically used.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"exploring the possibility of using BERT-based models for sentiment analysis in the context of customer feedback\"\n- claim hot-path-7462de92d91a-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to explore using BERT-based models for dialogue systems.; scope=User's ongoing NLP and BERT application interests.; context=\"The user asked how to adapt BERT for dialogue systems and what datasets are typically used.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"explore the use of BERT-based models for dialogue systems\"\n- claim hot-path-371d4e06ba53-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to start learning about deep learning using beginner-friendly online resources or courses.; scope=User learning goals as stated in the imported 2022-11-17 chat session.; context=\"In a past chat session dated 2022-11-17, the user asked for beginner resources for deep learning.\"; evidence=DIRECT source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I'm planning to start learning about deep learning and was wondering if you could recommend some online resources or courses for beginners.\"\n\n            Retrieved notes:\n            - note hot-path-371d4e06ba53-note-2 [CONTEXT/ACTIVE]: User learning path: deep learning to NLP transformers and vision transformers; The user is on a learning path from beginner deep learning into NLP, with a recurring focus on transformers and attention mechanisms, and later on their applications in both NLP and computer vision. Resource recommendations should assume a CS background, some NLP paper-reading experience, and interest in practical papers/tutorials for text classification, sentiment analysis, question answering, translation, text generation, dialogue systems, image classification, object detection, and image generation.; scope=Applies when recommending AI/ML learning resources or tailoring explanations for this user.; evidence=SUMMARIZED source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I just completed my undergraduate degree in computer science, so I have a solid foundation in CS concepts.\"\n\n            Retrieved evidence:\n            - source external:provided-text:63d514a898f90e19990b1c041926fc8d [external_record ref=longmemeval:gpt4_21adecb5:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/15 (Mon) 22:51\nTranscript:\nuser: I'm looking for some recommendations on NLP research papers to read. I just submitted my master's thesis on computer science today, and I'm looking to stay up-to-date with the latest developments in the field.\nassistant: Congratulations on submitting your master's thesis!\n\nThere are many exciting developments in NLP research, and staying current can be a challenge. Here are some influential and recent papers across various subfields in NLP that you might find interesting:...\n...1. **The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks** (Frankle et al., 2019) - A paper that introduces the concept of \"lottery tickets\" in neural networks, which can be used to prune models without sacrificing performance....\n...To stay up-to-date with the latest developments in NLP, I recommend following top NLP researchers and institutions on social media, attending conferences and workshops, and regularly reading NLP blogs and news outlets, such as:...\n...3. **Entity Recognition:** BERT's entity recognition capabilities help chatbots extract specific information from user input, such as names, dates, and locations. This enables more personalized and relevant responses....\n- source external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 [external_record ref=longmemeval:gpt4_21adecb5:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2022/11/17 (Thu) 15:34\nTranscript:\nuser: I'm planning to start learning about deep learning and was wondering if you could recommend some online resources or courses for beginners. By the way, I just completed my undergraduate degree in computer science, so I have a solid foundation in CS concepts.\nassistant: Congratulations on completing your undergraduate degree in Computer Science! You're well-prepared to dive into deep learning. Here are some online resources and courses that are perfect for beginners with a CS background:...\n...3. **Join online communities**: Participate in online forums like Kaggle, Reddit (r/MachineLearning and r/DeepLearning), and GitHub to stay updated with the latest developments and learn from others.\n4. **Read research papers**: Familiarize yourself with research papers and articles to stay current with the latest advancements in deep learning....\n...1. **ACL Papers** (aclweb.org): Stay updated with the latest research in NLP by reading papers from the ACL conference....\n...With these resources, you'll be well on your way to advancing your knowledge in NLP and staying current with the latest developments in the field....\n...4. **Attention Mechanisms in NLP** (Machine Learning Mastery): A detailed tutorial on attention mechanisms, including self-attention, additive attention, and multi-head attention....\n...1. **Start with the basics**: Make sure you have a solid understanding of neural networks, recurrent neural networks (RNNs), and word embeddings before diving into Transformers and attention mechanisms....\n...3. **Transformer-based Image Synthesis with Attention** (Wang et al., 2020): A paper that uses transformers with attention for image synthesis, achieving state-of-the-art results on several benchmarks....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Attention mechanisms; Concept named Attention mechanisms.\n- entity entity:<1> [CONCEPT]: Computer science; Concept named Computer science.\n- entity entity:<2> [CONCEPT]: Deep learning; Concept named Deep learning.\n- entity entity:<3> [CONCEPT]: Natural language processing; Concept named Natural language processing.\n- entity entity:<4> [CONCEPT]: Transformers; Concept named Transformers.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_21adecb5",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many months passed between the completion of my undergraduate degree and the submission of my master's thesis?\n\n                                Question date:\n                                2023/07/01 (Sat) 13:31\n\n                                Noisy expected-answer label:\n                                6 months\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_21adecb5\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-371d4e06ba53-claim-5 [ACTIVE] completed_degree family=completed_degree: The user completed an undergraduate degree in computer science by 2022-11-17.; scope=User educational background as of the imported 2022-11-17 chat session.; context=\"The user mentioned this as background while asking for deep learning resources.\"; evidence=DIRECT source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I just completed my undergraduate degree in computer science\"\n- claim hot-path-7462de92d91a-claim-4 [ACTIVE] completed_degree family=completed_degree: The user submitted a master's thesis in computer science on 2023-05-15.; scope=Educational milestone for the user.; context=\"The user mentioned this while asking for NLP research paper recommendations to stay up-to-date with the field.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"I just submitted my master's thesis on computer science today\"\n- claim hot-path-7462de92d91a-claim-5 [ACTIVE] has_goal family=has_goal: The user wants to stay up-to-date with the latest developments in natural language processing research.; scope=User's ongoing research-learning interests in NLP.; context=\"The user asked for recommendations on NLP research papers to read after submitting a master's thesis in computer science.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"I'm looking to stay up-to-date with the latest developments in the field\"\n- claim hot-path-371d4e06ba53-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has a solid foundation in computer science concepts.; scope=User technical background as of the imported 2022-11-17 chat session.; context=\"The user stated this while asking for beginner deep learning resources after completing a CS undergraduate degree.\"; evidence=DIRECT source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I have a solid foundation in CS concepts\"\n- claim hot-path-7462de92d91a-claim-8 [ACTIVE] has_goal family=has_goal: The user wants to explore using BERT-based models for intent detection in customer feedback.; scope=User's ongoing NLP and customer-feedback modeling interests.; context=\"The user asked how to adapt BERT for intent detection and what datasets are typically used.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"explore the use of BERT-based models for intent detection in customer feedback\"\n- claim hot-path-7462de92d91a-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to explore using BERT-based models for sentiment analysis in customer feedback.; scope=User's ongoing NLP and customer-feedback modeling interests.; context=\"The user asked how BERT can be fine-tuned for sentiment analysis tasks and what datasets are typically used.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"exploring the possibility of using BERT-based models for sentiment analysis in the context of customer feedback\"\n- claim hot-path-7462de92d91a-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to explore using BERT-based models for dialogue systems.; scope=User's ongoing NLP and BERT application interests.; context=\"The user asked how to adapt BERT for dialogue systems and what datasets are typically used.\"; evidence=DIRECT source=external:provided-text:63d514a898f90e19990b1c041926fc8d quote=\"explore the use of BERT-based models for dialogue systems\"\n- claim hot-path-371d4e06ba53-claim-4 [ACTIVE] has_goal family=has_goal: The user wants to start learning about deep learning using beginner-friendly online resources or courses.; scope=User learning goals as stated in the imported 2022-11-17 chat session.; context=\"In a past chat session dated 2022-11-17, the user asked for beginner resources for deep learning.\"; evidence=DIRECT source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I'm planning to start learning about deep learning and was wondering if you could recommend some online resources or courses for beginners.\"\n\n            Retrieved notes:\n            - note hot-path-371d4e06ba53-note-2 [CONTEXT/ACTIVE]: User learning path: deep learning to NLP transformers and vision transformers; The user is on a learning path from beginner deep learning into NLP, with a recurring focus on transformers and attention mechanisms, and later on their applications in both NLP and computer vision. Resource recommendations should assume a CS background, some NLP paper-reading experience, and interest in practical papers/tutorials for text classification, sentiment analysis, question answering, translation, text generation, dialogue systems, image classification, object detection, and image generation.; scope=Applies when recommending AI/ML learning resources or tailoring explanations for this user.; evidence=SUMMARIZED source=external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 quote=\"I just completed my undergraduate degree in computer science, so I have a solid foundation in CS concepts.\"\n\n            Retrieved evidence:\n            - source external:provided-text:63d514a898f90e19990b1c041926fc8d [external_record ref=longmemeval:gpt4_21adecb5:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/15 (Mon) 22:51\nTranscript:\nuser: I'm looking for some recommendations on NLP research papers to read. I just submitted my master's thesis on computer science today, and I'm looking to stay up-to-date with the latest developments in the field.\nassistant: Congratulations on submitting your master's thesis!\n\nThere are many exciting developments in NLP research, and staying current can be a challenge. Here are some influential and recent papers across various subfields in NLP that you might find interesting:...\n...1. **The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks** (Frankle et al., 2019) - A paper that introduces the concept of \"lottery tickets\" in neural networks, which can be used to prune models without sacrificing performance....\n...To stay up-to-date with the latest developments in NLP, I recommend following top NLP researchers and institutions on social media, attending conferences and workshops, and regularly reading NLP blogs and news outlets, such as:...\n...3. **Entity Recognition:** BERT's entity recognition capabilities help chatbots extract specific information from user input, such as names, dates, and locations. This enables more personalized and relevant responses....\n- source external:provided-text:b0bbb6a7e0767c8f16fd7479dfcbf1a3 [external_record ref=longmemeval:gpt4_21adecb5:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2022/11/17 (Thu) 15:34\nTranscript:\nuser: I'm planning to start learning about deep learning and was wondering if you could recommend some online resources or courses for beginners. By the way, I just completed my undergraduate degree in computer science, so I have a solid foundation in CS concepts.\nassistant: Congratulations on completing your undergraduate degree in Computer Science! You're well-prepared to dive into deep learning. Here are some online resources and courses that are perfect for beginners with a CS background:...\n...3. **Join online communities**: Participate in online forums like Kaggle, Reddit (r/MachineLearning and r/DeepLearning), and GitHub to stay updated with the latest developments and learn from others.\n4. **Read research papers**: Familiarize yourself with research papers and articles to stay current with the latest advancements in deep learning....\n...1. **ACL Papers** (aclweb.org): Stay updated with the latest research in NLP by reading papers from the ACL conference....\n...With these resources, you'll be well on your way to advancing your knowledge in NLP and staying current with the latest developments in the field....\n...4. **Attention Mechanisms in NLP** (Machine Learning Mastery): A detailed tutorial on attention mechanisms, including self-attention, additive attention, and multi-head attention....\n...1. **Start with the basics**: Make sure you have a solid understanding of neural networks, recurrent neural networks (RNNs), and word embeddings before diving into Transformers and attention mechanisms....\n...3. **Transformer-based Image Synthesis with Attention** (Wang et al., 2020): A paper that uses transformers with attention for image synthesis, achieving state-of-the-art results on several benchmarks....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Attention mechanisms; Concept named Attention mechanisms.\n- entity entity:<1> [CONCEPT]: Computer science; Concept named Computer science.\n- entity entity:<2> [CONCEPT]: Deep learning; Concept named Deep learning.\n- entity entity:<3> [CONCEPT]: Natural language processing; Concept named Natural language processing.\n- entity entity:<4> [CONCEPT]: Transformers; Concept named Transformers.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_21adecb5",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"About 6 months passed between completing the undergraduate degree on/around 2022-11-17 and submitting the master's thesis on 2023-05-15.\",\"reason\":\"The memory provides both milestone dates, which are approximately six months apart.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2909,
+                "completionTokens": 155,
+                "thinkingTokens": 80,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

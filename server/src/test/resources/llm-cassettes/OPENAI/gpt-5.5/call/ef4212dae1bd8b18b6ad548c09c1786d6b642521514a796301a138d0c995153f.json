@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "ef4212dae1bd8b18b6ad548c09c1786d6b642521514a796301a138d0c995153f",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I harvest my first batch of fresh herbs from the herb garden kit?\n\n                                Question date:\n                                2023/04/18 (Tue) 10:15\n\n                                Noisy expected-answer label:\n                                3 days ago. 4 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_a2d1d1f6\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-445b0ba7db7a-claim-7 [ACTIVE] works_with family=works_with: The user works with a herb garden kit for growing fresh herbs.; scope=User's personal herb gardening context; context=\"In a 2023-04-15 cooking and gardening chat, the user said they harvested their first batch of fresh herbs from a herb garden kit.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I just harvested my first batch of fresh herbs from the herb garden kit today\"\n- claim hot-path-445b0ba7db7a-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to use up fresh herbs from their herb garden kit in recipes before the herbs go bad.; scope=User's near-term cooking goal for their herb harvest; context=\"The user asked for salad ideas featuring basil or thyme and later asked for thyme soup or stew ideas because they had harvested a lot of thyme.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I want to use them up\"\n- claim hot-path-445b0ba7db7a-claim-8 [ACTIVE] has_experience_with family=has_experience_with: The user has experience harvesting fresh basil from their herb garden.; scope=User's personal herb gardening and cooking context; context=\"The user asked for recipes featuring fresh herbs such as basil after harvesting herbs from a herb garden kit, then discussed storing fresh basil and using the harvest.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I just harvested my first batch of fresh herbs from the herb garden kit today\"\n- claim hot-path-445b0ba7db7a-claim-11 [ACTIVE] has_goal family=has_goal: The user is interested in making a Basil and Peach Salad using fresh herbs.; scope=Dinner recipe planning on 2023-04-15; context=\"After receiving several herb salad suggestions, the user selected the Basil and Peach Salad and asked for peach-selection and cheese-substitution advice for that recipe.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I'm really interested in the Basil and Peach Salad\"\n- claim hot-path-445b0ba7db7a-claim-9 [ACTIVE] has_experience_with family=has_experience_with: The user has experience harvesting thyme from their garden.; scope=User's personal herb gardening and cooking context; context=\"The user said they had been harvesting a lot of thyme from their garden and wanted to use it before it went bad.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I've been harvesting a lot of thyme from my garden\"\n- claim hot-path-445b0ba7db7a-claim-12 [ACTIVE] has_goal family=has_goal: The user is thinking about creating a compost bin in their backyard.; scope=User's home gardening and composting plans; context=\"The user asked for tips on getting started with a compost bin and said they had heard it recycles kitchen scraps and creates nutrient-rich soil for the garden.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I've been thinking about creating a compost bin in my backyard\"\n- claim hot-path-445b0ba7db7a-claim-13 [ACTIVE] has_goal family=has_goal: The user wants composting to recycle kitchen scraps and create nutrient-rich soil for their garden.; scope=User's motivation for backyard composting; context=\"The user described composting as a way to recycle kitchen scraps and create nutrient-rich soil when asking how to start a backyard compost bin.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"it's a great way to recycle kitchen scraps and create nutrient-rich soil for my garden\"\n\n            Retrieved notes:\n            - note hot-path-445b0ba7db7a-note-2 [CONTEXT/ACTIVE]: User's herb garden cooking context; The user has begun harvesting fresh basil and thyme from a herb garden kit and is exploring ways to use the herbs in salads, soups, and stews before they spoil.; scope=User's herb gardening and home cooking context from the 2023-04-15 session; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I just harvested my first batch of fresh herbs from the herb garden kit today and I want to use them up!\"\n- note hot-path-445b0ba7db7a-note-4 [LESSON/ACTIVE]: Fresh basil storage procedure; Fresh basil from the user's harvest can be kept longer by storing dry leaves cool and sealed, refrigerating wrapped basil for about a week, freezing chopped basil for cooked dishes, or using the stem-in-water method for up to about two weeks while monitoring spoilage.; scope=Reusable herb-storage advice given for the user's fresh basil harvest; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"do you have any tips on how to store fresh herbs like basil to keep them fresh for a longer period?\"\n\n            Retrieved evidence:\n            - source external:provided-text:bc792a0d50dede287de932e8e6dc8fdb [external_record ref=longmemeval:gpt4_a2d1d1f6:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 12:59\nTranscript:\nuser: I'm planning to make a salad for dinner tonight and I was wondering if you could give me some recipe suggestions that feature fresh herbs, like basil or thyme. I just harvested my first batch of fresh herbs from the herb garden kit today and I want to use them up!\nassistant: Congratulations on your first harvest! Fresh herbs can elevate any dish, and salads are a great way to showcase their flavors. Here are some delicious salad recipe suggestions that feature fresh basil and thyme:\n\n**Basil-based salads:**\n\n1. **Classic Caprese Salad**: A simple yet elegant salad featuring fresh mozzarella, juicy tomatoes, and fragrant basil leaves, dressed with olive oil and balsamic vinegar.\n2. **Thai Basil Chicken Salad**: A flavorful and refreshing salad with grilled chicken, mixed greens, fresh basil, mint, red bell peppers, and a tangy Thai-inspired dressing.\n3. **Basil and Peach Salad**: A sweet and savory combination of fresh peaches, crumbled goat cheese, mixed greens, and basil, topped with a balsamic vinaigrette....\n...**Other herb-based salads:**\n\n1. **Pesto Chicken Salad**: A creamy and herby salad with grilled chicken, mixed greens, cherry tomatoes, and a generous helping of homemade pesto (made with fresh basil, of course!)....\n...user: I've never thought about the differences in texture and flavor between these cheeses. I'll definitely keep that in mind when I'm experimenting with the recipe. By the way, do you have any tips on how to store fresh herbs like basil to keep them fresh for a longer period?\nassistant: Storing fresh herbs like basil can be a bit tricky, but with the right techniques, you can enjoy them for a longer period. Here are some tips to help you keep your fresh basil fresh:...\n...By following these tips, you can enjoy your fresh basil for a longer period and make the most of your herb garden harvest.\n\nDo you have any other questions about storing fresh herbs or using them in recipes?\nuser: I've been thinking about my herb garden and how I can use the herbs in different recipes. I was wondering if you have any suggestions for using thyme in soups or stews. I've been harvesting a lot of thyme from my garden and I want to use it up before it goes bad.\nassistant: Thyme is a fantastic addition to many soups and stews, and it's wonderful that you're looking to use up your fresh harvest. Here are some delicious and creative ways to incorporate thyme into your soups and stews:...\n...7. **Minestrone**: This Italian-inspired soup is a great way to use up a variety of vegetables and herbs, including thyme. Add it to the pot along with the vegetables, beans, and tomatoes, and simmer it with a flavorful broth....\n...* Combine thyme with other herbs, like rosemary or bay leaves, for added depth and complexity.\n\nI hope these ideas inspire you to create some delicious soups and stews with your fresh thyme harvest!\nuser: I've been thinking about creating a compost bin in my backyard, and I was wondering if you have any tips on how to get started. I've heard it's a great way to recycle kitchen scraps and create nutrient-rich soil for my garden.\nassistant: Starting a compost bin is a fantastic idea! Composting is an excellent way to reduce waste, create a nutrient-rich soil amendment for your garden, and even help mitigate climate change. I'm more than happy to help you get started....\n...9. **Wait and harvest**: After 2-3 months, your compost should be ready. It should be dark, crumbly, and have an earthy aroma. Use it to enrich your soil and support healthy plant growth.\n\nSome additional tips to keep in mind:\n\n* Avoid adding weeds with seeds to your compost, as they can sprout in your garden....\n...Starting a compost bin takes some effort, but the benefits to your garden and the environment are well worth it. Good luck, and happy composting!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Basil; Concept named Basil.\n- entity entity:<1> [CONCEPT]: Thyme; Concept named Thyme.\n- entity entity:<2> [PRODUCT]: Herb garden kit; Product named Herb garden kit.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_a2d1d1f6",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I harvest my first batch of fresh herbs from the herb garden kit?\n\n                                Question date:\n                                2023/04/18 (Tue) 10:15\n\n                                Noisy expected-answer label:\n                                3 days ago. 4 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_a2d1d1f6\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-445b0ba7db7a-claim-7 [ACTIVE] works_with family=works_with: The user works with a herb garden kit for growing fresh herbs.; scope=User's personal herb gardening context; context=\"In a 2023-04-15 cooking and gardening chat, the user said they harvested their first batch of fresh herbs from a herb garden kit.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I just harvested my first batch of fresh herbs from the herb garden kit today\"\n- claim hot-path-445b0ba7db7a-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to use up fresh herbs from their herb garden kit in recipes before the herbs go bad.; scope=User's near-term cooking goal for their herb harvest; context=\"The user asked for salad ideas featuring basil or thyme and later asked for thyme soup or stew ideas because they had harvested a lot of thyme.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I want to use them up\"\n- claim hot-path-445b0ba7db7a-claim-8 [ACTIVE] has_experience_with family=has_experience_with: The user has experience harvesting fresh basil from their herb garden.; scope=User's personal herb gardening and cooking context; context=\"The user asked for recipes featuring fresh herbs such as basil after harvesting herbs from a herb garden kit, then discussed storing fresh basil and using the harvest.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I just harvested my first batch of fresh herbs from the herb garden kit today\"\n- claim hot-path-445b0ba7db7a-claim-11 [ACTIVE] has_goal family=has_goal: The user is interested in making a Basil and Peach Salad using fresh herbs.; scope=Dinner recipe planning on 2023-04-15; context=\"After receiving several herb salad suggestions, the user selected the Basil and Peach Salad and asked for peach-selection and cheese-substitution advice for that recipe.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I'm really interested in the Basil and Peach Salad\"\n- claim hot-path-445b0ba7db7a-claim-9 [ACTIVE] has_experience_with family=has_experience_with: The user has experience harvesting thyme from their garden.; scope=User's personal herb gardening and cooking context; context=\"The user said they had been harvesting a lot of thyme from their garden and wanted to use it before it went bad.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I've been harvesting a lot of thyme from my garden\"\n- claim hot-path-445b0ba7db7a-claim-12 [ACTIVE] has_goal family=has_goal: The user is thinking about creating a compost bin in their backyard.; scope=User's home gardening and composting plans; context=\"The user asked for tips on getting started with a compost bin and said they had heard it recycles kitchen scraps and creates nutrient-rich soil for the garden.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I've been thinking about creating a compost bin in my backyard\"\n- claim hot-path-445b0ba7db7a-claim-13 [ACTIVE] has_goal family=has_goal: The user wants composting to recycle kitchen scraps and create nutrient-rich soil for their garden.; scope=User's motivation for backyard composting; context=\"The user described composting as a way to recycle kitchen scraps and create nutrient-rich soil when asking how to start a backyard compost bin.\"; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"it's a great way to recycle kitchen scraps and create nutrient-rich soil for my garden\"\n\n            Retrieved notes:\n            - note hot-path-445b0ba7db7a-note-2 [CONTEXT/ACTIVE]: User's herb garden cooking context; The user has begun harvesting fresh basil and thyme from a herb garden kit and is exploring ways to use the herbs in salads, soups, and stews before they spoil.; scope=User's herb gardening and home cooking context from the 2023-04-15 session; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"I just harvested my first batch of fresh herbs from the herb garden kit today and I want to use them up!\"\n- note hot-path-445b0ba7db7a-note-4 [LESSON/ACTIVE]: Fresh basil storage procedure; Fresh basil from the user's harvest can be kept longer by storing dry leaves cool and sealed, refrigerating wrapped basil for about a week, freezing chopped basil for cooked dishes, or using the stem-in-water method for up to about two weeks while monitoring spoilage.; scope=Reusable herb-storage advice given for the user's fresh basil harvest; evidence=DIRECT source=external:provided-text:bc792a0d50dede287de932e8e6dc8fdb quote=\"do you have any tips on how to store fresh herbs like basil to keep them fresh for a longer period?\"\n\n            Retrieved evidence:\n            - source external:provided-text:bc792a0d50dede287de932e8e6dc8fdb [external_record ref=longmemeval:gpt4_a2d1d1f6:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/04/15 (Sat) 12:59\nTranscript:\nuser: I'm planning to make a salad for dinner tonight and I was wondering if you could give me some recipe suggestions that feature fresh herbs, like basil or thyme. I just harvested my first batch of fresh herbs from the herb garden kit today and I want to use them up!\nassistant: Congratulations on your first harvest! Fresh herbs can elevate any dish, and salads are a great way to showcase their flavors. Here are some delicious salad recipe suggestions that feature fresh basil and thyme:\n\n**Basil-based salads:**\n\n1. **Classic Caprese Salad**: A simple yet elegant salad featuring fresh mozzarella, juicy tomatoes, and fragrant basil leaves, dressed with olive oil and balsamic vinegar.\n2. **Thai Basil Chicken Salad**: A flavorful and refreshing salad with grilled chicken, mixed greens, fresh basil, mint, red bell peppers, and a tangy Thai-inspired dressing.\n3. **Basil and Peach Salad**: A sweet and savory combination of fresh peaches, crumbled goat cheese, mixed greens, and basil, topped with a balsamic vinaigrette....\n...**Other herb-based salads:**\n\n1. **Pesto Chicken Salad**: A creamy and herby salad with grilled chicken, mixed greens, cherry tomatoes, and a generous helping of homemade pesto (made with fresh basil, of course!)....\n...user: I've never thought about the differences in texture and flavor between these cheeses. I'll definitely keep that in mind when I'm experimenting with the recipe. By the way, do you have any tips on how to store fresh herbs like basil to keep them fresh for a longer period?\nassistant: Storing fresh herbs like basil can be a bit tricky, but with the right techniques, you can enjoy them for a longer period. Here are some tips to help you keep your fresh basil fresh:...\n...By following these tips, you can enjoy your fresh basil for a longer period and make the most of your herb garden harvest.\n\nDo you have any other questions about storing fresh herbs or using them in recipes?\nuser: I've been thinking about my herb garden and how I can use the herbs in different recipes. I was wondering if you have any suggestions for using thyme in soups or stews. I've been harvesting a lot of thyme from my garden and I want to use it up before it goes bad.\nassistant: Thyme is a fantastic addition to many soups and stews, and it's wonderful that you're looking to use up your fresh harvest. Here are some delicious and creative ways to incorporate thyme into your soups and stews:...\n...7. **Minestrone**: This Italian-inspired soup is a great way to use up a variety of vegetables and herbs, including thyme. Add it to the pot along with the vegetables, beans, and tomatoes, and simmer it with a flavorful broth....\n...* Combine thyme with other herbs, like rosemary or bay leaves, for added depth and complexity.\n\nI hope these ideas inspire you to create some delicious soups and stews with your fresh thyme harvest!\nuser: I've been thinking about creating a compost bin in my backyard, and I was wondering if you have any tips on how to get started. I've heard it's a great way to recycle kitchen scraps and create nutrient-rich soil for my garden.\nassistant: Starting a compost bin is a fantastic idea! Composting is an excellent way to reduce waste, create a nutrient-rich soil amendment for your garden, and even help mitigate climate change. I'm more than happy to help you get started....\n...9. **Wait and harvest**: After 2-3 months, your compost should be ready. It should be dark, crumbly, and have an earthy aroma. Use it to enrich your soil and support healthy plant growth.\n\nSome additional tips to keep in mind:\n\n* Avoid adding weeds with seeds to your compost, as they can sprout in your garden....\n...Starting a compost bin takes some effort, but the benefits to your garden and the environment are well worth it. Good luck, and happy composting!\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Basil; Concept named Basil.\n- entity entity:<1> [CONCEPT]: Thyme; Concept named Thyme.\n- entity entity:<2> [PRODUCT]: Herb garden kit; Product named Herb garden kit.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_a2d1d1f6",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You harvested your first batch 3 days ago, on 2023/04/15.\",\"reason\":\"The retrieved session is dated 2023/04/15 and says the harvest happened “today,” which is three days before the 2023/04/18 question date.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3064,
+                "completionTokens": 134,
+                "thinkingTokens": 52,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

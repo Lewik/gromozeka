@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "b9cf0c6aea10ea235d619f02acfd3bd5aef8056d0b8a20878de64728a2f23adc",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been feeling like my chocolate chip cookies need something extra. Any advice?\n\n                                Question date:\n                                2023/05/30 (Tue) 02:48\n\n                                Expected answer:\n                                The user would prefer responses that build upon their previous experimentation with turbinado sugar, suggesting ingredients or techniques that complement its richer flavor. They might not prefer generic cookie-making advice or suggestions that don't take into account their existing use of turbinado sugar.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:38146c39\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-f59cd7b3c449-claim-3 [ACTIVE] has_experience_with family=has_experience_with: The user has experimented with turbinado sugar in baking or recipe development.; scope=User baking and recipe-development context; evidence=DIRECT source=external:provided-text:defaf56b7b1230e9877b05cbbb8ec047 quote=\"I've been experimenting with different types of sugar and found that turbinado sugar adds a richer flavor.\"\n- claim hot-path-f59cd7b3c449-claim-4 [ACTIVE] believes family=believes: The user believes turbinado sugar adds a richer flavor.; scope=User's baking opinions about turbinado sugar; evidence=DIRECT source=external:provided-text:defaf56b7b1230e9877b05cbbb8ec047 quote=\"found that turbinado sugar adds a richer flavor\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:defaf56b7b1230e9877b05cbbb8ec047 [external_record ref=longmemeval:38146c39:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I've been experimenting with different types of sugar and found that turbinado sugar adds a richer flavor. Do you have any suggestions on what other ingredients I could pair with it to enhance the flavor even more?\nassistant: Turbinado sugar is a great choice! Its partially refined state and subtle caramel flavor make it an excellent addition to many recipes. Pairing it with other ingredients can indeed enhance its flavor and create complex taste profiles. Here are some suggestions for ingredients that complement turbinado sugar well:\n\n1. **Spices:** Turbinado sugar and warm spices like cinnamon, nutmeg, or cardamom create a delightful combination. Try pairing it with these spices in baked goods, such as sweet breads or cookies....\n...3. **Nuts:** Turbinado sugar and nuts like almonds, pecans, or hazelnuts make a great team. Add them to baked goods, like cakes or cookies, or use them as a topping for ice cream or yogurt....\n...6. **Cocoa powder or dark chocolate:** Turbinado sugar and cocoa powder or dark chocolate create a rich, indulgent flavor profile. Use them in brownies, cakes, or truffles....\n...9. **Ginger:** The spicy warmth of ginger balances the sweetness of turbinado sugar. Use them together in gingerbread, cookies, or ice cream.\n10. **Salt:** Believe it or not, a pinch of flaky sea salt or kosher salt can enhance the flavor of turbinado sugar. Try using it in caramel sauces, cookies, or brownies.\n\nSome specific recipe ideas to get you started:\n\n* Turbinado sugar and cinnamon sugar cookies...\n...* **Adjust the liquid content:** Turbinado sugar can make the batter more dense, so you may need to adjust the liquid content of the recipe accordingly....\n...Remember, the key to using turbinado sugar effectively is to taste as you go and adjust the amount to your liking. Happy baking!\nuser: I'm particularly interested in using turbinado sugar in a carrot cake recipe. Do you have any suggestions on how to incorporate it into the recipe, and are there any other ingredients that would complement its flavor well?\nassistant: Carrot cake is a fantastic choice for showcasing turbinado sugar's rich flavor. Here are some suggestions on how to incorporate it into your recipe and other ingredients that would complement its flavor well:...\n...**Recipe Suggestions:**...\n...Remember, the key to using turbinado sugar effectively is to taste as you go and adjust the amount to your liking. Start with a small amount and add more to taste. Happy baking!...\n...Combine the cream cheese and butter until smooth, then gradually add the powdered sugar and turbinado sugar until fully incorporated. Whip until light and fluffy, then adjust the flavor as needed....\n...2. **Add a caramel extract:** Consider adding a small amount of caramel extract (about 1/4 teaspoon) to the frosting to enhance the caramel flavor....\n...Combine the cream cheese and browned butter until smooth, then gradually add the powdered sugar and caramelized turbinado sugar until fully incorporated. Whip until light and fluffy, then adjust the flavor as needed....\n...2. **Adjust the ratio of sugar to cream cheese:** You may need to adjust the ratio of sugar to cream cheese to balance out the flavor and texture of the frosting....\n...**Recipe suggestions:**...\n...3. **Adjust the ratio of sugar to cream cheese:** Keep in mind that muscovado sugar has a stronger flavor than granulated sugar, so you may need to adjust the ratio of sugar to cream cheese to balance out the flavor....\n...user: Let's discuss other ingredients that pair well with carrot cake. What are some nuts that you think would complement the flavor of carrot cake well?...\n...4. **Almonds:** Sliced or slivered almonds can add a nice crunch and flavor to carrot cake. They have a mild, nutty flavor that won't overpower the other ingredients....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Turbinado sugar; Concept named Turbinado sugar.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "38146c39",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I've been feeling like my chocolate chip cookies need something extra. Any advice?\n\n                                Question date:\n                                2023/05/30 (Tue) 02:48\n\n                                Expected answer:\n                                The user would prefer responses that build upon their previous experimentation with turbinado sugar, suggesting ingredients or techniques that complement its richer flavor. They might not prefer generic cookie-making advice or suggestions that don't take into account their existing use of turbinado sugar.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:38146c39\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-f59cd7b3c449-claim-3 [ACTIVE] has_experience_with family=has_experience_with: The user has experimented with turbinado sugar in baking or recipe development.; scope=User baking and recipe-development context; evidence=DIRECT source=external:provided-text:defaf56b7b1230e9877b05cbbb8ec047 quote=\"I've been experimenting with different types of sugar and found that turbinado sugar adds a richer flavor.\"\n- claim hot-path-f59cd7b3c449-claim-4 [ACTIVE] believes family=believes: The user believes turbinado sugar adds a richer flavor.; scope=User's baking opinions about turbinado sugar; evidence=DIRECT source=external:provided-text:defaf56b7b1230e9877b05cbbb8ec047 quote=\"found that turbinado sugar adds a richer flavor\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:defaf56b7b1230e9877b05cbbb8ec047 [external_record ref=longmemeval:38146c39:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I've been experimenting with different types of sugar and found that turbinado sugar adds a richer flavor. Do you have any suggestions on what other ingredients I could pair with it to enhance the flavor even more?\nassistant: Turbinado sugar is a great choice! Its partially refined state and subtle caramel flavor make it an excellent addition to many recipes. Pairing it with other ingredients can indeed enhance its flavor and create complex taste profiles. Here are some suggestions for ingredients that complement turbinado sugar well:\n\n1. **Spices:** Turbinado sugar and warm spices like cinnamon, nutmeg, or cardamom create a delightful combination. Try pairing it with these spices in baked goods, such as sweet breads or cookies....\n...3. **Nuts:** Turbinado sugar and nuts like almonds, pecans, or hazelnuts make a great team. Add them to baked goods, like cakes or cookies, or use them as a topping for ice cream or yogurt....\n...6. **Cocoa powder or dark chocolate:** Turbinado sugar and cocoa powder or dark chocolate create a rich, indulgent flavor profile. Use them in brownies, cakes, or truffles....\n...9. **Ginger:** The spicy warmth of ginger balances the sweetness of turbinado sugar. Use them together in gingerbread, cookies, or ice cream.\n10. **Salt:** Believe it or not, a pinch of flaky sea salt or kosher salt can enhance the flavor of turbinado sugar. Try using it in caramel sauces, cookies, or brownies.\n\nSome specific recipe ideas to get you started:\n\n* Turbinado sugar and cinnamon sugar cookies...\n...* **Adjust the liquid content:** Turbinado sugar can make the batter more dense, so you may need to adjust the liquid content of the recipe accordingly....\n...Remember, the key to using turbinado sugar effectively is to taste as you go and adjust the amount to your liking. Happy baking!\nuser: I'm particularly interested in using turbinado sugar in a carrot cake recipe. Do you have any suggestions on how to incorporate it into the recipe, and are there any other ingredients that would complement its flavor well?\nassistant: Carrot cake is a fantastic choice for showcasing turbinado sugar's rich flavor. Here are some suggestions on how to incorporate it into your recipe and other ingredients that would complement its flavor well:...\n...**Recipe Suggestions:**...\n...Remember, the key to using turbinado sugar effectively is to taste as you go and adjust the amount to your liking. Start with a small amount and add more to taste. Happy baking!...\n...Combine the cream cheese and butter until smooth, then gradually add the powdered sugar and turbinado sugar until fully incorporated. Whip until light and fluffy, then adjust the flavor as needed....\n...2. **Add a caramel extract:** Consider adding a small amount of caramel extract (about 1/4 teaspoon) to the frosting to enhance the caramel flavor....\n...Combine the cream cheese and browned butter until smooth, then gradually add the powdered sugar and caramelized turbinado sugar until fully incorporated. Whip until light and fluffy, then adjust the flavor as needed....\n...2. **Adjust the ratio of sugar to cream cheese:** You may need to adjust the ratio of sugar to cream cheese to balance out the flavor and texture of the frosting....\n...**Recipe suggestions:**...\n...3. **Adjust the ratio of sugar to cream cheese:** Keep in mind that muscovado sugar has a stronger flavor than granulated sugar, so you may need to adjust the ratio of sugar to cream cheese to balance out the flavor....\n...user: Let's discuss other ingredients that pair well with carrot cake. What are some nuts that you think would complement the flavor of carrot cake well?...\n...4. **Almonds:** Sliced or slivered almonds can add a nice crunch and flavor to carrot cake. They have a mild, nutty flavor that won't overpower the other ingredients....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Turbinado sugar; Concept named Turbinado sugar.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "38146c39",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Advice should acknowledge the user's prior use of turbinado sugar and suggest cookie additions or techniques that complement its richer, caramel-like flavor rather than giving generic cookie tips.\",\"reason\":\"The memory directly shows the user has experimented with turbinado sugar, believes it adds richer flavor, and previously asked for complementary ingredients in cookies and other baking.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1879,
+                "completionTokens": 138,
+                "thinkingTokens": 46,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

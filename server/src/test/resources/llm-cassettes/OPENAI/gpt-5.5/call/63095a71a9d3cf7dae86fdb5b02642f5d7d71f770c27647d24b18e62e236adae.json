@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "63095a71a9d3cf7dae86fdb5b02642f5d7d71f770c27647d24b18e62e236adae",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did it take me to assemble the IKEA bookshelf?\n\n                                Question date:\n                                2023/05/28 (Sun) 03:40\n\n                                Expected answer:\n                                4 hours\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:94f70d80\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e5a74fcc592b-claim-8 [ACTIVE] current_metric_value family=current_metric_value: The user's recent IKEA bookshelf assembly time was 4 hours.; scope=User furniture assembly benchmark; evidence=DIRECT source=external:provided-text:680277b0c551eb3af56dfa0e764a8fa7 quote=\"it took me 4 hours\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:680277b0c551eb3af56dfa0e764a8fa7 [external_record ref=longmemeval:94f70d80:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 19:23\nTranscript:\nuser: I'm looking for some recommendations on coffee tables with storage space. Do you have any suggestions or should I check out specific brands?\nassistant: A coffee table with storage space is a fantastic investment for any living room! It's a great way to keep clutter at bay while still having a stylish and functional piece of furniture. I'd be happy to help you with some recommendations and suggestions....\n...3. **IKEA**: IKEA is a great option for affordable and functional coffee tables with storage, like the popular LACK series....\n...**Some Specific Recommendations:**...\n...user: I've been leaning towards a wooden top, but now I'm considering the glass top option too. Do you think a glass top would be more prone to scratches or fingerprints compared to wood? Also, by the way, I just assembled an IKEA bookshelf recently and it took me 4 hours, which wasn't too bad....\n...On the other hand, wood tops can scratch or dent more easily, especially if you have a softwood or a wood finish that's not very durable. However, wood tops can be refinished or repaired if scratched, which is not always possible with glass tops....\n...**Your IKEA Assembly Experience**\n\n Congrats on assembling your IKEA bookshelf in 4 hours! That's a great accomplishment! IKEA furniture can be challenging to assemble, but the sense of accomplishment when you're done is rewarding. It's also a great way to save money and develop your DIY skills....\n...user: I think I'll also stop by IKEA while I'm out to check out their coffee tables with storage, since I had a decent experience assembling that bookshelf. Do you think their coffee tables would be similarly easy to assemble?\nassistant: **IKEA Coffee Tables with Storage**\n\nIKEA is a great option to consider for coffee tables with storage, especially since you've had a positive experience with their bookshelf. Their coffee tables are often affordable, functional, and stylish.\n\n**Assembly Experience**\n\nIKEA's coffee tables with storage are likely to have a similar assembly experience to their bookshelves. They're designed to be DIY-friendly, with clear instructions and minimal tools required. However, the complexity of the assembly process may vary depending on the specific model you choose.\n\nSome IKEA coffee tables with storage, like the LACK series, are relatively simple to assemble and might take around 1-2 hours to put together. Others, like the MALM series, might be more complex and require 2-4 hours of assembly time.\n\n**Tips for Assembling IKEA Coffee Tables**\n\nTo ensure a smooth assembly experience, follow these tips:...\n...3. **Sort the parts**: Organize the components and hardware before starting the assembly process to avoid confusion.\n4. **Take your time**: Don't rush the assembly process. Take breaks if needed, and double-check your work as you go....\n...* **Price**: IKEA is generally more affordable, but the quality and materials might not be as high-end as the other two brands....\n...3. **Long-term performance**: Online reviews can provide insights into how a product holds up over time, which is essential for evaluating durability and quality....\n...3. **Older reviews**: Reviews from several years ago might not reflect the current product or manufacturing process....\n...user: I'll head to West Elm, Crate and Barrel, and IKEA this weekend to check out their coffee tables with storage. I'll also read online reviews and ratings to get a better sense of each product's quality and durability. Thanks for the tips!...\n...Remember to take your time, ask questions, and don't hesitate to reach out if you need any more advice or guidance. And don't forget to measure your space and bring those measurements with you to the stores!...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "94f70d80",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How long did it take me to assemble the IKEA bookshelf?\n\n                                Question date:\n                                2023/05/28 (Sun) 03:40\n\n                                Expected answer:\n                                4 hours\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:94f70d80\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e5a74fcc592b-claim-8 [ACTIVE] current_metric_value family=current_metric_value: The user's recent IKEA bookshelf assembly time was 4 hours.; scope=User furniture assembly benchmark; evidence=DIRECT source=external:provided-text:680277b0c551eb3af56dfa0e764a8fa7 quote=\"it took me 4 hours\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:680277b0c551eb3af56dfa0e764a8fa7 [external_record ref=longmemeval:94f70d80:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 19:23\nTranscript:\nuser: I'm looking for some recommendations on coffee tables with storage space. Do you have any suggestions or should I check out specific brands?\nassistant: A coffee table with storage space is a fantastic investment for any living room! It's a great way to keep clutter at bay while still having a stylish and functional piece of furniture. I'd be happy to help you with some recommendations and suggestions....\n...3. **IKEA**: IKEA is a great option for affordable and functional coffee tables with storage, like the popular LACK series....\n...**Some Specific Recommendations:**...\n...user: I've been leaning towards a wooden top, but now I'm considering the glass top option too. Do you think a glass top would be more prone to scratches or fingerprints compared to wood? Also, by the way, I just assembled an IKEA bookshelf recently and it took me 4 hours, which wasn't too bad....\n...On the other hand, wood tops can scratch or dent more easily, especially if you have a softwood or a wood finish that's not very durable. However, wood tops can be refinished or repaired if scratched, which is not always possible with glass tops....\n...**Your IKEA Assembly Experience**\n\n Congrats on assembling your IKEA bookshelf in 4 hours! That's a great accomplishment! IKEA furniture can be challenging to assemble, but the sense of accomplishment when you're done is rewarding. It's also a great way to save money and develop your DIY skills....\n...user: I think I'll also stop by IKEA while I'm out to check out their coffee tables with storage, since I had a decent experience assembling that bookshelf. Do you think their coffee tables would be similarly easy to assemble?\nassistant: **IKEA Coffee Tables with Storage**\n\nIKEA is a great option to consider for coffee tables with storage, especially since you've had a positive experience with their bookshelf. Their coffee tables are often affordable, functional, and stylish.\n\n**Assembly Experience**\n\nIKEA's coffee tables with storage are likely to have a similar assembly experience to their bookshelves. They're designed to be DIY-friendly, with clear instructions and minimal tools required. However, the complexity of the assembly process may vary depending on the specific model you choose.\n\nSome IKEA coffee tables with storage, like the LACK series, are relatively simple to assemble and might take around 1-2 hours to put together. Others, like the MALM series, might be more complex and require 2-4 hours of assembly time.\n\n**Tips for Assembling IKEA Coffee Tables**\n\nTo ensure a smooth assembly experience, follow these tips:...\n...3. **Sort the parts**: Organize the components and hardware before starting the assembly process to avoid confusion.\n4. **Take your time**: Don't rush the assembly process. Take breaks if needed, and double-check your work as you go....\n...* **Price**: IKEA is generally more affordable, but the quality and materials might not be as high-end as the other two brands....\n...3. **Long-term performance**: Online reviews can provide insights into how a product holds up over time, which is essential for evaluating durability and quality....\n...3. **Older reviews**: Reviews from several years ago might not reflect the current product or manufacturing process....\n...user: I'll head to West Elm, Crate and Barrel, and IKEA this weekend to check out their coffee tables with storage. I'll also read online reviews and ratings to get a better sense of each product's quality and durability. Thanks for the tips!...\n...Remember to take your time, ask questions, and don't hesitate to reach out if you need any more advice or guidance. And don't forget to measure your space and bring those measurements with you to the stores!...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "94f70d80",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"It took you 4 hours to assemble the IKEA bookshelf.\",\"reason\":\"The retrieved claim and transcript explicitly state that the IKEA bookshelf assembly took 4 hours.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1607,
+                "completionTokens": 71,
+                "thinkingTokens": 15,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

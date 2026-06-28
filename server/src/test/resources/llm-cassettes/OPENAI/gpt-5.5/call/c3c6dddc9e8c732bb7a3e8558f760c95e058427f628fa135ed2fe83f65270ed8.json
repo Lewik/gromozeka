@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "c3c6dddc9e8c732bb7a3e8558f760c95e058427f628fa135ed2fe83f65270ed8",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path:claim:<0> has_constraint; The document \"03. Prompt Pack\" states that the v3 prompt pack should avoid putting the entire memory lifecycle into one giant prompt and should keep each step narrow and testable.; scope=Document 03. Prompt Pack, lines 1-7\n- claim hot-path:claim:<1> has_goal; The document \"03. Prompt Pack\" provides a starter prompt pack for v3.; scope=Document 03. Prompt Pack, lines 1-7\n- note hot-path:note:<0> DIRECTION; v3 prompt pack uses narrow verifiable lifecycle steps; The 03. Prompt Pack for `v3` establishes a design direction: it should not put the entire memory lifecycle into one giant prompt, but should keep each step narrow and verifiable.; scope=Document 03. Prompt Pack, section 03. Prompt Pack, lines 1-7 in agent_memory_handoff/03_prompts.md\n\n        Resolved entities:\n        - mention=03. Prompt Pack; action=LINK_EXISTING; id=entity:<0>; type=existing; name=03. Prompt Pack; reason=The target document section is from the existing document named 03. Prompt Pack.\n- mention=MemoryRouter v3; action=CREATE_NEW; id=entity:<1>; type=AGENT; name=MemoryRouter v3; reason=The section discusses MemoryRouter v3 as a reusable prompt/component, and no existing candidate matches it.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3 MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3 Document lines: 8-92 ## 0. Общие правила для всех memory prompts ### Что обязательно передавать - `current_time_iso` - `timezone` - `namespace_id` - `source_ids` - `latest_turns` или selected sources - только нужный retrieved context, а не весь лог - `predicate_catalog_excerpt`, если prompt работает с claims - `retrieval_budget`, если prompt планирует чтение ### Технические правила - structured output / JSON schema enforcement - низкая температура - строгая валидация результата - invalid JSON -> retry с validator feedback - every prompt versioned: `router_v3`, `claim_extract_v3`, etc. ### Общие семантические правила - лучше `noop`, чем мусорная память - explicit statement > inference - newer explicit statement > older inferred statement - relative time must become absolute time - один memory item = одна переиспользуемая единица - не сохранять hypotheticals как facts - requests и facts — не одно и то же - `scope_json` должен ограничивать обобщение - не выдавать provisional note за hard fact ## 1. Memory Router v3 ### Когда вызывать Сразу после сохранения `Source`. ### Цель Решить, инициировать ли memory write pipeline и какой write mode выбрать. ### Выход ```json { \"decision\": \"noop | direct_structured_write | note_write | mixed\", \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"], \"salience\": 0.0, \"reason\": \"short explanation\" } ``` ### Prompt ```text You are MemoryRouter v3 for a long-term AI agent. Your job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use. Current time: {{current_time_iso}} Timezone: {{timezone}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Return JSON: { \"decision\": \"noop | direct_structured_write | note_write | mixed\", \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"], \"salience\": 0.0, \"reason\": \"short explanation\" } Decision policy: - \"noop\" for greetings, filler, repetition, low-value chatter, and transient content. - \"direct_structured_write\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments. - \"note_write\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests. - \"mixed\" when the material contains both structured facts/tasks and richer rationale/context. Hard rules: - Prefer \"noop\" over memory pollution. - Do not treat every question as a task. - Do not force rationale into claims. - If the user explicitly asks to remember something, do not return \"noop\". - Return valid JSON only. ```\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:e61471277609e2eeef0f7ba7476af6e7] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3\nDocument lines: 8-92\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует чтение\n\n### Технические правила\n- structured output / JSON schema enforcement\n- низкая температура\n- строгая валидация результата\n- invalid JSON -> retry с validator feedback\n- every prompt versioned: `router_v3`, `claim_extract_v3`, etc.\n\n### Общие семантические правила\n- лучше `noop`, чем мусорная память\n- explicit statement > inference\n- newer explicit statement > older inferred statement\n- relative time must become absolute time\n- один memory item = одна переиспользуемая единица\n- не сохранять hypotheticals как facts\n- requests и facts — не одно и то же\n- `scope_json` должен ограничивать обобщение\n- не выдавать provisional note за hard fact\n\n## 1. Memory Router v3\n\n### Когда вызывать\nСразу после сохранения `Source`.\n\n### Цель\nРешить, инициировать ли memory write pipeline и какой write mode выбрать.\n\n### Выход\n\n```json\n{\n  \"decision\": \"noop | direct_structured_write | note_write | mixed\",\n  \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"],\n  \"salience\": 0.0,\n  \"reason\": \"short explanation\"\n}\n```\n\n### Prompt\n\n```text\nYou are MemoryRouter v3 for a long-term AI agent.\n\nYour job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nReturn JSON:\n{\n  \"decision\": \"noop | direct_structured_write | note_write | mixed\",\n  \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"],\n  \"salience\": 0.0,\n  \"reason\": \"short explanation\"\n}\n\nDecision policy:\n- \"noop\" for greetings, filler, repetition, low-value chatter, and transient content.\n- \"direct_structured_write\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments.\n- \"note_write\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.\n- \"mixed\" when the material contains both structured facts/tasks and richer rationale/context.\n\nHard rules:\n- Prefer \"noop\" over memory pollution.\n- Do not treat every question as a task.\n- Do not force rationale into claims.\n- If the user explicitly asks to remember something, do not return \"noop\".\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:e61471277609e2eeef0f7ba7476af6e7"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - claim hot-path:claim:<0> has_constraint; The document \"03. Prompt Pack\" states that the v3 prompt pack should avoid putting the entire memory lifecycle into one giant prompt and should keep each step narrow and testable.; scope=Document 03. Prompt Pack, lines 1-7\n- claim hot-path:claim:<1> has_goal; The document \"03. Prompt Pack\" provides a starter prompt pack for v3.; scope=Document 03. Prompt Pack, lines 1-7\n- note hot-path:note:<0> DIRECTION; v3 prompt pack uses narrow verifiable lifecycle steps; The 03. Prompt Pack for `v3` establishes a design direction: it should not put the entire memory lifecycle into one giant prompt, but should keep each step narrow and verifiable.; scope=Document 03. Prompt Pack, section 03. Prompt Pack, lines 1-7 in agent_memory_handoff/03_prompts.md\n\n        Resolved entities:\n        - mention=03. Prompt Pack; action=LINK_EXISTING; id=entity:<0>; type=existing; name=03. Prompt Pack; reason=The target document section is from the existing document named 03. Prompt Pack.\n- mention=MemoryRouter v3; action=CREATE_NEW; id=entity:<1>; type=AGENT; name=MemoryRouter v3; reason=The section discusses MemoryRouter v3 as a reusable prompt/component, and no existing candidate matches it.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3 MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3 Document lines: 8-92 ## 0. Общие правила для всех memory prompts ### Что обязательно передавать - `current_time_iso` - `timezone` - `namespace_id` - `source_ids` - `latest_turns` или selected sources - только нужный retrieved context, а не весь лог - `predicate_catalog_excerpt`, если prompt работает с claims - `retrieval_budget`, если prompt планирует чтение ### Технические правила - structured output / JSON schema enforcement - низкая температура - строгая валидация результата - invalid JSON -> retry с validator feedback - every prompt versioned: `router_v3`, `claim_extract_v3`, etc. ### Общие семантические правила - лучше `noop`, чем мусорная память - explicit statement > inference - newer explicit statement > older inferred statement - relative time must become absolute time - один memory item = одна переиспользуемая единица - не сохранять hypotheticals как facts - requests и facts — не одно и то же - `scope_json` должен ограничивать обобщение - не выдавать provisional note за hard fact ## 1. Memory Router v3 ### Когда вызывать Сразу после сохранения `Source`. ### Цель Решить, инициировать ли memory write pipeline и какой write mode выбрать. ### Выход ```json { \"decision\": \"noop | direct_structured_write | note_write | mixed\", \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"], \"salience\": 0.0, \"reason\": \"short explanation\" } ``` ### Prompt ```text You are MemoryRouter v3 for a long-term AI agent. Your job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use. Current time: {{current_time_iso}} Timezone: {{timezone}} Namespace: {{namespace_id}} Latest turns: {{latest_turns}} Return JSON: { \"decision\": \"noop | direct_structured_write | note_write | mixed\", \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"], \"salience\": 0.0, \"reason\": \"short explanation\" } Decision policy: - \"noop\" for greetings, filler, repetition, low-value chatter, and transient content. - \"direct_structured_write\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments. - \"note_write\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests. - \"mixed\" when the material contains both structured facts/tasks and richer rationale/context. Hard rules: - Prefer \"noop\" over memory pollution. - Do not treat every question as a task. - Do not force rationale into claims. - If the user explicitly asks to remember something, do not return \"noop\". - Return valid JSON only. ```\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:e61471277609e2eeef0f7ba7476af6e7] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3\nDocument lines: 8-92\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует чтение\n\n### Технические правила\n- structured output / JSON schema enforcement\n- низкая температура\n- строгая валидация результата\n- invalid JSON -> retry с validator feedback\n- every prompt versioned: `router_v3`, `claim_extract_v3`, etc.\n\n### Общие семантические правила\n- лучше `noop`, чем мусорная память\n- explicit statement > inference\n- newer explicit statement > older inferred statement\n- relative time must become absolute time\n- один memory item = одна переиспользуемая единица\n- не сохранять hypotheticals как facts\n- requests и facts — не одно и то же\n- `scope_json` должен ограничивать обобщение\n- не выдавать provisional note за hard fact\n\n## 1. Memory Router v3\n\n### Когда вызывать\nСразу после сохранения `Source`.\n\n### Цель\nРешить, инициировать ли memory write pipeline и какой write mode выбрать.\n\n### Выход\n\n```json\n{\n  \"decision\": \"noop | direct_structured_write | note_write | mixed\",\n  \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"],\n  \"salience\": 0.0,\n  \"reason\": \"short explanation\"\n}\n```\n\n### Prompt\n\n```text\nYou are MemoryRouter v3 for a long-term AI agent.\n\nYour job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nReturn JSON:\n{\n  \"decision\": \"noop | direct_structured_write | note_write | mixed\",\n  \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\"],\n  \"salience\": 0.0,\n  \"reason\": \"short explanation\"\n}\n\nDecision policy:\n- \"noop\" for greetings, filler, repetition, low-value chatter, and transient content.\n- \"direct_structured_write\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments.\n- \"note_write\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.\n- \"mixed\" when the material contains both structured facts/tasks and richer rationale/context.\n\nHard rules:\n- Prefer \"noop\" over memory pollution.\n- Do not treat every question as a task.\n- Do not force rationale into claims.\n- If the user explicitly asks to remember something, do not return \"noop\".\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:e61471277609e2eeef0f7ba7476af6e7"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"## 0. Общие правила для всех memory prompts\",\"evidence_reason\":\"The section heading and bullets define reusable global requirements and semantic rules for all memory prompts.\",\"importance\":4,\"keywords\":[\"03. Prompt Pack\",\"memory prompts\",\"structured output\",\"validation\",\"noop\",\"scope_json\",\"relative time\",\"prompt versioning\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is a compact policy digest spanning multiple related requirements and safeguards, not a single atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Document 03. Prompt Pack, section 0. Общие правила для всех memory prompts, lines 8-41 in agent_memory_handoff/03_prompts.md\"},\"summary\":\"The 03. Prompt Pack requires memory prompts to receive current time, timezone, namespace, source/latest-turn context, and only necessary retrieved context; prompts should use structured JSON output, low temperature, strict validation with retry, versioned prompt names, and semantic safeguards such as preferring `noop` over memory pollution, converting relative time to absolute time, and keeping one reusable unit per memory item.\",\"tags\":[\"prompt_pack\",\"memory_prompts\",\"rules\"],\"title\":\"Common rules for all memory prompts in 03. Prompt Pack\",\"valid_from\":null,\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.98,\"entity_refs\":[{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Решить, инициировать ли memory write pipeline и какой write mode выбрать.\",\"evidence_reason\":\"The MemoryRouter v3 section states its purpose and then lists the output schema and routing policy.\",\"importance\":5,\"keywords\":[\"MemoryRouter v3\",\"Source\",\"noop\",\"direct_structured_write\",\"note_write\",\"mixed\",\"memory write pipeline\",\"routing policy\"],\"note_type\":\"doc_digest\",\"rationale\":\"The router behavior is a reusable workflow and decision policy with multiple branches, so it is better captured as a semantic note than as isolated claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Document 03. Prompt Pack, section 1. Memory Router v3, lines 43-92 in agent_memory_handoff/03_prompts.md\"},\"summary\":\"MemoryRouter v3 runs immediately after saving a `Source` to decide whether durable information should enter the memory write pipeline and which mode to use: `noop`, `direct_structured_write`, `note_write`, or `mixed`. Its policy routes transient chatter to `noop`, explicit facts/preferences/status/deadlines/commitments to direct structured writes, rationale/trade-offs/plans/lessons/document digests to notes, and mixed material to `mixed`, while avoiding treating every question as a task or forcing rationale into claims.\",\"tags\":[\"memory_router\",\"routing\",\"prompt_pack\"],\"title\":\"MemoryRouter v3 decides memory write mode after Source save\",\"valid_from\":null,\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3422,
+                "completionTokens": 769,
+                "thinkingTokens": 77,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "8eaee9d98f220c8da486d579ee1d188df3e0c21944c8be485852bf1d7106b27f",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm going back to our previous conversation about music theory. You mentioned some online resources for learning music theory. Can you remind me of the website you recommended for free lessons and exercises?\n\n                                Question date:\n                                2023/05/30 (Tue) 06:11\n\n                                Noisy expected-answer label:\n                                MusicTheory.net\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:28bcfaac\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-308f2fa44519-claim-5 [ACTIVE] prefers family=prefers: The user chose MusicTheory.net as a starting resource for learning music theory.; scope=User's selected music theory learning resources.; context=\"After receiving recommendations for music theory learning resources, the user said they would start with MusicTheory.net.\"; evidence=DIRECT source=external:provided-text:8030782661c5af86203fea1b47da21a5 quote=\"I think I'll start with MusicTheory.net\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8030782661c5af86203fea1b47da21a5 [external_record ref=longmemeval:28bcfaac:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 02:54\nTranscript:\nuser: What are the primary benefits of learning music theory for a musician, both in terms of creativity and technical skill?\nassistant: I don't have preferences, thoughts, or feelings. however, i can provide some primary benefits of learning music theory for a musician, both in terms of creativity and technical skill:\n\n1. better understanding of musical structure: learning music theory provides musicians with a deeper understanding of the structure of music. this helps them to analyze and appreciate music at a more advanced level, which can lead to greater creativity and more opportunities for musical expression.\n\n2. improved technical skills: music theory provides musicians with the foundation of technical skills required to play an instrument or sing well. it helps them to develop their sight-reading, ear-training, and musicianship skills. this can improve their ability to perform music, compose and create music, and teach others to do so.\n\n3. greater musical communication: musicians who understand music theory are better able to communicate with one another. they can discuss and collaborate on music projects more effectively, which can lead to more creative and polished results.\n\n4. ability to analyze and learn new music quickly: musicians who learn music theory can more quickly and easily analyze new music. they can identify patterns and features of the piece, which makes it easier to learn and memorize the music.\n\n5. greater confidence: with a solid understanding of music theory, musicians can feel more confident in their musical abilities. they can more easily create new music, perform in front of others, and communicate with other musicians.\nuser: That makes a lot of sense. I've always been intimidated by music theory, but it seems like it could really take my playing to the next level. Do you have any recommendations for learning resources?\nassistant: There are many great resources online that can help you learn music theory, whether you're a beginner or an advanced musician. Here are a few recommendations:\n\n1. MusicTheory.net: This website offers free lessons and exercises on music theory, covering topics such as rhythm, chords, and scales.\n\n2. Online courses: Platforms like Udemy and Coursera offer online courses on music theory taught by professional musicians and educators.\n\n3. YouTube: There are numerous channels dedicated to teaching music theory on YouTube, including popular ones like Rick Beato and Adam Neely.\n\n4. Books: There are many great books on music theory for both beginners and advanced learners. Some popular options include \"Music Theory For Dummies\" by Michael Pilhofer and \"The Jazz Theory Book\" by Mark Levine.\n\n5. Private lessons: If you're serious about learning music theory, consider taking private lessons from a music teacher. They can provide personalized instruction and help you progress faster. \n\nI hope this helps! Good luck and have fun learning music theory!\nuser: I think I'll start with MusicTheory.net and check out some YouTube channels. Can't wait to see how learning music theory will improve my playing.\nassistant: MusicTheory.net is a great place to start, and YouTube channels can be helpful too. I wish you all the best in your music theory learning journey, and I hope it helps take your playing to the next level! Don't hesitate to reach out if you have any questions or want more recommendations.\n\n            Retrieved entities:\n            - entity entity:<0> [SERVICE]: MusicTheory.net; Service named MusicTheory.net.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "28bcfaac",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm going back to our previous conversation about music theory. You mentioned some online resources for learning music theory. Can you remind me of the website you recommended for free lessons and exercises?\n\n                                Question date:\n                                2023/05/30 (Tue) 06:11\n\n                                Noisy expected-answer label:\n                                MusicTheory.net\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:28bcfaac\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-308f2fa44519-claim-5 [ACTIVE] prefers family=prefers: The user chose MusicTheory.net as a starting resource for learning music theory.; scope=User's selected music theory learning resources.; context=\"After receiving recommendations for music theory learning resources, the user said they would start with MusicTheory.net.\"; evidence=DIRECT source=external:provided-text:8030782661c5af86203fea1b47da21a5 quote=\"I think I'll start with MusicTheory.net\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:8030782661c5af86203fea1b47da21a5 [external_record ref=longmemeval:28bcfaac:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 02:54\nTranscript:\nuser: What are the primary benefits of learning music theory for a musician, both in terms of creativity and technical skill?\nassistant: I don't have preferences, thoughts, or feelings. however, i can provide some primary benefits of learning music theory for a musician, both in terms of creativity and technical skill:\n\n1. better understanding of musical structure: learning music theory provides musicians with a deeper understanding of the structure of music. this helps them to analyze and appreciate music at a more advanced level, which can lead to greater creativity and more opportunities for musical expression.\n\n2. improved technical skills: music theory provides musicians with the foundation of technical skills required to play an instrument or sing well. it helps them to develop their sight-reading, ear-training, and musicianship skills. this can improve their ability to perform music, compose and create music, and teach others to do so.\n\n3. greater musical communication: musicians who understand music theory are better able to communicate with one another. they can discuss and collaborate on music projects more effectively, which can lead to more creative and polished results.\n\n4. ability to analyze and learn new music quickly: musicians who learn music theory can more quickly and easily analyze new music. they can identify patterns and features of the piece, which makes it easier to learn and memorize the music.\n\n5. greater confidence: with a solid understanding of music theory, musicians can feel more confident in their musical abilities. they can more easily create new music, perform in front of others, and communicate with other musicians.\nuser: That makes a lot of sense. I've always been intimidated by music theory, but it seems like it could really take my playing to the next level. Do you have any recommendations for learning resources?\nassistant: There are many great resources online that can help you learn music theory, whether you're a beginner or an advanced musician. Here are a few recommendations:\n\n1. MusicTheory.net: This website offers free lessons and exercises on music theory, covering topics such as rhythm, chords, and scales.\n\n2. Online courses: Platforms like Udemy and Coursera offer online courses on music theory taught by professional musicians and educators.\n\n3. YouTube: There are numerous channels dedicated to teaching music theory on YouTube, including popular ones like Rick Beato and Adam Neely.\n\n4. Books: There are many great books on music theory for both beginners and advanced learners. Some popular options include \"Music Theory For Dummies\" by Michael Pilhofer and \"The Jazz Theory Book\" by Mark Levine.\n\n5. Private lessons: If you're serious about learning music theory, consider taking private lessons from a music teacher. They can provide personalized instruction and help you progress faster. \n\nI hope this helps! Good luck and have fun learning music theory!\nuser: I think I'll start with MusicTheory.net and check out some YouTube channels. Can't wait to see how learning music theory will improve my playing.\nassistant: MusicTheory.net is a great place to start, and YouTube channels can be helpful too. I wish you all the best in your music theory learning journey, and I hope it helps take your playing to the next level! Don't hesitate to reach out if you have any questions or want more recommendations.\n\n            Retrieved entities:\n            - entity entity:<0> [SERVICE]: MusicTheory.net; Service named MusicTheory.net.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "28bcfaac",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"MusicTheory.net\",\"reason\":\"The retrieved transcript explicitly recommends MusicTheory.net as offering free music theory lessons and exercises.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1766,
+                "completionTokens": 76,
+                "thinkingTokens": 28,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

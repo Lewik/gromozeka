@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.nio.file.Files
@@ -351,6 +353,53 @@ class AiRuntimeCassetteProxyTest {
 
             assertTrue(semanticDate in replayed)
             assertFalse("${Clock.System.now().toString().take(10)}T" in replayed)
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun replayShapeDropsUnverifiableEncryptedContentMetadata() = runBlocking {
+        val root = Files.createTempDirectory("llm-cassettes-test-")
+        try {
+            val provider = cassetteProvider(
+                backends = listOf(EncryptedMetadataBackend()),
+                settings = AiRuntimeCassetteSettings(
+                    mode = AiRuntimeCassetteMode.RECORD_MISSING,
+                    rootDirectory = root,
+                ),
+            )
+            val runtime = provider.getRuntime(
+                selection = runtimeSelection("fake/model:1"),
+                projectPath = "/tmp/gromozeka-e2e-111/projects/case-a",
+            )
+
+            val recorded = runtime.call(requestWithDynamicIds("111", "Tell me the stored fact."))
+
+            val cassetteBody = Files.readString(
+                root.resolve("OPENAI")
+                    .resolve("fake_model_1")
+                    .resolve("call")
+                    .listDirectoryEntries("*.json")
+                    .single()
+            )
+            assertTrue("<encrypted-content>" in cassetteBody)
+            assertFalse(containsMetadataKey(recorded.providerMetadata, "encrypted_content"))
+            assertFalse(containsMetadataKey(recorded.messages.single().metadata, "encrypted_content"))
+
+            val replayProvider = cassetteProvider(
+                backends = listOf(FixedTextBackend("should-not-call-delegate")),
+                settings = AiRuntimeCassetteSettings(
+                    mode = AiRuntimeCassetteMode.REPLAY_ONLY,
+                    rootDirectory = root,
+                ),
+            )
+            val replayed = replayProvider
+                .getRuntime(runtimeSelection("fake/model:1"), "/tmp/gromozeka-e2e-222/projects/case-a")
+                .call(requestWithDynamicIds("222", "Tell me the stored fact."))
+
+            assertFalse(containsMetadataKey(replayed.providerMetadata, "encrypted_content"))
+            assertFalse(containsMetadataKey(replayed.messages.single().metadata, "encrypted_content"))
         } finally {
             root.toFile().deleteRecursively()
         }
@@ -697,6 +746,24 @@ class AiRuntimeCassetteProxyTest {
         }
     }
 
+    private class EncryptedMetadataBackend : AiRuntimeBackend {
+        override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
+
+        override fun createRuntime(
+            connection: AiConnection,
+            modelConfiguration: AiModelConfiguration,
+            projectPath: String?,
+        ): AiRuntime = object : AiRuntime {
+            override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+            override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse =
+                responseWithEncryptedMetadata("stable-answer")
+
+            override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> =
+                listOf(responseWithEncryptedMetadata("stable-stream-answer")).asFlow()
+        }
+    }
+
     private class CountingEmbeddingProvider : AiEmbeddingProvider {
         var callCount: Int = 0
 
@@ -761,11 +828,55 @@ class AiRuntimeCassetteProxyTest {
             )
         }
 
+        fun responseWithEncryptedMetadata(text: String): AiRuntimeResponse {
+            val reasoningItems = listOf(
+                mapOf(
+                    "type" to "reasoning",
+                    "encrypted_content" to "provider-secret",
+                    "summary" to emptyList<String>(),
+                )
+            )
+            return AiRuntimeResponse(
+                messages = listOf(
+                    AiAssistantMessage(
+                        content = listOf(
+                            Conversation.Message.ContentItem.AssistantMessage(
+                                structured = Conversation.Message.StructuredText(fullText = text)
+                            )
+                        ),
+                        metadata = mapOf("openaiReasoningItems" to reasoningItems),
+                    )
+                ),
+                usage = AiUsage(promptTokens = 1, completionTokens = 1),
+                finishReason = "stop",
+                providerMetadata = mapOf(
+                    "encrypted_content" to "provider-secret",
+                    "openaiReasoningItems" to reasoningItems,
+                ),
+            )
+        }
+
         fun AiRuntimeResponse.text(): String {
             return messages
                 .flatMap { it.content }
                 .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                 .joinToString("\n") { it.structured.fullText }
+        }
+
+        fun containsMetadataKey(value: Any?, key: String): Boolean {
+            return when (value) {
+                is Map<*, *> -> value.entries.any { (entryKey, entryValue) ->
+                    entryKey == key || containsMetadataKey(entryValue, key)
+                }
+                is Iterable<*> -> value.any { containsMetadataKey(it, key) }
+                is Array<*> -> value.any { containsMetadataKey(it, key) }
+                is JsonObject -> value.entries.any { (entryKey, entryValue) ->
+                    entryKey == key || containsMetadataKey(entryValue, key)
+                }
+                is JsonArray -> value.any { containsMetadataKey(it, key) }
+                is JsonElement -> false
+                else -> false
+            }
         }
 
         fun withSystemProperties(

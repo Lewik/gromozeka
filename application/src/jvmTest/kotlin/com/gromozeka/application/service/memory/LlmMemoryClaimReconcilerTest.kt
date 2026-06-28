@@ -166,6 +166,46 @@ class LlmMemoryClaimReconcilerTest {
     }
 
     @Test
+    fun allowsCoexistingClaimSupersedeWhenReplacementIsExplicitInEvidence() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    operationJson(
+                        action = "supersede",
+                        targetClaimId = "claim-existing",
+                        canonicalPredicate = "metric_observation",
+                        conflictPolicy = "coexist",
+                    )
+                )
+            )
+        )
+        val reconciler = LlmMemoryClaimReconciler(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = reconciler.reconcile(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("Correction: that hard-mode run took 30 hours, not 25."),
+            ),
+            claimCandidates = listOf(
+                metricObservationCandidate(
+                    evidenceQuote = "the hard-mode run took 30 hours instead of 25",
+                )
+            ),
+            retrievedHits = listOf(MemoryStore.SearchHit.ClaimHit(existingMetricObservationClaim(), score = 0.9)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryReconciliationAction.SUPERSEDE, ops.single().action)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, ops.single().updatedClaim?.status)
+    }
+
+    @Test
     fun supersedesAmbiguousEventWhenLlmNoopsMorePreciseDatedDuplicate() = runBlocking {
         val runtime = SequencedJsonRuntime(
             responses = ArrayDeque(
@@ -292,6 +332,7 @@ class LlmMemoryClaimReconcilerTest {
 
         fun metricObservationCandidate(
             qualifiers: JsonObject = JsonObject(emptyMap()),
+            evidenceQuote: String = "hard-mode run took 30 hours",
         ): MemoryClaimCandidate =
             MemoryClaimCandidate(
                 subjectEntityId = USER_ENTITY_ID,
@@ -305,7 +346,7 @@ class LlmMemoryClaimReconcilerTest {
                 qualifiers = qualifiers,
                 confidence = 0.99,
                 importance = 7,
-                evidenceQuote = "hard-mode run took 30 hours",
+                evidenceQuote = evidenceQuote,
                 evidenceReason = "The target explicitly states the observed duration.",
                 reason = "This is a historical metric observation.",
             )

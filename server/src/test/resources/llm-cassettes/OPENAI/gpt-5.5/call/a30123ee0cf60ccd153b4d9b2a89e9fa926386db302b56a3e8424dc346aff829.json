@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "a30123ee0cf60ccd153b4d9b2a89e9fa926386db302b56a3e8424dc346aff829",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I remember you told me about the refining processes at CITGO's three refineries earlier. Can you remind me what kind of processes are used at the Lake Charles Refinery?\n\n                                Question date:\n                                2023/05/26 (Fri) 20:26\n\n                                Expected answer:\n                                Atmospheric distillation, fluid catalytic cracking (FCC), alkylation, and hydrotreating.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6ae235be\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1ed00a2f485d-claim-6 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The imported chat answer lists atmospheric distillation, fluid catalytic cracking (FCC), alkylation, and hydrotreating as refining processes at the CITGO Lake Charles Refinery.; scope=LongMemEval 6ae235be session 1 imported chat transcript; process list is presented as examples, not an exhaustive inventory; evidence=IMPORTED source=external:provided-text:c610bb5fc21611de22937957efee5996 quote=\"Lake Charles Refinery:\n* Atmospheric distillation: This is the first step in the refining process, where crude oil is heated and separated into different fractions based on their boiling points.\n* Fluid catalytic cracking (FCC): This process breaks down heavier fractions of crude oil into lighter, m\n[truncated 200 chars]\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:c610bb5fc21611de22937957efee5996 [external_record ref=longmemeval:6ae235be:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...assistant: CITGO operates three refineries in the United States, located in Lake Charles, Louisiana; Lemont, Illinois; and Corpus Christi, Texas. Each refinery has its own set of refining processes, but here are some of the main processes that go on at each facility:...\n...* Fluid catalytic cracking (FCC): This process breaks down heavier fractions of crude oil into lighter, more valuable products such as gasoline and diesel fuel....\n...* Atmospheric distillation: As with the Lake Charles Refinery, this is the initial step in the refining process....\n...* Hydrocracking: This process uses hydrogen and a catalyst to break down heavier fractions of crude oil into lighter, more valuable products....\n...* Fluid catalytic cracking (FCC): As with the Lake Charles Refinery, this process is used to break down heavier fractions of crude oil into lighter, more valuable products....\n...It's worth noting that these are just some of the processes that take place at each refinery, and there may be others as well. Additionally, the specific refining processes used can vary depending on the type of crude oil being processed and the market demand for different petroleum products....\n...1. Process optimization: Refineries can optimize their processes to maximize their yield of high-value products. This can include optimizing the operating conditions of various refining processes, such as adjusting the temperature, pressure, and catalysts used....\n...4. Improve feedstock quality: Refineries can work with their suppliers to ensure they are receiving the highest-quality crude oil possible. This can help to improve the yield of high-value products and reduce waste....\n...6. Continuous monitoring and analysis: Refineries can continuously monitor and analyze their processes to identify areas where yield can be improved. This can include tracking yields of different products, analyzing energy consumption and costs, and identifying areas where equipment is underperforming....\n...assistant: Sure, here are six more recommendations to increase refinery yield:...\n...2. Enhancing product quality: Refineries can enhance the quality of their products by refining crude oil to meet customer demands and specifications. This can include developing new product formulations, improving product purity, and reducing impurities....\n...5. Investing in research and development: Refineries can invest in research and development to develop new and improved refining processes and technologies. This can help to increase yield, improve product quality, and reduce environmental impact....\n...Overall, increasing refinery yield requires a holistic approach that involves optimizing processes, upgrading equipment, utilizing advanced technologies, improving energy efficiency, enhancing product quality, implementing best practices in safety and maintenance, utilizing by-product streams, investing in research and development, and collaborating with stakeholders....\n...2. Selection of appropriate catalysts: The choice of catalyst used in the cat cracker can have a significant impact on the yield of desired products. Refineries can work with catalyst suppliers to select and test different catalysts to optimize performance....\n...4. Reducing coke formation: The formation of coke in the cat cracker can reduce the yield of desired products. Refineries can reduce coke formation by optimizing the catalyst-to-oil ratio, using anti-coking additives, or installing coke removal systems....\n...6. Process modeling and simulation: Refineries can use computer modeling and simulation to optimize the cat cracker process, identify areas for improvement, and test new operating conditions before implementing them....\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: CITGO Lake Charles Refinery; Location named CITGO Lake Charles Refinery.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6ae235be",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I remember you told me about the refining processes at CITGO's three refineries earlier. Can you remind me what kind of processes are used at the Lake Charles Refinery?\n\n                                Question date:\n                                2023/05/26 (Fri) 20:26\n\n                                Expected answer:\n                                Atmospheric distillation, fluid catalytic cracking (FCC), alkylation, and hydrotreating.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6ae235be\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-1ed00a2f485d-claim-6 [ACTIVE] generated_artifact_detail family=generated_artifact_detail: The imported chat answer lists atmospheric distillation, fluid catalytic cracking (FCC), alkylation, and hydrotreating as refining processes at the CITGO Lake Charles Refinery.; scope=LongMemEval 6ae235be session 1 imported chat transcript; process list is presented as examples, not an exhaustive inventory; evidence=IMPORTED source=external:provided-text:c610bb5fc21611de22937957efee5996 quote=\"Lake Charles Refinery:\n* Atmospheric distillation: This is the first step in the refining process, where crude oil is heated and separated into different fractions based on their boiling points.\n* Fluid catalytic cracking (FCC): This process breaks down heavier fractions of crude oil into lighter, m\n[truncated 200 chars]\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:c610bb5fc21611de22937957efee5996 [external_record ref=longmemeval:6ae235be:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...assistant: CITGO operates three refineries in the United States, located in Lake Charles, Louisiana; Lemont, Illinois; and Corpus Christi, Texas. Each refinery has its own set of refining processes, but here are some of the main processes that go on at each facility:...\n...* Fluid catalytic cracking (FCC): This process breaks down heavier fractions of crude oil into lighter, more valuable products such as gasoline and diesel fuel....\n...* Atmospheric distillation: As with the Lake Charles Refinery, this is the initial step in the refining process....\n...* Hydrocracking: This process uses hydrogen and a catalyst to break down heavier fractions of crude oil into lighter, more valuable products....\n...* Fluid catalytic cracking (FCC): As with the Lake Charles Refinery, this process is used to break down heavier fractions of crude oil into lighter, more valuable products....\n...It's worth noting that these are just some of the processes that take place at each refinery, and there may be others as well. Additionally, the specific refining processes used can vary depending on the type of crude oil being processed and the market demand for different petroleum products....\n...1. Process optimization: Refineries can optimize their processes to maximize their yield of high-value products. This can include optimizing the operating conditions of various refining processes, such as adjusting the temperature, pressure, and catalysts used....\n...4. Improve feedstock quality: Refineries can work with their suppliers to ensure they are receiving the highest-quality crude oil possible. This can help to improve the yield of high-value products and reduce waste....\n...6. Continuous monitoring and analysis: Refineries can continuously monitor and analyze their processes to identify areas where yield can be improved. This can include tracking yields of different products, analyzing energy consumption and costs, and identifying areas where equipment is underperforming....\n...assistant: Sure, here are six more recommendations to increase refinery yield:...\n...2. Enhancing product quality: Refineries can enhance the quality of their products by refining crude oil to meet customer demands and specifications. This can include developing new product formulations, improving product purity, and reducing impurities....\n...5. Investing in research and development: Refineries can invest in research and development to develop new and improved refining processes and technologies. This can help to increase yield, improve product quality, and reduce environmental impact....\n...Overall, increasing refinery yield requires a holistic approach that involves optimizing processes, upgrading equipment, utilizing advanced technologies, improving energy efficiency, enhancing product quality, implementing best practices in safety and maintenance, utilizing by-product streams, investing in research and development, and collaborating with stakeholders....\n...2. Selection of appropriate catalysts: The choice of catalyst used in the cat cracker can have a significant impact on the yield of desired products. Refineries can work with catalyst suppliers to select and test different catalysts to optimize performance....\n...4. Reducing coke formation: The formation of coke in the cat cracker can reduce the yield of desired products. Refineries can reduce coke formation by optimizing the catalyst-to-oil ratio, using anti-coking additives, or installing coke removal systems....\n...6. Process modeling and simulation: Refineries can use computer modeling and simulation to optimize the cat cracker process, identify areas for improvement, and test new operating conditions before implementing them....\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: CITGO Lake Charles Refinery; Location named CITGO Lake Charles Refinery.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6ae235be",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The Lake Charles Refinery uses atmospheric distillation, fluid catalytic cracking (FCC), alkylation, and hydrotreating.\",\"reason\":\"The retrieved active claim explicitly lists those four processes for CITGO's Lake Charles Refinery.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1641,
+                "completionTokens": 89,
+                "thinkingTokens": 18,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -17,6 +17,7 @@ import kotlinx.serialization.json.putJsonArray
 
 const val MEMORY_REMEMBER_TOOL_NAME = "memory_remember"
 const val MEMORY_ENRICH_CONTEXT_TOOL_NAME = "memory_enrich_context"
+const val MEMORY_ANSWER_QUESTION_TOOL_NAME = "memory_answer_question"
 const val MEMORY_RUN_STATUS_TOOL_NAME = "memory_run_status"
 const val MEMORY_QUEUE_STATUS_TOOL_NAME = "memory_queue_status"
 const val MEMORY_MAINTENANCE_TOOL_NAME = "memory_maintenance"
@@ -30,6 +31,7 @@ fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
 private val memoryManagementToolNames = setOf(
     MEMORY_REMEMBER_TOOL_NAME,
     MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+    MEMORY_ANSWER_QUESTION_TOOL_NAME,
     MEMORY_RUN_STATUS_TOOL_NAME,
     MEMORY_QUEUE_STATUS_TOOL_NAME,
     MEMORY_MAINTENANCE_TOOL_NAME,
@@ -120,7 +122,7 @@ object MemoryToolResultRenderer {
         return buildJsonObject {
             put("status", "completed")
             put("need_memory", result.plan.needMemory)
-            put("answer_mode", result.plan.answerMode.name)
+            put("context_mode", result.plan.contextMode.name)
             put("retrieved_count", result.retrievedHits.size)
             put(
                 "usage_guidance",
@@ -164,9 +166,64 @@ object MemoryToolResultRenderer {
         }.toString()
     }
 
+    internal fun answerQuestionResultJsonString(result: MemoryQuestionAnswerResult?): String {
+        if (result == null) {
+            return buildJsonObject {
+                put("status", "failed")
+                put("reason", "Runtime memory question answering failed defensively.")
+            }.toString()
+        }
+
+        val readResult = result.readResult
+        return buildJsonObject {
+            put("status", "completed")
+            put("need_memory", readResult.plan.needMemory)
+            put("context_mode", readResult.plan.contextMode.name)
+            put("retrieved_count", readResult.retrievedHits.size)
+            put("sufficiency", result.sufficiency.name.lowercase())
+            put("answer", result.answer)
+            put("reasoning", result.reasoning)
+            put("memory_context", readResult.runtimePrompt ?: "No relevant persisted memory was retrieved for the question.")
+            putJsonArray("evidence_refs") {
+                result.evidenceRefs.forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("counted_items") {
+                result.countedItems.forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("excluded_refs") {
+                result.excludedRefs.forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("selected_refs") {
+                readResult.selectedToolRefs(limit = 16).forEach { selectedRef ->
+                    val hit = selectedRef.hit
+                    add(buildJsonObject {
+                        put("type", hit.ref.type.name)
+                        put("id", hit.ref.id)
+                        put("summary", hit.summary.shortForMemoryToolResult())
+                        selectedRef.decision?.let { decision ->
+                            put("rank", decision.rank)
+                            put("selection_reason", decision.reason.shortForMemoryToolResult())
+                        }
+                        hit.predicate?.let { put("predicate", it) }
+                        hit.status?.let { put("status", it) }
+                        if (hit.evidenceSourceIds.isNotEmpty()) {
+                            putJsonArray("evidence_source_ids") {
+                                hit.evidenceSourceIds.forEach { sourceId ->
+                                    add(JsonPrimitive(sourceId.value))
+                                }
+                            }
+                        }
+                    })
+                }
+            }
+        }.toString()
+    }
+
     private fun MemoryReadResult.selectedToolRefs(limit: Int): List<MemoryToolSelectedRef> {
         val hitsByRef = trace.selectedHits.associateBy { it.ref }
-        val decisionsByRef = trace.selectorDecisions.associateBy { it.ref }
+        val decisionsByRef = trace.selectorDecisions
+            .filter { it.selected }
+            .associateBy { it.ref }
         val ordered = mutableListOf<MemoryToolSelectedRef>()
         val addedRefs = mutableSetOf<MemoryItemRef>()
 

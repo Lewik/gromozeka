@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_ANSWER_QUESTION_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_EMBEDDING_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
@@ -399,6 +400,25 @@ class MemoryToolApplicationService(
         MemoryToolResultRenderer.enrichContextResultJsonString(result)
     }
 
+    suspend fun answerQuestion(
+        conversationIdValue: String,
+        targetMessageId: String? = null,
+        namespaceValue: String? = null,
+    ): String = runMemoryTool(MEMORY_ANSWER_QUESTION_TOOL_NAME, conversationIdValue, targetMessageId) { context, targetMessage ->
+        val result = memoryApplicationService.answerQuestionFromMemory(
+            conversationId = context.conversation.id,
+            threadId = context.conversation.currentThread,
+            targetMessage = targetMessage,
+            threadMessages = context.threadMessages,
+            agent = context.agent,
+            project = context.project,
+            runtimeSystemPrompts = context.systemPrompts,
+            runtimeTools = context.memoryTools,
+            namespaceOverride = namespaceValue.toConfiguredMemoryNamespace(),
+        )
+        MemoryToolResultRenderer.answerQuestionResultJsonString(result)
+    }
+
     suspend fun enrichProvidedContext(
         conversationIdValue: String?,
         contextText: String,
@@ -438,6 +458,52 @@ class MemoryToolApplicationService(
         }.onFailure { error ->
             log.warn(error) {
                 "Memory tool failed: tool=$MEMORY_ENRICH_CONTEXT_TOOL_NAME conversation=$conversationIdValue target=provided_context error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
+        }
+    }
+
+    suspend fun answerProvidedQuestion(
+        conversationIdValue: String?,
+        questionText: String,
+        mode: String? = null,
+        namespaceValue: String? = null,
+    ): String {
+        val normalizedQuestion = questionText.trim()
+        if (normalizedQuestion.isBlank()) {
+            return MemoryToolResultRenderer.failureJsonString("Provided question is blank.")
+        }
+
+        if (conversationIdValue.isNullOrBlank()) {
+            return answerStandaloneQuestion(normalizedQuestion, mode, namespaceValue)
+        }
+
+        return runCatching {
+            val conversationId = Conversation.Id(conversationIdValue)
+            val context = resolveContext(conversationId)
+            val targetMessage = syntheticEnrichmentTargetMessage(
+                conversationId = context.conversation.id,
+                text = normalizedQuestion,
+                mode = mode,
+                standalone = false,
+                origin = "provided_question",
+            )
+            val result = memoryApplicationService.answerQuestionFromMemory(
+                conversationId = context.conversation.id,
+                threadId = context.conversation.currentThread,
+                targetMessage = targetMessage,
+                threadMessages = context.threadMessages + targetMessage,
+                agent = context.agent,
+                project = context.project,
+                runtimeSystemPrompts = context.systemPrompts,
+                runtimeTools = context.memoryTools,
+                namespaceOverride = namespaceValue.toConfiguredMemoryNamespace(),
+            )
+            MemoryToolResultRenderer.answerQuestionResultJsonString(result)
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_ANSWER_QUESTION_TOOL_NAME conversation=$conversationIdValue target=provided_question error=${error.message}"
             }
         }.getOrElse { error ->
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
@@ -612,11 +678,50 @@ class MemoryToolApplicationService(
         }
     }
 
+    private suspend fun answerStandaloneQuestion(
+        text: String,
+        mode: String?,
+        namespaceValue: String?,
+    ): String {
+        return runCatching {
+            val agent = defaultAgentProvider.getDefault()
+            val project = projectService.getOrCreate(defaultStandaloneProjectPath())
+            val conversationId = Conversation.Id("memory_answer_question:standalone:${uuid7()}")
+            val threadId = Conversation.Thread.Id("memory_answer_question:standalone:${uuid7()}")
+            val targetMessage = syntheticEnrichmentTargetMessage(
+                conversationId = conversationId,
+                text = text,
+                mode = mode,
+                standalone = true,
+                origin = "provided_question",
+            )
+            val result = memoryApplicationService.answerQuestionFromMemory(
+                conversationId = conversationId,
+                threadId = threadId,
+                targetMessage = targetMessage,
+                threadMessages = listOf(targetMessage),
+                agent = agent,
+                project = project,
+                runtimeSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project),
+                runtimeTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
+                namespaceOverride = resolveMemoryNamespace(namespaceValue, project),
+            )
+            MemoryToolResultRenderer.answerQuestionResultJsonString(result)
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_ANSWER_QUESTION_TOOL_NAME target=provided_question standalone=true error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
+        }
+    }
+
     private fun syntheticEnrichmentTargetMessage(
         conversationId: Conversation.Id,
         text: String,
         mode: String?,
         standalone: Boolean,
+        origin: String = "provided_context",
     ): Conversation.Message =
         Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
@@ -624,7 +729,7 @@ class MemoryToolApplicationService(
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
             providerMetadata = buildJsonObject {
-                put("memoryToolOrigin", "provided_context")
+                put("memoryToolOrigin", origin)
                 put("standalone", standalone)
                 mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
             },

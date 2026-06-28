@@ -1,0 +1,403 @@
+{
+    "version": 1,
+    "hash": "66628fee6e1b3c4a3d61920d8188172a0a4e0905e0828bc10f29b722d8885bc0",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/note-consolidation-episode-recall",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What reusable lesson did we record about ambiguous no-memory recall decisions? Answer with exactly one sentence.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: The target is a memory recall question and answer-shaping instruction, not new durable information or an update.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"RATIONALE\",\"retrieved_count\":3,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"MEMORY-ONLY CONTEXT\\nThis message is not part of the real conversation and must not be stored as evidence.\\nThe retrieved memory below was selected for the immediately following user request.\\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\nNamespace: project:<0>\\nContext mode: RATIONALE\\nRequire evidence fallback: false\\n\\nRetrieved profile:\\nnone\\n\\nRetrieved action items:\\nnone\\n\\nRetrieved claims:\\nnone\\n\\nRetrieved notes:\\nnone\\n\\nRetrieved evidence:\\n- source chat:<1> [chat_turn role=USER observedAt=1970-01-01T00:00:00Z]: Memory MVP lesson for the NoMemoryVerifier component: Situation: ReadTimeRetrievalPlanner can incorrectly return need_memory=false for ambiguous recall questions. Action: run one short LLM verification call before accepting the no-memory plan; do not use hard-coded substring heuristics. Result: we avoid brittle lexical hacks while still catching recall intent. Lesson: for ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.\\n\\nRetrieved entities:\\n- entity entity:<0> [TECHNOLOGY]: NoMemoryVerifier; Technology named NoMemoryVerifier.\\n\\nRetrieved episodes:\\n- episode note-consolidation:episode:<0> owner=NoMemoryVerifier; situation=ReadTimeRetrievalPlanner returns need_memory=false for an ambiguous recall question in Memory MVP.; action=Have NoMemoryVerifier run one short LLM verification call before accepting the no-memory plan, instead of relying on hard-coded substring heuristics.; result=The system can still catch recall intent while avoiding brittle heuristic matching.; lesson=For ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.\",\"selected_refs\":[{\"type\":\"EPISODE\",\"id\":\"note-consolidation:episode:<1>\",\"summary\":\"For ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.\"},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"summary\":\"Memory MVP lesson for the NoMemoryVerifier component: Situation: ReadTimeRetrievalPlanner can incorrectly return need_memory=false for ambiguous recall questions. Action: run one short LLM verification call before accept...[truncated 253 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"TECHNOLOGY:NoMemoryVerifier\"}],\"selector_decisions\":[{\"type\":\"EPISODE\",\"id\":\"note-consolidation:episode:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Contains the recorded reusable lesson and is preferred for lesson recall questions.\"},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Raw evidence not needed because the episode directly answers and exact provenance is not required.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Non-current resolved note; episode is the preferred reusable lesson memory.\"},{\"type\":\"CLAIM\",\"id\":\"note-consolidation:claim:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Relevant factual support, but the target asks for the reusable lesson and the episode is sufficient.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 840000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/note-consolidation-episode-recall"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What reusable lesson did we record about ambiguous no-memory recall decisions? Answer with exactly one sentence.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: The target is a memory recall question and answer-shaping instruction, not new durable information or an update.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"RATIONALE\",\"retrieved_count\":3,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"MEMORY-ONLY CONTEXT\\nThis message is not part of the real conversation and must not be stored as evidence.\\nThe retrieved memory below was selected for the immediately following user request.\\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\nNamespace: project:<0>\\nContext mode: RATIONALE\\nRequire evidence fallback: false\\n\\nRetrieved profile:\\nnone\\n\\nRetrieved action items:\\nnone\\n\\nRetrieved claims:\\nnone\\n\\nRetrieved notes:\\nnone\\n\\nRetrieved evidence:\\n- source chat:<1> [chat_turn role=USER observedAt=1970-01-01T00:00:00Z]: Memory MVP lesson for the NoMemoryVerifier component: Situation: ReadTimeRetrievalPlanner can incorrectly return need_memory=false for ambiguous recall questions. Action: run one short LLM verification call before accepting the no-memory plan; do not use hard-coded substring heuristics. Result: we avoid brittle lexical hacks while still catching recall intent. Lesson: for ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.\\n\\nRetrieved entities:\\n- entity entity:<0> [TECHNOLOGY]: NoMemoryVerifier; Technology named NoMemoryVerifier.\\n\\nRetrieved episodes:\\n- episode note-consolidation:episode:<0> owner=NoMemoryVerifier; situation=ReadTimeRetrievalPlanner returns need_memory=false for an ambiguous recall question in Memory MVP.; action=Have NoMemoryVerifier run one short LLM verification call before accepting the no-memory plan, instead of relying on hard-coded substring heuristics.; result=The system can still catch recall intent while avoiding brittle heuristic matching.; lesson=For ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.\",\"selected_refs\":[{\"type\":\"EPISODE\",\"id\":\"note-consolidation:episode:<1>\",\"summary\":\"For ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.\"},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"summary\":\"Memory MVP lesson for the NoMemoryVerifier component: Situation: ReadTimeRetrievalPlanner can incorrectly return need_memory=false for ambiguous recall questions. Action: run one short LLM verification call before accept...[truncated 253 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"TECHNOLOGY:NoMemoryVerifier\"}],\"selector_decisions\":[{\"type\":\"EPISODE\",\"id\":\"note-consolidation:episode:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Contains the recorded reusable lesson and is preferred for lesson recall questions.\"},{\"type\":\"SOURCE\",\"id\":\"chat:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Raw evidence not needed because the episode directly answers and exact provenance is not required.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Non-current resolved note; episode is the preferred reusable lesson memory.\"},{\"type\":\"CLAIM\",\"id\":\"note-consolidation:claim:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Relevant factual support, but the target asks for the reusable lesson and the episode is sufficient.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 840000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/note-consolidation-episode-recall"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "For ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.",
+                                "ttsText": "For ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.",
+                                "voiceTone": "neutral",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1684,
+                "completionTokens": 75,
+                "thinkingTokens": 14,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

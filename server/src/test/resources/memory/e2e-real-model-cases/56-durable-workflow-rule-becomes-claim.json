@@ -26,7 +26,11 @@
     "userSourcesMin": 1,
     "requiredClaims": [
       {
-        "containsAll": ["Gromozeka", "gromozeka/dev", "gromozeka/beta"],
+        "containsAll": ["Gromozeka", "gromozeka/dev"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["Gromozeka", "gromozeka/beta", "pulling"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
@@ -44,7 +48,11 @@
     "userSourcesMin": 1,
     "requiredClaims": [
       {
-        "containsAll": ["Gromozeka", "gromozeka/dev", "gromozeka/beta"],
+        "containsAll": ["Gromozeka", "gromozeka/dev"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["Gromozeka", "gromozeka/beta", "pulling"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],

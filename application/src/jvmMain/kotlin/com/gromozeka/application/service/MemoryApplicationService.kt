@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.application.service.memory.LlmMemoryReadPlanner
 import com.gromozeka.application.service.memory.LlmMemoryReadSelector
+import com.gromozeka.application.service.memory.LlmMemoryQuestionAnswerer
 import com.gromozeka.application.service.memory.LlmMemoryEntityMaintenancePlanner
 import com.gromozeka.application.service.memory.LlmMemoryNoteConsolidator
 import com.gromozeka.application.service.memory.LlmMemoryRepairPlanner
@@ -10,6 +11,7 @@ import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipelineR
 import com.gromozeka.application.service.memory.MemoryContextWindowPolicy
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
+import com.gromozeka.application.service.memory.MemoryQuestionAnswerResult
 import com.gromozeka.application.service.memory.MemoryThreadContextCompactor
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipeline
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
@@ -157,7 +159,7 @@ class MemoryApplicationService(
         val latencyMs = completedAt.toEpochMilliseconds() - startedAt.toEpochMilliseconds()
         log.info {
             "Memory runtime recall completed: conversation=${conversationId.value} thread=${threadId.value} " +
-                "target=${targetMessage.id.value} need=${result.plan.needMemory} mode=${result.plan.answerMode.name} " +
+                "target=${targetMessage.id.value} need=${result.plan.needMemory} mode=${result.plan.contextMode.name} " +
                 "hits=${result.retrievedHits.size} promptChars=${result.runtimePrompt?.length ?: 0} latencyMs=$latencyMs"
         }
         readTraceSinks.forEach { sink ->
@@ -186,6 +188,42 @@ class MemoryApplicationService(
         result
     }
 
+    internal suspend fun answerQuestionFromMemory(
+        conversationId: Conversation.Id,
+        threadId: Conversation.Thread.Id,
+        targetMessage: Conversation.Message,
+        threadMessages: List<Conversation.Message>,
+        agent: AgentDefinition,
+        project: Project,
+        runtimeSystemPrompts: List<String>,
+        runtimeTools: List<AiToolCallback>,
+        namespaceOverride: MemoryNamespace? = null,
+    ): MemoryQuestionAnswerResult {
+        val readResult = buildRuntimeMemoryReadResult(
+            conversationId = conversationId,
+            threadId = threadId,
+            targetMessage = targetMessage,
+            threadMessages = threadMessages,
+            agent = agent,
+            project = project,
+            runtimeSystemPrompts = runtimeSystemPrompts,
+            runtimeTools = runtimeTools,
+            namespaceOverride = namespaceOverride,
+        )
+        val runtime = aiRuntimeProvider.getRuntime(
+            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ_ANSWER),
+            projectPath = project.path,
+        )
+        return LlmMemoryQuestionAnswerer(
+            runtime = runtime,
+            runtimeSystemPrompts = runtimeSystemPrompts,
+        ).answer(
+            question = targetMessage.memoryQuestionText(),
+            readResult = readResult,
+            conversationId = conversationId,
+        )
+    }
+
     private inner class MemoryServiceStageRuntimes(
         private val project: Project,
     ) {
@@ -202,6 +240,17 @@ class MemoryApplicationService(
 
     private fun Conversation.Message.isSyntheticMemoryRuntimeMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+
+    private fun Conversation.Message.memoryQuestionText(): String =
+        content.mapNotNull { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.UserMessage -> item.text
+                is Conversation.Message.ContentItem.AssistantMessage -> item.structured.fullText
+                is Conversation.Message.ContentItem.System -> item.content
+                else -> null
+            }
+        }.joinToString("\n").trim()
+            .ifBlank { id.value }
 
     suspend fun runNoteConsolidation(
         conversationId: Conversation.Id,

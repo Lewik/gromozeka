@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "e9931d0f161ab2262a3b30d40d6e030d142d0290cac4c5bf1dd8c35c2c9ba04a",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What percentage of the countryside property's price is the cost of the renovations I plan to do on my current house?\n\n                                Question date:\n                                2023/05/30 (Tue) 02:24\n\n                                Noisy expected-answer label:\n                                10%\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:27016adc\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-5e84bdd7c37f-claim-4 [ACTIVE] has_constraint family=has_constraint: The user's current house renovation project is estimated to cost around $20,000.; scope=Applies to the user's current house renovation project discussed in the imported 2023-05-29 session.; context=\"The user stated the estimated renovation cost while discussing budgeting for property taxes after adding a deck and patio to the current house.\"; evidence=DIRECT source=external:provided-text:e66efc30cac8a161588ffc608e3a7b32 quote=\"My renovations, which I estimate will cost around $20,000\"\n- claim hot-path-7491d44ee0d4-claim-12 [ACTIVE] current_metric_value family=current_metric_value: The rural property under consideration was listed at $200,000.; scope=5-acre rural property discussed in the imported 2023-05-29 chat session.; context=\"The user described the price as seeming like a good deal while exploring the purchase.\"; evidence=IMPORTED source=external:provided-text:f33d00a554727d669a094ab9cbcd328e quote=\"It's listed at $200,000\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:f33d00a554727d669a094ab9cbcd328e [external_record ref=longmemeval:27016adc:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 20:13\nTranscript:\nuser: I'm considering buying a plot of land in the countryside and I'd like to know more about the process of buying rural property. Can you walk me through the steps involved? I'm looking at a 5-acre property. It's listed at $200,000, which seems like a good deal.\nassistant: Buying a rural property can be a bit more complex than purchasing a urban property, but with the right guidance, you'll be well-prepared for the process. I'd be happy to walk you through the steps involved in buying a rural property. Here's a general overview:\n\n**Step 1: Research and Due Diligence**\n\n* Research the property: Learn as much as you can about the property, including its history, zoning laws, and any environmental concerns.\n* Review the listing: Carefully review the property listing and ask questions about the property's features, condition, and any known issues....\n...* Visit the property: Schedule a viewing to inspect the property's condition, including the land, any buildings, and infrastructure (e.g., roads, utilities).\n* Hire a professional: Consider hiring a rural property inspector or a forester to assess the property's condition, timber value, and potential environmental concerns.\n\n**Step 3: Financing Options**\n\n* Determine your budget: Decide how much you can afford to spend on the property, including the purchase price, closing costs, and any additional expenses (e.g., inspections, appraisals).\n* Explore financing options: Research rural property loan options, such as USDA rural development loans, agricultural loans, or private financing. You may need to work with a lender that specializes in rural property financing....\n...* Negotiate the price: Based on your research and inspections, determine a fair offer price and negotiate with the seller....\n...* Review property records: Obtain and review property records, including land surveys, title reports, and any outstanding liens....\n...* Zoning and land-use restrictions: Ensure you understand any zoning laws, covenants, or restrictions that may impact your plans for the property....\n...* Road maintenance: If the property has a private road, determine who is responsible for maintenance and any potential costs.\n\nRegarding the 5-acre property you're interested in, $200,000 seems like a reasonable price, but it's essential to complete your due diligence to ensure the property meets your needs and budget. Consider factors like:\n\n* Property taxes: Research the annual property taxes and how they may impact your budget....\n...user: That's a great overview, thanks. I'm especially concerned about the property taxes on the 5-acre property. Can you tell me more about how they're calculated and what I can expect to pay annually?\nassistant: Property taxes can be a significant expense for rural property owners. I'd be happy to explain how property taxes are calculated and what you might expect to pay annually....\n...* **Location**: Property taxes vary by county, city, or township, so the location of your property will impact your tax bill....\n...3. **Higher Fees**: Rural property loans may come with higher fees, such as origination fees, appraisal fees, and closing costs....\n...**Cost and Timing of Appraisals**\n\nThe cost of an appraisal can vary depending on the property's location, size, and complexity, but you can expect to pay between $300 to $1,500 or more. The appraisal process typically takes 1-2 weeks, but it may take longer for more complex properties or during peak seasons....\n...3. **Interviews**: Interviews with current and former property owners, occupants, and neighbors to gather information about the property's history and environmental conditions....\n...2. **Make Informed Decisions**: Make informed decisions about the property purchase, including negotiating the price or requesting environmental remediation....\n- source external:provided-text:e66efc30cac8a161588ffc608e3a7b32 [external_record ref=longmemeval:27016adc:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 20:38\nTranscript:\n...Session date: 2023/05/29 (Mon) 20:38\nTranscript:\nuser: I'm planning to do some renovations to my current house and I'm trying to get a sense of how much I'll need to budget for property taxes after the renovations are complete. Can you help me understand how renovations affect property taxes?\nassistant: Renovations can indeed impact your property taxes, and it's essential to consider this when planning your project. I'd be happy to help you understand how renovations affect property taxes....\n...5. **Location-specific factors**: Depending on your location, certain types of renovations might be more likely to trigger a reassessment or increase in property taxes. For example, if you live in an area with rapidly appreciating property values, even minor renovations might lead to a significant increase in taxes.\n\n**Factors that influence the impact of renovations on property taxes:**\n\n1. **Type and scope of renovations**: The extent and type of renovations you undertake will influence the impact on your property taxes. Minor cosmetic changes, like painting or replacing fixtures, may not significantly affect your taxes, while major overhauls or additions can lead to a more substantial increase....\n...3. **Consider phasing renovations**: If possible, consider phasing your renovations to minimize the impact on your property taxes.\n\nBy understanding how renovations affect property taxes and considering the factors that influence this impact, you can better plan and budget for the changes to your property taxes after your renovation project is complete.\nuser: My renovations, which I estimate will cost around $20,000, include adding a deck and a patio. Do you think these specific renovations will significantly increase my property taxes?\nassistant: Adding a deck and a patio can be a wonderful way to enhance your outdoor living space. The impact of these renovations on your property taxes will depend on several factors, including your location, the current value of your property, and the local tax laws....\n...3. **Cost vs. value**: According to Remodeling Magazine's Cost vs. Value Report, a mid-range deck addition can recoup around 70-80% of its cost at resale. This means that while a deck can increase your property's value, the increase might not be directly proportional to the cost of the renovation....\n...* If your property's value increases by 5-10% due to the renovations (a conservative estimate), and your current property tax rate is around 1.25% (varies by location), you might see an increase of $125 to $250 per year in property taxes, based on the increased assessed value....\n...5. **Market Trends**: Current market trends, including the sales prices of similar properties in the area....\n...user: I'd like to know more about how the assessed value of my property is determined, specifically in relation to my current renovations. Since I'm adding a deck and patio, I'm wondering how these improvements will be factored into the assessment. Can you explain how the assessor will account for these new features?...\n...1. **Cost Approach**: The assessor will estimate the cost of the renovations, including the deck and patio, based on industry standards, local construction costs, and other factors....\n...user: I'm planning to start the renovation project in the spring, and I'm estimating the cost of the renovations to be around $20,000. I'm wondering if there's a way to minimize the impact of the renovations on my property taxes....\n...In many jurisdictions, the assessment date for property taxes is January 1st or July 1st. If you can complete your renovation project before the assessment date, you might be able to avoid an immediate increase in your property taxes. This is because the assessor will likely use the previous year's data to determine your property's value....\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: 5-acre rural property; Entity named 5-acre rural property.\n- entity entity:<1> [PROJECT]: User's current house renovation project; Project named User's current house renovation project.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "27016adc",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What percentage of the countryside property's price is the cost of the renovations I plan to do on my current house?\n\n                                Question date:\n                                2023/05/30 (Tue) 02:24\n\n                                Noisy expected-answer label:\n                                10%\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:27016adc\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-5e84bdd7c37f-claim-4 [ACTIVE] has_constraint family=has_constraint: The user's current house renovation project is estimated to cost around $20,000.; scope=Applies to the user's current house renovation project discussed in the imported 2023-05-29 session.; context=\"The user stated the estimated renovation cost while discussing budgeting for property taxes after adding a deck and patio to the current house.\"; evidence=DIRECT source=external:provided-text:e66efc30cac8a161588ffc608e3a7b32 quote=\"My renovations, which I estimate will cost around $20,000\"\n- claim hot-path-7491d44ee0d4-claim-12 [ACTIVE] current_metric_value family=current_metric_value: The rural property under consideration was listed at $200,000.; scope=5-acre rural property discussed in the imported 2023-05-29 chat session.; context=\"The user described the price as seeming like a good deal while exploring the purchase.\"; evidence=IMPORTED source=external:provided-text:f33d00a554727d669a094ab9cbcd328e quote=\"It's listed at $200,000\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:f33d00a554727d669a094ab9cbcd328e [external_record ref=longmemeval:27016adc:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 20:13\nTranscript:\nuser: I'm considering buying a plot of land in the countryside and I'd like to know more about the process of buying rural property. Can you walk me through the steps involved? I'm looking at a 5-acre property. It's listed at $200,000, which seems like a good deal.\nassistant: Buying a rural property can be a bit more complex than purchasing a urban property, but with the right guidance, you'll be well-prepared for the process. I'd be happy to walk you through the steps involved in buying a rural property. Here's a general overview:\n\n**Step 1: Research and Due Diligence**\n\n* Research the property: Learn as much as you can about the property, including its history, zoning laws, and any environmental concerns.\n* Review the listing: Carefully review the property listing and ask questions about the property's features, condition, and any known issues....\n...* Visit the property: Schedule a viewing to inspect the property's condition, including the land, any buildings, and infrastructure (e.g., roads, utilities).\n* Hire a professional: Consider hiring a rural property inspector or a forester to assess the property's condition, timber value, and potential environmental concerns.\n\n**Step 3: Financing Options**\n\n* Determine your budget: Decide how much you can afford to spend on the property, including the purchase price, closing costs, and any additional expenses (e.g., inspections, appraisals).\n* Explore financing options: Research rural property loan options, such as USDA rural development loans, agricultural loans, or private financing. You may need to work with a lender that specializes in rural property financing....\n...* Negotiate the price: Based on your research and inspections, determine a fair offer price and negotiate with the seller....\n...* Review property records: Obtain and review property records, including land surveys, title reports, and any outstanding liens....\n...* Zoning and land-use restrictions: Ensure you understand any zoning laws, covenants, or restrictions that may impact your plans for the property....\n...* Road maintenance: If the property has a private road, determine who is responsible for maintenance and any potential costs.\n\nRegarding the 5-acre property you're interested in, $200,000 seems like a reasonable price, but it's essential to complete your due diligence to ensure the property meets your needs and budget. Consider factors like:\n\n* Property taxes: Research the annual property taxes and how they may impact your budget....\n...user: That's a great overview, thanks. I'm especially concerned about the property taxes on the 5-acre property. Can you tell me more about how they're calculated and what I can expect to pay annually?\nassistant: Property taxes can be a significant expense for rural property owners. I'd be happy to explain how property taxes are calculated and what you might expect to pay annually....\n...* **Location**: Property taxes vary by county, city, or township, so the location of your property will impact your tax bill....\n...3. **Higher Fees**: Rural property loans may come with higher fees, such as origination fees, appraisal fees, and closing costs....\n...**Cost and Timing of Appraisals**\n\nThe cost of an appraisal can vary depending on the property's location, size, and complexity, but you can expect to pay between $300 to $1,500 or more. The appraisal process typically takes 1-2 weeks, but it may take longer for more complex properties or during peak seasons....\n...3. **Interviews**: Interviews with current and former property owners, occupants, and neighbors to gather information about the property's history and environmental conditions....\n...2. **Make Informed Decisions**: Make informed decisions about the property purchase, including negotiating the price or requesting environmental remediation....\n- source external:provided-text:e66efc30cac8a161588ffc608e3a7b32 [external_record ref=longmemeval:27016adc:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/29 (Mon) 20:38\nTranscript:\n...Session date: 2023/05/29 (Mon) 20:38\nTranscript:\nuser: I'm planning to do some renovations to my current house and I'm trying to get a sense of how much I'll need to budget for property taxes after the renovations are complete. Can you help me understand how renovations affect property taxes?\nassistant: Renovations can indeed impact your property taxes, and it's essential to consider this when planning your project. I'd be happy to help you understand how renovations affect property taxes....\n...5. **Location-specific factors**: Depending on your location, certain types of renovations might be more likely to trigger a reassessment or increase in property taxes. For example, if you live in an area with rapidly appreciating property values, even minor renovations might lead to a significant increase in taxes.\n\n**Factors that influence the impact of renovations on property taxes:**\n\n1. **Type and scope of renovations**: The extent and type of renovations you undertake will influence the impact on your property taxes. Minor cosmetic changes, like painting or replacing fixtures, may not significantly affect your taxes, while major overhauls or additions can lead to a more substantial increase....\n...3. **Consider phasing renovations**: If possible, consider phasing your renovations to minimize the impact on your property taxes.\n\nBy understanding how renovations affect property taxes and considering the factors that influence this impact, you can better plan and budget for the changes to your property taxes after your renovation project is complete.\nuser: My renovations, which I estimate will cost around $20,000, include adding a deck and a patio. Do you think these specific renovations will significantly increase my property taxes?\nassistant: Adding a deck and a patio can be a wonderful way to enhance your outdoor living space. The impact of these renovations on your property taxes will depend on several factors, including your location, the current value of your property, and the local tax laws....\n...3. **Cost vs. value**: According to Remodeling Magazine's Cost vs. Value Report, a mid-range deck addition can recoup around 70-80% of its cost at resale. This means that while a deck can increase your property's value, the increase might not be directly proportional to the cost of the renovation....\n...* If your property's value increases by 5-10% due to the renovations (a conservative estimate), and your current property tax rate is around 1.25% (varies by location), you might see an increase of $125 to $250 per year in property taxes, based on the increased assessed value....\n...5. **Market Trends**: Current market trends, including the sales prices of similar properties in the area....\n...user: I'd like to know more about how the assessed value of my property is determined, specifically in relation to my current renovations. Since I'm adding a deck and patio, I'm wondering how these improvements will be factored into the assessment. Can you explain how the assessor will account for these new features?...\n...1. **Cost Approach**: The assessor will estimate the cost of the renovations, including the deck and patio, based on industry standards, local construction costs, and other factors....\n...user: I'm planning to start the renovation project in the spring, and I'm estimating the cost of the renovations to be around $20,000. I'm wondering if there's a way to minimize the impact of the renovations on my property taxes....\n...In many jurisdictions, the assessment date for property taxes is January 1st or July 1st. If you can complete your renovation project before the assessment date, you might be able to avoid an immediate increase in your property taxes. This is because the assessor will likely use the previous year's data to determine your property's value....\n\n            Retrieved entities:\n            - entity entity:<0> [OTHER]: 5-acre rural property; Entity named 5-acre rural property.\n- entity entity:<1> [PROJECT]: User's current house renovation project; Project named User's current house renovation project.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "27016adc",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"10%\",\"reason\":\"The context states the renovations cost about $20,000 and the countryside property is listed at $200,000, so $20,000 is 10% of $200,000.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2817,
+                "completionTokens": 96,
+                "thinkingTokens": 28,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

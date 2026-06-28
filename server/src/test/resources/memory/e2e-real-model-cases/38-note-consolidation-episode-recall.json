@@ -1,7 +1,7 @@
 {
   "id": "note-consolidation-episode-recall",
-  "category": "episode_memory",
-  "description": "A reusable lesson note should be consolidated into an episode and recalled as prior experience.",
+  "category": "lesson_memory",
+  "description": "A reusable lesson note should be consolidated into durable memory and recalled as prior experience.",
   "timeoutSeconds": 1000,
   "seedSessions": [
     {
@@ -17,10 +17,10 @@
       "present": true,
       "stageIn": ["NOTE_CONSOLIDATION"],
       "tracesMin": 1,
-      "rawEpisodeCandidatesMin": 1,
-      "finalEpisodeCandidatesMin": 1,
-      "materializedEpisodesMin": 1,
-      "containsAll": ["substring", "Episode candidates"]
+      "rawClaimCandidatesMin": 1,
+      "finalClaimCandidatesMin": 1,
+      "materializedClaimsMin": 1,
+      "containsAll": ["substring", "Claim candidates"]
     }
   ],
   "recallSessions": [
@@ -38,10 +38,10 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedEpisodesMin": 1,
-            "selectedContainsAll": ["substring"],
-            "injectedPromptContainsAll": ["Retrieved episodes", "substring"],
-            "requiredSelectedEpisodes": [
+            "selectedNotesMin": 1,
+            "selectedContainsAll": ["NoMemoryVerifier"],
+            "injectedPromptContainsAll": ["Retrieved notes", "substring"],
+            "requiredSelectedNotes": [
               {
                 "containsAll": ["substring"],
                 "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -53,10 +53,10 @@
     }
   ],
   "expectedAfterSeeds": {
-    "episodesMin": 1,
+    "activeClaimsMin": 1,
     "runsMin": 2,
     "userSourcesMin": 1,
-    "requiredEpisodes": [
+    "requiredClaims": [
       {
         "containsAll": ["substring"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -66,16 +66,16 @@
       {
         "runTypeIn": ["CONSOLIDATE_NOTES"],
         "statusIn": ["SUCCESS"],
-        "containsAll": ["insert_episode"],
+        "containsAll": ["insert_claim"],
         "appliedOpsMin": 1
       }
     ]
   },
   "expectedFinal": {
-    "episodesMin": 1,
+    "activeClaimsMin": 1,
     "runsMin": 2,
     "userSourcesMin": 2,
-    "requiredEpisodes": [
+    "requiredClaims": [
       {
         "containsAll": ["substring"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -85,7 +85,7 @@
       {
         "runTypeIn": ["CONSOLIDATE_NOTES"],
         "statusIn": ["SUCCESS"],
-        "containsAll": ["insert_episode"],
+        "containsAll": ["insert_claim"],
         "appliedOpsMin": 1
       }
     ]

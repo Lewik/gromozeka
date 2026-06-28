@@ -447,7 +447,7 @@ data class MemoryForgetPlan(
 @Serializable
 data class MemoryReadPlan(
     val needMemory: Boolean = true,
-    val answerMode: AnswerMode = AnswerMode.MIXED,
+    val contextMode: ContextMode = ContextMode.MIXED,
     val coverageMode: CoverageMode = CoverageMode.MINIMAL,
     val coreBlocks: Set<CoreBlock> = emptySet(),
     val retrievalBudget: MemoryRetrievalBudget = MemoryRetrievalBudget(),
@@ -455,7 +455,7 @@ data class MemoryReadPlan(
     val requireEvidenceFallback: Boolean = false,
 ) {
     @Serializable
-    enum class AnswerMode {
+    enum class ContextMode {
         FACTUAL,
         RATIONALE,
         ACTION_ITEM,

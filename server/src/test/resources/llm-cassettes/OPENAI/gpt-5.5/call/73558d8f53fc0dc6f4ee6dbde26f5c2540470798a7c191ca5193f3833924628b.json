@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "73558d8f53fc0dc6f4ee6dbde26f5c2540470798a7c191ca5193f3833924628b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which seeds were started first, the tomatoes or the marigolds?\n\n                                Question date:\n                                2023/03/10 (Fri) 02:46\n\n                                Expected answer:\n                                Tomatoes\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_385a5000\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-5ef8640399cd-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has experience starting marigold seeds that germinated.; scope=User gardening experience with marigolds from the imported 2023-03-10 chat session.; evidence=DIRECT source=external:provided-text:09bbde763d4ee3b6940dcab150018367 quote=\"I just started some marigold seeds that arrived on March 3rd, and they're already germinating\"\n- claim hot-path-3a3bebbba15d-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has experience starting seedlings indoors since February 20, 2023.; scope=User gardening experience from the imported 2023-03-10 session.; evidence=DIRECT source=external:provided-text:7225c26cb80cb0965a033a5f207ea7e9 quote=\"I've been starting seeds indoors under grow lights in my basement since February 20th\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:09bbde763d4ee3b6940dcab150018367 [external_record ref=longmemeval:gpt4_385a5000:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to plant some seedlings in my backyard soon. Can you tell me what's the ideal temperature for planting them outside? By the way, I just started some marigold seeds that arrived on March 3rd, and they're already germinating - excited to see them grow!...\n...The ideal temperature for planting tomatoes and other warm-season crops outside depends on the specific variety, but generally, you want to wait until the soil has warmed up and the air temperature is consistently above a certain threshold....\n...However, if you're in a region with frost, you'll want to wait until the last frost date for your area has passed. You can check the average last frost date for your area online....\n...Before planting, make sure to harden off your seedlings by gradually exposing them to outdoor conditions over the course of 7-10 days. This will help them adjust to sunlight, wind, and temperature fluctuations....\n...user: I'm thinking of transplanting my seedlings, including the marigolds, into larger pots soon. What's the best way to do it without shocking them?...\n...1. **Prepare the new pots**: Choose pots that are only 1-2 sizes larger than the current ones. This will prevent the soil from becoming too wet and reduce the risk of root rot. Make sure the new pots have drainage holes to prevent waterlogged soil....\n...4. **Handle the roots with care**: Gently remove the seedling from its pot, taking care not to disturb the roots. If the roots have grown in a circular pattern, gently tease them apart with your fingers or a blunt instrument to encourage them to grow outward....\n...6. **Add fresh potting soil**: Fill the new pot with fresh potting soil, leaving enough space for the seedling's roots. You can also mix in some organic fertilizer or compost to give your seedlings a boost....\n...8. **Firm the soil**: Gently firm the soil around the roots to secure the seedling in place. Make sure not to compact the soil too much, as this can cause waterlogging and root rot....\n...* Keep the soil consistently moist but not waterlogged during the first week after transplanting....\n...assistant: Your mix of peat moss, vermiculite, and perlite is a great starting point for seedlings! This blend provides good water retention, aeration, and drainage, which are essential for healthy seedling growth....\n...1. **Peat moss**: Retains moisture, acidic pH, and can be prone to waterlogging if used in excess. Marigolds, being drought-tolerant, might not appreciate too much peat moss....\n...3. **Perlite**: Provides excellent drainage, aeration, and prevents waterlogging. It's an excellent choice for marigolds and other plants that don't like wet feet....\n...user: I'm also thinking of adding some support for my marigolds as they grow. Do you have any suggestions for DIY trellises or stakes that I could use?...\n...2. **Wooden Lattice**: Use wooden lattice panels or create your own lattice using wooden strips. Attach the lattice to stakes or a frame, and train your marigolds to climb through the openings....\n...4. **Repurposed Obelisk**: Use an old obelisk or a wire coat hanger to create a unique trellis. Simply bend the wire into a shape that suits your marigolds and attach it to a stake or the soil....\n...I hope these ideas inspire you to create a beautiful and functional support system for your marigolds!...\n...assistant: Using a combination of stakes and twine is a great way to provide support for your marigolds. Both individual stem ties and a twine grid have their advantages, so let's explore each option:...\n...+ Requires more twine and stakes, which can be more time-consuming and material-intensive....\n...Considering your marigolds, I'd recommend a hybrid approach:...\n- source external:provided-text:7225c26cb80cb0965a033a5f207ea7e9 [external_record ref=longmemeval:gpt4_385a5000:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to plant out my seedlings soon and I'm wondering if you can tell me the average soil temperature for my area. By the way, I've been starting seeds indoors under grow lights in my basement since February 20th - tomatoes, peppers, and cucumbers are all doing well, about 2-3 inches tall now....\n...* Tomatoes: 55°F (13°C) to 65°F (18°C)...\n...Once you're ready to plant out your seedlings, make sure to harden them off first by gradually exposing them to outdoor conditions over the course of 7-10 days. This will help them adjust to the change in temperature, light, and humidity....\n...user: I'm in the 23456 zip code. Also, I've been fertilizing my seedlings with a balanced fertilizer and making sure the soil is moist but not soggy....\n...As you're planning to plant out your seedlings soon, keep an eye on the weather forecast and wait for a spell of warm weather to increase the soil temperature. You can also take steps to warm up the soil, such as:...\n...It's great to hear that you've been fertilizing your seedlings with a balanced fertilizer and maintaining the right soil moisture levels. This will help them develop strong roots and prepare them for outdoor conditions....\n...user: Now that I know the average soil temperature in my area, I'm wondering if it's too early to plant out my tomatoes, peppers, and cucumbers. Should I wait for the soil temperature to reach a certain threshold or are they okay to go out now?...\n...2. **Microbial activity**: Compost is teeming with microorganisms, which break down organic matter and release heat as a byproduct. This microbial activity can contribute to a slight increase in soil temperature....\n...Keep in mind that the compost will continue to break down and release nutrients as the season progresses, which will benefit your plants in the long run. So, even if the temperature increase is modest, the compost will still have a positive impact on your soil and plants....\n...* For climbing peas, add support as soon as you see the first tendrils emerging, usually around 2-3 inches (5-7.5 cm) tall....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Marigolds; Concept named Marigolds.\n- entity entity:<1> [CONCEPT]: Seedlings; Concept named Seedlings.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_385a5000",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which seeds were started first, the tomatoes or the marigolds?\n\n                                Question date:\n                                2023/03/10 (Fri) 02:46\n\n                                Expected answer:\n                                Tomatoes\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_385a5000\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-5ef8640399cd-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has experience starting marigold seeds that germinated.; scope=User gardening experience with marigolds from the imported 2023-03-10 chat session.; evidence=DIRECT source=external:provided-text:09bbde763d4ee3b6940dcab150018367 quote=\"I just started some marigold seeds that arrived on March 3rd, and they're already germinating\"\n- claim hot-path-3a3bebbba15d-claim-6 [ACTIVE] has_experience_with family=has_experience_with: The user has experience starting seedlings indoors since February 20, 2023.; scope=User gardening experience from the imported 2023-03-10 session.; evidence=DIRECT source=external:provided-text:7225c26cb80cb0965a033a5f207ea7e9 quote=\"I've been starting seeds indoors under grow lights in my basement since February 20th\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:09bbde763d4ee3b6940dcab150018367 [external_record ref=longmemeval:gpt4_385a5000:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to plant some seedlings in my backyard soon. Can you tell me what's the ideal temperature for planting them outside? By the way, I just started some marigold seeds that arrived on March 3rd, and they're already germinating - excited to see them grow!...\n...The ideal temperature for planting tomatoes and other warm-season crops outside depends on the specific variety, but generally, you want to wait until the soil has warmed up and the air temperature is consistently above a certain threshold....\n...However, if you're in a region with frost, you'll want to wait until the last frost date for your area has passed. You can check the average last frost date for your area online....\n...Before planting, make sure to harden off your seedlings by gradually exposing them to outdoor conditions over the course of 7-10 days. This will help them adjust to sunlight, wind, and temperature fluctuations....\n...user: I'm thinking of transplanting my seedlings, including the marigolds, into larger pots soon. What's the best way to do it without shocking them?...\n...1. **Prepare the new pots**: Choose pots that are only 1-2 sizes larger than the current ones. This will prevent the soil from becoming too wet and reduce the risk of root rot. Make sure the new pots have drainage holes to prevent waterlogged soil....\n...4. **Handle the roots with care**: Gently remove the seedling from its pot, taking care not to disturb the roots. If the roots have grown in a circular pattern, gently tease them apart with your fingers or a blunt instrument to encourage them to grow outward....\n...6. **Add fresh potting soil**: Fill the new pot with fresh potting soil, leaving enough space for the seedling's roots. You can also mix in some organic fertilizer or compost to give your seedlings a boost....\n...8. **Firm the soil**: Gently firm the soil around the roots to secure the seedling in place. Make sure not to compact the soil too much, as this can cause waterlogging and root rot....\n...* Keep the soil consistently moist but not waterlogged during the first week after transplanting....\n...assistant: Your mix of peat moss, vermiculite, and perlite is a great starting point for seedlings! This blend provides good water retention, aeration, and drainage, which are essential for healthy seedling growth....\n...1. **Peat moss**: Retains moisture, acidic pH, and can be prone to waterlogging if used in excess. Marigolds, being drought-tolerant, might not appreciate too much peat moss....\n...3. **Perlite**: Provides excellent drainage, aeration, and prevents waterlogging. It's an excellent choice for marigolds and other plants that don't like wet feet....\n...user: I'm also thinking of adding some support for my marigolds as they grow. Do you have any suggestions for DIY trellises or stakes that I could use?...\n...2. **Wooden Lattice**: Use wooden lattice panels or create your own lattice using wooden strips. Attach the lattice to stakes or a frame, and train your marigolds to climb through the openings....\n...4. **Repurposed Obelisk**: Use an old obelisk or a wire coat hanger to create a unique trellis. Simply bend the wire into a shape that suits your marigolds and attach it to a stake or the soil....\n...I hope these ideas inspire you to create a beautiful and functional support system for your marigolds!...\n...assistant: Using a combination of stakes and twine is a great way to provide support for your marigolds. Both individual stem ties and a twine grid have their advantages, so let's explore each option:...\n...+ Requires more twine and stakes, which can be more time-consuming and material-intensive....\n...Considering your marigolds, I'd recommend a hybrid approach:...\n- source external:provided-text:7225c26cb80cb0965a033a5f207ea7e9 [external_record ref=longmemeval:gpt4_385a5000:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to plant out my seedlings soon and I'm wondering if you can tell me the average soil temperature for my area. By the way, I've been starting seeds indoors under grow lights in my basement since February 20th - tomatoes, peppers, and cucumbers are all doing well, about 2-3 inches tall now....\n...* Tomatoes: 55°F (13°C) to 65°F (18°C)...\n...Once you're ready to plant out your seedlings, make sure to harden them off first by gradually exposing them to outdoor conditions over the course of 7-10 days. This will help them adjust to the change in temperature, light, and humidity....\n...user: I'm in the 23456 zip code. Also, I've been fertilizing my seedlings with a balanced fertilizer and making sure the soil is moist but not soggy....\n...As you're planning to plant out your seedlings soon, keep an eye on the weather forecast and wait for a spell of warm weather to increase the soil temperature. You can also take steps to warm up the soil, such as:...\n...It's great to hear that you've been fertilizing your seedlings with a balanced fertilizer and maintaining the right soil moisture levels. This will help them develop strong roots and prepare them for outdoor conditions....\n...user: Now that I know the average soil temperature in my area, I'm wondering if it's too early to plant out my tomatoes, peppers, and cucumbers. Should I wait for the soil temperature to reach a certain threshold or are they okay to go out now?...\n...2. **Microbial activity**: Compost is teeming with microorganisms, which break down organic matter and release heat as a byproduct. This microbial activity can contribute to a slight increase in soil temperature....\n...Keep in mind that the compost will continue to break down and release nutrients as the season progresses, which will benefit your plants in the long run. So, even if the temperature increase is modest, the compost will still have a positive impact on your soil and plants....\n...* For climbing peas, add support as soon as you see the first tendrils emerging, usually around 2-3 inches (5-7.5 cm) tall....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Marigolds; Concept named Marigolds.\n- entity entity:<1> [CONCEPT]: Seedlings; Concept named Seedlings.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_385a5000",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Tomatoes were started first.\",\"reason\":\"The context says tomatoes were among seeds started indoors since February 20, while the marigolds were only just started after arriving March 3.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2366,
+                "completionTokens": 111,
+                "thinkingTokens": 49,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

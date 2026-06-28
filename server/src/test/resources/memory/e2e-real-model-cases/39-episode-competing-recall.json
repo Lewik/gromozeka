@@ -1,7 +1,7 @@
 {
   "id": "episode-competing-recall",
-  "category": "episode_memory",
-  "description": "When multiple reusable lessons exist, runtime recall should select the episode matching the named component and lesson, not a nearby memory lesson.",
+  "category": "lesson_memory",
+  "description": "When multiple reusable lessons exist, runtime recall should select the memory matching the named component and lesson, not a nearby memory lesson.",
   "timeoutSeconds": 1200,
   "seedSessions": [
     {
@@ -23,9 +23,9 @@
       "present": true,
       "stageIn": ["NOTE_CONSOLIDATION"],
       "tracesMin": 1,
-      "rawEpisodeCandidatesMin": 2,
-      "finalEpisodeCandidatesMin": 2,
-      "materializedEpisodesMin": 2,
+      "rawClaimCandidatesMin": 2,
+      "finalClaimCandidatesMin": 2,
+      "materializedClaimsMin": 2,
       "containsAll": ["NoMemoryVerifier", "SourceHydrator"]
     }
   ],
@@ -46,17 +46,17 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedEpisodesMin": 1,
-            "selectedEpisodesMax": 1,
-            "injectedPromptContainsAll": ["Retrieved episodes", "NoMemoryVerifier", "no-memory"],
+            "selectedClaimsMin": 1,
+            "selectedClaimsMax": 1,
+            "injectedPromptContainsAll": ["Retrieved claims", "NoMemoryVerifier", "no-memory"],
             "injectedPromptContainsNone": ["SourceHydrator", "source evidence hydration"],
-            "requiredSelectedEpisodes": [
+            "requiredSelectedClaims": [
               {
                 "containsAll": ["NoMemoryVerifier", "no-memory", "verification"],
                 "evidenceSourceSpeakerRoleIn": ["USER"]
               }
             ],
-            "forbiddenSelectedEpisodes": [
+            "forbiddenSelectedClaims": [
               {
                 "containsAll": ["SourceHydrator", "source", "hydration"]
               }
@@ -67,10 +67,10 @@
     }
   ],
   "expectedAfterSeeds": {
-    "episodesMin": 2,
+    "activeClaimsMin": 2,
     "runsMin": 3,
     "userSourcesMin": 2,
-    "requiredEpisodes": [
+    "requiredClaims": [
       {
         "containsAll": ["NoMemoryVerifier", "no-memory", "verification"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -84,16 +84,16 @@
       {
         "runTypeIn": ["CONSOLIDATE_NOTES"],
         "statusIn": ["SUCCESS"],
-        "containsAll": ["insert_episode"],
+        "containsAll": ["insert_claim"],
         "appliedOpsMin": 2
       }
     ]
   },
   "expectedFinal": {
-    "episodesMin": 2,
+    "activeClaimsMin": 2,
     "runsMin": 3,
     "userSourcesMin": 3,
-    "requiredEpisodes": [
+    "requiredClaims": [
       {
         "containsAll": ["NoMemoryVerifier", "no-memory", "verification"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
@@ -107,7 +107,7 @@
       {
         "runTypeIn": ["CONSOLIDATE_NOTES"],
         "statusIn": ["SUCCESS"],
-        "containsAll": ["insert_episode"],
+        "containsAll": ["insert_claim"],
         "appliedOpsMin": 2
       }
     ]

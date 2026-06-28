@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "9589dc9b7e5ce71f755624ed3c2a9dd16f56c98a1e2c5fc33effbd6275104e8b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about front-end and back-end development. Can you remind me of the specific back-end programming languages you recommended I learn?\n\n                                Question date:\n                                2023/05/30 (Tue) 07:25\n\n                                Expected answer:\n                                I recommended learning Ruby, Python, or PHP as a back-end programming language.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:cc539528\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-42c200320f22-note-2 [PLAN/ACTIVE]: Full-stack developer learning path discussed in LongMemEval session; A recommended path for becoming a full-stack developer is to master web basics such as HTML, CSS, and JavaScript, then learn a back-end language like Ruby, Python, or PHP, build projects combining front-end and back-end work, stay current with web technologies, and join developer communities.; scope=Reusable learning guidance for the user's interest in full-stack web development from the 2023-05-23 session.; evidence=SUMMARIZED source=external:provided-text:0c72b8429747f8a485786ff6d9cfde97 quote=\"Do you have any tips for someone who wants to become a full-stack developer?\"\n\n            Retrieved evidence:\n            - source external:provided-text:0c72b8429747f8a485786ff6d9cfde97 [external_record ref=longmemeval:cc539528:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: Can you explain the difference between front-end and back-end web development?...\n...So while front-end development deals with the user-facing part of a website or an application, back-end development is responsible for the behind-the-scenes functionality that powers the website or app. Both front-end and back-end development are essential for building a successful web application....\n...assistant: Yes, that's a good way to put it! Front-end developers are responsible for creating the visual elements and designing the user interface of a website or application, while back-end developers handle the server-side programming that powers the functionality of the website or application. However, it's also important to note that front-end developers do a lot more than just making things look pretty - they also need to ensure that the user experience is intuitive and user-friendly. Similarly, back-end developers do more than just making things work smoothly - they also need to make sure that the website or application is secure and scalable.\nuser: It sounds like front-end and back-end development require different skill sets. Can someone be proficient in both areas?\nassistant: Yes, it's definitely possible for someone to be proficient in both front-end and back-end development. In fact, many web developers today are full-stack developers, which means that they have skills and experience in both front-end and back-end development.\n\nWhile front-end and back-end development require different skill sets, there is some overlap between the two. For example, knowledge of programming languages like HTML, CSS, and JavaScript is essential for both front-end and back-end development.\n\nBeing a full-stack developer can be an advantage in some ways, as it allows you to understand the entire process of web development, from designing the user interface to building the server-side functionality. However, being a full-stack developer also means that you need to constantly keep up with the latest technology and trends in both front-end and back-end development, which can be a challenge.\nuser: It seems like there's so much to learn in both front-end and back-end development. Do you have any tips for someone who wants to become a full-stack developer?...\n...2. Learn a back-end programming language: Once you've got a good grasp of front-end development, start learning a back-end programming language, such as Ruby, Python, or PHP. You'll need to learn how to build server-side applications and work with databases.\n\n3. Build projects: Practice is key to becoming a full-stack developer. Build projects that incorporate both front-end and back-end development to solidify your skills and gain real-world experience.\n\n4. Stay up-to-date with new technologies: Web development is a constantly evolving field, so make sure you stay up-to-date with the latest technologies and trends in both front-end and back-end development....\n...Remember, becoming a full-stack developer takes time and practice. The key is to stay focused, keep learning, and never give up!\nuser: Do you recommend any specific resources or online courses for someone who wants to learn front-end and back-end development?\nassistant: Yes, there are a lot of great online resources and courses available for learning front-end and back-end development. Here are a few that I recommend:\n\nFor front-end development:...\n...For back-end development:...\n...- Udacity: Udacity offers a range of courses in back-end development, including courses on Python, SQL, and web development frameworks like Flask and Django.\n- Coursera: Coursera offers online courses in back-end development, including courses on Java and web application frameworks like Spring and Hibernate.\n\nThese are just a few of the many resources available for learning front-end and back-end development. The most important thing is to find a resource that works for you and suits your learning style.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Back-end web development; Concept named Back-end web development.\n- entity entity:<1> [CONCEPT]: Front-end web development; Concept named Front-end web development.\n- entity entity:<2> [CONCEPT]: Full-stack developer; Concept named Full-stack developer.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "cc539528",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about front-end and back-end development. Can you remind me of the specific back-end programming languages you recommended I learn?\n\n                                Question date:\n                                2023/05/30 (Tue) 07:25\n\n                                Expected answer:\n                                I recommended learning Ruby, Python, or PHP as a back-end programming language.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:cc539528\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-42c200320f22-note-2 [PLAN/ACTIVE]: Full-stack developer learning path discussed in LongMemEval session; A recommended path for becoming a full-stack developer is to master web basics such as HTML, CSS, and JavaScript, then learn a back-end language like Ruby, Python, or PHP, build projects combining front-end and back-end work, stay current with web technologies, and join developer communities.; scope=Reusable learning guidance for the user's interest in full-stack web development from the 2023-05-23 session.; evidence=SUMMARIZED source=external:provided-text:0c72b8429747f8a485786ff6d9cfde97 quote=\"Do you have any tips for someone who wants to become a full-stack developer?\"\n\n            Retrieved evidence:\n            - source external:provided-text:0c72b8429747f8a485786ff6d9cfde97 [external_record ref=longmemeval:cc539528:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: Can you explain the difference between front-end and back-end web development?...\n...So while front-end development deals with the user-facing part of a website or an application, back-end development is responsible for the behind-the-scenes functionality that powers the website or app. Both front-end and back-end development are essential for building a successful web application....\n...assistant: Yes, that's a good way to put it! Front-end developers are responsible for creating the visual elements and designing the user interface of a website or application, while back-end developers handle the server-side programming that powers the functionality of the website or application. However, it's also important to note that front-end developers do a lot more than just making things look pretty - they also need to ensure that the user experience is intuitive and user-friendly. Similarly, back-end developers do more than just making things work smoothly - they also need to make sure that the website or application is secure and scalable.\nuser: It sounds like front-end and back-end development require different skill sets. Can someone be proficient in both areas?\nassistant: Yes, it's definitely possible for someone to be proficient in both front-end and back-end development. In fact, many web developers today are full-stack developers, which means that they have skills and experience in both front-end and back-end development.\n\nWhile front-end and back-end development require different skill sets, there is some overlap between the two. For example, knowledge of programming languages like HTML, CSS, and JavaScript is essential for both front-end and back-end development.\n\nBeing a full-stack developer can be an advantage in some ways, as it allows you to understand the entire process of web development, from designing the user interface to building the server-side functionality. However, being a full-stack developer also means that you need to constantly keep up with the latest technology and trends in both front-end and back-end development, which can be a challenge.\nuser: It seems like there's so much to learn in both front-end and back-end development. Do you have any tips for someone who wants to become a full-stack developer?...\n...2. Learn a back-end programming language: Once you've got a good grasp of front-end development, start learning a back-end programming language, such as Ruby, Python, or PHP. You'll need to learn how to build server-side applications and work with databases.\n\n3. Build projects: Practice is key to becoming a full-stack developer. Build projects that incorporate both front-end and back-end development to solidify your skills and gain real-world experience.\n\n4. Stay up-to-date with new technologies: Web development is a constantly evolving field, so make sure you stay up-to-date with the latest technologies and trends in both front-end and back-end development....\n...Remember, becoming a full-stack developer takes time and practice. The key is to stay focused, keep learning, and never give up!\nuser: Do you recommend any specific resources or online courses for someone who wants to learn front-end and back-end development?\nassistant: Yes, there are a lot of great online resources and courses available for learning front-end and back-end development. Here are a few that I recommend:\n\nFor front-end development:...\n...For back-end development:...\n...- Udacity: Udacity offers a range of courses in back-end development, including courses on Python, SQL, and web development frameworks like Flask and Django.\n- Coursera: Coursera offers online courses in back-end development, including courses on Java and web application frameworks like Spring and Hibernate.\n\nThese are just a few of the many resources available for learning front-end and back-end development. The most important thing is to find a resource that works for you and suits your learning style.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Back-end web development; Concept named Back-end web development.\n- entity entity:<1> [CONCEPT]: Front-end web development; Concept named Front-end web development.\n- entity entity:<2> [CONCEPT]: Full-stack developer; Concept named Full-stack developer.\n- entity entity:<3> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "cc539528",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"I recommended learning Ruby, Python, or PHP as a back-end programming language.\",\"reason\":\"The retrieved note and evidence explicitly list Ruby, Python, and PHP as recommended back-end languages in the prior full-stack development discussion.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1833,
+                "completionTokens": 91,
+                "thinkingTokens": 22,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

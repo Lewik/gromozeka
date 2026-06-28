@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "d66dc0820ecbbfe1b0b0f7105672566b56b970ed8f72ce0cdc5773fb89984408",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some activities that I can do in the evening?\n\n                                Question date:\n                                2023/05/24 (Wed) 05:51\n\n                                Expected answer:\n                                The user would prefer suggestions that involve relaxing activities that can be done in the evening, preferably before 9:30 pm. They would not prefer suggestions that involve using their phone or watching TV, as these activities have been affecting their sleep quality.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:195a1a1b\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-6dd146079483-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to minimize procrastination.; scope=User productivity-improvement goals from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I'd like to minimize procrastination\"\n- claim hot-path-6dd146079483-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to minimize social media usage.; scope=User productivity-improvement goals from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"social media usage\"\n- claim hot-path-6dd146079483-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to wind down by 9:30 PM to prepare for a good night's sleep.; scope=User evening routine and sleep-preparation goals from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I prefer winding down by 9:30 pm to prepare for a good night's sleep.\"\n- claim hot-path-6dd146079483-claim-16 [ACTIVE] prefers family=prefers: The user liked the imagery and visualization part of the \"Sleep\" guided meditation by Headspace.; scope=User meditation-content preferences from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I especially liked the imagery and visualization part of the meditation\"\n- claim hot-path-6dd146079483-claim-14 [ACTIVE] has_goal family=has_goal: The user wants meditation apps or guided meditation resources to help relax before bed.; scope=User sleep and relaxation resource interests from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"meditation apps or guided meditation resources that I can use to help me relax before bed\"\n\n            Retrieved notes:\n            - note hot-path-6dd146079483-note-2 [CONTEXT/ACTIVE]: Time management and evening wind-down planning context; The user sought help creating a structured daily schedule around an imminent project/report deadline, regular email and meeting work, a 30-minute morning exercise routine, and a preference to wind down by 9:30 pm for sleep. The planning context emphasized using the user's 10 am–12 pm peak productivity window for focused project/report work and minimizing procrastination/social media.; scope=User's recurring time-management and daily schedule planning context from LongMemEval session 1; evidence=SUMMARIZED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I prefer a structured schedule, and I'd like to minimize procrastination and social media usage.\"\n\n            Retrieved evidence:\n            - source external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 [external_record ref=longmemeval:195a1a1b:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/21 (Sun) 05:24...\n...4. **What are your most productive times of the day?** (e.g., morning, afternoon, evening)...\n...user: I have a project that's due soon, and I need to finish a report and respond to some emails. My most time-consuming tasks are working on my project, responding to emails, and attending meetings. I have around 7-8 hours available for tasks each day, considering my work schedule and commute. My most productive times are between 10 am and 12 pm. I have a 30-minute exercise routine in the morning, and I'd like to schedule around that. I prefer a structured schedule, and I'd like to minimize procrastination and social media usage. I don't have any existing time management tools, but I'm open to using one....\n...Here's a suggested schedule for you, taking into account your availability, productivity, and commitments:...\n...Remember, this is just a suggested schedule, and you should feel free to adjust it to fit your needs and work style. Stay focused, and you'll be on track to completing your project and meeting your deadline!...\n...* Start winding down 60-90 minutes before bedtime by gradually disconnecting from stimulating activities, such as work, screens, or intense conversations....\n...+ Avoid stimulating activities, like exercise or intense conversations....\n...Remember, consistency is key. Establish a bedtime routine that works for you and stick to it, even on weekends. Good luck, and I hope you start sleeping better soon!...\n...4. **Make it a habit**: Try to meditate at the same time every day, so it becomes a consistent part of your routine....\n...user: Can I get some guided meditations specifically designed for sleep and relaxation? Something that can help me calm my mind and body before bed?...\n...user: I'd like to try the \"Sleep\" guided meditation by Headspace. Can you provide me with a brief overview of what to expect from this meditation?...\n...user: I found the meditation experience to be very relaxing and calming. It helped me unwind and quiet my mind, which made it easier to fall asleep. I especially liked the imagery and visualization part of the meditation, as it helped me distract myself from any stressful thoughts and focus on relaxation....\n...Now that you've had a positive experience with meditation, I encourage you to make it a regular part of your routine. Even just a few minutes of meditation a day can make a big difference in how you feel....\n...user: I think I'll try another meditation session tonight. I'd like to try the \"Body Scan\" meditation by Insight Timer. Can you provide me with a brief overview of what to expect from this meditation?...\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Asana; Product named Asana.\n- entity entity:<1> [PRODUCT]: Google Calendar; Product named Google Calendar.\n- entity entity:<2> [PRODUCT]: Microsoft Outlook; Product named Microsoft Outlook.\n- entity entity:<3> [PRODUCT]: Sleep by Headspace; Product named Sleep by Headspace.\n- entity entity:<4> [PRODUCT]: Trello; Product named Trello.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "195a1a1b",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some activities that I can do in the evening?\n\n                                Question date:\n                                2023/05/24 (Wed) 05:51\n\n                                Expected answer:\n                                The user would prefer suggestions that involve relaxing activities that can be done in the evening, preferably before 9:30 pm. They would not prefer suggestions that involve using their phone or watching TV, as these activities have been affecting their sleep quality.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:195a1a1b\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-6dd146079483-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to minimize procrastination.; scope=User productivity-improvement goals from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I'd like to minimize procrastination\"\n- claim hot-path-6dd146079483-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to minimize social media usage.; scope=User productivity-improvement goals from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"social media usage\"\n- claim hot-path-6dd146079483-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to wind down by 9:30 PM to prepare for a good night's sleep.; scope=User evening routine and sleep-preparation goals from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I prefer winding down by 9:30 pm to prepare for a good night's sleep.\"\n- claim hot-path-6dd146079483-claim-16 [ACTIVE] prefers family=prefers: The user liked the imagery and visualization part of the \"Sleep\" guided meditation by Headspace.; scope=User meditation-content preferences from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I especially liked the imagery and visualization part of the meditation\"\n- claim hot-path-6dd146079483-claim-14 [ACTIVE] has_goal family=has_goal: The user wants meditation apps or guided meditation resources to help relax before bed.; scope=User sleep and relaxation resource interests from the 2023-05-21 session.; evidence=IMPORTED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"meditation apps or guided meditation resources that I can use to help me relax before bed\"\n\n            Retrieved notes:\n            - note hot-path-6dd146079483-note-2 [CONTEXT/ACTIVE]: Time management and evening wind-down planning context; The user sought help creating a structured daily schedule around an imminent project/report deadline, regular email and meeting work, a 30-minute morning exercise routine, and a preference to wind down by 9:30 pm for sleep. The planning context emphasized using the user's 10 am–12 pm peak productivity window for focused project/report work and minimizing procrastination/social media.; scope=User's recurring time-management and daily schedule planning context from LongMemEval session 1; evidence=SUMMARIZED source=external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 quote=\"I prefer a structured schedule, and I'd like to minimize procrastination and social media usage.\"\n\n            Retrieved evidence:\n            - source external:provided-text:dac96db0aa397f7b9600c310e5e4aa68 [external_record ref=longmemeval:195a1a1b:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/21 (Sun) 05:24...\n...4. **What are your most productive times of the day?** (e.g., morning, afternoon, evening)...\n...user: I have a project that's due soon, and I need to finish a report and respond to some emails. My most time-consuming tasks are working on my project, responding to emails, and attending meetings. I have around 7-8 hours available for tasks each day, considering my work schedule and commute. My most productive times are between 10 am and 12 pm. I have a 30-minute exercise routine in the morning, and I'd like to schedule around that. I prefer a structured schedule, and I'd like to minimize procrastination and social media usage. I don't have any existing time management tools, but I'm open to using one....\n...Here's a suggested schedule for you, taking into account your availability, productivity, and commitments:...\n...Remember, this is just a suggested schedule, and you should feel free to adjust it to fit your needs and work style. Stay focused, and you'll be on track to completing your project and meeting your deadline!...\n...* Start winding down 60-90 minutes before bedtime by gradually disconnecting from stimulating activities, such as work, screens, or intense conversations....\n...+ Avoid stimulating activities, like exercise or intense conversations....\n...Remember, consistency is key. Establish a bedtime routine that works for you and stick to it, even on weekends. Good luck, and I hope you start sleeping better soon!...\n...4. **Make it a habit**: Try to meditate at the same time every day, so it becomes a consistent part of your routine....\n...user: Can I get some guided meditations specifically designed for sleep and relaxation? Something that can help me calm my mind and body before bed?...\n...user: I'd like to try the \"Sleep\" guided meditation by Headspace. Can you provide me with a brief overview of what to expect from this meditation?...\n...user: I found the meditation experience to be very relaxing and calming. It helped me unwind and quiet my mind, which made it easier to fall asleep. I especially liked the imagery and visualization part of the meditation, as it helped me distract myself from any stressful thoughts and focus on relaxation....\n...Now that you've had a positive experience with meditation, I encourage you to make it a regular part of your routine. Even just a few minutes of meditation a day can make a big difference in how you feel....\n...user: I think I'll try another meditation session tonight. I'd like to try the \"Body Scan\" meditation by Insight Timer. Can you provide me with a brief overview of what to expect from this meditation?...\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: Asana; Product named Asana.\n- entity entity:<1> [PRODUCT]: Google Calendar; Product named Google Calendar.\n- entity entity:<2> [PRODUCT]: Microsoft Outlook; Product named Microsoft Outlook.\n- entity entity:<3> [PRODUCT]: Sleep by Headspace; Product named Sleep by Headspace.\n- entity entity:<4> [PRODUCT]: Trello; Product named Trello.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "195a1a1b",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest relaxing evening wind-down activities before 9:30 pm, such as guided sleep/relaxation meditation or visualization/body scan, while avoiding screens/social media like phone use or TV close to bedtime.\",\"reason\":\"The memory states the user wants to wind down by 9:30 for sleep, relax before bed with guided meditation, and minimize social media/screen-related stimulation.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2163,
+                "completionTokens": 267,
+                "thinkingTokens": 166,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

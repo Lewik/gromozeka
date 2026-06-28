@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "14402d350540ac255a8afc1a91d7658d3032242b7c1d428d5a5ed7a793bc358b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about environmentally responsible supply chain practices, and I was wondering if you could remind me of the company you mentioned that's doing a great job with sustainability?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:30\n\n                                Noisy expected-answer label:\n                                Patagonia\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e48988bc\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0962632ccb20-claim-3 [ACTIVE] responsible_supply_chain_practice family=responsible_supply_chain_practice: Patagonia is known for its commitment to sustainability and environmental responsibility throughout its supply chain.; scope=Patagonia's supply chain practices as described in the imported LongMemEval past chat session dated 2023-05-21.; context=\"The imported past chat gave Patagonia as an example of a company that successfully implemented environmentally responsible supply-chain practices.\"; evidence=IMPORTED source=external:provided-text:aecb5f85334b45fcb4edbfe98a9d415f quote=\"Patagonia, an outdoor clothing and gear company, is known for its commitment to sustainability and environmental responsibility throughout its supply chain.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:aecb5f85334b45fcb4edbfe98a9d415f [external_record ref=longmemeval:e48988bc:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 21:04\nTranscript:\nuser: How does the company ensure its supply chain is environmentally responsible?\nassistant: As an AI language model, I do not have information regarding the specific company you are referring to. However, here are some common practices that companies can adopt to ensure their supply chain is environmentally responsible:\n\n1. Sustainable sourcing: Companies can ensure that their suppliers are using sustainable practices to source materials, such as using renewable energy, reducing waste, and conserving natural resources.\n\n2. Green transportation: Companies can encourage their logistics partners to use greener transportation methods, such as electric or hybrid vehicles, to reduce carbon emissions.\n\n3. Packaging optimization: Companies can minimize the impact of their packaging on the environment by reducing the amount of packaging used, using more eco-friendly materials, and encouraging recycling.\n\n4. Waste reduction: Companies can work with their suppliers to reduce waste in their production processes, by implementing recycling programs or by adopting zero-waste policies.\n\n5. Compliance with environmental regulations: Companies can ensure that their supply chain meets environmental regulations, such as minimizing air and water pollution or reducing greenhouse gas emissions, and that their suppliers are appropriately certified to operate in an environmentally responsible manner.\nuser: Can you give me an example of a company that has successfully implemented these environmentally responsible practices in its supply chain?\nassistant: Yes, sure. Here's an example:\n\nPatagonia, an outdoor clothing and gear company, is known for its commitment to sustainability and environmental responsibility throughout its supply chain. Some of the ways they have implemented environmentally responsible practices are:\n\n1. Sustainable sourcing: Patagonia uses organic cotton, recycled polyester, and other sustainable materials in their products. They also work closely with suppliers to ensure that the environmental impact of their materials is minimized.\n\n2. Green transportation: Patagonia encourages its suppliers to use more efficient transportation methods, such as shipping by sea instead of air, reducing the amount of carbon emissions.\n\n3. Packaging optimization: Patagonia uses recycled and recyclable materials in its packaging and encourages customers to recycle their packaging.\n\n4. Waste reduction: Patagonia has implemented a take-back program for its clothing, where customers can return old clothes for recycling or repair. They also use recycled content and employ circular business models to reduce waste.\n\n5. Compliance with environmental regulations: Patagonia closely monitors its supply chain's compliance with environmental regulations, such as minimizing waste water and chemical usage. The company also invests in third-party certifications to validate that their supply chain is environmentally responsible.\n\nPatagonia has received several recognitions and awards for its sustainability efforts in its supply chain.\nuser: It's great to see companies like Patagonia taking the initiative to be environmentally responsible. I hope more companies follow suit and prioritize sustainability in their supply chain practices.\nassistant: As an AI language model, I completely agree with you! Encouraging eco-friendly practices within the supply chain is an essential step that companies can take to reduce their environmental impact and contribute to a greener future. By implementing these practices, companies can not only reduce their ecological footprint but also minimize risks associated with environmental non-compliance, improve their brand image and reputation, and foster goodwill among customers, employees, and stakeholders. Hopefully, more companies will follow the lead of Patagonia and make a sincere commitment to sustainability in their supply chain practices.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Sustainability; Concept named Sustainability.\n- entity entity:<1> [ORGANIZATION]: Patagonia; Organization named Patagonia.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e48988bc",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was looking back at our previous conversation about environmentally responsible supply chain practices, and I was wondering if you could remind me of the company you mentioned that's doing a great job with sustainability?\n\n                                Question date:\n                                2023/05/27 (Sat) 20:30\n\n                                Noisy expected-answer label:\n                                Patagonia\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e48988bc\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-0962632ccb20-claim-3 [ACTIVE] responsible_supply_chain_practice family=responsible_supply_chain_practice: Patagonia is known for its commitment to sustainability and environmental responsibility throughout its supply chain.; scope=Patagonia's supply chain practices as described in the imported LongMemEval past chat session dated 2023-05-21.; context=\"The imported past chat gave Patagonia as an example of a company that successfully implemented environmentally responsible supply-chain practices.\"; evidence=IMPORTED source=external:provided-text:aecb5f85334b45fcb4edbfe98a9d415f quote=\"Patagonia, an outdoor clothing and gear company, is known for its commitment to sustainability and environmental responsibility throughout its supply chain.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:aecb5f85334b45fcb4edbfe98a9d415f [external_record ref=longmemeval:e48988bc:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/21 (Sun) 21:04\nTranscript:\nuser: How does the company ensure its supply chain is environmentally responsible?\nassistant: As an AI language model, I do not have information regarding the specific company you are referring to. However, here are some common practices that companies can adopt to ensure their supply chain is environmentally responsible:\n\n1. Sustainable sourcing: Companies can ensure that their suppliers are using sustainable practices to source materials, such as using renewable energy, reducing waste, and conserving natural resources.\n\n2. Green transportation: Companies can encourage their logistics partners to use greener transportation methods, such as electric or hybrid vehicles, to reduce carbon emissions.\n\n3. Packaging optimization: Companies can minimize the impact of their packaging on the environment by reducing the amount of packaging used, using more eco-friendly materials, and encouraging recycling.\n\n4. Waste reduction: Companies can work with their suppliers to reduce waste in their production processes, by implementing recycling programs or by adopting zero-waste policies.\n\n5. Compliance with environmental regulations: Companies can ensure that their supply chain meets environmental regulations, such as minimizing air and water pollution or reducing greenhouse gas emissions, and that their suppliers are appropriately certified to operate in an environmentally responsible manner.\nuser: Can you give me an example of a company that has successfully implemented these environmentally responsible practices in its supply chain?\nassistant: Yes, sure. Here's an example:\n\nPatagonia, an outdoor clothing and gear company, is known for its commitment to sustainability and environmental responsibility throughout its supply chain. Some of the ways they have implemented environmentally responsible practices are:\n\n1. Sustainable sourcing: Patagonia uses organic cotton, recycled polyester, and other sustainable materials in their products. They also work closely with suppliers to ensure that the environmental impact of their materials is minimized.\n\n2. Green transportation: Patagonia encourages its suppliers to use more efficient transportation methods, such as shipping by sea instead of air, reducing the amount of carbon emissions.\n\n3. Packaging optimization: Patagonia uses recycled and recyclable materials in its packaging and encourages customers to recycle their packaging.\n\n4. Waste reduction: Patagonia has implemented a take-back program for its clothing, where customers can return old clothes for recycling or repair. They also use recycled content and employ circular business models to reduce waste.\n\n5. Compliance with environmental regulations: Patagonia closely monitors its supply chain's compliance with environmental regulations, such as minimizing waste water and chemical usage. The company also invests in third-party certifications to validate that their supply chain is environmentally responsible.\n\nPatagonia has received several recognitions and awards for its sustainability efforts in its supply chain.\nuser: It's great to see companies like Patagonia taking the initiative to be environmentally responsible. I hope more companies follow suit and prioritize sustainability in their supply chain practices.\nassistant: As an AI language model, I completely agree with you! Encouraging eco-friendly practices within the supply chain is an essential step that companies can take to reduce their environmental impact and contribute to a greener future. By implementing these practices, companies can not only reduce their ecological footprint but also minimize risks associated with environmental non-compliance, improve their brand image and reputation, and foster goodwill among customers, employees, and stakeholders. Hopefully, more companies will follow the lead of Patagonia and make a sincere commitment to sustainability in their supply chain practices.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Sustainability; Concept named Sustainability.\n- entity entity:<1> [ORGANIZATION]: Patagonia; Organization named Patagonia.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e48988bc",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Patagonia\",\"reason\":\"The retrieved context explicitly says the prior conversation gave Patagonia as the example company known for sustainability and environmental responsibility in its supply chain.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1806,
+                "completionTokens": 68,
+                "thinkingTokens": 13,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

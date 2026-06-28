@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "cb9c03e1ce95efa6be2fffbf010eaea2dc6f3a2011758ab69c631165dd4cb973",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which event did I attend first, the 'Effective Time Management' workshop or the 'Data Analysis using Python' webinar?\n\n                                Question date:\n                                2023/05/28 (Sun) 06:47\n\n                                Expected answer:\n                                'Data Analysis using Python' webinar\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2487a7cb\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-63d3740a9144-claim-8 [ACTIVE] attended_event family=attended_event: The user participated in a webinar titled \"Data Analysis using Python\" approximately two months before 2023-05-28.; scope=User's data analysis and visualization learning history; evidence=DIRECT source=external:provided-text:436454573fb4c6be48ba55c7264293f7 quote=\"I participated in a webinar on \"Data Analysis using Python\" two months ago\"\n- claim hot-path-0c2dd82e3ede-claim-11 [ACTIVE] attended_event family=attended_event: The user attended a workshop on \"Effective Time Management\" at the local community center on 2023-05-27.; scope=Applies to the user's dated learning event attendance in the imported 2023-05-28 chat session.; evidence=DIRECT source=external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 quote=\"the workshop on \"Effective Time Management\" at the local community center last Saturday\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 [external_record ref=longmemeval:gpt4_2487a7cb:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 21:04\nTranscript:\nuser: I'm trying to get more organized and stay on top of my tasks. Can you recommend any apps or tools that can help me prioritize my tasks and avoid procrastination?\nassistant: Congratulations on taking the first step towards improving your time management skills! There are many fantastic apps and tools that can help you prioritize tasks, stay organized, and overcome procrastination. Here are some popular ones:\n\n**\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 21:04\nTranscript:\nuser: I'm trying to get more organized and stay on top of my tasks. Can you recommend any apps or tools that can help me prioritize my tasks and avoid procrastination?\nassistant: Congratulations on taking the first step towards improving your time management skills! There are many fantastic apps and tools that can help you prioritize tasks, stay organized, and overcome procrastination. Here are some popular ones:\n\n**Task Management Apps:**\n\n1. ** Todoist**: A highly-rated app that allows you to create and manage your to-do lists, set priorities, and track progress.\n2. **Trello**: A visual project management tool that uses boards, lists, and cards to organize tasks and projects.\n3. **Asana**: A comprehensive task management platform that helps you create and assign tasks, set deadlines, and track progress.\n4. **Wunderlist**: A simple and intuitive app for creating to-do lists, setting reminders, and sharing tasks with others.\n\n**Productivity Tools:**\n\n1. **RescueTime**: A time management tool that tracks how you spend your time on your computer or mobile device, providing insights to help you stay focused.\n2. **Focus@Will**: An mus...\n...abits.\n2. **Strides**: A goal-setting app that helps you set and achieve goals in various areas of your life, including productivity and time management.\n3. **Coach.me**: A personalized coaching app that helps you set goals, track progress, and develop healthy habits.\n\n**Other Tools:**\n\n1. **Evernote**: A note-taking app that can help you organize your thoughts, ideas, and tasks.\n2. **Google Calendar**: A calendar app that integrates well with other Google tools and helps you schedule tasks and events.\n3. **Paper planners**: If you prefer a physical approach, consider using a paper planner to write down your tasks, appointments, and goals.\n\nRemember, the key to success lies in finding an app or tool that fits your style and preferences. Experiment with a few options to see what works best for you. Good luck on your productivity journey!\nuser: I'll definitely check out these recommendations. I've been trying to implement some of the strategies like prioritizing tasks and breaking them down into smaller chunks, and it's been helping me stay on top of my work so far.\nassistant: That's fantastic to hear! Implementing strategies like prioritizing tasks and breaking them down into smaller chunks can make a huge difference in your productivity. It's great that you're already seeing the benefits.\n\nPrioritizing tasks helps you focus on the most important tasks first, ensuring that you'r...\n- source external:provided-text:436454573fb4c6be48ba55c7264293f7 [external_record ref=longmemeval:gpt4_2487a7cb:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 07:17\nTranscript:\nuser: I'm trying to work on a project that involves data analysis, and I was wondering if you could recommend some resources for learning more about data visualization in Python?\nassistant: Data visualization is a crucial step in data analysis, and Python is an excellent choice for it. Here are some top-notch resources to help you learn data visualization in Python:\n\n**Online Courses and Tutorials:**\n\n1. **DataCamp's\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 07:17\nTranscript:\nuser: I'm trying to work on a project that involves data analysis, and I was wondering if you could recommend some resources for learning more about data visualization in Python?\nassistant: Data visualization is a crucial step in data analysis, and Python is an excellent choice for it. Here are some top-notch resources to help you learn data visualization in Python:\n\n**Online Courses and Tutorials:**\n\n1. **DataCamp's Python Data Visualization Course**: A comprehensive course covering the basics of data visualization in Python using popular libraries like Matplotlib, Seaborn, and Plotly.\n2. **Coursera's Data Visualization with Python Specialization**: A 4-course specialization by the University of California, Berkeley, covering the fundamentals of data visualization and Python programming.\n3. **edX's Python for Data Science and Visualization**: A course by Microsoft that covers the basics of Python programming and data visualization using...\n...ide to Design, Visualization, and Statistics\" by Nathan Yau**: A book that focuses on the principles of data visualization and storytelling, with examples in Python.\n\n**Blogs and Communities:**\n\n1. **FlowingData**: A popular blog by Nathan Yau, covering data visualization, statistics, and programming.\n2. **DataCamp's Blog**: A blog that features tutorials, articles, and case studies on data visualization and Python.\n3. **Kaggle's Python Visualization Forum**: A community forum where you can ask questions, share knowledge, and learn from others in the field.\n\n**Additional Resources:**\n\n1. **Python Data Science Handbook**: A free online book by Jake VanderPlas that covers the entire data science workflow, including data visualization.\n2. **Gallery of Data Visualization**: A collection of inspiring data visualization examples, with code and explanations.\n\nThese resources should provide a solid foundation for learning data visualization in Python. Happy learning!\nuser: I'm actually familiar with some of these resources, I participated in a webinar on \"Data Analysis using Python\" two months ago, which was organized by an online learning platform, and the instructor shared some great resources on data visualization. I was hoping to dive deeper into it. Do you think I should start with Matplotlib or Seaborn for creating statistical graphics?\nassistant: That's great to hear that you already have some background in Python and data analysis!\n\nBoth Matplotlib and Seaborn are excellent choices for creating statistical graphics, and they're often used together to create informative and attractive visualizations. Here's a brief comparison to help you decide where to start:\n\n**Matplotlib:**\n\n1. **Low-level control**: Matplotlib provides a lot of flexibility and control over the visualization, allowing you to customize almost every aspect of the plot.\n2. **Wide range of plots**: Matplotlib supports a wide range of plot types, including line plots, scatter plots, bar charts, histograms, and...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2487a7cb",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which event did I attend first, the 'Effective Time Management' workshop or the 'Data Analysis using Python' webinar?\n\n                                Question date:\n                                2023/05/28 (Sun) 06:47\n\n                                Expected answer:\n                                'Data Analysis using Python' webinar\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2487a7cb\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-63d3740a9144-claim-8 [ACTIVE] attended_event family=attended_event: The user participated in a webinar titled \"Data Analysis using Python\" approximately two months before 2023-05-28.; scope=User's data analysis and visualization learning history; evidence=DIRECT source=external:provided-text:436454573fb4c6be48ba55c7264293f7 quote=\"I participated in a webinar on \"Data Analysis using Python\" two months ago\"\n- claim hot-path-0c2dd82e3ede-claim-11 [ACTIVE] attended_event family=attended_event: The user attended a workshop on \"Effective Time Management\" at the local community center on 2023-05-27.; scope=Applies to the user's dated learning event attendance in the imported 2023-05-28 chat session.; evidence=DIRECT source=external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 quote=\"the workshop on \"Effective Time Management\" at the local community center last Saturday\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 [external_record ref=longmemeval:gpt4_2487a7cb:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 21:04\nTranscript:\nuser: I'm trying to get more organized and stay on top of my tasks. Can you recommend any apps or tools that can help me prioritize my tasks and avoid procrastination?\nassistant: Congratulations on taking the first step towards improving your time management skills! There are many fantastic apps and tools that can help you prioritize tasks, stay organized, and overcome procrastination. Here are some popular ones:\n\n**\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 21:04\nTranscript:\nuser: I'm trying to get more organized and stay on top of my tasks. Can you recommend any apps or tools that can help me prioritize my tasks and avoid procrastination?\nassistant: Congratulations on taking the first step towards improving your time management skills! There are many fantastic apps and tools that can help you prioritize tasks, stay organized, and overcome procrastination. Here are some popular ones:\n\n**Task Management Apps:**\n\n1. ** Todoist**: A highly-rated app that allows you to create and manage your to-do lists, set priorities, and track progress.\n2. **Trello**: A visual project management tool that uses boards, lists, and cards to organize tasks and projects.\n3. **Asana**: A comprehensive task management platform that helps you create and assign tasks, set deadlines, and track progress.\n4. **Wunderlist**: A simple and intuitive app for creating to-do lists, setting reminders, and sharing tasks with others.\n\n**Productivity Tools:**\n\n1. **RescueTime**: A time management tool that tracks how you spend your time on your computer or mobile device, providing insights to help you stay focused.\n2. **Focus@Will**: An mus...\n...abits.\n2. **Strides**: A goal-setting app that helps you set and achieve goals in various areas of your life, including productivity and time management.\n3. **Coach.me**: A personalized coaching app that helps you set goals, track progress, and develop healthy habits.\n\n**Other Tools:**\n\n1. **Evernote**: A note-taking app that can help you organize your thoughts, ideas, and tasks.\n2. **Google Calendar**: A calendar app that integrates well with other Google tools and helps you schedule tasks and events.\n3. **Paper planners**: If you prefer a physical approach, consider using a paper planner to write down your tasks, appointments, and goals.\n\nRemember, the key to success lies in finding an app or tool that fits your style and preferences. Experiment with a few options to see what works best for you. Good luck on your productivity journey!\nuser: I'll definitely check out these recommendations. I've been trying to implement some of the strategies like prioritizing tasks and breaking them down into smaller chunks, and it's been helping me stay on top of my work so far.\nassistant: That's fantastic to hear! Implementing strategies like prioritizing tasks and breaking them down into smaller chunks can make a huge difference in your productivity. It's great that you're already seeing the benefits.\n\nPrioritizing tasks helps you focus on the most important tasks first, ensuring that you'r...\n- source external:provided-text:436454573fb4c6be48ba55c7264293f7 [external_record ref=longmemeval:gpt4_2487a7cb:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 07:17\nTranscript:\nuser: I'm trying to work on a project that involves data analysis, and I was wondering if you could recommend some resources for learning more about data visualization in Python?\nassistant: Data visualization is a crucial step in data analysis, and Python is an excellent choice for it. Here are some top-notch resources to help you learn data visualization in Python:\n\n**Online Courses and Tutorials:**\n\n1. **DataCamp's\n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 07:17\nTranscript:\nuser: I'm trying to work on a project that involves data analysis, and I was wondering if you could recommend some resources for learning more about data visualization in Python?\nassistant: Data visualization is a crucial step in data analysis, and Python is an excellent choice for it. Here are some top-notch resources to help you learn data visualization in Python:\n\n**Online Courses and Tutorials:**\n\n1. **DataCamp's Python Data Visualization Course**: A comprehensive course covering the basics of data visualization in Python using popular libraries like Matplotlib, Seaborn, and Plotly.\n2. **Coursera's Data Visualization with Python Specialization**: A 4-course specialization by the University of California, Berkeley, covering the fundamentals of data visualization and Python programming.\n3. **edX's Python for Data Science and Visualization**: A course by Microsoft that covers the basics of Python programming and data visualization using...\n...ide to Design, Visualization, and Statistics\" by Nathan Yau**: A book that focuses on the principles of data visualization and storytelling, with examples in Python.\n\n**Blogs and Communities:**\n\n1. **FlowingData**: A popular blog by Nathan Yau, covering data visualization, statistics, and programming.\n2. **DataCamp's Blog**: A blog that features tutorials, articles, and case studies on data visualization and Python.\n3. **Kaggle's Python Visualization Forum**: A community forum where you can ask questions, share knowledge, and learn from others in the field.\n\n**Additional Resources:**\n\n1. **Python Data Science Handbook**: A free online book by Jake VanderPlas that covers the entire data science workflow, including data visualization.\n2. **Gallery of Data Visualization**: A collection of inspiring data visualization examples, with code and explanations.\n\nThese resources should provide a solid foundation for learning data visualization in Python. Happy learning!\nuser: I'm actually familiar with some of these resources, I participated in a webinar on \"Data Analysis using Python\" two months ago, which was organized by an online learning platform, and the instructor shared some great resources on data visualization. I was hoping to dive deeper into it. Do you think I should start with Matplotlib or Seaborn for creating statistical graphics?\nassistant: That's great to hear that you already have some background in Python and data analysis!\n\nBoth Matplotlib and Seaborn are excellent choices for creating statistical graphics, and they're often used together to create informative and attractive visualizations. Here's a brief comparison to help you decide where to start:\n\n**Matplotlib:**\n\n1. **Low-level control**: Matplotlib provides a lot of flexibility and control over the visualization, allowing you to customize almost every aspect of the plot.\n2. **Wide range of plots**: Matplotlib supports a wide range of plot types, including line plots, scatter plots, bar charts, histograms, and...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2487a7cb",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The 'Data Analysis using Python' webinar was attended first.\",\"reason\":\"The context says the webinar was about two months before 2023-05-28, while the workshop was on 2023-05-27.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2398,
+                "completionTokens": 115,
+                "thinkingTokens": 45,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

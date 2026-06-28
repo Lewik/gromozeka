@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "dca2c05f0d1e3f601af04f0f4a23c55bfb55d5a24c9f8f5fbbc0a0e80a8d9f9c",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many weeks did it take me to watch all the Marvel Cinematic Universe movies and the main Star Wars films?\n\n                                Question date:\n                                2023/05/30 (Tue) 08:15\n\n                                Expected answer:\n                                3.5 weeks\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e831120c\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-75581f460f05-claim-4 [ACTIVE] has_experience_with family=has_experience_with: The user has watched all main Star Wars films in a week and a half.; scope=User's viewing history for Star Wars; evidence=DIRECT source=external:provided-text:6a0a6aaeda8c475b716945f01493be2e quote=\"I just finished a Star Wars marathon, watched all the main films in a week and a half\"\n- claim hot-path-e70ad92dfffb-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has watched all 22 Marvel Cinematic Universe movies in a two-week period.; scope=User's movie watching history; evidence=IMPORTED source=external:provided-text:c7eb5667a4c604cfb94ee22710b1b617 quote=\"I watched all 22 Marvel Cinematic Universe movies in two weeks\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:6a0a6aaeda8c475b716945f01493be2e [external_record ref=longmemeval:e831120c:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm trying to keep track of all the movies I've watched recently. Can you help me organize them in a list or something? By the way, I just finished a Star Wars marathon, watched all the main films in a week and a half, it was a wild ride!...\n...2. **Categorized List**: We can categorize your movies by genre (e.g., action, comedy, sci-fi, etc.), director, or release year....\n...Also, since you just finished a Star Wars marathon, let's add those movies to the list first! Here's a suggested format:...\n...user: I think the simple list would be fine. And yeah, I'll add those Star Wars movies to the list. I also watched Rogue One and Solo, so add those too. After that, let's add the Marvel movies I watched a while back....\n...2. Star Wars: Episode VIII - The Last Jedi (2017)...\n...6. Star Wars: Episode IV - A New Hope (1977)...\n...Now, let's add the Marvel movies you watched a while back. Which ones did you watch? Were they from the Marvel Cinematic Universe (MCU) or other Marvel movies like the X-Men franchise?...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...user: What about the other movies you mentioned, like Captain Marvel, Us, Shazam!, A Quiet Place, and the others? Would you like to add those to the list as well?...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...Feel free to add any other movies you've watched recently or want to keep track of. I'm here to help you keep your movie list organized!...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...You've got a great mix of classic films, Marvel movies, and recent releases! Do you have any other movies you'd like to add to the list?...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...Feel free to add more movies or TV shows as you watch them! I'll be happy to keep track of your viewing history.\n- source external:provided-text:c7eb5667a4c604cfb94ee22710b1b617 [external_record ref=longmemeval:e831120c:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm trying to organize my movie watching history, can you help me create a list or something? By the way, I've had some crazy movie binges lately, like when I watched all 22 Marvel Cinematic Universe movies in two weeks....\n...We can start with a simple text list where you can add each movie title, along with the date you watched it. You can use a note-taking app like Evernote, OneNote, or even a Google Doc....\n...* Add movies to a watchlist or watched list...\n...Here's a suggested template to get you started:...\n...6. **Franchise/ Series** (e.g., \"Marvel Cinematic Universe\")...\n...5. Start adding your movies! Enter each movie's information in a new row....\n...* Consider using conditional formatting to highlight movies you've re-watched or to differentiate between ratings....\n...user: I think I'll add a column for the type of movie, like sequel, remake, or standalone. And can I also add a column for the platform I watched it on, like Amazon Prime or in theaters?...\n...This will help you track the relationships between movies and franchises....\n...6. **Franchise/ Series** (e.g., \"Marvel Cinematic Universe\")...\n...user: Yeah, that looks great. I think I'll also add a column for the month I watched it, so I can see what I watched each month....\n...* Identifying patterns in your viewing habits (e.g., do you tend to watch more movies during certain months?)...\n...6. **Franchise/ Series** (e.g., \"Marvel Cinematic Universe\")...\n...12. **Month Watched** (e.g., \"February\", \"02\", etc.)...\n...Now that you have your template set up, you can start populating it with your movie data!...\n...user: Can you help me with entering my data? I have a lot of movies to add, and it's a bit overwhelming. Is there a way to quickly enter multiple movies at once, or do I need to add them one by one?...\n...If you have a list of movies in a text file or a note-taking app, you can copy and paste them into your spreadsheet. Here's how:...\n...If you have a list of movies with some columns already populated (e.g., title, release year, rating), you can use formulas to auto-fill other columns. For example, if you have a list of movies with titles and release years, you can use a formula to auto-fill the \"Franchise/Series\" column....\n...Example formula: `=IF(A2=\"The Avengers\", \"Marvel Cinematic Universe\", \"\")`...\n...If you have a large number of movies to add, break it down into smaller chunks. Set a goal to add, say, 10-20 movies at a time. This will make the task less overwhelming and help you stay focused....\n...Before you start copying and pasting, make sure to format your list in a way that will make it easy to paste into the spreadsheet. Here are some tips:...\n...1. Copy the list of movies from your note-taking app....\n...4. The movies will be pasted into the spreadsheet, one per row....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Marvel Cinematic Universe; Concept named Marvel Cinematic Universe.\n- entity entity:<1> [PRODUCT]: Star Wars; Product named Star Wars.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e831120c",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many weeks did it take me to watch all the Marvel Cinematic Universe movies and the main Star Wars films?\n\n                                Question date:\n                                2023/05/30 (Tue) 08:15\n\n                                Expected answer:\n                                3.5 weeks\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e831120c\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-75581f460f05-claim-4 [ACTIVE] has_experience_with family=has_experience_with: The user has watched all main Star Wars films in a week and a half.; scope=User's viewing history for Star Wars; evidence=DIRECT source=external:provided-text:6a0a6aaeda8c475b716945f01493be2e quote=\"I just finished a Star Wars marathon, watched all the main films in a week and a half\"\n- claim hot-path-e70ad92dfffb-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has watched all 22 Marvel Cinematic Universe movies in a two-week period.; scope=User's movie watching history; evidence=IMPORTED source=external:provided-text:c7eb5667a4c604cfb94ee22710b1b617 quote=\"I watched all 22 Marvel Cinematic Universe movies in two weeks\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:6a0a6aaeda8c475b716945f01493be2e [external_record ref=longmemeval:e831120c:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm trying to keep track of all the movies I've watched recently. Can you help me organize them in a list or something? By the way, I just finished a Star Wars marathon, watched all the main films in a week and a half, it was a wild ride!...\n...2. **Categorized List**: We can categorize your movies by genre (e.g., action, comedy, sci-fi, etc.), director, or release year....\n...Also, since you just finished a Star Wars marathon, let's add those movies to the list first! Here's a suggested format:...\n...user: I think the simple list would be fine. And yeah, I'll add those Star Wars movies to the list. I also watched Rogue One and Solo, so add those too. After that, let's add the Marvel movies I watched a while back....\n...2. Star Wars: Episode VIII - The Last Jedi (2017)...\n...6. Star Wars: Episode IV - A New Hope (1977)...\n...Now, let's add the Marvel movies you watched a while back. Which ones did you watch? Were they from the Marvel Cinematic Universe (MCU) or other Marvel movies like the X-Men franchise?...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...user: What about the other movies you mentioned, like Captain Marvel, Us, Shazam!, A Quiet Place, and the others? Would you like to add those to the list as well?...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...Feel free to add any other movies you've watched recently or want to keep track of. I'm here to help you keep your movie list organized!...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...You've got a great mix of classic films, Marvel movies, and recent releases! Do you have any other movies you'd like to add to the list?...\n...1. Star Wars: Episode IX - The Rise of Skywalker (2019)...\n...5. Star Wars: Episode V - The Empire Strikes Back (1980)...\n...9. Star Wars: Episode I - The Phantom Menace (1999)...\n...32. Captain Marvel (2019)...\n...Feel free to add more movies or TV shows as you watch them! I'll be happy to keep track of your viewing history.\n- source external:provided-text:c7eb5667a4c604cfb94ee22710b1b617 [external_record ref=longmemeval:e831120c:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm trying to organize my movie watching history, can you help me create a list or something? By the way, I've had some crazy movie binges lately, like when I watched all 22 Marvel Cinematic Universe movies in two weeks....\n...We can start with a simple text list where you can add each movie title, along with the date you watched it. You can use a note-taking app like Evernote, OneNote, or even a Google Doc....\n...* Add movies to a watchlist or watched list...\n...Here's a suggested template to get you started:...\n...6. **Franchise/ Series** (e.g., \"Marvel Cinematic Universe\")...\n...5. Start adding your movies! Enter each movie's information in a new row....\n...* Consider using conditional formatting to highlight movies you've re-watched or to differentiate between ratings....\n...user: I think I'll add a column for the type of movie, like sequel, remake, or standalone. And can I also add a column for the platform I watched it on, like Amazon Prime or in theaters?...\n...This will help you track the relationships between movies and franchises....\n...6. **Franchise/ Series** (e.g., \"Marvel Cinematic Universe\")...\n...user: Yeah, that looks great. I think I'll also add a column for the month I watched it, so I can see what I watched each month....\n...* Identifying patterns in your viewing habits (e.g., do you tend to watch more movies during certain months?)...\n...6. **Franchise/ Series** (e.g., \"Marvel Cinematic Universe\")...\n...12. **Month Watched** (e.g., \"February\", \"02\", etc.)...\n...Now that you have your template set up, you can start populating it with your movie data!...\n...user: Can you help me with entering my data? I have a lot of movies to add, and it's a bit overwhelming. Is there a way to quickly enter multiple movies at once, or do I need to add them one by one?...\n...If you have a list of movies in a text file or a note-taking app, you can copy and paste them into your spreadsheet. Here's how:...\n...If you have a list of movies with some columns already populated (e.g., title, release year, rating), you can use formulas to auto-fill other columns. For example, if you have a list of movies with titles and release years, you can use a formula to auto-fill the \"Franchise/Series\" column....\n...Example formula: `=IF(A2=\"The Avengers\", \"Marvel Cinematic Universe\", \"\")`...\n...If you have a large number of movies to add, break it down into smaller chunks. Set a goal to add, say, 10-20 movies at a time. This will make the task less overwhelming and help you stay focused....\n...Before you start copying and pasting, make sure to format your list in a way that will make it easy to paste into the spreadsheet. Here are some tips:...\n...1. Copy the list of movies from your note-taking app....\n...4. The movies will be pasted into the spreadsheet, one per row....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Marvel Cinematic Universe; Concept named Marvel Cinematic Universe.\n- entity entity:<1> [PRODUCT]: Star Wars; Product named Star Wars.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e831120c",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"3.5 weeks\",\"reason\":\"The memory states the user watched all 22 MCU movies in two weeks and the main Star Wars films in a week and a half, totaling 3.5 weeks.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2395,
+                "completionTokens": 93,
+                "thinkingTokens": 27,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

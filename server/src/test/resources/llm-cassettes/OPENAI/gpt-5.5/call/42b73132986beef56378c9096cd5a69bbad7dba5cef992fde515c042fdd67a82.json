@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "42b73132986beef56378c9096cd5a69bbad7dba5cef992fde515c042fdd67a82",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm thinking of inviting my colleagues over for a small gathering. Any tips on what to bake?\n\n                                Question date:\n                                2023/05/27 (Sat) 23:31\n\n                                Expected answer:\n                                The user would prefer baking suggestions that take into account their previous success with the lemon poppyseed cake, such as variations of that recipe or other desserts that share similar qualities. They might prefer suggestions that balance impressiveness with manageability, considering their previous experience. The user may not prefer overly complex or unfamiliar recipes, or suggestions that do not build upon their existing baking experience.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:d24813b1\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-595d5fe02ee3-note-2 [CONTEXT/ACTIVE]: Birthday party baking plan: lemon lavender pound cake and chewy chocolate chip cookies; For a friend's birthday party, the user planned to make a lemon lavender pound cake, using dried lavender buds added directly to the batter rather than lavender syrup or infused milk, and was also considering bringing chewy chocolate chip cookies. The cake direction builds on the user's prior successful lemon poppyseed cake served at a colleague's going-away party.; scope=User's reusable baking/event context for the friend's birthday party and related cake/cookie choices; evidence=SUMMARIZED source=external:provided-text:3d291445c1343d94d0ebdc397d8edefa quote=\"I'm planning to serve the cake at a birthday party\"\n\n            Retrieved evidence:\n            - source external:provided-text:3d291445c1343d94d0ebdc397d8edefa [external_record ref=longmemeval:d24813b1:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for a recipe for a chocolate cake with a caramel ganache frosting. Do you have any good ones?...\n...7. Bake for 35-40 minutes or until a toothpick inserted in the center comes out clean. Let the cakes cool in the pans for 10 minutes, then transfer them to a wire rack to cool completely....\n...1. In a small saucepan, combine the heavy cream, sugar, and butter. Place over medium heat and cook, stirring occasionally, until the sugar has dissolved....\n...user: I'm thinking of making a cake for my friend's birthday. Do you have any suggestions for a lemon flavored cake, like my lemon poppyseed cake that I made for a colleague's going-away party?...\n...Feel free to experiment with these ideas or combine elements to create a unique flavor profile. Remember to consider your friend's personal preferences and dietary restrictions when choosing a recipe....\n...user: I think the lemon lavender pound cake sounds interesting, can you give me more details about how to incorporate the lavender?...\n...1. **Dried Lavender Buds:** Use high-quality, organic dried lavender buds. You can find them at most health food stores or online. Use 1-2 teaspoons of dried lavender buds per recipe, depending on your desired level of lavender flavor.\n2. **Lavender Extract:** Use a high-quality lavender extract, specifically designed for baking. Start with a small amount, about 1/4 teaspoon, and adjust to taste....\n...* Start with a small amount of lavender and adjust to taste. Lavender can be overpowering, so it's better to err on the side of caution....\n...9. Bake for 55-60 minutes or until a toothpick inserted into the center comes out clean....\n...user: I'm not sure about using lavender syrup or infused milk, but I think I'll try adding dried lavender buds to the batter. How much sugar should I use in the recipe, and should I adjust the amount of lemon zest and juice?...\n...Start with a small amount of dried lavender buds, about 1 teaspoon, and adjust to taste. You can always add more lavender, but it's harder to remove the flavor once it's been added.\n\n**Tips:**\n\n* Make sure to use high-quality, organic dried lavender buds that are specifically labeled as \"culinary grade\" or \"food grade.\"...\n...9. Bake for 55-60 minutes or until a toothpick inserted into the center comes out clean....\n...Remember, this is just a starting point, and you can always adjust the recipe to your taste preferences. If you have any more questions or need further guidance, feel free to ask!\nuser: I've made a lemon poppyseed cake before, and it was a hit. I'm curious to see how the lavender will complement the lemon flavor. Can you give me some tips on how to store this cake? Should I store it at room temperature or in the fridge? And how long can I expect it to stay fresh?...\n...user: I'm planning to serve the cake at a birthday party, so I'll make sure to store it properly beforehand. Thanks for the tips!\nassistant: You're welcome! I'm glad I could help. It's great that you're planning to serve the cake at a birthday party. I'm sure it will be a hit with your guests. The combination of lemon and lavender is unique and refreshing, and the pound cake texture will provide a nice contrast to the bright, citrusy flavors....\n...If you have any more questions or need further assistance, feel free to ask. Otherwise, I wish you a wonderful time at the party, and I hope your guests love the cake!\nuser: I'm thinking of making a batch of chocolate chip cookies to bring to the party too. Do you have any tips on how to make the perfect chewy cookie?...\n...5. **Don't overbake:** Take the cookies out of the oven when they're lightly golden brown and still slightly soft to the touch. They'll continue to cook a bit after being removed from the oven....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Chocolate chip cookies; Concept named Chocolate chip cookies.\n- entity entity:<1> [CONCEPT]: Colleague's going-away party; Concept named Colleague's going-away party.\n- entity entity:<2> [CONCEPT]: Friend's birthday party; Concept named Friend's birthday party.\n- entity entity:<3> [CONCEPT]: Lemon lavender pound cake; Concept named Lemon lavender pound cake.\n- entity entity:<4> [CONCEPT]: Lemon poppyseed cake; Concept named Lemon poppyseed cake.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "d24813b1",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm thinking of inviting my colleagues over for a small gathering. Any tips on what to bake?\n\n                                Question date:\n                                2023/05/27 (Sat) 23:31\n\n                                Expected answer:\n                                The user would prefer baking suggestions that take into account their previous success with the lemon poppyseed cake, such as variations of that recipe or other desserts that share similar qualities. They might prefer suggestions that balance impressiveness with manageability, considering their previous experience. The user may not prefer overly complex or unfamiliar recipes, or suggestions that do not build upon their existing baking experience.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:d24813b1\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            - note hot-path-595d5fe02ee3-note-2 [CONTEXT/ACTIVE]: Birthday party baking plan: lemon lavender pound cake and chewy chocolate chip cookies; For a friend's birthday party, the user planned to make a lemon lavender pound cake, using dried lavender buds added directly to the batter rather than lavender syrup or infused milk, and was also considering bringing chewy chocolate chip cookies. The cake direction builds on the user's prior successful lemon poppyseed cake served at a colleague's going-away party.; scope=User's reusable baking/event context for the friend's birthday party and related cake/cookie choices; evidence=SUMMARIZED source=external:provided-text:3d291445c1343d94d0ebdc397d8edefa quote=\"I'm planning to serve the cake at a birthday party\"\n\n            Retrieved evidence:\n            - source external:provided-text:3d291445c1343d94d0ebdc397d8edefa [external_record ref=longmemeval:d24813b1:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm looking for a recipe for a chocolate cake with a caramel ganache frosting. Do you have any good ones?...\n...7. Bake for 35-40 minutes or until a toothpick inserted in the center comes out clean. Let the cakes cool in the pans for 10 minutes, then transfer them to a wire rack to cool completely....\n...1. In a small saucepan, combine the heavy cream, sugar, and butter. Place over medium heat and cook, stirring occasionally, until the sugar has dissolved....\n...user: I'm thinking of making a cake for my friend's birthday. Do you have any suggestions for a lemon flavored cake, like my lemon poppyseed cake that I made for a colleague's going-away party?...\n...Feel free to experiment with these ideas or combine elements to create a unique flavor profile. Remember to consider your friend's personal preferences and dietary restrictions when choosing a recipe....\n...user: I think the lemon lavender pound cake sounds interesting, can you give me more details about how to incorporate the lavender?...\n...1. **Dried Lavender Buds:** Use high-quality, organic dried lavender buds. You can find them at most health food stores or online. Use 1-2 teaspoons of dried lavender buds per recipe, depending on your desired level of lavender flavor.\n2. **Lavender Extract:** Use a high-quality lavender extract, specifically designed for baking. Start with a small amount, about 1/4 teaspoon, and adjust to taste....\n...* Start with a small amount of lavender and adjust to taste. Lavender can be overpowering, so it's better to err on the side of caution....\n...9. Bake for 55-60 minutes or until a toothpick inserted into the center comes out clean....\n...user: I'm not sure about using lavender syrup or infused milk, but I think I'll try adding dried lavender buds to the batter. How much sugar should I use in the recipe, and should I adjust the amount of lemon zest and juice?...\n...Start with a small amount of dried lavender buds, about 1 teaspoon, and adjust to taste. You can always add more lavender, but it's harder to remove the flavor once it's been added.\n\n**Tips:**\n\n* Make sure to use high-quality, organic dried lavender buds that are specifically labeled as \"culinary grade\" or \"food grade.\"...\n...9. Bake for 55-60 minutes or until a toothpick inserted into the center comes out clean....\n...Remember, this is just a starting point, and you can always adjust the recipe to your taste preferences. If you have any more questions or need further guidance, feel free to ask!\nuser: I've made a lemon poppyseed cake before, and it was a hit. I'm curious to see how the lavender will complement the lemon flavor. Can you give me some tips on how to store this cake? Should I store it at room temperature or in the fridge? And how long can I expect it to stay fresh?...\n...user: I'm planning to serve the cake at a birthday party, so I'll make sure to store it properly beforehand. Thanks for the tips!\nassistant: You're welcome! I'm glad I could help. It's great that you're planning to serve the cake at a birthday party. I'm sure it will be a hit with your guests. The combination of lemon and lavender is unique and refreshing, and the pound cake texture will provide a nice contrast to the bright, citrusy flavors....\n...If you have any more questions or need further assistance, feel free to ask. Otherwise, I wish you a wonderful time at the party, and I hope your guests love the cake!\nuser: I'm thinking of making a batch of chocolate chip cookies to bring to the party too. Do you have any tips on how to make the perfect chewy cookie?...\n...5. **Don't overbake:** Take the cookies out of the oven when they're lightly golden brown and still slightly soft to the touch. They'll continue to cook a bit after being removed from the oven....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Chocolate chip cookies; Concept named Chocolate chip cookies.\n- entity entity:<1> [CONCEPT]: Colleague's going-away party; Concept named Colleague's going-away party.\n- entity entity:<2> [CONCEPT]: Friend's birthday party; Concept named Friend's birthday party.\n- entity entity:<3> [CONCEPT]: Lemon lavender pound cake; Concept named Lemon lavender pound cake.\n- entity entity:<4> [CONCEPT]: Lemon poppyseed cake; Concept named Lemon poppyseed cake.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "d24813b1",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest bake options that build on the user's successful lemon poppyseed cake, such as a lemon lavender pound cake or other similar lemon-forward desserts, possibly paired with manageable crowd-pleasers like chewy chocolate chip cookies.\",\"reason\":\"The memory explicitly says the user's lemon poppyseed cake was a hit at a colleague's going-away party and that later cake plans built on that success with a lemon lavender pound cake and cookies.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2005,
+                "completionTokens": 216,
+                "thinkingTokens": 107,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

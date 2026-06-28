@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "4db9f4d7ec85b43f7caeed7d14ce46d696404b2b55c99f98af2a101ca8f87e7b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days had passed between the Sunday mass at St. Mary's Church and the Ash Wednesday service at the cathedral?\n\n                                Question date:\n                                2023/02/20 (Mon) 22:35\n\n                                Expected answer:\n                                30 days. 31 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:08f4fc43\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-af2b8670eb34-claim-7 [ACTIVE] attended_event family=attended_event: The user attended Sunday mass at St. Mary's Church on January 2, 2023, and the sermon on forgiveness resonated with them.; scope=Dated religious event attended by the user.; evidence=IMPORTED source=external:provided-text:ab4376978907cc8191dcf9fd002a3a8c quote=\"I recently attended the Sunday mass at St. Mary's Church on January 2nd, and the sermon on forgiveness really resonated with me.\"\n- claim hot-path-9e063605d921-claim-4 [ACTIVE] attended_event family=attended_event: The user attended the Ash Wednesday service at the cathedral on February 1, 2023.; scope=User's personal event history from the imported 2023-02-20 chat session.; evidence=DIRECT source=external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89 quote=\"I just came from the Ash Wednesday service at the cathedral on February 1st\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:ab4376978907cc8191dcf9fd002a3a8c [external_record ref=longmemeval:08f4fc43:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm thinking of volunteering at a local charity event soon. Do you have any information on organizations that focus on serving the homeless? By the way, I recently attended the Sunday mass at St. Mary's Church on January 2nd, and the sermon on forgiveness really resonated with me....\n...1. **The Salvation Army**: With a presence in many cities worldwide, The Salvation Army provides food, shelter, and other essential services to people experiencing homelessness....\n...3. **Catholic Charities**: As a Catholic organization, Catholic Charities has a strong presence in many communities and provides a range of services, including housing, food, and case management, to people experiencing homelessness....\n...5. **Homelessness Prevention Organizations**: Organizations like the **National Alliance to End Homelessness** and **HomeAid** focus on preventing homelessness by providing supportive housing, employment services, and other forms of assistance....\n...I'm glad to hear that the sermon on forgiveness at St. Mary's Church resonated with you! Forgiveness is a powerful theme that can bring people together and inspire positive change....\n...assistant: Catholic Charities is a wonderful organization that provides a wide range of services to people in need, including the homeless, families, children, and seniors. Here's an overview of the type of services they provide and how you can get involved:...\n...3. **Family and Children's Services**: Catholic Charities offers adoption services, foster care, and family counseling to support vulnerable families and children....\n...5. **Immigration and Refugee Services**: Catholic Charities helps refugees and immigrants navigate the resettlement process, providing language classes, job training, and cultural adaptation services....\n...4. **Internships**: Many Catholic Charities locations offer internships for students and young professionals looking to gain experience in social services....\n...user: I'd like to know more about their housing and shelter services. Can you tell me about the types of housing they offer and how they help people get back on their feet? By the way, I've also been attending a Bible study group at my church, which has been really enlightening. We're currently going through the Book of Psalms....\n...3. **Permanent Supportive Housing**: This type of housing offers long-term, affordable housing with on-site support services, such as counseling, job training, and health services, to help residents maintain stability and independence....\n...2. **Job Training and Education**: Many Catholic Charities locations offer job training programs, GED preparation, and education services to help residents acquire skills and improve their employability....\n...4. **Health Services**: Some locations offer on-site health services, including medical care, dental care, and substance abuse treatment....\n...It's wonderful to hear that you're involved in a Bible study group at your church! The Book of Psalms is a beautiful and uplifting book that offers comfort, guidance, and inspiration. I'm sure you're finding it enlightening and enriching....\n...3. **Computer Literacy**: Many locations provide computer literacy training, including basic computer skills, Microsoft Office, and online job search techniques....\n...2. **Service-based businesses**: Childcare services, tutoring, pet-sitting, and home cleaning services....\n...It's fantastic to hear about your experience at the Buddhist temple's spiritual retreat! Meditation and yoga can be incredibly beneficial for both physical and mental well-being. The mindfulness and focus you developed during the retreat can be applied to many areas of life, including your volunteer work with Catholic Charities....\n- source external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89 [external_record ref=longmemeval:08f4fc43:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to volunteer at a local soup kitchen this weekend and I was wondering if you could give me some tips on how to make a positive impact during my time there. By the way, I just came from the Ash Wednesday service at the cathedral on February 1st, and it really made me reflect on the importance of giving back to the community....\n...4. **Be mindful of boundaries**: Respect the clients' personal space and privacy, and avoid asking intrusive or sensitive questions....\n...It's wonderful that you were inspired by the Ash Wednesday service to give back to your community. Your time at the soup kitchen will undoubtedly make a positive impact, and I'm sure you'll find it a rewarding experience....\n...assistant: What a great question! There are many organizations and charities that focus on providing food and shelter to the homeless during the Lenten season. Here are a few examples:...\n...2. **The Salvation Army**: A Christian non-profit that offers a variety of programs, including food and shelter services, to people in need....\n...5. **Society of St. Vincent de Paul**: A Catholic organization that provides a range of services, including food, shelter, and housing assistance, to people in need....\n...* **Food banks**: Many communities have food banks that collect and distribute food to those in need. You could consider volunteering or donating to these organizations....\n...* **Faith-based organizations**: Many faith-based organizations, such as churches, synagogues, or mosques, have outreach programs or ministries that focus on serving the homeless and hungry. You could consider getting involved with these initiatives....\n...**Communicate Effectively**: Spread the word about your initiative within your Bible study group, and consider reaching out to other church groups, friends, and family to join in. Create a Facebook event, email chain, or use a group messaging app to keep everyone informed and engaged....\n...* Designate a collection point, such as a church or community center, where people can drop off donations....\n...* Consider sharing the experience with your church or community, inspiring others to get involved....\n...user: That's really helpful, thank you! I think I'll suggest to my Bible study group that we organize a food drive to support a local soup kitchen that I volunteered at recently. Since I attended the Ash Wednesday service at the cathedral on February 1st, I've been thinking a lot about the importance of giving back to the community, and this seems like a great way to put that into action....\n...Ash Wednesday is a powerful reminder of our mortality and our responsibility to serve others. It's wonderful that you're taking that message to heart and putting it into action. By organizing a food drive, you'll not only be helping those in need, but also fostering a sense of community and compassion within your Bible study group....\n...As you reflect on the experience, consider journaling or sharing with your group about what you've learned and how you've grown. How has serving others impacted your faith and your relationships with others? What are some ways you can continue to live out your faith in service to others?...\n...I was also thinking, since we're going through the Book of Psalms in our Bible study, maybe we could incorporate some of the psalms into our food drive. We could print out copies of Psalm 146, which talks about God's care for the poor and needy, and include them with the food donations. Or we could even have a prayer service before we deliver the donations to the soup kitchen, using some of the psalms to guide our prayers....\n...Remember to take time to reflect on the psalms and how they relate to your service project. Ask yourselves questions like: What do these psalms teach us about God's character? How do they inspire us to serve others? How can we embody the values and attitudes expressed in these psalms as we serve?...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "08f4fc43",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days had passed between the Sunday mass at St. Mary's Church and the Ash Wednesday service at the cathedral?\n\n                                Question date:\n                                2023/02/20 (Mon) 22:35\n\n                                Expected answer:\n                                30 days. 31 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:08f4fc43\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-af2b8670eb34-claim-7 [ACTIVE] attended_event family=attended_event: The user attended Sunday mass at St. Mary's Church on January 2, 2023, and the sermon on forgiveness resonated with them.; scope=Dated religious event attended by the user.; evidence=IMPORTED source=external:provided-text:ab4376978907cc8191dcf9fd002a3a8c quote=\"I recently attended the Sunday mass at St. Mary's Church on January 2nd, and the sermon on forgiveness really resonated with me.\"\n- claim hot-path-9e063605d921-claim-4 [ACTIVE] attended_event family=attended_event: The user attended the Ash Wednesday service at the cathedral on February 1, 2023.; scope=User's personal event history from the imported 2023-02-20 chat session.; evidence=DIRECT source=external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89 quote=\"I just came from the Ash Wednesday service at the cathedral on February 1st\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:ab4376978907cc8191dcf9fd002a3a8c [external_record ref=longmemeval:08f4fc43:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm thinking of volunteering at a local charity event soon. Do you have any information on organizations that focus on serving the homeless? By the way, I recently attended the Sunday mass at St. Mary's Church on January 2nd, and the sermon on forgiveness really resonated with me....\n...1. **The Salvation Army**: With a presence in many cities worldwide, The Salvation Army provides food, shelter, and other essential services to people experiencing homelessness....\n...3. **Catholic Charities**: As a Catholic organization, Catholic Charities has a strong presence in many communities and provides a range of services, including housing, food, and case management, to people experiencing homelessness....\n...5. **Homelessness Prevention Organizations**: Organizations like the **National Alliance to End Homelessness** and **HomeAid** focus on preventing homelessness by providing supportive housing, employment services, and other forms of assistance....\n...I'm glad to hear that the sermon on forgiveness at St. Mary's Church resonated with you! Forgiveness is a powerful theme that can bring people together and inspire positive change....\n...assistant: Catholic Charities is a wonderful organization that provides a wide range of services to people in need, including the homeless, families, children, and seniors. Here's an overview of the type of services they provide and how you can get involved:...\n...3. **Family and Children's Services**: Catholic Charities offers adoption services, foster care, and family counseling to support vulnerable families and children....\n...5. **Immigration and Refugee Services**: Catholic Charities helps refugees and immigrants navigate the resettlement process, providing language classes, job training, and cultural adaptation services....\n...4. **Internships**: Many Catholic Charities locations offer internships for students and young professionals looking to gain experience in social services....\n...user: I'd like to know more about their housing and shelter services. Can you tell me about the types of housing they offer and how they help people get back on their feet? By the way, I've also been attending a Bible study group at my church, which has been really enlightening. We're currently going through the Book of Psalms....\n...3. **Permanent Supportive Housing**: This type of housing offers long-term, affordable housing with on-site support services, such as counseling, job training, and health services, to help residents maintain stability and independence....\n...2. **Job Training and Education**: Many Catholic Charities locations offer job training programs, GED preparation, and education services to help residents acquire skills and improve their employability....\n...4. **Health Services**: Some locations offer on-site health services, including medical care, dental care, and substance abuse treatment....\n...It's wonderful to hear that you're involved in a Bible study group at your church! The Book of Psalms is a beautiful and uplifting book that offers comfort, guidance, and inspiration. I'm sure you're finding it enlightening and enriching....\n...3. **Computer Literacy**: Many locations provide computer literacy training, including basic computer skills, Microsoft Office, and online job search techniques....\n...2. **Service-based businesses**: Childcare services, tutoring, pet-sitting, and home cleaning services....\n...It's fantastic to hear about your experience at the Buddhist temple's spiritual retreat! Meditation and yoga can be incredibly beneficial for both physical and mental well-being. The mindfulness and focus you developed during the retreat can be applied to many areas of life, including your volunteer work with Catholic Charities....\n- source external:provided-text:0e0c7ba3cbf3d5729c5f4b591689fb89 [external_record ref=longmemeval:08f4fc43:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm planning to volunteer at a local soup kitchen this weekend and I was wondering if you could give me some tips on how to make a positive impact during my time there. By the way, I just came from the Ash Wednesday service at the cathedral on February 1st, and it really made me reflect on the importance of giving back to the community....\n...4. **Be mindful of boundaries**: Respect the clients' personal space and privacy, and avoid asking intrusive or sensitive questions....\n...It's wonderful that you were inspired by the Ash Wednesday service to give back to your community. Your time at the soup kitchen will undoubtedly make a positive impact, and I'm sure you'll find it a rewarding experience....\n...assistant: What a great question! There are many organizations and charities that focus on providing food and shelter to the homeless during the Lenten season. Here are a few examples:...\n...2. **The Salvation Army**: A Christian non-profit that offers a variety of programs, including food and shelter services, to people in need....\n...5. **Society of St. Vincent de Paul**: A Catholic organization that provides a range of services, including food, shelter, and housing assistance, to people in need....\n...* **Food banks**: Many communities have food banks that collect and distribute food to those in need. You could consider volunteering or donating to these organizations....\n...* **Faith-based organizations**: Many faith-based organizations, such as churches, synagogues, or mosques, have outreach programs or ministries that focus on serving the homeless and hungry. You could consider getting involved with these initiatives....\n...**Communicate Effectively**: Spread the word about your initiative within your Bible study group, and consider reaching out to other church groups, friends, and family to join in. Create a Facebook event, email chain, or use a group messaging app to keep everyone informed and engaged....\n...* Designate a collection point, such as a church or community center, where people can drop off donations....\n...* Consider sharing the experience with your church or community, inspiring others to get involved....\n...user: That's really helpful, thank you! I think I'll suggest to my Bible study group that we organize a food drive to support a local soup kitchen that I volunteered at recently. Since I attended the Ash Wednesday service at the cathedral on February 1st, I've been thinking a lot about the importance of giving back to the community, and this seems like a great way to put that into action....\n...Ash Wednesday is a powerful reminder of our mortality and our responsibility to serve others. It's wonderful that you're taking that message to heart and putting it into action. By organizing a food drive, you'll not only be helping those in need, but also fostering a sense of community and compassion within your Bible study group....\n...As you reflect on the experience, consider journaling or sharing with your group about what you've learned and how you've grown. How has serving others impacted your faith and your relationships with others? What are some ways you can continue to live out your faith in service to others?...\n...I was also thinking, since we're going through the Book of Psalms in our Bible study, maybe we could incorporate some of the psalms into our food drive. We could print out copies of Psalm 146, which talks about God's care for the poor and needy, and include them with the food donations. Or we could even have a prayer service before we deliver the donations to the soup kitchen, using some of the psalms to guide our prayers....\n...Remember to take time to reflect on the psalms and how they relate to your service project. Ask yourselves questions like: What do these psalms teach us about God's character? How do they inspire us to serve others? How can we embody the values and attitudes expressed in these psalms as we serve?...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "08f4fc43",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"30 days had passed between the January 2, 2023 Sunday mass and the February 1, 2023 Ash Wednesday service; 31 days if counting inclusively.\",\"reason\":\"The memory explicitly gives the two event dates, January 2 and February 1, 2023, which are 30 days apart.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2587,
+                "completionTokens": 134,
+                "thinkingTokens": 43,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

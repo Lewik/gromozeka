@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "baa4e0a35c64a11c2509682a19fd9c750d7c7d7a52eb0ab958582ad2f0c51c9f",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many items of clothing do I need to pick up or return from a store?\n\n                                Question date:\n                                2023/02/15 (Wed) 19:47\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0a995998\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-81d4fde232b4-claim-7 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up dry cleaning for their navy blue blazer.; scope=Applies to the user's dry-cleaning errand for the navy blue blazer as of the imported 2023-02-15 chat session.; evidence=DIRECT source=external:provided-text:1991b24e465cc7c4d035ae3a3b325442 quote=\"I still need to pick up my dry cleaning for the navy blue blazer\"\n- claim hot-path-9b7a94388618-claim-9 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the larger-size boots from Zara that were exchanged on February 5, 2023.; scope=Zara boot exchange workflow; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I exchanged them for a larger size. I just haven't had a chance to pick them up yet.\"\n- claim hot-path-9b7a94388618-claim-8 [ACTIVE] pending_return family=pending_return: The user needs to return boots to Zara.; scope=Zara boot exchange workflow; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I need to return some boots to Zara\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:1991b24e465cc7c4d035ae3a3b325442 [external_record ref=longmemeval:0a995998:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 03:35\nTranscript:\nuser: I need help organizing my closet. Can you give me some tips on how to declutter and categorize my clothes? Also, by the way, I still need to pick up my dry cleaning for the navy blue blazer I wore to a meeting a few weeks ago.\nassistant: I'd be happy to help you with organizing your closet and decluttering your clothes!\n\nAs for your dry cleaning, don't forget to pick it up soon! You might want to add it to your\n...[matching excerpts]...\n- source external:provided-text:196013f63fba96efe4a670763eafe70b [external_record ref=longmemeval:0a995998:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 07:47\nTranscript:\nuser: I'm looking for some organization tips for my closet. It's been a mess since the holidays and I still have winter clothes to put away.\nassistant: The post-holiday closet chaos is real! Don't worry, I'm here to help you get your closet organized and tidy again. Here are some practical tips to get you started:\n\n1. **Purge and declutter**: Begin by taking everything out of your closet and sorting items into three \n...[matching excerpts]...\n- source external:provided-text:6c4f057d4172864fbb1f49e455590889 [external_record ref=longmemeval:0a995998:session:3 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 13:53\nTranscript:\nuser: I'm thinking of organizing my closet this weekend. Can you give me some tips on how to maximize my closet space? By the way, I just got back from a dinner date last Friday and wore my new black jeans from Levi's, which I'm really loving.\nassistant: Congratulations on the new jeans! Levi's are always a great choice.\n\nNow, let's get to maximizing that closet space! Here are some tips to help you make the most of \n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 13:53\nTranscript:\nuser: I'm thinking of organizing my closet this weekend. Can you give me some tips on how to maximize my closet space? By the way, I just got back from a dinner date last Friday and wore my new black jeans from Levi's, which I'm really loving.\nassistant: Congratulations on the new jeans! Levi's are always a great choice.\n\nNow, let's get to maximizing that closet space! Here are some tips to help you make the most of your closet:\n\n1. **Purge and declutter**: Start by taking everything out of your closet and sorting items into three piles: keep, donate/sell, and discard. Be ruthless – if you haven't worn something in a year, it's probably safe to let it go.\n2. **Categorize and group**: Once you've purged your closet, group similar items together (e.g., all dresses, all tops, all shoes). This will make it easier to see what you have and where it should go.\n3. **Assign a home**: Designate a specific area of your closet for each category of items. For example, all your dresses might go on one side, while your tops and bottoms are on the other.\n4. **Use vertical space**: Maximize your closet's vertical space by using stackable shelves or hanging rods with multiple levels. This will help you store more items without taking up too much floor space.\n5. **Invest in storage containers**: Use bins, baskets, or drawers to store items like socks, underwear, and accessories. Label each container so you can easily find what you need.\n6. **Utilize the back of the door**: Take advantage of the space on the back of your closet door by using over-the-door storage racks, hooks, or a shoe organizer.\n7. **Implement a \"one in, one out\" policy**: To maintain your newly organized closet, adopt a rule where you get rid of an old item every time you bring a new one into your closet.\n8. **Consider a closet organizer system**: If you have a larger closet, consider investing in a custom or pre-made closet organizer system. These systems typically include shelves, drawers, and rods specifically designed to maximize your closet's space.\n9. **Keep shoes in order**: Store your shoes in a designated area, such as on a shoe rack or in a shoe organizer. This will keep them organized and prevent them from getting scattered throughout your closet.\n10. **Maintain your space**: Set aside some time each week to maintain your organized cl...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0a995998",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many items of clothing do I need to pick up or return from a store?\n\n                                Question date:\n                                2023/02/15 (Wed) 19:47\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0a995998\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-81d4fde232b4-claim-7 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up dry cleaning for their navy blue blazer.; scope=Applies to the user's dry-cleaning errand for the navy blue blazer as of the imported 2023-02-15 chat session.; evidence=DIRECT source=external:provided-text:1991b24e465cc7c4d035ae3a3b325442 quote=\"I still need to pick up my dry cleaning for the navy blue blazer\"\n- claim hot-path-9b7a94388618-claim-9 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the larger-size boots from Zara that were exchanged on February 5, 2023.; scope=Zara boot exchange workflow; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I exchanged them for a larger size. I just haven't had a chance to pick them up yet.\"\n- claim hot-path-9b7a94388618-claim-8 [ACTIVE] pending_return family=pending_return: The user needs to return boots to Zara.; scope=Zara boot exchange workflow; evidence=DIRECT source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I need to return some boots to Zara\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:1991b24e465cc7c4d035ae3a3b325442 [external_record ref=longmemeval:0a995998:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 03:35\nTranscript:\nuser: I need help organizing my closet. Can you give me some tips on how to declutter and categorize my clothes? Also, by the way, I still need to pick up my dry cleaning for the navy blue blazer I wore to a meeting a few weeks ago.\nassistant: I'd be happy to help you with organizing your closet and decluttering your clothes!\n\nAs for your dry cleaning, don't forget to pick it up soon! You might want to add it to your\n...[matching excerpts]...\n- source external:provided-text:196013f63fba96efe4a670763eafe70b [external_record ref=longmemeval:0a995998:session:2 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 07:47\nTranscript:\nuser: I'm looking for some organization tips for my closet. It's been a mess since the holidays and I still have winter clothes to put away.\nassistant: The post-holiday closet chaos is real! Don't worry, I'm here to help you get your closet organized and tidy again. Here are some practical tips to get you started:\n\n1. **Purge and declutter**: Begin by taking everything out of your closet and sorting items into three \n...[matching excerpts]...\n- source external:provided-text:6c4f057d4172864fbb1f49e455590889 [external_record ref=longmemeval:0a995998:session:3 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 13:53\nTranscript:\nuser: I'm thinking of organizing my closet this weekend. Can you give me some tips on how to maximize my closet space? By the way, I just got back from a dinner date last Friday and wore my new black jeans from Levi's, which I'm really loving.\nassistant: Congratulations on the new jeans! Levi's are always a great choice.\n\nNow, let's get to maximizing that closet space! Here are some tips to help you make the most of \n...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 13:53\nTranscript:\nuser: I'm thinking of organizing my closet this weekend. Can you give me some tips on how to maximize my closet space? By the way, I just got back from a dinner date last Friday and wore my new black jeans from Levi's, which I'm really loving.\nassistant: Congratulations on the new jeans! Levi's are always a great choice.\n\nNow, let's get to maximizing that closet space! Here are some tips to help you make the most of your closet:\n\n1. **Purge and declutter**: Start by taking everything out of your closet and sorting items into three piles: keep, donate/sell, and discard. Be ruthless – if you haven't worn something in a year, it's probably safe to let it go.\n2. **Categorize and group**: Once you've purged your closet, group similar items together (e.g., all dresses, all tops, all shoes). This will make it easier to see what you have and where it should go.\n3. **Assign a home**: Designate a specific area of your closet for each category of items. For example, all your dresses might go on one side, while your tops and bottoms are on the other.\n4. **Use vertical space**: Maximize your closet's vertical space by using stackable shelves or hanging rods with multiple levels. This will help you store more items without taking up too much floor space.\n5. **Invest in storage containers**: Use bins, baskets, or drawers to store items like socks, underwear, and accessories. Label each container so you can easily find what you need.\n6. **Utilize the back of the door**: Take advantage of the space on the back of your closet door by using over-the-door storage racks, hooks, or a shoe organizer.\n7. **Implement a \"one in, one out\" policy**: To maintain your newly organized closet, adopt a rule where you get rid of an old item every time you bring a new one into your closet.\n8. **Consider a closet organizer system**: If you have a larger closet, consider investing in a custom or pre-made closet organizer system. These systems typically include shelves, drawers, and rods specifically designed to maximize your closet's space.\n9. **Keep shoes in order**: Store your shoes in a designated area, such as on a shoe rack or in a shoe organizer. This will keep them organized and prevent them from getting scattered throughout your closet.\n10. **Maintain your space**: Set aside some time each week to maintain your organized cl...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0a995998",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"3\",\"reason\":\"The memory lists three pending clothing-related store errands: pick up the navy blazer from dry cleaning, pick up larger-size Zara boots, and return boots to Zara.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2037,
+                "completionTokens": 144,
+                "thinkingTokens": 83,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

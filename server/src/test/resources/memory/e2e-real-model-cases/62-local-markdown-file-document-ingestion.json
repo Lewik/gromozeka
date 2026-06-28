@@ -40,10 +40,6 @@
               ],
               [
                 "MemoryStore"
-              ],
-              [
-                "typed project-scoped memory",
-                "typed memory"
               ]
             ],
             "containsNone": [

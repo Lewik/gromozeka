@@ -41,7 +41,7 @@ class RuntimeMemoryReadPipeline(
         val searchSteps = mutableListOf<MemoryReadTrace.SearchStep>()
         log.info {
             "Memory read plan: namespace=${request.namespace.value} need=${plan.needMemory} " +
-                "mode=${plan.answerMode.name} coverage=${plan.coverageMode.name} core=${plan.coreBlocks.joinToString { it.name }} " +
+                "mode=${plan.contextMode.name} coverage=${plan.coverageMode.name} core=${plan.coreBlocks.joinToString { it.name }} " +
                 "budget=${plan.retrievalBudget} requests=${plan.retrievalRequests.size} " +
                 "retrieval=${plan.retrievalRequests.joinToString("|") { "${it.memoryType.name}:${it.topK}:${it.query.oneLineForRuntimeMemoryLog(120)}" }}"
         }
@@ -350,7 +350,7 @@ class RuntimeMemoryReadPipeline(
         if (rawSourceDeferral.changed) {
             log.info {
                 "Memory read raw source candidates deferred: namespace=${request.namespace.value} " +
-                    "mode=${plan.answerMode.name} droppedSources=${rawSourceDeferral.droppedSources.size} " +
+                    "mode=${plan.contextMode.name} droppedSources=${rawSourceDeferral.droppedSources.size} " +
                     "activeTyped=${rawSourceDeferral.activeTypedRefs.joinToString("|") { "${it.type.name.lowercase()}:${it.id}" }} " +
                     "droppedSourceIds=${rawSourceDeferral.droppedSources.joinToString("|") { it.source.id.value }}"
             }
@@ -390,6 +390,9 @@ class RuntimeMemoryReadPipeline(
         val selectorSelectedRefs = selectorDecisions
             .filter { it.selected }
             .mapTo(mutableSetOf()) { it.ref }
+        val selectorRejectedRefs = selectorDecisions
+            .filterNot { it.selected }
+            .mapTo(mutableSetOf()) { it.ref }
         val selectedHitsBeforeSafety = coreProfileSelection.hits.enforceBudget(
             plan = plan,
             protectedRefs = selectorSelectedRefs,
@@ -401,7 +404,7 @@ class RuntimeMemoryReadPipeline(
         if (sourceFilteredHits.changed) {
             log.info {
                 "Memory read source selection pruned: namespace=${request.namespace.value} " +
-                    "mode=${plan.answerMode.name} requireFallback=${plan.requireEvidenceFallback} " +
+                    "mode=${plan.contextMode.name} requireFallback=${plan.requireEvidenceFallback} " +
                     "droppedSources=${sourceFilteredHits.droppedSources.size} " +
                     "droppedSourceIds=${sourceFilteredHits.droppedSources.joinToString("|") { it.source.id.value }}"
             }
@@ -409,6 +412,7 @@ class RuntimeMemoryReadPipeline(
         val completeSetTypedCoverage = sourceFilteredHits.hits.keepCompleteSetTypedCoverageCandidates(
             plan = plan,
             candidateHits = selectorCandidateHits,
+            rejectedRefs = selectorRejectedRefs,
         )
         if (completeSetTypedCoverage.changed) {
             log.info {
@@ -423,11 +427,13 @@ class RuntimeMemoryReadPipeline(
             snapshot = namespaceSnapshot,
             candidateHits = selectorCandidateHits,
             protectedRefs = selectorSelectedRefs,
+            rejectedRefs = selectorRejectedRefs,
         )
         val selectedSourceTypedSupport = selectedSourceSafety.hits.withSelectedSourceTypedEvidenceSupport(
             request = request,
             plan = plan,
             includeHistoricalTypedMemory = includeHistoricalTypedMemory,
+            rejectedRefs = selectorRejectedRefs,
         )
         val sourceSafety = selectedSourceSafety.copy(
             hits = selectedSourceTypedSupport.hits,
@@ -670,7 +676,7 @@ class RuntimeMemoryReadPipeline(
         val sourceHits = sourceSelection.hits
 
         log.info {
-            "Memory read evidence hydration: namespace=${request.namespace.value} mode=${plan.answerMode.name} " +
+            "Memory read evidence hydration: namespace=${request.namespace.value} mode=${plan.contextMode.name} " +
                 "requireFallback=${plan.requireEvidenceFallback} requested=${sourceIds.size} rawFound=${rawSourceHits.size} " +
                 "found=${sourceHits.size} suppressedUnsafeEvidenceSources=${suppressedUnsafeEvidenceSourceIds.size} " +
                 "sourcePolicy=${sourceSelection.summaryForLog()} sources=${sourceHits.summaryForRuntimeMemoryLog()}"
@@ -707,6 +713,7 @@ class RuntimeMemoryReadPipeline(
         request: MemoryReadRequest,
         plan: MemoryReadPlan,
         includeHistoricalTypedMemory: Boolean,
+        rejectedRefs: Set<MemoryItemRef> = emptySet(),
     ): RuntimeMemorySelectedSourceTypedSupportResult {
         if (!plan.shouldRestoreTypedEvidenceForSelectedSources()) {
             return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
@@ -720,6 +727,7 @@ class RuntimeMemoryReadPipeline(
             .filter { includeHistoricalTypedMemory || !it.isInactiveTypedHitForRead() }
             .filter { includeHistoricalTypedMemory || it.isCurrentTruthBearingTypedHit() }
             .filterNot { it.toItemRef() in existingRefs }
+            .filterNot { it.toItemRef() in rejectedRefs }
             .map { it.withRuntimeEvidenceSupportScore(request, plan) }
             .takeSelectedSourceTypedSupport(plan, sourceIds)
         if (supportHits.isEmpty()) return RuntimeMemorySelectedSourceTypedSupportResult(hits = this)
@@ -850,7 +858,7 @@ object RuntimeMemoryPromptComposer {
                 If the user asks what memory contains or what should be remembered, do not guess from common sense, test setup, or absent context; say that memory is insufficient.
 
                 Namespace: ${request.namespace.value}
-                Answer mode: ${plan.answerMode.name}
+                Context mode: ${plan.contextMode.name}
                 Coverage mode: ${plan.coverageMode.name}
             """.trimIndent()
         }
@@ -890,39 +898,18 @@ object RuntimeMemoryPromptComposer {
             For unqualified current/usual/status questions with conflicting ACTIVE facts, prefer the most recent explicit event or source date as the current answer. Use older scoped facts only when the user asks for that specific scope, such as a particular day, project, person, place, or time period.
             For current-state answers at a later target date, selected dated plans, intentions, or scheduled changes can be a matured current state when they match the same subject and slot, predate the target date, and no selected active memory contradicts completion. If a broad current-location claim and a matured plan or source give a more specific container or location inside the same place, combine them into the most specific location.
             If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.
-            For numeric count/list answers, first form the set of counted items from retrieved memory and make the final number match that set size. If a selected ranked reference is a plausible counted item, include it or explicitly exclude it; do not silently ignore it. An empty counted set is not evidence for zero by itself; answer zero only when retrieved memory explicitly states none/zero for the requested scope or provides a closed complete inventory for that exact scope. Otherwise say memory is insufficient or the requested item was not mentioned, and do not put a concrete zero count in the final answer.
-            For project leadership, ownership, or responsibility count/list questions, a plain works_on_project or generic project association claim is not enough by itself. Count explicit responsible_for/lead/led/managed/owned claims, explicit team-leadership evidence, and solo or user-owned project evidence. Count personal/current projects only when retrieved memory says the user owns, leads, is responsible for, or is the sole actor on the project. Exclude research topics, papers, posters, broad interests, and plain "my research" or "working on research" evidence unless leadership, ownership, responsibility, or solo execution is explicit.
-            For aggregate total/count questions, count only explicit numeric operands or explicit list items that the retrieved memory places in the requested aggregate. When compatible metric_observation, current_metric_value, or other explicit numeric aggregate operands are selected, they define the counted inventory; do not add separate singular possession or ownership claims as +1 unless memory explicitly states that singular item belongs to the same counted aggregate and is not already covered by a numeric operand. For historical totals across metric_observation items, count every distinct observed operand unless retrieved memory explicitly says one corrects, replaces, retracts, or repeats another same-slot measurement. Different attempt, event, condition, session, source, date, route, difficulty, or measurement context can make same-subject observations separate operands. For current aggregate totals, first find the latest explicit baseline total for the same collection, then apply later explicit additions or removals in chronological order. A direct older current_metric_value is not final when selected later memory explicitly adds or removes an item in the same aggregate.
-            For increase, decrease, change, delta, difference, gain, loss, or net-movement questions, compute from compatible explicit numeric operands in retrieved memory. Use a selected baseline/previous value and a selected later/current/final value for the same metric or aggregate even when their scope wording is not identical, as long as retrieved memory does not contradict that they belong to the same measured series. Do not answer "insufficient" solely because the baseline is phrased as an initial/start value and the later value is phrased as an after-period observation.
-            For imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, count otherwise matching explicit numeric operands instead of excluding them solely as future or outside-window.
-            For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, count evidence-backed variants that satisfy the requested category even when retrieved memory uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not count merely adjacent examples.
-            For count/list questions scoped before, prior to, until, or at a commitment/decision about a named target, use the named target as boundary context and exclude the target itself from the prior-alternative counted set unless the question explicitly asks to include the target itself. This remains true even when the named target has its own matching action before the boundary event. Put the target in the excluded set as the boundary target, not in the counted set.
-            For replaced/fixed/upgraded functional-slot counts, count paired evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.
-            For indirect replacement/upgrade evidence, count one functional slot when memory connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word "replace".
-            Treat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of "newer or more capable item introduced for a routine" plus "older same-domain item removed from inventory" is replacement/upgrade evidence unless memory explicitly says the items are unrelated.
-            For acquisition-style count/list questions, count concrete physical or digital items when retrieved memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; do not count mere mentions, interests, recommendations, or assistant-only suggestions.
-            For acquisition-style count/list questions, selected ACTIVE "owns" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.
-            Explicitly ordered, reserved, or preordered concrete items are acquisition evidence when the requested category fits; pending delivery, receipt, or pickup only excludes the item when the user specifically asks for completed receipt, delivery, pickup, or current possession after a contradictory later status.
-            First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Do not use this shortcut when the question asks for purchase/download transaction details such as price, store, payment, download source, or exact date.
-            Treat "how many X did I buy/download/acquire/get" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.
-            For furniture or furnishing count/list questions, treat large movable household furnishings used for sleeping, seating, storage, surfaces, or workspace functions as category-fitting even when memory names only the concrete subtype. Do not count small decor, textiles, accessories, or decorative covers unless the question asks for them.
-            For broad counts of works or content items, a physical or digital carrier, copy, file, or personal item of that work can count as the work itself when user attribution is explicit. The item's material or format is not a separate category requirement unless the question asks for format-specific details.
-            For broad counts of music works or releases, a user-owned or downloaded vinyl record, CD, cassette, digital copy, or music download can count as an album/EP/release item unless retrieved memory explicitly identifies it as only a single track, playlist, non-audio merchandise, or the question asks for a narrower format or subtype.
-            For broad health-related device count/list questions, count user-attributed monitoring, treatment, assistive, accessibility, therapeutic, and health-support devices when retrieved memory indicates ownership, wearing, reliance, regular use, usage frequency, or usage duration. Do not narrow "health-related" to only tracking or treatment devices unless the user asks for that narrower subtype.
-            In count/list questions, broad category labels are category-fit tests, not exact-word qualifiers. Do not exclude a plausible counted item solely because memory names a member, carrier, copy, or concrete instance instead of repeating the category label.
-            For broad category counts, a missing exact subtype word is not a contradiction. Exclude a selected user-attributed copy/member/carrier only when retrieved memory gives an explicit conflicting subtype or category, or when the question asks for exact subtype/transaction details.
+            ${MemoryReadPromptPolicy.answerCountAndCategoryRules()}
             For specifically qualified questions, satisfy every explicit qualifier in the question. When different retrieved memories satisfy different parts of the question, do not answer from a partial match; choose the item that satisfies all required qualifiers, or say memory is insufficient/conflicting. Do not answer with a value for a different object, person, role, job title, position, event, route, project, artifact, item, or relationship merely because it is adjacent or similar; a caveat that the qualifier differs is not enough. A shared anchor can bridge retrieved memories only when it explicitly preserves the same fully-qualified target; it cannot weaken or rewrite the target's modifiers. Anchor-level metadata can supply a missing requested detail when one retrieved memory explicitly links the asked target to a named venue, publisher, conference, program, service, route, or event and another retrieved memory gives a date, deadline, schedule, price, policy, threshold, or similar property for that same named anchor. Use this bridge only when the metadata is not tied to a different named target and no selected memory gives a competing anchor or value for the asked target. If any requested qualifier is missing or changed, the final answer must be an insufficiency answer, not a concrete adjacent answer with a warning. Do not infer missing academic level, course ownership, job role, job title, position, project identity, artifact type, item ingredient, component, material, feature, participant identity, route, source, owner, medium, or relation from a merely related remembered topic. When refusing because only adjacent or mismatched evidence was retrieved, do not compute or include the mismatched value unless the user explicitly asks about related memories. Do not map an unnamed role or relative to a named person unless retrieved memory explicitly says they are the same person.
             For arithmetic, date-difference, and ordering questions with named operands, every named operand must match the requested object or event. A different named object is a missing operand, not an approximate match; answer that memory is insufficient instead of computing from the mismatched object.
             For formal education duration from one stage to another stage's completion, use the whole retrieved formal education timeline. Include intermediate formal credentials, attendance, transfer, and completion milestones when they bridge the asked span.
             For aggregate questions about events the user participated in, treat explicit user involvement broadly: attended, participated, helped organize, contributed to, or was part of the team can all qualify unless the question explicitly restricts the answer to personally raised, personally paid, or individually performed amounts.
             For category-scoped count/list questions, treat explicit venue, organizer, community, and stated context as category signals. A community-hosted service activity can qualify for that community/category even when the concrete task is volunteering, planning, sorting, packing, or another support action, unless the question asks for a narrower subtype.
-            For room or area item count/list questions, category fit includes fixtures, storage, furniture, tools, mats, devices, appliances, and other concrete objects when retrieved memory explicitly places them in that room/area or their ordinary function fits that room/area. Do not narrow a room item category to only fixtures or utensils unless the user says so.
             For replaced/fixed/upgraded household-item counts, count one functional slot when memory says the user fixed it, replaced it with a newer item, got rid of, donated, or gave away the old item as part of an upgrade, or adopted a new item that takes over the old item's function. Do not count both the old item and its replacement unless the user asks for inventory.
             If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
             If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.
 
             Namespace: ${request.namespace.value}
-            Answer mode: ${plan.answerMode.name}
+            Context mode: ${plan.contextMode.name}
             Coverage mode: ${plan.coverageMode.name}
             Require evidence fallback: ${plan.requireEvidenceFallback}
 
@@ -1289,7 +1276,7 @@ private val runtimeMemorySearchHitComparator: Comparator<MemoryStore.SearchHit> 
     compareByDescending<MemoryStore.SearchHit> { it.score }
         .thenByDescending { it.runtimeImportance() }
         .thenBy { it.runtimeTypeRank() }
-        .thenBy { it.runtimeStableSortKey() }
+        .thenBy { it.contentStableSortKey() }
         .thenBy { it.toItemRef().id }
 
 private fun MemoryStore.SearchHit.runtimeImportance(): Int =
@@ -1320,107 +1307,6 @@ private fun MemoryStore.SearchHit.runtimeTypeRank(): Int =
         is MemoryStore.SearchHit.EntityHit -> 6
         is MemoryStore.SearchHit.RunHit -> 7
     }
-
-private fun MemoryStore.SearchHit.runtimeStableSortKey(): String =
-    when (this) {
-        is MemoryStore.SearchHit.SourceHit -> source.runtimeStableSortKey()
-        is MemoryStore.SearchHit.EntityHit -> listOf(
-            entity.entityType.name,
-            entity.normalizedName,
-            entity.canonicalName,
-            entity.id.value,
-        ).joinToString("|")
-        is MemoryStore.SearchHit.ClaimHit -> listOf(
-            claim.predicate,
-            claim.normalizedText,
-            claim.contextText.orEmpty(),
-            claim.scope.runtimeStableSortKey(),
-            claim.id.value,
-        ).joinToString("|")
-        is MemoryStore.SearchHit.NoteHit -> listOf(
-            note.noteType.name,
-            note.title,
-            note.summary,
-            note.scope.runtimeStableSortKey(),
-            note.id.value,
-        ).joinToString("|")
-        is MemoryStore.SearchHit.ActionItemHit -> listOf(
-            actionItem.status.name,
-            actionItem.priority.name,
-            actionItem.title,
-            actionItem.description.orEmpty(),
-            actionItem.scope.runtimeStableSortKey(),
-            actionItem.id.value,
-        ).joinToString("|")
-        is MemoryStore.SearchHit.ProfileHit -> listOf(
-            profile.ownerEntityId.value,
-            profile.profileText,
-            profile.id.value,
-        ).joinToString("|")
-        is MemoryStore.SearchHit.EpisodeHit -> listOf(
-            episode.situation,
-            episode.action,
-            episode.result,
-            episode.lesson,
-            episode.id.value,
-        ).joinToString("|")
-        is MemoryStore.SearchHit.RunHit -> listOf(
-            run.runType.name,
-            run.status.name,
-            run.summary,
-            run.id.value,
-        ).joinToString("|")
-    }.lowercase()
-
-private fun MemorySource.runtimeStableSortKey(): String =
-    when (this) {
-        is MemorySource.ChatTurn -> listOf(
-            "chat",
-            conversationId.value,
-            threadId?.value.orEmpty(),
-            sourceMessageId?.value.orEmpty(),
-            speakerRole.name,
-            contentHash,
-            id.value,
-        ).joinToString("|")
-        is MemorySource.ToolOutput -> listOf(
-            "tool",
-            conversationId?.value.orEmpty(),
-            threadId?.value.orEmpty(),
-            sourceMessageId?.value.orEmpty(),
-            toolName.orEmpty(),
-            contentHash,
-            id.value,
-        ).joinToString("|")
-        is MemorySource.ImportedNote -> listOf(
-            "imported",
-            importRef.orEmpty(),
-            contentHash,
-            id.value,
-        ).joinToString("|")
-        is MemorySource.ExternalRecord -> listOf(
-            "external",
-            recordRef,
-            contentHash,
-            id.value,
-        ).joinToString("|")
-    }
-
-private fun MemoryScope.runtimeStableSortKey(): String =
-    when (this) {
-        is MemoryScope.Global -> listOf("global", text, basis.name)
-        is MemoryScope.Project -> listOf("project", projectId.value, text, basis.name)
-        is MemoryScope.Conversation -> listOf(
-            "conversation",
-            conversationId.value,
-            projectId?.value.orEmpty(),
-            text,
-            basis.name,
-        )
-        is MemoryScope.Entity -> listOf("entity", subjectEntityId.value, text, basis.name)
-        is MemoryScope.Environment -> listOf("environment", environment, text, basis.name)
-        is MemoryScope.Document -> listOf("document", documentRef, text, basis.name)
-    }.joinToString("|")
 
 private fun List<MemoryStore.SearchHit>.deferRawSourceCandidatesToEvidenceHydration(
     plan: MemoryReadPlan,
@@ -1455,13 +1341,13 @@ private fun MemoryReadPlan.defersRawSourcesWhenTypedMemoryExists(): Boolean =
     if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET || shouldIncludeSourceEvidence()) {
         false
     } else {
-        when (answerMode) {
-            MemoryReadPlan.AnswerMode.FACTUAL,
-            MemoryReadPlan.AnswerMode.ACTION_ITEM,
+        when (contextMode) {
+            MemoryReadPlan.ContextMode.FACTUAL,
+            MemoryReadPlan.ContextMode.ACTION_ITEM,
             -> true
 
-            MemoryReadPlan.AnswerMode.MIXED,
-            MemoryReadPlan.AnswerMode.RATIONALE,
+            MemoryReadPlan.ContextMode.MIXED,
+            MemoryReadPlan.ContextMode.RATIONALE,
             -> false
         }
     }
@@ -1521,7 +1407,7 @@ private fun List<MemoryStore.SearchHit>.prioritizeForReadRequest(
             .thenByDescending { it.score }
             .thenByDescending { it.runtimeImportance() }
             .thenBy { it.runtimeTypeRank() }
-            .thenBy { it.runtimeStableSortKey() }
+            .thenBy { it.contentStableSortKey() }
             .thenBy { it.toItemRef().id }
     )
 }
@@ -1551,7 +1437,7 @@ private fun MemoryReadPlan.RetrievalRequest.searchQuery(
 private fun MemoryReadPlan.shouldTrySourceFallback(hits: List<MemoryStore.SearchHit>): Boolean =
     needMemory &&
         retrievalRequests.none { it.memoryType == MemorySemanticType.SOURCE } &&
-        (requireEvidenceFallback || answerMode == MemoryReadPlan.AnswerMode.RATIONALE || hits.none { it.isAnswerCandidateForRecall() })
+        (requireEvidenceFallback || contextMode == MemoryReadPlan.ContextMode.RATIONALE || hits.none { it.isAnswerCandidateForRecall() })
 
 private fun MemoryReadPlan.shouldSweepCompleteSetSources(): Boolean =
     needMemory &&
@@ -1763,6 +1649,7 @@ private fun List<MemoryStore.SearchHit>.keepPlannerRequestedProfiles(
 private fun List<MemoryStore.SearchHit>.keepCompleteSetTypedCoverageCandidates(
     plan: MemoryReadPlan,
     candidateHits: List<MemoryStore.SearchHit>,
+    rejectedRefs: Set<MemoryItemRef>,
 ): RuntimeMemoryCompleteSetTypedCoverageResult {
     if (plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET) {
         return RuntimeMemoryCompleteSetTypedCoverageResult(hits = this)
@@ -1772,6 +1659,7 @@ private fun List<MemoryStore.SearchHit>.keepCompleteSetTypedCoverageCandidates(
     val coverageHits = candidateHits
         .filter { it.isCurrentTruthBearingTypedHit() }
         .filterNot { it.toItemRef() in selectedRefs }
+        .filterNot { it.toItemRef() in rejectedRefs }
         .sortedForRuntimeMemoryRead(plan)
         .take(READ_COMPLETE_SET_TYPED_CANDIDATE_COVERAGE_LIMIT)
     if (coverageHits.isEmpty()) {
@@ -1815,13 +1703,13 @@ private fun List<MemoryStore.SearchHit>.filterNonRequiredSourcesWhenTypedMemoryA
         return RuntimeMemorySourcePruningResult(hits = this)
     }
 
-    val shouldPrune = when (plan.answerMode) {
-        MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.ACTION_ITEM,
+    val shouldPrune = when (plan.contextMode) {
+        MemoryReadPlan.ContextMode.FACTUAL,
+        MemoryReadPlan.ContextMode.ACTION_ITEM,
         -> true
 
-        MemoryReadPlan.AnswerMode.MIXED,
-        MemoryReadPlan.AnswerMode.RATIONALE,
+        MemoryReadPlan.ContextMode.MIXED,
+        MemoryReadPlan.ContextMode.RATIONALE,
         -> false
     }
     if (!shouldPrune || none { it.isCurrentTruthBearingTypedHit() }) {
@@ -1870,7 +1758,7 @@ private fun List<MemoryStore.SearchHit>.renderNotes(includeEvidence: Boolean): S
 private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean, query: String): String {
     val selectedSources = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
     if (selectedSources.isEmpty() && !includeEvidence) {
-        return "not requested for this answer mode"
+        return "not requested for this context mode"
     }
 
     return MemorySourceRetrievalPolicy.apply(
@@ -1930,11 +1818,11 @@ private fun MemoryReadPlan.evidenceHydrationSourceLimit(): Int =
     if (coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET && shouldIncludeSourceEvidence()) {
         retrievalBudget.sources.takeIf { it > 0 } ?: 6
     } else {
-        when (answerMode) {
-            MemoryReadPlan.AnswerMode.RATIONALE -> retrievalBudget.sources.takeIf { it > 0 } ?: 4
-            MemoryReadPlan.AnswerMode.MIXED -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
-            MemoryReadPlan.AnswerMode.FACTUAL,
-            MemoryReadPlan.AnswerMode.ACTION_ITEM,
+        when (contextMode) {
+            MemoryReadPlan.ContextMode.RATIONALE -> retrievalBudget.sources.takeIf { it > 0 } ?: 4
+            MemoryReadPlan.ContextMode.MIXED -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
+            MemoryReadPlan.ContextMode.FACTUAL,
+            MemoryReadPlan.ContextMode.ACTION_ITEM,
             -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
         }
     }
@@ -1948,8 +1836,8 @@ private fun MemoryReadPlan.shouldRenderEvidenceInPrompt(): Boolean =
 private fun MemoryReadPlan.shouldRestoreTypedEvidenceForSelectedSources(): Boolean =
     shouldRenderEvidenceInPrompt() && (
         coverageMode == MemoryReadPlan.CoverageMode.COMPLETE_SET ||
-            answerMode == MemoryReadPlan.AnswerMode.FACTUAL ||
-            answerMode == MemoryReadPlan.AnswerMode.ACTION_ITEM
+            contextMode == MemoryReadPlan.ContextMode.FACTUAL ||
+            contextMode == MemoryReadPlan.ContextMode.ACTION_ITEM
         )
 
 private fun List<MemoryStore.SearchHit>.keepLinkedEvidenceSources(
@@ -2007,18 +1895,19 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
     snapshot: MemoryNamespaceSnapshot,
     candidateHits: List<MemoryStore.SearchHit>,
     protectedRefs: Set<MemoryItemRef> = emptySet(),
+    rejectedRefs: Set<MemoryItemRef> = emptySet(),
 ): RuntimeMemorySourceSafetyResult {
     val selectedSourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
         .mapTo(mutableSetOf()) { it.source.id }
     if (selectedSourceIds.isEmpty()) return RuntimeMemorySourceSafetyResult(hits = this)
 
-    val protectsExplicitSourceEvidence = plan.shouldRenderEvidenceInPrompt() && when (plan.answerMode) {
-        MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.ACTION_ITEM,
+    val protectsExplicitSourceEvidence = plan.shouldRenderEvidenceInPrompt() && when (plan.contextMode) {
+        MemoryReadPlan.ContextMode.FACTUAL,
+        MemoryReadPlan.ContextMode.ACTION_ITEM,
         -> true
 
-        MemoryReadPlan.AnswerMode.MIXED,
-        MemoryReadPlan.AnswerMode.RATIONALE,
+        MemoryReadPlan.ContextMode.MIXED,
+        MemoryReadPlan.ContextMode.RATIONALE,
         -> false
     }
     val protectedSourceIds = if (protectsExplicitSourceEvidence) {
@@ -2037,6 +1926,7 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
         sourceIds = replacementSourceIds,
         candidateHits = candidateHits,
     )
+        .filterNot { it.toItemRef() in rejectedRefs }
     val missingReplacementHits = replacementHits.filterNot { it.toItemRef() in existingRefs }
     val suppressRawSources =
         plan.coverageMode != MemoryReadPlan.CoverageMode.COMPLETE_SET && !includeHistoricalTypedMemory

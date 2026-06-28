@@ -493,7 +493,7 @@ internal fun MemoryClaimCandidate.shouldCoexistWithTemporalTargetForMemoryReconc
 }
 
 internal fun MemoryClaimCandidate.shouldPreserveCoexistingTargetForMemoryReconciliation(target: MemoryClaim): Boolean {
-    if (explicitlyReplacesPrevious()) return false
+    if (explicitlyReplacesPrevious() || hasExplicitReplacementSignal()) return false
     val candidatePolicy = predicatePolicy ?: return false
     val targetPolicy = target.predicatePolicy
     return candidatePolicy.conflictPolicy == MemoryPredicateDefinition.ConflictPolicy.COEXIST ||
@@ -543,6 +543,13 @@ internal fun MemoryClaimCandidate.shouldSupersedeTemporalRefinementOf(target: Me
 private fun MemoryClaimCandidate.explicitlyReplacesPrevious(): Boolean =
     qualifiers["replaces_previous"]?.jsonPrimitive?.booleanOrNull == true
 
+private fun MemoryClaimCandidate.hasExplicitReplacementSignal(): Boolean =
+    explicitReplacementCueRegex.containsMatchIn(
+        listOfNotNull(normalizedText, contextText, evidenceQuote, evidenceReason, reason)
+            .joinToString(" ")
+            .lowercase(),
+    )
+
 private fun MemoryClaimCandidate.textWithObjectValue(): String =
     listOfNotNull(normalizedText, objectValue?.toString())
         .joinToString(" ")
@@ -589,6 +596,10 @@ private fun String.semanticTokens(): Set<String> =
         .toSet()
 
 private val explicitIsoDateRegex = Regex("""\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b""")
+
+private val explicitReplacementCueRegex = Regex(
+    """\b(instead of|rather than|replace|replaces|replaced|replacing|updates?|updated|correction|corrected|no longer)\b""",
+)
 
 private val explicitMonthDateRegex = Regex(
     """\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,\s*\d{4})?\b""",

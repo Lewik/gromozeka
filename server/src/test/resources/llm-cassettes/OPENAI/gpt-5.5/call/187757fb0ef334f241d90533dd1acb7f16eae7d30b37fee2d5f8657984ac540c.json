@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "187757fb0ef334f241d90533dd1acb7f16eae7d30b37fee2d5f8657984ac540c",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What charity event did I participate in a month ago?\n\n                                Question date:\n                                2023/04/18 (Tue) 07:36\n\n                                Noisy expected-answer label:\n                                the 'Walk for Hunger' charity event\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:b46e15ee\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-02d9beda75f7-claim-5 [ACTIVE] attended_event family=attended_event: The user attended the \"Walk for Hunger\" charity event with colleagues from work on 2023-03-19, walked 5 kilometers, and raised money for the local food bank.; scope=User's charity event participation history; context=\"The event was mentioned while the user asked for healthy snack ideas to refuel afterward.\"; evidence=DIRECT source=external:provided-text:7a4824645fabe039b103d261461e798c quote=\"I just did the \"Walk for Hunger\" charity event today with my colleagues from work, walking 5 kilometers to raise money for the local food bank\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:7a4824645fabe039b103d261461e798c [external_record ref=longmemeval:b46e15ee:session:4 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/19 (Sun) 20:41\nTranscript:\nuser: Hey, I'm looking for some healthy snack ideas that are easy to prepare. I just did the \"Walk for Hunger\" charity event today with my colleagues from work, walking 5 kilometers to raise money for the local food bank, and I want to refuel with something nutritious.\nassistant: Congratulations on completing the \"Walk for Hunger\" charity event! That's a great way to give back to the community. Now, let's get you refueled with some healthy and easy-to-prepare snack ideas!...\n...2. **Energy Balls**: Mix rolled oats, peanut butter, honey, and chocolate chips to create bite-sized energy balls that are packed with protein and fiber.\n3. **Yogurt Parfait**: Layer Greek yogurt with fresh berries, granola, and a sprinkle of honey for a protein-rich snack that's easy to prepare....\n...user: I'm glad you provided so many options. I think I'll try the energy balls first. Do you have a simple recipe I can follow?...\n...* 1/2 cup honey (or maple syrup)...\n...2. In a separate bowl, mix the peanut butter and honey until smooth and creamy....\n...6. Use your hands to shape the mixture into small balls, about 1-inch (2.5 cm) in diameter. You should end up with around 12-15 energy balls....\n...* If the mixture is too sticky, add a bit more oats. If it's too dry, add a bit more honey....\n...user: I'll definitely give it a try. By the way, do you have any recommendations for a protein-rich breakfast that I can prepare in advance for the weekdays?...\n...**9. Protein Pancakes**: Prepare protein pancakes on the weekend and freeze them for up to 2 months. Simply toast and top with your favorite fruits, nuts, or syrup....\n...user: I like the overnight oats idea. I've been doing a lot of charity events lately, and it's always great to have a healthy breakfast to start the day. Speaking of which, do you have any tips on how to stay hydrated during long walks like the \"Walk for Hunger\" event I did today?...\n...user: Thanks for these helpful tips! I'll definitely keep them in mind for my next charity walk. By the way, I was thinking of organizing a charity bake sale at my office to raise money for the local animal shelter. Do you have any ideas for some easy-to-make and delicious baked goods that I could sell?\nassistant: What a wonderful idea! A charity bake sale is a great way to raise money for a good cause, and who can resist sweet treats?...\n...* **Promote your event**: Advertise your charity bake sale on social media, flyers, and office announcements to get the word out....\n...Remember to follow proper food safety guidelines and consider any dietary restrictions or allergies when preparing your baked goods. Good luck with your charity bake sale, and I hope you raise lots of money for the local animal shelter!\nuser: That's a great idea! I'll definitely consider those options. By the way, do you have any tips on how to stay organized and manage my time effectively when volunteering for multiple charity events? I've been participating in a lot of events lately, and it can get overwhelming at times.\nassistant: I'm glad you asked! Staying organized and managing your time effectively is crucial when volunteering for multiple charity events. Here are some tips to help you stay on top of your commitments:\n\n**1. Create a master calendar**: Keep a calendar specifically for your charity events and volunteer work. Write down all the events, dates, times, and deadlines. This will help you visualize your commitments and avoid conflicts....\n...**5. Designate a \"charity day\"**: Choose a specific day of the week or month to dedicate to charity work. This will help you stay focused and ensure that you're making time for your volunteer commitments....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "b46e15ee",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What charity event did I participate in a month ago?\n\n                                Question date:\n                                2023/04/18 (Tue) 07:36\n\n                                Noisy expected-answer label:\n                                the 'Walk for Hunger' charity event\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:b46e15ee\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-02d9beda75f7-claim-5 [ACTIVE] attended_event family=attended_event: The user attended the \"Walk for Hunger\" charity event with colleagues from work on 2023-03-19, walked 5 kilometers, and raised money for the local food bank.; scope=User's charity event participation history; context=\"The event was mentioned while the user asked for healthy snack ideas to refuel afterward.\"; evidence=DIRECT source=external:provided-text:7a4824645fabe039b103d261461e798c quote=\"I just did the \"Walk for Hunger\" charity event today with my colleagues from work, walking 5 kilometers to raise money for the local food bank\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:7a4824645fabe039b103d261461e798c [external_record ref=longmemeval:b46e15ee:session:4 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/19 (Sun) 20:41\nTranscript:\nuser: Hey, I'm looking for some healthy snack ideas that are easy to prepare. I just did the \"Walk for Hunger\" charity event today with my colleagues from work, walking 5 kilometers to raise money for the local food bank, and I want to refuel with something nutritious.\nassistant: Congratulations on completing the \"Walk for Hunger\" charity event! That's a great way to give back to the community. Now, let's get you refueled with some healthy and easy-to-prepare snack ideas!...\n...2. **Energy Balls**: Mix rolled oats, peanut butter, honey, and chocolate chips to create bite-sized energy balls that are packed with protein and fiber.\n3. **Yogurt Parfait**: Layer Greek yogurt with fresh berries, granola, and a sprinkle of honey for a protein-rich snack that's easy to prepare....\n...user: I'm glad you provided so many options. I think I'll try the energy balls first. Do you have a simple recipe I can follow?...\n...* 1/2 cup honey (or maple syrup)...\n...2. In a separate bowl, mix the peanut butter and honey until smooth and creamy....\n...6. Use your hands to shape the mixture into small balls, about 1-inch (2.5 cm) in diameter. You should end up with around 12-15 energy balls....\n...* If the mixture is too sticky, add a bit more oats. If it's too dry, add a bit more honey....\n...user: I'll definitely give it a try. By the way, do you have any recommendations for a protein-rich breakfast that I can prepare in advance for the weekdays?...\n...**9. Protein Pancakes**: Prepare protein pancakes on the weekend and freeze them for up to 2 months. Simply toast and top with your favorite fruits, nuts, or syrup....\n...user: I like the overnight oats idea. I've been doing a lot of charity events lately, and it's always great to have a healthy breakfast to start the day. Speaking of which, do you have any tips on how to stay hydrated during long walks like the \"Walk for Hunger\" event I did today?...\n...user: Thanks for these helpful tips! I'll definitely keep them in mind for my next charity walk. By the way, I was thinking of organizing a charity bake sale at my office to raise money for the local animal shelter. Do you have any ideas for some easy-to-make and delicious baked goods that I could sell?\nassistant: What a wonderful idea! A charity bake sale is a great way to raise money for a good cause, and who can resist sweet treats?...\n...* **Promote your event**: Advertise your charity bake sale on social media, flyers, and office announcements to get the word out....\n...Remember to follow proper food safety guidelines and consider any dietary restrictions or allergies when preparing your baked goods. Good luck with your charity bake sale, and I hope you raise lots of money for the local animal shelter!\nuser: That's a great idea! I'll definitely consider those options. By the way, do you have any tips on how to stay organized and manage my time effectively when volunteering for multiple charity events? I've been participating in a lot of events lately, and it can get overwhelming at times.\nassistant: I'm glad you asked! Staying organized and managing your time effectively is crucial when volunteering for multiple charity events. Here are some tips to help you stay on top of your commitments:\n\n**1. Create a master calendar**: Keep a calendar specifically for your charity events and volunteer work. Write down all the events, dates, times, and deadlines. This will help you visualize your commitments and avoid conflicts....\n...**5. Designate a \"charity day\"**: Choose a specific day of the week or month to dedicate to charity work. This will help you stay focused and ensure that you're making time for your volunteer commitments....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "b46e15ee",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You participated in the \\\"Walk for Hunger\\\" charity event.\",\"reason\":\"The retrieved memory states the user did the \\\"Walk for Hunger\\\" charity event on 2023-03-19, about a month before the question date.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1964,
+                "completionTokens": 92,
+                "thinkingTokens": 21,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

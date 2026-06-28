@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_ANSWER_QUESTION_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_EMBEDDING_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
@@ -47,6 +48,7 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
         assertContains(text, "Gromozeka typed memory MCP guide")
         assertContains(text, "`claim`")
         assertContains(text, "`memory_enrich_context`")
+        assertContains(text, "`memory_answer_question`")
         assertContains(text, "`memory_remember`")
         assertContains(text, "`memory_rebuild_embeddings`")
         assertContains(text, "`memory_embedding_status`")
@@ -100,6 +102,7 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
         override fun getTools(): List<AiToolCallback> = listOf(
             SimpleToolCallback(MEMORY_QUEUE_STATUS_TOOL_NAME),
             SimpleToolCallback(MEMORY_ENRICH_CONTEXT_TOOL_NAME),
+            SimpleToolCallback(MEMORY_ANSWER_QUESTION_TOOL_NAME),
             SimpleToolCallback(MEMORY_LIST_NAMESPACES_TOOL_NAME),
             SimpleToolCallback(MEMORY_MAINTENANCE_TOOL_NAME),
             SimpleToolCallback(MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME),

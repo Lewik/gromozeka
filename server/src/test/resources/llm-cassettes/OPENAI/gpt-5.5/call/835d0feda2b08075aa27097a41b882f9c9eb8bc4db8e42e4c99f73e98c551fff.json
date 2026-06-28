@@ -1,0 +1,385 @@
+{
+    "version": 1,
+    "hash": "835d0feda2b08075aa27097a41b882f9c9eb8bc4db8e42e4c99f73e98c551fff",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n        Pass mode: final_selection\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - This is the final global pass. Prefer precision over keeping marginal context.\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned context mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned context mode: FACTUAL\n        Require evidence fallback: true\n        Retrieval budget: claims=2 notes=1 actionItems=0 sources=2 episodes=0\n        Target message:\n        According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"entity\",\"id\":\"entity:<0>\",\"score\":2.16,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"AGENT\",\"name\":\"MemoryRouter v3\",\"text\":\"Agent named MemoryRouter v3.\"}\n2. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":1.490923076923077,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"First-release component plan for 03. Prompt Pack\",\"text\":\"In `03. Prompt Pack`, section `17. Что я бы включил в первый релиз`, the useful-minimum first release includes `MemoryRouter`, `WriteTimeRetrievalPlanner`, `ClaimExtractor`, `ClaimReconciler`, `ActionItemUpdater`, `ProfileUpdater`, `ReadTimeRetrievalPlanner`, and `AnswerComposer`; `NoteConstructor`, `NoteReconciler`, `NoteConsolidator`, and `MemoryRepairPlanner` are deferred additions.\",\"confidence\":0.98,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:95b5fbef7877e859a859be9811d5196e\",\"kind\":\"DIRECT\",\"quote\":\"Если резать до полезного минимума, то сначала я бы взял:\"}]}\n3. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":1.120923076923077,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"MemoryRouter v3 decision policy separates facts, notes, tasks, and noise\",\"text\":\"The `MemoryRouter v3` prompt routes transient or low-value content to `noop`, explicit facts/preferences/status/deadlines/commitments to `direct_structured_write`, rationale/trade-offs/design direction/plans/conclusions/lessons/document digests to `note_write`, and combined structured plus contextual material to `mixed`. Its hard rules emphasize preferring `noop` over memory pollution, not treating every question as a task, not forcing rationale into claims, honoring explicit remember requests, and returning valid JSON only.\",\"confidence\":0.98,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"SUMMARIZED\",\"quote\":\"Do not force rationale into claims.\"}]}\n4. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":1.1055384615384616,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"MemoryRouter v3 routing role and write modes\",\"text\":\"`MemoryRouter v3` runs immediately after a `Source` is saved and decides whether to initiate the memory write pipeline and which write mode to use. Its JSON output includes `decision` (`noop`, `direct_structured_write`, `note_write`, or `mixed`), `memory_types`, `salience`, and a short `reason`.\",\"confidence\":0.98,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"SUMMARIZED\",\"quote\":\"Решить, инициировать ли memory write pipeline и какой write mode выбрать.\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":1.0019615384615386,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Note Constructor v2 note creation contract\",\"text\":\"`Note Constructor v2` is invoked when the router chooses `note_write` or `mixed` and creates candidate notes as reusable semantic fragments from latest turns, sources, notes, and resolved entities. Its rules emphasize one self-contained reusable fragment per note, preserving soft ambiguity, constraining scope with `scope_json`, targeting rationale/trade-offs/directions/plans/lessons/document digests, and avoiding filler, raw paraphrases, and chain-of-thought.\",\"confidence\":0.97,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:22b71459a2c768f0b9721fd3a6223954\",\"kind\":\"SUMMARIZED\",\"quote\":\"Create reusable semantic notes from the latest turns.\"}]}\n6. {\"type\":\"claim\",\"id\":\"hot-path:claim:<0>\",\"score\":0.9501730769230768,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"decides_memory_write_mode\",\"predicate_family\":\"decides_memory_write_mode\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"MemoryRouter v3 decides which memory write mode to use.\",\"context\":\"This rule appears under `1. Memory Router v3`, subsection `Цель`.\",\"confidence\":0.99,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"IMPORTED\",\"quote\":\"какой write mode выбрать\"}]}\n7. {\"type\":\"claim\",\"id\":\"hot-path:claim:<1>\",\"score\":0.9501730769230768,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"decides_memory_write_pipeline_initiation\",\"predicate_family\":\"decides_memory_write_pipeline_initiation\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"MemoryRouter v3 decides whether to initiate the memory write pipeline.\",\"context\":\"This rule appears under `1. Memory Router v3`, subsection `Цель`.\",\"confidence\":0.99,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"IMPORTED\",\"quote\":\"Решить, инициировать ли memory write pipeline\"}]}\n8. {\"type\":\"claim\",\"id\":\"hot-path:claim:<2>\",\"score\":0.58,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"adds_time_filters_when_turns_mention\",\"predicate_family\":\"adds_time_filters_when_turns_mention\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"Write-Time Retrieval Planner v3 adds time filters when turns mention `now`, `before`, `used to`, `from now on`, `no longer`, deadlines, or relative dates.\",\"context\":\"This is one of the rules in the Write-Time Retrieval Planner v3 prompt.\",\"confidence\":0.99,\"importance\":5,\"evidence\":[{\"source_id\":\"external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f\",\"kind\":\"IMPORTED\",\"quote\":\"Add time filters when the turns mention \\\"now\\\", \\\"before\\\", \\\"used to\\\", \\\"from now on\\\", \\\"no longer\\\", deadlines, or relative dates.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n        Pass mode: final_selection\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - This is the final global pass. Prefer precision over keeping marginal context.\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned context mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned context mode: FACTUAL\n        Require evidence fallback: true\n        Retrieval budget: claims=2 notes=1 actionItems=0 sources=2 episodes=0\n        Target message:\n        According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"entity\",\"id\":\"entity:<0>\",\"score\":2.16,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"AGENT\",\"name\":\"MemoryRouter v3\",\"text\":\"Agent named MemoryRouter v3.\"}\n2. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":1.490923076923077,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"First-release component plan for 03. Prompt Pack\",\"text\":\"In `03. Prompt Pack`, section `17. Что я бы включил в первый релиз`, the useful-minimum first release includes `MemoryRouter`, `WriteTimeRetrievalPlanner`, `ClaimExtractor`, `ClaimReconciler`, `ActionItemUpdater`, `ProfileUpdater`, `ReadTimeRetrievalPlanner`, and `AnswerComposer`; `NoteConstructor`, `NoteReconciler`, `NoteConsolidator`, and `MemoryRepairPlanner` are deferred additions.\",\"confidence\":0.98,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:95b5fbef7877e859a859be9811d5196e\",\"kind\":\"DIRECT\",\"quote\":\"Если резать до полезного минимума, то сначала я бы взял:\"}]}\n3. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":1.120923076923077,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"MemoryRouter v3 decision policy separates facts, notes, tasks, and noise\",\"text\":\"The `MemoryRouter v3` prompt routes transient or low-value content to `noop`, explicit facts/preferences/status/deadlines/commitments to `direct_structured_write`, rationale/trade-offs/design direction/plans/conclusions/lessons/document digests to `note_write`, and combined structured plus contextual material to `mixed`. Its hard rules emphasize preferring `noop` over memory pollution, not treating every question as a task, not forcing rationale into claims, honoring explicit remember requests, and returning valid JSON only.\",\"confidence\":0.98,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"SUMMARIZED\",\"quote\":\"Do not force rationale into claims.\"}]}\n4. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":1.1055384615384616,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"MemoryRouter v3 routing role and write modes\",\"text\":\"`MemoryRouter v3` runs immediately after a `Source` is saved and decides whether to initiate the memory write pipeline and which write mode to use. Its JSON output includes `decision` (`noop`, `direct_structured_write`, `note_write`, or `mixed`), `memory_types`, `salience`, and a short `reason`.\",\"confidence\":0.98,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"SUMMARIZED\",\"quote\":\"Решить, инициировать ли memory write pipeline и какой write mode выбрать.\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":1.0019615384615386,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Note Constructor v2 note creation contract\",\"text\":\"`Note Constructor v2` is invoked when the router chooses `note_write` or `mixed` and creates candidate notes as reusable semantic fragments from latest turns, sources, notes, and resolved entities. Its rules emphasize one self-contained reusable fragment per note, preserving soft ambiguity, constraining scope with `scope_json`, targeting rationale/trade-offs/directions/plans/lessons/document digests, and avoiding filler, raw paraphrases, and chain-of-thought.\",\"confidence\":0.97,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:22b71459a2c768f0b9721fd3a6223954\",\"kind\":\"SUMMARIZED\",\"quote\":\"Create reusable semantic notes from the latest turns.\"}]}\n6. {\"type\":\"claim\",\"id\":\"hot-path:claim:<0>\",\"score\":0.9501730769230768,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"decides_memory_write_mode\",\"predicate_family\":\"decides_memory_write_mode\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"MemoryRouter v3 decides which memory write mode to use.\",\"context\":\"This rule appears under `1. Memory Router v3`, subsection `Цель`.\",\"confidence\":0.99,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"IMPORTED\",\"quote\":\"какой write mode выбрать\"}]}\n7. {\"type\":\"claim\",\"id\":\"hot-path:claim:<1>\",\"score\":0.9501730769230768,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"decides_memory_write_pipeline_initiation\",\"predicate_family\":\"decides_memory_write_pipeline_initiation\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"MemoryRouter v3 decides whether to initiate the memory write pipeline.\",\"context\":\"This rule appears under `1. Memory Router v3`, subsection `Цель`.\",\"confidence\":0.99,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\",\"kind\":\"IMPORTED\",\"quote\":\"Решить, инициировать ли memory write pipeline\"}]}\n8. {\"type\":\"claim\",\"id\":\"hot-path:claim:<2>\",\"score\":0.58,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"adds_time_filters_when_turns_mention\",\"predicate_family\":\"adds_time_filters_when_turns_mention\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"Write-Time Retrieval Planner v3 adds time filters when turns mention `now`, `before`, `used to`, `from now on`, `no longer`, deadlines, or relative dates.\",\"context\":\"This is one of the rules in the Write-Time Retrieval Planner v3 prompt.\",\"confidence\":0.99,\"importance\":5,\"evidence\":[{\"source_id\":\"external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f\",\"kind\":\"IMPORTED\",\"quote\":\"Add time filters when the turns mention \\\"now\\\", \\\"before\\\", \\\"used to\\\", \\\"from now on\\\", \\\"no longer\\\", deadlines, or relative dates.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Entity label only; not needed because selected note names the component.\"},{\"item_id\":\"hot-path:note:<0>\",\"item_type\":\"note\",\"reason\":\"About first-release component plan, not the asked roles.\"},{\"item_id\":\"hot-path:note:<1>\",\"item_type\":\"note\",\"reason\":\"Detailed routing policy, less concise than the direct role note.\"},{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"reason\":\"Covered by selected MemoryRouter role note; selecting both claims would be less concise.\"},{\"item_id\":\"hot-path:claim:<1>\",\"item_type\":\"claim\",\"reason\":\"Covered by selected MemoryRouter role note; selecting both claims would be less concise.\"},{\"item_id\":\"hot-path:claim:<2>\",\"item_type\":\"claim\",\"reason\":\"Different component and topic.\"}],\"selected_items\":[{\"item_id\":\"hot-path:note:<2>\",\"item_type\":\"note\",\"rank\":1,\"reason\":\"States MemoryRouter v3 decides whether to initiate the memory write pipeline and which write mode to use.\",\"relevance\":\"direct_answer\"},{\"item_id\":\"hot-path:note:<3>\",\"item_type\":\"note\",\"rank\":2,\"reason\":\"States Note Constructor v2 creates candidate reusable semantic notes/fragments.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the two notes that directly answer the roles of MemoryRouter v3 and Note Constructor v2.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3170,
+                "completionTokens": 460,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

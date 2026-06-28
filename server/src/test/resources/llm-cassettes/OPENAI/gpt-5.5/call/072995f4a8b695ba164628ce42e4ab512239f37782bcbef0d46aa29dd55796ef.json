@@ -1,0 +1,363 @@
+{
+    "version": 1,
+    "hash": "072995f4a8b695ba164628ce42e4ab512239f37782bcbef0d46aa29dd55796ef",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a row in Candidate existing entities safely matches the mention, use \"link_existing\" with that exact row id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe row in Candidate existing entities.\n- Relevant retrieval context can explain meaning, but it is not a linkable entity list. If it mentions a safe referent that is absent from Candidate existing entities, use \"create_new\" with the same canonical identity instead of inventing an entity_id.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- Create or link concrete personal items, personal copies, collected objects, signed items, kept media, or digital copies when later claims may need them as objects. First-person possessive wording such as \"my X\", \"our X\", \"my copy of X\", or \"X in my collection\" is direct evidence that X is a reusable item entity, even when the same sentence is also an event.\n- For personal media or collected-item entities, use type \"product\" when the item is a concrete physical or digital artifact. The canonical name may be descriptive when no proper title is available, but it must identify the item well enough for later claim extraction.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id.\n- Do not invent placeholder ids such as \"entity:<5>\", \"entity:<0>\", \"new_entity_1\", or ids copied from retrieval context.\n- entity_id must be an exact id from Candidate existing entities for \"link_existing\"/\"add_alias\", or null for \"create_new\"/\"noop\".\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<1>; type=CONCEPT; name=Note maturity (memory data model); aliases=none; summary=Concept named Note maturity (memory data model).\n- id=entity:<2>; type=CONCEPT; name=Claim (memory data model); aliases=none; summary=Concept named Claim (memory data model).\n- id=entity:<3>; type=CONCEPT; name=Note (memory data model); aliases=none; summary=Concept named Note (memory data model).\n- id=entity:<4>; type=CONCEPT; name=scope (memory data model); aliases=none; summary=Concept named scope (memory data model).\n- id=entity:<5>; type=CONCEPT; name=Profile (memory data model); aliases=none; summary=Concept named Profile (memory data model).\n- id=entity:<6>; type=CONCEPT; name=Source (memory data model); aliases=none; summary=Concept named Source (memory data model).\n- id=entity:<7>; type=CONCEPT; name=Task (memory data model); aliases=none; summary=Concept named Task (memory data model).\n- id=entity:<8>; type=CONCEPT; name=v3 memory data model; aliases=none; summary=Concept named v3 memory data model.\n- id=entity:<9>; type=CONCEPT; name=claim_sources (memory data model table); aliases=none; summary=Concept named claim_sources (memory data model table).\n- id=entity:<10>; type=CONCEPT; name=task_sources (memory data model table); aliases=none; summary=Concept named task_sources (memory data model table).\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed: Document title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `s\n[truncated 950 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff data-model document, not as an immediate task.\n\nFile: agent_memory_handoff/02_data_model.md\n\n# 02. Data Model\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope\n[truncated 15083 chars]\n- note hot-path:note:<0> v3 cross-cutting scope, retrieval lifecycle, and usage fields; The v3 data model treats `scope` and `retrieval lifecycle` as cross-cutting concerns: most memory items except raw `Source` should have human-readable `scope_text` for explainability and machine-readable `scope_json` for retrieval and reconciliation. `truth status` and `retrieval_state` are separate axes, and notes / claims / tasks / episodes should track usage fields such as `use_count`, `last_used_at`, and `last_validated_at` to support maturity, retention, and repair.\n- note hot-path:note:<1> Note as intermediate semantic memory fragment; In `agent_memory_handoff/02_data_model.md`, `Note` is an intermediate semantic memory fragment: not a `Source`, not a final `Claim`, and not chain-of-thought. It is meant for important, retrieval-useful context that should not yet be cemented as a hard fact, such as design directions, decision rationales, evolving plans, hypotheses, lessons, doc digests, and contextual framing.\n- claim hot-path:claim:<0> In the v3 memory data model, Profile is not a source of truth; it is a projection layer over explicit user instructions, stable claims, and selected long-lived context.\n- note hot-path:note:<2> Note invariants emphasize self-contained semantic fragments; In `agent_memory_handoff/02_data_model.md`, `Note` invariants require one note to represent one semantic fragment, remain understandable without the original chat, add value beyond duplicating a source, treat `candidate_claims_json` only as hints, and allow a useful retrieval note to persist long-term without becoming a claim.\n- note hot-path:note:<3> Note schema and relationship tables; In `agent_memory_handoff/02_data_model.md`, the `Note` schema combines identity, type, title/summary, scope, status, retrieval and maturity states, anchor entity, keywords/tags, candidate claim hints, metadata, confidence/importance, validity windows, supersession, run lineage, embeddings, usage tracking, validation, evidence counts, and archival timestamps. Related tables `note_entities`, `note_sources`, and `note_links` connect notes to entities, evidence sources, and other notes with typed roles/support/link semantics.\n- note hot-path:note:<4> Claim invariants favor atomic, self-contained, explicit facts; The `Claim` invariants in `agent_memory_handoff/02_data_model.md` require each claim to represent one predicate application, make sense without the original chat, prefer explicit statements over inference, normalize relative time, and use `Note` instead of a weak `Claim` when the meaning is too soft.\n- note hot-path:note:<5> Source as immutable evidence layer in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Source` is the raw knowledge source for chat turns, tool outputs, imported notes, and external records; it acts as the primary evidence layer for re-check and explainability. Its design emphasizes immutability, separate `observed_at` versus ingestion time, `content_hash` for dedupe, and an explicit delete policy.\n- note hot-path:note:<6> Claim schema and evidence linkage in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Claim` is the atomic fact or relation-edge table used for factual answers, predicate-based reconciliation, and explainable retrieval. Its schema tracks subject/predicate/object, normalized/context text, scope and qualifiers, confidence/importance, truth and retrieval states, temporal validity, supersession/retraction lineage, run lineage, embeddings, usage tracking, validation, and archival timestamps; `claim_sources` links claims to sources with support type, evidence span/quote, and support confidence.\n- note hot-path:note:<7> Profile is a compact projection, not source of truth; In `agent_memory_handoff/02_data_model.md`, `Profile` is defined as a compact always-in-context projection over explicit user instructions, stable claims, and selected long-lived context, not as the source of truth. Its recommended structure covers preferred name, languages, timezone, response preferences, expertise, stable preferences, constraints, current goals, and soft signals, with invariants that it stay short, prefer explicit facts, leave disputed facts in claim/note, and remain rebuildable.\n- note hot-path:note:<8> Claim and Note have distinct memory roles; In `agent_memory_handoff/02_data_model.md`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The section warns that storing everything as `Claim` creates false precision, while storing everything as `Note` makes memory too soft.\n\n        Retrieval plan context:\n        entity_queries=02. Data Model|agent_memory_handoff/02_data_model.md|02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic|MARKDOWN\n        text_queries=02. Data Model agent_memory_handoff/02_data_model.md 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic MARKDOWN Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic Document lines: 584-618 ## 6. Retention / forgetting `v3` требует явной retention policy. Минимум: - low-use notes можно переводить в `cold` - old resolved items — в `archived` - sensitive source data — soft/hard delete по request - historical claims могут оставаться explainable, но редко участвовать в top retrieval Отдельно полезно хранить: - `retention_class` - `expires_at` - `deleted_at` - `archived_at` ## 7. Recommended field descriptions для schema / Pydantic ### Для `Note` - `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\" - `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\" - `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\" ### Для `Claim` - `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\" - `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\" - `retrieval_state`: \"Search temperature, distinct from truth status.\" ### Для `Task` - `acceptance_criteria_json`: \"Observable conditions for task completion.\" - `scope_json`: \"What this task applies to and where it should not leak.\" ### Для `Profile` - `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/02_data_model.md; title=02. Data Model; heading=02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic; imported_at=1970-01-01T00:00:00Z\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a row in Candidate existing entities safely matches the mention, use \"link_existing\" with that exact row id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe row in Candidate existing entities.\n- Relevant retrieval context can explain meaning, but it is not a linkable entity list. If it mentions a safe referent that is absent from Candidate existing entities, use \"create_new\" with the same canonical identity instead of inventing an entity_id.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- Create or link concrete personal items, personal copies, collected objects, signed items, kept media, or digital copies when later claims may need them as objects. First-person possessive wording such as \"my X\", \"our X\", \"my copy of X\", or \"X in my collection\" is direct evidence that X is a reusable item entity, even when the same sentence is also an event.\n- For personal media or collected-item entities, use type \"product\" when the item is a concrete physical or digital artifact. The canonical name may be descriptive when no proper title is available, but it must identify the item well enough for later claim extraction.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id.\n- Do not invent placeholder ids such as \"entity:<5>\", \"entity:<0>\", \"new_entity_1\", or ids copied from retrieval context.\n- entity_id must be an exact id from Candidate existing entities for \"link_existing\"/\"add_alias\", or null for \"create_new\"/\"noop\".\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<1>; type=CONCEPT; name=Note maturity (memory data model); aliases=none; summary=Concept named Note maturity (memory data model).\n- id=entity:<2>; type=CONCEPT; name=Claim (memory data model); aliases=none; summary=Concept named Claim (memory data model).\n- id=entity:<3>; type=CONCEPT; name=Note (memory data model); aliases=none; summary=Concept named Note (memory data model).\n- id=entity:<4>; type=CONCEPT; name=scope (memory data model); aliases=none; summary=Concept named scope (memory data model).\n- id=entity:<5>; type=CONCEPT; name=Profile (memory data model); aliases=none; summary=Concept named Profile (memory data model).\n- id=entity:<6>; type=CONCEPT; name=Source (memory data model); aliases=none; summary=Concept named Source (memory data model).\n- id=entity:<7>; type=CONCEPT; name=Task (memory data model); aliases=none; summary=Concept named Task (memory data model).\n- id=entity:<8>; type=CONCEPT; name=v3 memory data model; aliases=none; summary=Concept named v3 memory data model.\n- id=entity:<9>; type=CONCEPT; name=claim_sources (memory data model table); aliases=none; summary=Concept named claim_sources (memory data model table).\n- id=entity:<10>; type=CONCEPT; name=task_sources (memory data model table); aliases=none; summary=Concept named task_sources (memory data model table).\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed: Document title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `s\n[truncated 950 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff data-model document, not as an immediate task.\n\nFile: agent_memory_handoff/02_data_model.md\n\n# 02. Data Model\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope\n[truncated 15083 chars]\n- note hot-path:note:<0> v3 cross-cutting scope, retrieval lifecycle, and usage fields; The v3 data model treats `scope` and `retrieval lifecycle` as cross-cutting concerns: most memory items except raw `Source` should have human-readable `scope_text` for explainability and machine-readable `scope_json` for retrieval and reconciliation. `truth status` and `retrieval_state` are separate axes, and notes / claims / tasks / episodes should track usage fields such as `use_count`, `last_used_at`, and `last_validated_at` to support maturity, retention, and repair.\n- note hot-path:note:<1> Note as intermediate semantic memory fragment; In `agent_memory_handoff/02_data_model.md`, `Note` is an intermediate semantic memory fragment: not a `Source`, not a final `Claim`, and not chain-of-thought. It is meant for important, retrieval-useful context that should not yet be cemented as a hard fact, such as design directions, decision rationales, evolving plans, hypotheses, lessons, doc digests, and contextual framing.\n- claim hot-path:claim:<0> In the v3 memory data model, Profile is not a source of truth; it is a projection layer over explicit user instructions, stable claims, and selected long-lived context.\n- note hot-path:note:<2> Note invariants emphasize self-contained semantic fragments; In `agent_memory_handoff/02_data_model.md`, `Note` invariants require one note to represent one semantic fragment, remain understandable without the original chat, add value beyond duplicating a source, treat `candidate_claims_json` only as hints, and allow a useful retrieval note to persist long-term without becoming a claim.\n- note hot-path:note:<3> Note schema and relationship tables; In `agent_memory_handoff/02_data_model.md`, the `Note` schema combines identity, type, title/summary, scope, status, retrieval and maturity states, anchor entity, keywords/tags, candidate claim hints, metadata, confidence/importance, validity windows, supersession, run lineage, embeddings, usage tracking, validation, evidence counts, and archival timestamps. Related tables `note_entities`, `note_sources`, and `note_links` connect notes to entities, evidence sources, and other notes with typed roles/support/link semantics.\n- note hot-path:note:<4> Claim invariants favor atomic, self-contained, explicit facts; The `Claim` invariants in `agent_memory_handoff/02_data_model.md` require each claim to represent one predicate application, make sense without the original chat, prefer explicit statements over inference, normalize relative time, and use `Note` instead of a weak `Claim` when the meaning is too soft.\n- note hot-path:note:<5> Source as immutable evidence layer in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Source` is the raw knowledge source for chat turns, tool outputs, imported notes, and external records; it acts as the primary evidence layer for re-check and explainability. Its design emphasizes immutability, separate `observed_at` versus ingestion time, `content_hash` for dedupe, and an explicit delete policy.\n- note hot-path:note:<6> Claim schema and evidence linkage in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Claim` is the atomic fact or relation-edge table used for factual answers, predicate-based reconciliation, and explainable retrieval. Its schema tracks subject/predicate/object, normalized/context text, scope and qualifiers, confidence/importance, truth and retrieval states, temporal validity, supersession/retraction lineage, run lineage, embeddings, usage tracking, validation, and archival timestamps; `claim_sources` links claims to sources with support type, evidence span/quote, and support confidence.\n- note hot-path:note:<7> Profile is a compact projection, not source of truth; In `agent_memory_handoff/02_data_model.md`, `Profile` is defined as a compact always-in-context projection over explicit user instructions, stable claims, and selected long-lived context, not as the source of truth. Its recommended structure covers preferred name, languages, timezone, response preferences, expertise, stable preferences, constraints, current goals, and soft signals, with invariants that it stay short, prefer explicit facts, leave disputed facts in claim/note, and remain rebuildable.\n- note hot-path:note:<8> Claim and Note have distinct memory roles; In `agent_memory_handoff/02_data_model.md`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The section warns that storing everything as `Claim` creates false precision, while storing everything as `Note` makes memory too soft.\n\n        Retrieval plan context:\n        entity_queries=02. Data Model|agent_memory_handoff/02_data_model.md|02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic|MARKDOWN\n        text_queries=02. Data Model agent_memory_handoff/02_data_model.md 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic MARKDOWN Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic Document lines: 584-618 ## 6. Retention / forgetting `v3` требует явной retention policy. Минимум: - low-use notes можно переводить в `cold` - old resolved items — в `archived` - sensitive source data — soft/hard delete по request - historical claims могут оставаться explainable, но редко участвовать в top retrieval Отдельно полезно хранить: - `retention_class` - `expires_at` - `deleted_at` - `archived_at` ## 7. Recommended field descriptions для schema / Pydantic ### Для `Note` - `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\" - `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\" - `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\" ### Для `Claim` - `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\" - `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\" - `retrieval_state`: \"Search temperature, distinct from truth status.\" ### Для `Task` - `acceptance_criteria_json`: \"Observable conditions for task completion.\" - `scope_json`: \"What this task applies to and where it should not leak.\" ### Для `Profile` - `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/02_data_model.md; title=02. Data Model; heading=02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic; imported_at=1970-01-01T00:00:00Z\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<8>\",\"mention\":\"v3\",\"new_entity\":null,\"reason\":\"The section refers to the v3 memory data model, matching the existing concept.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.86,\"entity_id\":null,\"mention\":\"retention policy\",\"new_entity\":{\"canonical_name\":\"Retention policy (memory data model)\",\"entity_type\":\"concept\",\"summary\":\"Concept for lifecycle rules governing retention, archival, and deletion in the memory data model.\"},\"reason\":\"A durable memory data model concept is discussed and no existing candidate safely matches it.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<3>\",\"mention\":\"Note\",\"new_entity\":null,\"reason\":\"The section explicitly gives field descriptions for Note in the memory data model.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<2>\",\"mention\":\"Claim\",\"new_entity\":null,\"reason\":\"The section explicitly gives field descriptions for Claim in the memory data model.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<7>\",\"mention\":\"Task\",\"new_entity\":null,\"reason\":\"The section explicitly gives field descriptions for Task in the memory data model.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<5>\",\"mention\":\"Profile\",\"new_entity\":null,\"reason\":\"The section explicitly gives field descriptions for Profile in the memory data model.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.78,\"entity_id\":\"entity:<6>\",\"mention\":\"source data\",\"new_entity\":null,\"reason\":\"In this memory data model context, source data refers to Source-like evidence data; the existing Source concept is the safest match.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.86,\"entity_id\":\"entity:<4>\",\"mention\":\"scope_json\",\"new_entity\":null,\"reason\":\"scope_json is a field representing machine-readable scope, matching the existing scope concept.\"},{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.84,\"entity_id\":\"entity:<1>\",\"mention\":\"maturity_score\",\"new_entity\":null,\"reason\":\"maturity_score describes note stability/reusability and safely maps to the existing Note maturity concept.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.87,\"entity_id\":null,\"mention\":\"retrieval_state\",\"new_entity\":{\"canonical_name\":\"retrieval_state (memory data model)\",\"entity_type\":\"concept\",\"summary\":\"Concept for a memory item's retrieval temperature or search participation state in the memory data model.\"},\"reason\":\"The field is described as distinct from truth status and is a durable data model concept absent from candidates.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.8,\"entity_id\":null,\"mention\":\"truth status\",\"new_entity\":{\"canonical_name\":\"truth status (memory data model)\",\"entity_type\":\"concept\",\"summary\":\"Concept for representing the factual truth state of memory items in the memory data model.\"},\"reason\":\"The section contrasts retrieval_state with truth status; no existing candidate safely matches this concept.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4386,
+                "completionTokens": 1086,
+                "thinkingTokens": 242,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

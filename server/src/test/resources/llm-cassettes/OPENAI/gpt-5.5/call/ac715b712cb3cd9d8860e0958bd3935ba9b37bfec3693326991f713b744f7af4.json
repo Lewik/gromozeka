@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "ac715b712cb3cd9d8860e0958bd3935ba9b37bfec3693326991f713b744f7af4",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some resources where I can learn more about video editing?\n\n                                Question date:\n                                2023/05/24 (Wed) 22:03\n\n                                Expected answer:\n                                The user would prefer responses that suggest resources specifically tailored to Adobe Premiere Pro, especially those that delve into its advanced settings. They might not prefer general video editing resources or resources related to other video editing software.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:8a2466db\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-52ea0760518b-claim-6 [ACTIVE] has_goal family=has_goal: The user wants to learn more about advanced settings for video editing with Adobe Premiere Pro.; scope=User's Adobe Premiere Pro learning interests from the imported 2023-05-20 session.\n- claim hot-path-52ea0760518b-claim-17 [ACTIVE] has_goal family=has_goal: The user wants to learn best practices and general guidelines for color grading a video.; scope=User's video color-grading learning interests from the imported 2023-05-20 session.\n- claim hot-path-52ea0760518b-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to understand the Creative panel in Lumetri and how it differs from the Curves panel.; scope=User's Lumetri Color Panel learning interests from the imported 2023-05-20 session.\n\n            Retrieved notes:\n            - note hot-path-52ea0760518b-note-2 [CONTEXT/ACTIVE]: User is learning Premiere Pro color grading through Lumetri workflow; The user is building practical knowledge of Adobe Premiere Pro advanced editing, with a sustained focus on Lumetri Color Panel color grading topics: Color Match, Creative panel, Curves panel, Toe/Shoulder controls, Color Wheels, and general grading best practices.; scope=User's ongoing learning context for Adobe Premiere Pro and Lumetri Color Panel color grading help\n\n            Retrieved evidence:\n            not requested for this context mode\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Color Match; Concept named Color Match.\n- entity entity:<1> [CONCEPT]: Creative panel; Concept named Creative panel.\n- entity entity:<2> [CONCEPT]: Curves panel; Concept named Curves panel.\n- entity entity:<3> [CONCEPT]: Lumetri Color Panel; Concept named Lumetri Color Panel.\n- entity entity:<4> [PRODUCT]: Adobe Premiere Pro; Product named Adobe Premiere Pro.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "8a2466db",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some resources where I can learn more about video editing?\n\n                                Question date:\n                                2023/05/24 (Wed) 22:03\n\n                                Expected answer:\n                                The user would prefer responses that suggest resources specifically tailored to Adobe Premiere Pro, especially those that delve into its advanced settings. They might not prefer general video editing resources or resources related to other video editing software.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:8a2466db\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-52ea0760518b-claim-6 [ACTIVE] has_goal family=has_goal: The user wants to learn more about advanced settings for video editing with Adobe Premiere Pro.; scope=User's Adobe Premiere Pro learning interests from the imported 2023-05-20 session.\n- claim hot-path-52ea0760518b-claim-17 [ACTIVE] has_goal family=has_goal: The user wants to learn best practices and general guidelines for color grading a video.; scope=User's video color-grading learning interests from the imported 2023-05-20 session.\n- claim hot-path-52ea0760518b-claim-10 [ACTIVE] has_goal family=has_goal: The user wants to understand the Creative panel in Lumetri and how it differs from the Curves panel.; scope=User's Lumetri Color Panel learning interests from the imported 2023-05-20 session.\n\n            Retrieved notes:\n            - note hot-path-52ea0760518b-note-2 [CONTEXT/ACTIVE]: User is learning Premiere Pro color grading through Lumetri workflow; The user is building practical knowledge of Adobe Premiere Pro advanced editing, with a sustained focus on Lumetri Color Panel color grading topics: Color Match, Creative panel, Curves panel, Toe/Shoulder controls, Color Wheels, and general grading best practices.; scope=User's ongoing learning context for Adobe Premiere Pro and Lumetri Color Panel color grading help\n\n            Retrieved evidence:\n            not requested for this context mode\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Color Match; Concept named Color Match.\n- entity entity:<1> [CONCEPT]: Creative panel; Concept named Creative panel.\n- entity entity:<2> [CONCEPT]: Curves panel; Concept named Curves panel.\n- entity entity:<3> [CONCEPT]: Lumetri Color Panel; Concept named Lumetri Color Panel.\n- entity entity:<4> [PRODUCT]: Adobe Premiere Pro; Product named Adobe Premiere Pro.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "8a2466db",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Recommend Adobe Premiere Pro-focused video editing resources, especially ones covering advanced settings and Lumetri/color grading, rather than generic or other-software resources.\",\"reason\":\"The memory explicitly states the user wants to learn advanced Adobe Premiere Pro settings and related Lumetri color-grading topics.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1093,
+                "completionTokens": 127,
+                "thinkingTokens": 48,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

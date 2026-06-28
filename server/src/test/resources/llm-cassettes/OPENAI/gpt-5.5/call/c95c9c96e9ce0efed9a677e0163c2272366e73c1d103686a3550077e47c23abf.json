@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "c95c9c96e9ce0efed9a677e0163c2272366e73c1d103686a3550077e47c23abf",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is the artist that I started to listen to last Friday?\n\n                                Question date:\n                                2023/04/05 (Wed) 15:05\n\n                                Noisy expected-answer label:\n                                a bluegrass band that features a banjo player\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_fa19884d\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-c277096050aa-claim-12 [ACTIVE] prefers family=prefers: The user recently discovered and started enjoying music by a bluegrass band that features a banjo player on 2023-03-31.; scope=User's bluegrass listening experience as of the 2023-03-31 chat session.; context=\"The band name was not given; the user mentioned this while asking for bluegrass recommendations and considering the banjo.\"; evidence=DIRECT source=external:provided-text:6a783956f7ff8093d72a5558ab3cef3e quote=\"I recently discovered a bluegrass band that features a banjo player and started enjoying their music today.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:6a783956f7ff8093d72a5558ab3cef3e [external_record ref=longmemeval:gpt4_fa19884d:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/31 (Fri) 06:03\nTranscript:\nuser: I'm thinking of exploring bluegrass music more Can you recommend some popular bluegrass artists or bands I should check out?\nassistant: You're diving into the wonderful world of bluegrass! Congratulations on discovering a new genre! I'd be happy to recommend some popular bluegrass artists and bands you might enjoy. Here are a few to get you started:\n\n**Classic Bluegrass Legends:**\n\n1. **Bill Monroe and the Blue Grass Boys**: Considered the \"Father of Bluegrass Music,\" Monroe's music is a great starting point.\n2. **Earl Scruggs**: A banjo legend and one of the most influential bluegrass musicians of all time....\n...**Other Notable Artists:**\n\n1. **Béla Fleck**: A banjo virtuoso who has explored various genres, including bluegrass, jazz, and classical.\n2. **Tony Trischka**: A renowned banjo player and teacher who has influenced many bluegrass musicians.\n3. **Sam Bush**: A mandolin master and one of the founders of the New Grass Revival.\n4. **Ricky Skaggs**: A bluegrass legend known for his work with Emmylou Harris, Kentucky Thunder, and as a solo artist....\n...1. **Merlefest**: A popular bluegrass festival in North Carolina featuring a wide range of artists.\n2. **Bluegrass Today**: A website with news, reviews, and articles about the bluegrass scene.\n3. **Bluegrass Radio Network**: A online radio station playing bluegrass music 24/7.\n\nEnjoy exploring these recommendations! You might also want to check out online playlists like \"Bluegrass Essentials\" or \"Bluegrass Radio\" on music streaming platforms to discover more artists and bands.\nuser: I'm also considering buying a ukulele after trying one out at a music workshop, do you know if there's any difference in terms of fingerpicking style between ukulele and guitar?...\n...To get started with ukulele fingerpicking, you can try the following:...\n...* If you're interested in playing bluegrass or old-time music, the banjo might be the better choice. Banjo is an integral part of these genres, and learning it will help you develop the specific techniques and style required.\n* If you're more interested in playing folk, pop, or rock music, the ukulele might be a better fit. Ukulele is a versatile instrument that can adapt to various styles, and its soft, gentle sound is often well-suited for these genres.\n\n**Assess your musical experience:**...\n...* If you have some musical experience, especially with guitar or other stringed instruments, you might find the banjo more accessible. Banjo techniques, such as fingerpicking and clawhammer, can be more challenging, but your existing knowledge will help you adapt faster....\n...user: I'm also thinking of exploring more genres of music and discovering new artists. Do you have any recommendations for jazz musicians or albums that I should check out?\nassistant: Jazz is a wonderful genre! There's so much to explore, and I'd be happy to recommend some jazz musicians and albums to get you started. Here are a few:...\n...These are just a few examples to get you started. Jazz is a rich and diverse genre, and there's much more to explore. Enjoy your journey!\nuser: I'm also interested in exploring different genres of music and discovering new artists. I recently discovered a bluegrass band that features a banjo player and started enjoying their music today. I've been thinking about trying out the banjo, although I'm not sure if I'm ready for that yet. Do you think you could give me some recommendations for bluegrass musicians or albums that I should check out?\nassistant: Exploring bluegrass is a great way to discover a rich musical tradition! Since you've started enjoying a band with a banjo player, here are some classic and contemporary bluegrass musicians and albums you might enjoy:\n\n### Classic Bluegrass Artists:...\n...### Contemporary Bluegrass Artists:...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Bluegrass music; Concept named Bluegrass music.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_fa19884d",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What is the artist that I started to listen to last Friday?\n\n                                Question date:\n                                2023/04/05 (Wed) 15:05\n\n                                Noisy expected-answer label:\n                                a bluegrass band that features a banjo player\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If the user asks about a named or relative date, compare that target date with both event dates and source/session dates; do not treat a different explicit date as matching the target date.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_fa19884d\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-c277096050aa-claim-12 [ACTIVE] prefers family=prefers: The user recently discovered and started enjoying music by a bluegrass band that features a banjo player on 2023-03-31.; scope=User's bluegrass listening experience as of the 2023-03-31 chat session.; context=\"The band name was not given; the user mentioned this while asking for bluegrass recommendations and considering the banjo.\"; evidence=DIRECT source=external:provided-text:6a783956f7ff8093d72a5558ab3cef3e quote=\"I recently discovered a bluegrass band that features a banjo player and started enjoying their music today.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:6a783956f7ff8093d72a5558ab3cef3e [external_record ref=longmemeval:gpt4_fa19884d:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/31 (Fri) 06:03\nTranscript:\nuser: I'm thinking of exploring bluegrass music more Can you recommend some popular bluegrass artists or bands I should check out?\nassistant: You're diving into the wonderful world of bluegrass! Congratulations on discovering a new genre! I'd be happy to recommend some popular bluegrass artists and bands you might enjoy. Here are a few to get you started:\n\n**Classic Bluegrass Legends:**\n\n1. **Bill Monroe and the Blue Grass Boys**: Considered the \"Father of Bluegrass Music,\" Monroe's music is a great starting point.\n2. **Earl Scruggs**: A banjo legend and one of the most influential bluegrass musicians of all time....\n...**Other Notable Artists:**\n\n1. **Béla Fleck**: A banjo virtuoso who has explored various genres, including bluegrass, jazz, and classical.\n2. **Tony Trischka**: A renowned banjo player and teacher who has influenced many bluegrass musicians.\n3. **Sam Bush**: A mandolin master and one of the founders of the New Grass Revival.\n4. **Ricky Skaggs**: A bluegrass legend known for his work with Emmylou Harris, Kentucky Thunder, and as a solo artist....\n...1. **Merlefest**: A popular bluegrass festival in North Carolina featuring a wide range of artists.\n2. **Bluegrass Today**: A website with news, reviews, and articles about the bluegrass scene.\n3. **Bluegrass Radio Network**: A online radio station playing bluegrass music 24/7.\n\nEnjoy exploring these recommendations! You might also want to check out online playlists like \"Bluegrass Essentials\" or \"Bluegrass Radio\" on music streaming platforms to discover more artists and bands.\nuser: I'm also considering buying a ukulele after trying one out at a music workshop, do you know if there's any difference in terms of fingerpicking style between ukulele and guitar?...\n...To get started with ukulele fingerpicking, you can try the following:...\n...* If you're interested in playing bluegrass or old-time music, the banjo might be the better choice. Banjo is an integral part of these genres, and learning it will help you develop the specific techniques and style required.\n* If you're more interested in playing folk, pop, or rock music, the ukulele might be a better fit. Ukulele is a versatile instrument that can adapt to various styles, and its soft, gentle sound is often well-suited for these genres.\n\n**Assess your musical experience:**...\n...* If you have some musical experience, especially with guitar or other stringed instruments, you might find the banjo more accessible. Banjo techniques, such as fingerpicking and clawhammer, can be more challenging, but your existing knowledge will help you adapt faster....\n...user: I'm also thinking of exploring more genres of music and discovering new artists. Do you have any recommendations for jazz musicians or albums that I should check out?\nassistant: Jazz is a wonderful genre! There's so much to explore, and I'd be happy to recommend some jazz musicians and albums to get you started. Here are a few:...\n...These are just a few examples to get you started. Jazz is a rich and diverse genre, and there's much more to explore. Enjoy your journey!\nuser: I'm also interested in exploring different genres of music and discovering new artists. I recently discovered a bluegrass band that features a banjo player and started enjoying their music today. I've been thinking about trying out the banjo, although I'm not sure if I'm ready for that yet. Do you think you could give me some recommendations for bluegrass musicians or albums that I should check out?\nassistant: Exploring bluegrass is a great way to discover a rich musical tradition! Since you've started enjoying a band with a banjo player, here are some classic and contemporary bluegrass musicians and albums you might enjoy:\n\n### Classic Bluegrass Artists:...\n...### Contemporary Bluegrass Artists:...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Bluegrass music; Concept named Bluegrass music.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_fa19884d",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"A bluegrass band featuring a banjo player, though the band name wasn’t given.\",\"reason\":\"The memory explicitly says that on 2023-03-31 the user started enjoying a bluegrass band featuring a banjo player.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1968,
+                "completionTokens": 151,
+                "thinkingTokens": 79,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

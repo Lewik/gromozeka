@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "8f1c91f21f0afdb7e8229ce2e9cfdcd9c894ba3c7f84f5d05488ca21bd57ec42",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which item did I purchase first, the dog bed for Max or the training pads for Luna?\n\n                                Question date:\n                                2023/05/20 (Sat) 06:04\n\n                                Expected answer:\n                                Training pads for Luna\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_6ed717ea\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-cdc1ba47714b-claim-8 [ACTIVE] purchased_from family=purchased_from: The user purchased an Orthopedic Memory Foam dog bed for Max from Petco about three weeks before 2023-05-20.; scope=Applies to the user's purchase history for Max.; evidence=DIRECT source=external:provided-text:57495c4765b546c35bd50d659efb8870 quote=\"I recently got a new Orthopedic Memory Foam dog bed for my golden retriever, Max, about three weeks ago from Petco\"\n- claim hot-path-225b5ee90ae8-claim-7 [ACTIVE] purchased_from family=purchased_from: The user purchased a set of 10 eco-friendly training pads from Chewy.com for $25 about a month before 2023-05-20.; scope=User's pet supply purchase history from the imported 2023-05-20 chat session.; evidence=IMPORTED source=external:provided-text:e477cc2b2b63bfff32ac086807a4d166 quote=\"I got a set of 10 for $25 about a month ago\"\n- claim hot-path-cdc1ba47714b-claim-12 [ACTIVE] current_dietary_transition family=current_dietary_transition: Max is transitioning to a new grain-free dog food.; scope=Applies to Max's current diet transition around 2023-05-20.; evidence=DIRECT source=external:provided-text:57495c4765b546c35bd50d659efb8870 quote=\"I've been trying to get Max to eat his new grain-free dog food\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e477cc2b2b63bfff32ac086807a4d166 [external_record ref=longmemeval:gpt4_6ed717ea:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 06:19\nTranscript:\nuser: I'm thinking of getting some more supplies for my puppy, Luna. She's still in potty-training, and I've been using those eco-friendly training pads from Chewy.com. I got a set of 10 for $25 about a month ago, and they've been a lifesaver. Do you have any recommendations for other potty-training aids or tips?\nassistant: Congratulations on taking the eco-friendly route with Luna's potty training! Those training pads from Chewy.com are a great choice. Here are some additional potty-training aids and tips that might be helpful:\n\n**Potty-Training Aids:**\n\n1. **Potty Bells**: Teach Luna to ring a bell (like a dog doorbell) when she needs to go outside. This helps her communicate her needs and can speed up the training process.\n2. **Potty Pads with Attractant**: Some potty pads, like those from PetSafe, have a built-in attractant that encourages puppies to use them. These might be a good alternative or addition to your current pads....\n...2. **Supervise, Supervise, Supervise**: Keep an eye on Luna at all times, especially in the early stages of potty training. This will help you catch any accidents before they happen and reinforce good behavior.\n3. **Praise and Reward**: Positive reinforcement is key! Praise Luna and reward her with treats, praise, and affection when she uses the potty pads or goes potty outside correctly....\n...6. **Gradually Increase Freedom**: As Luna becomes more reliable with potty training, you can start giving her more freedom in the house, such as access to more rooms or longer periods of time without supervision.\n\nRemember, every puppy is different, so it's essential to tailor your approach to Luna's unique needs and personality. If you're concerned about her progress or encounter any issues, consult with your veterinarian or a professional dog trainer for personalized guidance.\nuser: I'm also interested in getting a better handle on flea and tick prevention for both Luna and my golden retriever, Max. I ordered a 6-month supply of the generic version of Frontline from Chewy.com last month, but I'm wondering if there are any other effective products or methods you'd recommend?\nassistant: Flea and tick prevention is a crucial aspect of pet care! You're on the right track with the generic Frontline from Chewy.com, but it's always a good idea to explore other options and methods to ensure you're providing the best protection for Luna and Max. Here are some additional recommendations:...\n...4. **Environmental Control**: Don't forget to treat your pets' environment, including their bedding, toys, and areas where they frequent. Wash their bedding regularly, and consider using a flea and tick spray or powder on carpets and upholstered furniture....\n...user: I'm also considering switching Max to a grain-free, high-protein dog food. I recently got him a 30-pound bag of Acana dog food from PetSmart for $70. Do you have any other recommendations for grain-free dog foods or tips on how to make the transition smoother?\nassistant: Switching to a grain-free, high-protein dog food can be a great decision for Max's health. Acana is a well-known and reputable brand, but it's always good to explore other options and consider your pet's individual needs. Here are some additional recommendations and tips to help with the transition:\n\n**Grain-Free Dog Food Recommendations:**...\n...Remember, every dog is different, so it's essential to monitor Max's response to the new food and adjust as needed. If you're unsure about any aspect of the transition, consult with your veterinarian for personalized guidance....\n...user: I'd like to ask about dental care for Luna. I recently got a pack of 20 dental chews from the vet's office for $15, and they seem to be helping with her teething. Do you have any other recommendations for dental chews or toys that can help with her oral health?...\n- source external:provided-text:57495c4765b546c35bd50d659efb8870 [external_record ref=longmemeval:gpt4_6ed717ea:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 23:31\nTranscript:\nuser: I'm looking for some advice on dog arthritis. I recently got a new Orthopedic Memory Foam dog bed for my golden retriever, Max, about three weeks ago from Petco, and it seems to be helping with his arthritis. Do you have any other recommendations for managing his condition?\nassistant: I'm glad to hear that the new dog bed is helping Max with his arthritis! Managing canine arthritis requires a multi-faceted approach. Here are some additional recommendations to complement the orthopedic bed:...\n...user: I've been trying to get Max to lose a bit of weight, but it's tough when he loves treats so much. Do you have any recommendations for healthy dog treats that can help with weight management?...\n...user: I've been trying to get Max to eat his new grain-free dog food, but he's been a bit picky. Do you have any tips on how to transition him to the new food without upsetting his stomach?\nassistant: I'm happy to help! Transitioning to a new dog food, especially a grain-free one, can be a bit challenging, but with a gradual and gentle approach, you can minimize the risk of upsetting Max's stomach. Here are some tips to help you transition Max to his new grain-free dog food:\n\n1. **Gradual Transition**: Mix the new food with his current food in a ratio of 25:75 (new food: old food) for the first 2-3 days. Gradually increase the proportion of new food to old food over the next 7-10 days. This will allow Max's digestive system to adjust to the new ingredients....\n...7. **Consider a Transition Food**: If Max is experiencing difficulties adapting to the new food, consider using a transition food specifically designed to help dogs switch to a new diet. These foods typically contain ingredients that support digestive health and ease the transition process....\n...Good luck, and I hope Max adjusts well to his new grain-free dog food!\nuser: I'm also considering getting some healthy chews for Max to help with his teething and dental health. Since I recently got a pack of dental chews for my new puppy, Luna, I was wondering if you could recommend some healthy chews for Max that are suitable for his age and breed.\nassistant: Healthy chews can be a wonderful way to support Max's dental health and satisfy his natural urge to chew. Since Max is a golden retriever and an adult dog, I'll recommend some healthy chews that are suitable for his age and breed. Please keep in mind that it's always best to consult with your veterinarian before introducing new chews, especially if Max has any health issues or allergies....\n...3. **Nylabone DuraChew**: Nylabone DuraChew is a durable, long-lasting chew designed for adult dogs. They're made from tough, rubber-like material that can withstand Max's chewing, and they come in a variety of flavors and textures....\n...user: I was thinking of getting Max a new chew toy, something that would last him a while and be good for his teeth. I got a new dog bed for him 3 weeks ago, an Orthopedic Memory Foam dog bed from Petco, and it's been helping with his arthritis.\nassistant: That's great to hear that the new dog bed is helping with Max's arthritis! Orthopedic Memory Foam dog beds can make a big difference in providing comfort and support for dogs with joint issues....\n...1. **Kong Toy**: Kong Toys are a classic choice for dogs who love to chew. They're made from durable rubber and come in a variety of shapes and sizes. You can fill the Kong with treats, peanut butter, or even canned dog food to keep Max occupied and stimulated....\n...4. **Supervise**: Always supervise Max when he's using the Kong, especially at first, to make sure he's not getting frustrated or trying to break the toy....\n...Remember, the Kong Toy is a great tool for providing mental stimulation and reducing anxiety, but it's also important to provide Max with regular exercise, socialization, and training to keep him happy and healthy....\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Chewy.com; Organization named Chewy.com.\n- entity entity:<1> [OTHER]: Max; Entity named Max.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_6ed717ea",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which item did I purchase first, the dog bed for Max or the training pads for Luna?\n\n                                Question date:\n                                2023/05/20 (Sat) 06:04\n\n                                Expected answer:\n                                Training pads for Luna\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_6ed717ea\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-cdc1ba47714b-claim-8 [ACTIVE] purchased_from family=purchased_from: The user purchased an Orthopedic Memory Foam dog bed for Max from Petco about three weeks before 2023-05-20.; scope=Applies to the user's purchase history for Max.; evidence=DIRECT source=external:provided-text:57495c4765b546c35bd50d659efb8870 quote=\"I recently got a new Orthopedic Memory Foam dog bed for my golden retriever, Max, about three weeks ago from Petco\"\n- claim hot-path-225b5ee90ae8-claim-7 [ACTIVE] purchased_from family=purchased_from: The user purchased a set of 10 eco-friendly training pads from Chewy.com for $25 about a month before 2023-05-20.; scope=User's pet supply purchase history from the imported 2023-05-20 chat session.; evidence=IMPORTED source=external:provided-text:e477cc2b2b63bfff32ac086807a4d166 quote=\"I got a set of 10 for $25 about a month ago\"\n- claim hot-path-cdc1ba47714b-claim-12 [ACTIVE] current_dietary_transition family=current_dietary_transition: Max is transitioning to a new grain-free dog food.; scope=Applies to Max's current diet transition around 2023-05-20.; evidence=DIRECT source=external:provided-text:57495c4765b546c35bd50d659efb8870 quote=\"I've been trying to get Max to eat his new grain-free dog food\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:e477cc2b2b63bfff32ac086807a4d166 [external_record ref=longmemeval:gpt4_6ed717ea:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 06:19\nTranscript:\nuser: I'm thinking of getting some more supplies for my puppy, Luna. She's still in potty-training, and I've been using those eco-friendly training pads from Chewy.com. I got a set of 10 for $25 about a month ago, and they've been a lifesaver. Do you have any recommendations for other potty-training aids or tips?\nassistant: Congratulations on taking the eco-friendly route with Luna's potty training! Those training pads from Chewy.com are a great choice. Here are some additional potty-training aids and tips that might be helpful:\n\n**Potty-Training Aids:**\n\n1. **Potty Bells**: Teach Luna to ring a bell (like a dog doorbell) when she needs to go outside. This helps her communicate her needs and can speed up the training process.\n2. **Potty Pads with Attractant**: Some potty pads, like those from PetSafe, have a built-in attractant that encourages puppies to use them. These might be a good alternative or addition to your current pads....\n...2. **Supervise, Supervise, Supervise**: Keep an eye on Luna at all times, especially in the early stages of potty training. This will help you catch any accidents before they happen and reinforce good behavior.\n3. **Praise and Reward**: Positive reinforcement is key! Praise Luna and reward her with treats, praise, and affection when she uses the potty pads or goes potty outside correctly....\n...6. **Gradually Increase Freedom**: As Luna becomes more reliable with potty training, you can start giving her more freedom in the house, such as access to more rooms or longer periods of time without supervision.\n\nRemember, every puppy is different, so it's essential to tailor your approach to Luna's unique needs and personality. If you're concerned about her progress or encounter any issues, consult with your veterinarian or a professional dog trainer for personalized guidance.\nuser: I'm also interested in getting a better handle on flea and tick prevention for both Luna and my golden retriever, Max. I ordered a 6-month supply of the generic version of Frontline from Chewy.com last month, but I'm wondering if there are any other effective products or methods you'd recommend?\nassistant: Flea and tick prevention is a crucial aspect of pet care! You're on the right track with the generic Frontline from Chewy.com, but it's always a good idea to explore other options and methods to ensure you're providing the best protection for Luna and Max. Here are some additional recommendations:...\n...4. **Environmental Control**: Don't forget to treat your pets' environment, including their bedding, toys, and areas where they frequent. Wash their bedding regularly, and consider using a flea and tick spray or powder on carpets and upholstered furniture....\n...user: I'm also considering switching Max to a grain-free, high-protein dog food. I recently got him a 30-pound bag of Acana dog food from PetSmart for $70. Do you have any other recommendations for grain-free dog foods or tips on how to make the transition smoother?\nassistant: Switching to a grain-free, high-protein dog food can be a great decision for Max's health. Acana is a well-known and reputable brand, but it's always good to explore other options and consider your pet's individual needs. Here are some additional recommendations and tips to help with the transition:\n\n**Grain-Free Dog Food Recommendations:**...\n...Remember, every dog is different, so it's essential to monitor Max's response to the new food and adjust as needed. If you're unsure about any aspect of the transition, consult with your veterinarian for personalized guidance....\n...user: I'd like to ask about dental care for Luna. I recently got a pack of 20 dental chews from the vet's office for $15, and they seem to be helping with her teething. Do you have any other recommendations for dental chews or toys that can help with her oral health?...\n- source external:provided-text:57495c4765b546c35bd50d659efb8870 [external_record ref=longmemeval:gpt4_6ed717ea:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 23:31\nTranscript:\nuser: I'm looking for some advice on dog arthritis. I recently got a new Orthopedic Memory Foam dog bed for my golden retriever, Max, about three weeks ago from Petco, and it seems to be helping with his arthritis. Do you have any other recommendations for managing his condition?\nassistant: I'm glad to hear that the new dog bed is helping Max with his arthritis! Managing canine arthritis requires a multi-faceted approach. Here are some additional recommendations to complement the orthopedic bed:...\n...user: I've been trying to get Max to lose a bit of weight, but it's tough when he loves treats so much. Do you have any recommendations for healthy dog treats that can help with weight management?...\n...user: I've been trying to get Max to eat his new grain-free dog food, but he's been a bit picky. Do you have any tips on how to transition him to the new food without upsetting his stomach?\nassistant: I'm happy to help! Transitioning to a new dog food, especially a grain-free one, can be a bit challenging, but with a gradual and gentle approach, you can minimize the risk of upsetting Max's stomach. Here are some tips to help you transition Max to his new grain-free dog food:\n\n1. **Gradual Transition**: Mix the new food with his current food in a ratio of 25:75 (new food: old food) for the first 2-3 days. Gradually increase the proportion of new food to old food over the next 7-10 days. This will allow Max's digestive system to adjust to the new ingredients....\n...7. **Consider a Transition Food**: If Max is experiencing difficulties adapting to the new food, consider using a transition food specifically designed to help dogs switch to a new diet. These foods typically contain ingredients that support digestive health and ease the transition process....\n...Good luck, and I hope Max adjusts well to his new grain-free dog food!\nuser: I'm also considering getting some healthy chews for Max to help with his teething and dental health. Since I recently got a pack of dental chews for my new puppy, Luna, I was wondering if you could recommend some healthy chews for Max that are suitable for his age and breed.\nassistant: Healthy chews can be a wonderful way to support Max's dental health and satisfy his natural urge to chew. Since Max is a golden retriever and an adult dog, I'll recommend some healthy chews that are suitable for his age and breed. Please keep in mind that it's always best to consult with your veterinarian before introducing new chews, especially if Max has any health issues or allergies....\n...3. **Nylabone DuraChew**: Nylabone DuraChew is a durable, long-lasting chew designed for adult dogs. They're made from tough, rubber-like material that can withstand Max's chewing, and they come in a variety of flavors and textures....\n...user: I was thinking of getting Max a new chew toy, something that would last him a while and be good for his teeth. I got a new dog bed for him 3 weeks ago, an Orthopedic Memory Foam dog bed from Petco, and it's been helping with his arthritis.\nassistant: That's great to hear that the new dog bed is helping with Max's arthritis! Orthopedic Memory Foam dog beds can make a big difference in providing comfort and support for dogs with joint issues....\n...1. **Kong Toy**: Kong Toys are a classic choice for dogs who love to chew. They're made from durable rubber and come in a variety of shapes and sizes. You can fill the Kong with treats, peanut butter, or even canned dog food to keep Max occupied and stimulated....\n...4. **Supervise**: Always supervise Max when he's using the Kong, especially at first, to make sure he's not getting frustrated or trying to break the toy....\n...Remember, the Kong Toy is a great tool for providing mental stimulation and reducing anxiety, but it's also important to provide Max with regular exercise, socialization, and training to keep him happy and healthy....\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Chewy.com; Organization named Chewy.com.\n- entity entity:<1> [OTHER]: Max; Entity named Max.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_6ed717ea",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Training pads for Luna\",\"reason\":\"The context states Luna's training pads were bought about a month before 2023-05-20, while Max's dog bed was bought about three weeks before that date, so the pads came first.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2965,
+                "completionTokens": 150,
+                "thinkingTokens": 77,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

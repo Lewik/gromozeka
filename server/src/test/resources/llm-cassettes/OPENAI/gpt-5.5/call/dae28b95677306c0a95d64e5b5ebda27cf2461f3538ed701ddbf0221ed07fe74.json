@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "dae28b95677306c0a95d64e5b5ebda27cf2461f3538ed701ddbf0221ed07fe74",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous chat. Can you remind me of the name of the last venue you recommended in the list of popular venues in Portland for indie music shows?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:58\n\n                                Noisy expected-answer label:\n                                Revolution Hall\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e982271f\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-2794fa67719c-claim-3 [ACTIVE] has_goal family=has_goal: The user intends to check out some venues popular among indie artists in Portland.; scope=User interest in Portland indie music venues from the 2023-05-28 past chat session.; context=\"The user said this after receiving a list of Portland venues known to host indie music shows.\"; evidence=DIRECT source=external:provided-text:be0b210b00cae99b311c3276e12e57dd quote=\"I'm definitely going to check out some of those venues.\"\n\n            Retrieved notes:\n            - note hot-path-2794fa67719c-note-2 [CONTEXT/ACTIVE]: Portland indie music discovery context; The user explored how indie music artists in Portland promote their work and expressed intent to check out some Portland indie venues. Useful future context includes promotion channels such as social media, live shows, local media, online platforms, collaborations, busking, and music festivals, plus venue and artist names from the Portland indie scene.; scope=User interest in discovering and attending Portland, Oregon indie music venues and artists; evidence=SUMMARIZED source=external:provided-text:be0b210b00cae99b311c3276e12e57dd quote=\"I'm definitely going to check out some of those venues.\"\n\n            Retrieved evidence:\n            - source external:provided-text:be0b210b00cae99b311c3276e12e57dd [external_record ref=longmemeval:e982271f:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 15:55\nTranscript:\nuser: How do Indie music artists in Portland typically promote their work?\nassistant: As an AI language model, I do not have personal experiences, and I do not collect data on individual music artists' promotion methods. However, following are some common methods that indie music artists in Portland can use to promote their work:\n\n1. Social media: Indie artists can use platforms like Facebook, Instagram, Twitter, and TikTok to share their music, interact with fans, and promote their shows.\n\n2. Live shows: Many independent artists in Portland play live shows at local venues, which can help them build a fan base and attract new listeners.\n\n3. Local media: Artists can try contacting local media outlets like newspapers, radio stations, or blogs. They can submit their songs, press releases, or request interviews to promote their work.\n\n4. Online music platforms: Portland artists can upload their music to online music platforms like Bandcamp, SoundCloud, or Spotify to reach a wider audience.\n\n5. Collaborations: Collaborating with other artists, producers, or brands can also help indie artists in Portland to promote themselves and their work.\n\n6. Street performances: Portland is known for its busking culture, so independent artists can showcase their talent on the streets and public spaces to gain exposure.\n\n7. Music festivals: Portland hosts many music festivals throughout the year, and indie artists can try to participate in them to perform and reach new audiences.\nuser: Do you happen to know any specific venues in Portland that are popular among indie artists?\nassistant: Sure! Here are some popular venues in Portland that are known to host indie music shows:\n\n1. Mississippi Studios\n2. Doug Fir Lounge\n3. Wonder Ballroom\n4. Crystal Ballroom\n5. Holocene\n6. Aladdin Theater\n7. The Old Church\n8. The Liquor Store\n9. Alberta Street Pub\n10. Revolution Hall\n\nThese venues have a reputation for hosting indie music shows and attracting local and national artists. However, there are many other smaller, independent venues in Portland that specialize in indie music, and it's always worth exploring new places to play and perform.\nuser: I'm definitely going to check out some of those venues. Do you have any favorite indie artists from Portland?\nassistant: As an AI language model, I don't have personal preferences of my own. However, Portland is known for having a vibrant indie music scene with a diverse range of talented artists. Here are a few notable indie artists from Portland:\n\n1. The Decemberists\n2. Modest Mouse\n3. Typhoon\n4. STRFKR\n5. Blitzen Trapper\n6. Grouper\n7. Black Belt Eagle Scout\n8. Wild Ones\n9. Y La Bamba\n10. Horse Feathers\n\nThese artists represent a variety of genres within indie music, including indie rock, folk, pop, and experimental music. They are known for their unique sounds, captivating live performances, and contributions to Portland's thriving independent music community.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Portland indie music scene; Concept named Portland indie music scene.\n- entity entity:<1> [LOCATION]: Portland, Oregon; Location named Portland, Oregon.\n- entity entity:<2> [ORGANIZATION]: Doug Fir Lounge; Organization named Doug Fir Lounge.\n- entity entity:<3> [ORGANIZATION]: Mississippi Studios; Organization named Mississippi Studios.\n- entity entity:<4> [ORGANIZATION]: Wonder Ballroom; Organization named Wonder Ballroom.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e982271f",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I was going through our previous chat. Can you remind me of the name of the last venue you recommended in the list of popular venues in Portland for indie music shows?\n\n                                Question date:\n                                2023/05/29 (Mon) 23:58\n\n                                Noisy expected-answer label:\n                                Revolution Hall\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:e982271f\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-2794fa67719c-claim-3 [ACTIVE] has_goal family=has_goal: The user intends to check out some venues popular among indie artists in Portland.; scope=User interest in Portland indie music venues from the 2023-05-28 past chat session.; context=\"The user said this after receiving a list of Portland venues known to host indie music shows.\"; evidence=DIRECT source=external:provided-text:be0b210b00cae99b311c3276e12e57dd quote=\"I'm definitely going to check out some of those venues.\"\n\n            Retrieved notes:\n            - note hot-path-2794fa67719c-note-2 [CONTEXT/ACTIVE]: Portland indie music discovery context; The user explored how indie music artists in Portland promote their work and expressed intent to check out some Portland indie venues. Useful future context includes promotion channels such as social media, live shows, local media, online platforms, collaborations, busking, and music festivals, plus venue and artist names from the Portland indie scene.; scope=User interest in discovering and attending Portland, Oregon indie music venues and artists; evidence=SUMMARIZED source=external:provided-text:be0b210b00cae99b311c3276e12e57dd quote=\"I'm definitely going to check out some of those venues.\"\n\n            Retrieved evidence:\n            - source external:provided-text:be0b210b00cae99b311c3276e12e57dd [external_record ref=longmemeval:e982271f:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 15:55\nTranscript:\nuser: How do Indie music artists in Portland typically promote their work?\nassistant: As an AI language model, I do not have personal experiences, and I do not collect data on individual music artists' promotion methods. However, following are some common methods that indie music artists in Portland can use to promote their work:\n\n1. Social media: Indie artists can use platforms like Facebook, Instagram, Twitter, and TikTok to share their music, interact with fans, and promote their shows.\n\n2. Live shows: Many independent artists in Portland play live shows at local venues, which can help them build a fan base and attract new listeners.\n\n3. Local media: Artists can try contacting local media outlets like newspapers, radio stations, or blogs. They can submit their songs, press releases, or request interviews to promote their work.\n\n4. Online music platforms: Portland artists can upload their music to online music platforms like Bandcamp, SoundCloud, or Spotify to reach a wider audience.\n\n5. Collaborations: Collaborating with other artists, producers, or brands can also help indie artists in Portland to promote themselves and their work.\n\n6. Street performances: Portland is known for its busking culture, so independent artists can showcase their talent on the streets and public spaces to gain exposure.\n\n7. Music festivals: Portland hosts many music festivals throughout the year, and indie artists can try to participate in them to perform and reach new audiences.\nuser: Do you happen to know any specific venues in Portland that are popular among indie artists?\nassistant: Sure! Here are some popular venues in Portland that are known to host indie music shows:\n\n1. Mississippi Studios\n2. Doug Fir Lounge\n3. Wonder Ballroom\n4. Crystal Ballroom\n5. Holocene\n6. Aladdin Theater\n7. The Old Church\n8. The Liquor Store\n9. Alberta Street Pub\n10. Revolution Hall\n\nThese venues have a reputation for hosting indie music shows and attracting local and national artists. However, there are many other smaller, independent venues in Portland that specialize in indie music, and it's always worth exploring new places to play and perform.\nuser: I'm definitely going to check out some of those venues. Do you have any favorite indie artists from Portland?\nassistant: As an AI language model, I don't have personal preferences of my own. However, Portland is known for having a vibrant indie music scene with a diverse range of talented artists. Here are a few notable indie artists from Portland:\n\n1. The Decemberists\n2. Modest Mouse\n3. Typhoon\n4. STRFKR\n5. Blitzen Trapper\n6. Grouper\n7. Black Belt Eagle Scout\n8. Wild Ones\n9. Y La Bamba\n10. Horse Feathers\n\nThese artists represent a variety of genres within indie music, including indie rock, folk, pop, and experimental music. They are known for their unique sounds, captivating live performances, and contributions to Portland's thriving independent music community.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Portland indie music scene; Concept named Portland indie music scene.\n- entity entity:<1> [LOCATION]: Portland, Oregon; Location named Portland, Oregon.\n- entity entity:<2> [ORGANIZATION]: Doug Fir Lounge; Organization named Doug Fir Lounge.\n- entity entity:<3> [ORGANIZATION]: Mississippi Studios; Organization named Mississippi Studios.\n- entity entity:<4> [ORGANIZATION]: Wonder Ballroom; Organization named Wonder Ballroom.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "e982271f",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Revolution Hall\",\"reason\":\"The retrieved transcript lists popular Portland indie venues and the final item is Revolution Hall.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2001,
+                "completionTokens": 66,
+                "thinkingTokens": 19,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,391 @@
+{
+    "version": 1,
+    "hash": "bac104451c22a339bf4d910f02002b2f6f3e0f8b67d1393af60badb1e4b0fbb5",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff data model, what is Source and what is Note for? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Target is a question only and does not assert or update durable memory.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"FACTUAL\",\"retrieved_count\":8,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Context mode: FACTUAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            - note hot-path:note:<0> [DOC_DIGEST/ACTIVE]: One-line roles of v3 memory model entities; In `agent_memory_handoff/02_data_model.md`, the section `8. Модель данных в одной строке` defines the compact roles of the main memory entities: `Source` records what was said or observed, `Entity` identifies who or what something is, `Note` stores important useful context not yet cemented as fact, `Claim` stores normalized facts, `Profile` is a compact projection of stable context, `Task` records what must be done, `Episode` records what the system learned, and `MemoryRun` records exactly how memory was updated.; scope=Document section `02. Data Model / 8. Модель данных в одной строке` in `agent_memory_handoff/02_data_model.md`, summarizing the one-line purpose of each v3 memory data model entity.; evidence=SUMMARIZED source=external:document-section:8fa55469a066ca10b666d96d6b7c1f26 quote=\\\"## 8. Модель данных в одной строке\\\"\\n\\n            Retrieved evidence:\\n            - source external:document-section:8fa55469a066ca10b666d96d6b7c1f26 [external_record ref=agent_memory_handoff/02_data_model.md#section:9 observedAt=1970-01-01T00:00:00Z]: Document title: 02. Data Model\\nDocument source: agent_memory_handoff/02_data_model.md\\nDocument section: 02. Data Model / 8. Модель данных в одной строке\\nDocument lines: 619-628\\n\\n## 8. Модель данных в одной строке\\n\\n- `Source` = что было сказано / увидено\\n- `Entity` = кто/что это вообще\\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\\n- `Claim` = что мы считаем нормализованным фактом\\n- `Profile` = компактная проекция устойчивого контекста\\n- `Task` = что должно быть сделано\\n- `Episode` = чему система научилась\\n- `MemoryRun` = как именно память обновлялась\\n\\n            Retrieved entities:\\n            - entity entity:<0> [CONCEPT]: Claim (memory data model); Concept named Claim (memory data model).\\n- entity entity:<1> [CONCEPT]: Entity (memory data model); Concept named Entity (memory data model).\\n- entity entity:<2> [CONCEPT]: Note (memory data model); Concept named Note (memory data model).\\n- entity entity:<3> [CONCEPT]: Profile (memory data model); Concept named Profile (memory data model).\\n- entity entity:<4> [CONCEPT]: Source (memory data model); Concept named Source (memory data model).\\n- entity entity:<5> [CONCEPT]: Task (memory data model); Concept named Task (memory data model).\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"summary\":\"One-line roles of v3 memory model entities: In `agent_memory_handoff/02_data_model.md`, the section `8. Модель данных в одной строке` defines the compact roles of the main memory entities: `Source` records what was said ...[truncated 342 chars]\",\"status\":\"ACTIVE\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:8fa55469a066ca10b666d96d6b7c1f26\",\"summary\":\"Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 8. Модель данных в одной строке Document lines: 619-628 ## 8. Модель данных в одной строке - `Sourc...[truncated 364 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"CONCEPT:Claim (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Entity (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"CONCEPT:Note (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<3>\",\"summary\":\"CONCEPT:Profile (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<4>\",\"summary\":\"CONCEPT:Source (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<5>\",\"summary\":\"CONCEPT:Task (memory data model)\"}],\"selector_decisions\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Gives the compact one-line roles for both Source and Note.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":true,\"rank\":2,\"reason\":\"Provides precise evidence-layer purpose for Source.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<2>\",\"selected\":true,\"rank\":3,\"reason\":\"Provides precise purpose and use cases for Note.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Only states Note is not Source, not what each is for.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source invariant, not short role definition.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Useful but narrower than selected Source note and lacks Note role.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Layer overview is less directly phrased than selected one-line roles.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Storage schema details, not purpose.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"About Profile, different entity.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Note quality invariants, not concise purpose.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Retention policy, unrelated to roles.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"About Entity anchoring notes, not roles of Source and Note.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source layer fact only; selected notes cover both requested terms.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Note maturity lifecycle, not purpose.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source delete policy constraint, not role definition.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source timestamp constraint, not role definition.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 840000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff data model, what is Source and what is Note for? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Target is a question only and does not assert or update durable memory.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"FACTUAL\",\"retrieved_count\":8,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Context mode: FACTUAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            - note hot-path:note:<0> [DOC_DIGEST/ACTIVE]: One-line roles of v3 memory model entities; In `agent_memory_handoff/02_data_model.md`, the section `8. Модель данных в одной строке` defines the compact roles of the main memory entities: `Source` records what was said or observed, `Entity` identifies who or what something is, `Note` stores important useful context not yet cemented as fact, `Claim` stores normalized facts, `Profile` is a compact projection of stable context, `Task` records what must be done, `Episode` records what the system learned, and `MemoryRun` records exactly how memory was updated.; scope=Document section `02. Data Model / 8. Модель данных в одной строке` in `agent_memory_handoff/02_data_model.md`, summarizing the one-line purpose of each v3 memory data model entity.; evidence=SUMMARIZED source=external:document-section:8fa55469a066ca10b666d96d6b7c1f26 quote=\\\"## 8. Модель данных в одной строке\\\"\\n\\n            Retrieved evidence:\\n            - source external:document-section:8fa55469a066ca10b666d96d6b7c1f26 [external_record ref=agent_memory_handoff/02_data_model.md#section:9 observedAt=1970-01-01T00:00:00Z]: Document title: 02. Data Model\\nDocument source: agent_memory_handoff/02_data_model.md\\nDocument section: 02. Data Model / 8. Модель данных в одной строке\\nDocument lines: 619-628\\n\\n## 8. Модель данных в одной строке\\n\\n- `Source` = что было сказано / увидено\\n- `Entity` = кто/что это вообще\\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\\n- `Claim` = что мы считаем нормализованным фактом\\n- `Profile` = компактная проекция устойчивого контекста\\n- `Task` = что должно быть сделано\\n- `Episode` = чему система научилась\\n- `MemoryRun` = как именно память обновлялась\\n\\n            Retrieved entities:\\n            - entity entity:<0> [CONCEPT]: Claim (memory data model); Concept named Claim (memory data model).\\n- entity entity:<1> [CONCEPT]: Entity (memory data model); Concept named Entity (memory data model).\\n- entity entity:<2> [CONCEPT]: Note (memory data model); Concept named Note (memory data model).\\n- entity entity:<3> [CONCEPT]: Profile (memory data model); Concept named Profile (memory data model).\\n- entity entity:<4> [CONCEPT]: Source (memory data model); Concept named Source (memory data model).\\n- entity entity:<5> [CONCEPT]: Task (memory data model); Concept named Task (memory data model).\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"summary\":\"One-line roles of v3 memory model entities: In `agent_memory_handoff/02_data_model.md`, the section `8. Модель данных в одной строке` defines the compact roles of the main memory entities: `Source` records what was said ...[truncated 342 chars]\",\"status\":\"ACTIVE\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:8fa55469a066ca10b666d96d6b7c1f26\",\"summary\":\"Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 8. Модель данных в одной строке Document lines: 619-628 ## 8. Модель данных в одной строке - `Sourc...[truncated 364 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"CONCEPT:Claim (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Entity (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"CONCEPT:Note (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<3>\",\"summary\":\"CONCEPT:Profile (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<4>\",\"summary\":\"CONCEPT:Source (memory data model)\"},{\"type\":\"ENTITY\",\"id\":\"entity:<5>\",\"summary\":\"CONCEPT:Task (memory data model)\"}],\"selector_decisions\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Gives the compact one-line roles for both Source and Note.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":true,\"rank\":2,\"reason\":\"Provides precise evidence-layer purpose for Source.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<2>\",\"selected\":true,\"rank\":3,\"reason\":\"Provides precise purpose and use cases for Note.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Only states Note is not Source, not what each is for.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source invariant, not short role definition.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Useful but narrower than selected Source note and lacks Note role.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Layer overview is less directly phrased than selected one-line roles.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Storage schema details, not purpose.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"About Profile, different entity.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Note quality invariants, not concise purpose.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Retention policy, unrelated to roles.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"About Entity anchoring notes, not roles of Source and Note.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source layer fact only; selected notes cover both requested terms.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Note maturity lifecycle, not purpose.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source delete policy constraint, not role definition.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Source timestamp constraint, not role definition.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 840000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "`Source`: what was said or observed.\n`Note`: important/useful context not yet cemented as fact.",
+                                "ttsText": "Source is what was said or observed. Note is important context not yet cemented as fact.",
+                                "voiceTone": "concise",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3000,
+                "completionTokens": 69,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

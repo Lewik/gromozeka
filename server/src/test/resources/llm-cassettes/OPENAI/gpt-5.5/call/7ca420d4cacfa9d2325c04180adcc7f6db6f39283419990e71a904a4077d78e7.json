@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "7ca420d4cacfa9d2325c04180adcc7f6db6f39283419990e71a904a4077d78e7",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many Korean restaurants have I tried in my city?\n\n                                Question date:\n                                2023/10/08 (Sun) 21:51\n\n                                Expected answer:\n                                four\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6aeb4375\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-f604f2b64a5e-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user had tried four Korean restaurants by 2023-09-30.; scope=User's Korean restaurant exploration history as of 2023-09-30; evidence=IMPORTED source=external:provided-text:a49c2902ea6fd4ed41a28cd1f145074b quote=\"I've tried four different ones so far, and I'm always looking for new recommendations.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a49c2902ea6fd4ed41a28cd1f145074b [external_record ref=longmemeval:6aeb4375:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/09/30 (Sat) 18:01...\n...assistant: What a great choice! Korean-style BBQ beef is always a crowd-pleaser! I'd be happy to help you with some side dish recommendations that would complement it perfectly. Here are some traditional Korean side dishes that pair well with BBQ beef:...\n...2. **Bokkeumbap** (): A simple Korean-style fried rice dish that can be made with leftover rice, vegetables, and sometimes meat. It's a great way to soak up the flavorful juices from the BBQ beef....\n...6. ** Japchae** (): Stir-fried glass noodles made from sweet potato starch, beef, and vegetables. It's a popular Korean side dish that pairs well with the savory flavors of BBQ beef....\n...Choose one or two of these side dishes to serve alongside your Korean-style BBQ beef, and you'll have a well-rounded and delicious meal. Enjoy your dinner party!...\n...As for your question, I'm afraid I'm a large language model, I don't have personal experiences or physical presence, so I haven't tried any Korean restaurants in your city or any other location. I exist solely to provide information and assist with tasks through text-based conversations. However, I can suggest a few ways to find great Korean restaurants in your area:...\n...3. **Korean Communities or Cultural Centers**: Reach out to local Korean communities, cultural centers, or language exchange groups. They might have recommendations or insider knowledge about authentic Korean restaurants in your area....\n...I hope these suggestions help you find an amazing Korean restaurant in your city!...\n...assistant: What an interesting fusion of flavors! Indian cuisine can complement the bold flavors of Korean BBQ beef and Middle Eastern falafel nicely. Here are some Indian-inspired dish ideas that might work well for your dinner party:...\n...1. **Basmati Rice**: A flavorful and aromatic rice dish that pairs well with the bold flavors of Korean BBQ beef and falafel. You can add saffron, cardamom, or cinnamon to give it an Indian twist....\n...3. **Raita**: A cooling yogurt-based side dish with cucumber, cumin, coriander, and cayenne pepper. It helps balance the spiciness of the Korean BBQ beef....\n...These Indian-inspired dishes should complement the Korean BBQ beef and Middle Eastern falafel nicely, creating a fascinating fusion of flavors for your dinner party. Enjoy!...\n...As for basmati rice, there are many good brands out there, but here are a few popular ones:...\n...* **Aroma**: Basmati rice should have a distinctive nutty and buttery aroma....\n...user: I actually have a brand that I've been using lately, it's an authentic Japanese short-grain rice, but I'm not sure if it would be suitable for this dish. Do you think it would work, or should I stick with a traditional Indian basmati rice?...\n...user: I think I'll stick with the traditional Indian basmati rice. I'll pick up a bag from the store later today. By the way, have you heard about that new Indian restaurant that just opened up in my neighborhood? I've been meaning to try it out, and I heard their chicken tikka masala is amazing....\n...As for the new Indian restaurant, I'm afraid I'm a large language model, I don't have personal experiences or real-time information about specific locations. I exist solely to provide general knowledge and assist with tasks through text-based conversations. However, I can suggest that you check out online review sites such as Yelp or Google Reviews to see what others have to say about the restaurant. You can also ask your friends, family, or colleagues for recommendations to get a sense of the restaurant's quality and authenticity....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Korean restaurants; Concept named Korean restaurants.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6aeb4375",
+                "questionType": "knowledge-update"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many Korean restaurants have I tried in my city?\n\n                                Question date:\n                                2023/10/08 (Sun) 21:51\n\n                                Expected answer:\n                                four\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6aeb4375\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-f604f2b64a5e-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user had tried four Korean restaurants by 2023-09-30.; scope=User's Korean restaurant exploration history as of 2023-09-30; evidence=IMPORTED source=external:provided-text:a49c2902ea6fd4ed41a28cd1f145074b quote=\"I've tried four different ones so far, and I'm always looking for new recommendations.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:a49c2902ea6fd4ed41a28cd1f145074b [external_record ref=longmemeval:6aeb4375:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/09/30 (Sat) 18:01...\n...assistant: What a great choice! Korean-style BBQ beef is always a crowd-pleaser! I'd be happy to help you with some side dish recommendations that would complement it perfectly. Here are some traditional Korean side dishes that pair well with BBQ beef:...\n...2. **Bokkeumbap** (): A simple Korean-style fried rice dish that can be made with leftover rice, vegetables, and sometimes meat. It's a great way to soak up the flavorful juices from the BBQ beef....\n...6. ** Japchae** (): Stir-fried glass noodles made from sweet potato starch, beef, and vegetables. It's a popular Korean side dish that pairs well with the savory flavors of BBQ beef....\n...Choose one or two of these side dishes to serve alongside your Korean-style BBQ beef, and you'll have a well-rounded and delicious meal. Enjoy your dinner party!...\n...As for your question, I'm afraid I'm a large language model, I don't have personal experiences or physical presence, so I haven't tried any Korean restaurants in your city or any other location. I exist solely to provide information and assist with tasks through text-based conversations. However, I can suggest a few ways to find great Korean restaurants in your area:...\n...3. **Korean Communities or Cultural Centers**: Reach out to local Korean communities, cultural centers, or language exchange groups. They might have recommendations or insider knowledge about authentic Korean restaurants in your area....\n...I hope these suggestions help you find an amazing Korean restaurant in your city!...\n...assistant: What an interesting fusion of flavors! Indian cuisine can complement the bold flavors of Korean BBQ beef and Middle Eastern falafel nicely. Here are some Indian-inspired dish ideas that might work well for your dinner party:...\n...1. **Basmati Rice**: A flavorful and aromatic rice dish that pairs well with the bold flavors of Korean BBQ beef and falafel. You can add saffron, cardamom, or cinnamon to give it an Indian twist....\n...3. **Raita**: A cooling yogurt-based side dish with cucumber, cumin, coriander, and cayenne pepper. It helps balance the spiciness of the Korean BBQ beef....\n...These Indian-inspired dishes should complement the Korean BBQ beef and Middle Eastern falafel nicely, creating a fascinating fusion of flavors for your dinner party. Enjoy!...\n...As for basmati rice, there are many good brands out there, but here are a few popular ones:...\n...* **Aroma**: Basmati rice should have a distinctive nutty and buttery aroma....\n...user: I actually have a brand that I've been using lately, it's an authentic Japanese short-grain rice, but I'm not sure if it would be suitable for this dish. Do you think it would work, or should I stick with a traditional Indian basmati rice?...\n...user: I think I'll stick with the traditional Indian basmati rice. I'll pick up a bag from the store later today. By the way, have you heard about that new Indian restaurant that just opened up in my neighborhood? I've been meaning to try it out, and I heard their chicken tikka masala is amazing....\n...As for the new Indian restaurant, I'm afraid I'm a large language model, I don't have personal experiences or real-time information about specific locations. I exist solely to provide general knowledge and assist with tasks through text-based conversations. However, I can suggest that you check out online review sites such as Yelp or Google Reviews to see what others have to say about the restaurant. You can also ask your friends, family, or colleagues for recommendations to get a sense of the restaurant's quality and authenticity....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Korean restaurants; Concept named Korean restaurants.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6aeb4375",
+                "questionType": "knowledge-update"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"four\",\"reason\":\"The active retrieved claim explicitly states the user had tried four Korean restaurants by 2023-09-30, which supports answering four on 2023-10-08.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1644,
+                "completionTokens": 105,
+                "thinkingTokens": 41,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

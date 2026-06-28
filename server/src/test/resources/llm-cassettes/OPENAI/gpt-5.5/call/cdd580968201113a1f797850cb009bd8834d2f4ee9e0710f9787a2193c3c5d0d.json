@@ -1,0 +1,363 @@
+{
+    "version": 1,
+    "hash": "cdd580968201113a1f797850cb009bd8834d2f4ee9e0710f9787a2193c3c5d0d",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a row in Candidate existing entities safely matches the mention, use \"link_existing\" with that exact row id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe row in Candidate existing entities.\n- Relevant retrieval context can explain meaning, but it is not a linkable entity list. If it mentions a safe referent that is absent from Candidate existing entities, use \"create_new\" with the same canonical identity instead of inventing an entity_id.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- Create or link concrete personal items, personal copies, collected objects, signed items, kept media, or digital copies when later claims may need them as objects. First-person possessive wording such as \"my X\", \"our X\", \"my copy of X\", or \"X in my collection\" is direct evidence that X is a reusable item entity, even when the same sentence is also an event.\n- For personal media or collected-item entities, use type \"product\" when the item is a concrete physical or digital artifact. The canonical name may be descriptive when no proper title is available, but it must identify the item well enough for later claim extraction.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id.\n- Do not invent placeholder ids such as \"entity:<5>\", \"entity:<0>\", \"new_entity_1\", or ids copied from retrieval context.\n- entity_id must be an exact id from Candidate existing entities for \"link_existing\"/\"add_alias\", or null for \"create_new\"/\"noop\".\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<1>; type=CONCEPT; name=Memory retrieval budget; aliases=none; summary=Concept named Memory retrieval budget.\n- id=entity:<2>; type=CONCEPT; name=Note-first retrieval mode; aliases=none; summary=Concept named Note-first retrieval mode.\n- id=entity:<3>; type=CONCEPT; name=Rich note memory; aliases=none; summary=Concept named Rich note memory.\n- id=entity:<4>; type=CONCEPT; name=Memory Repair Worker; aliases=none; summary=Concept named Memory Repair Worker.\n- id=entity:<5>; type=CONCEPT; name=Note; aliases=none; summary=Concept named Note.\n- id=entity:<6>; type=CONCEPT; name=Note Constructor; aliases=none; summary=Concept named Note Constructor.\n- id=entity:<7>; type=CONCEPT; name=Note path; aliases=note_write; summary=Concept named Note path.\n- id=entity:<8>; type=CONCEPT; name=Note Reconciler; aliases=none; summary=Concept named Note Reconciler.\n- id=entity:<9>; type=CONCEPT; name=v3 memory architecture; aliases=v3; summary=Concept named v3 memory architecture.\n- id=entity:<10>; type=CONCEPT; name=AI agent memory layer; aliases=none; summary=Concept named AI agent memory layer.\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:3ba1fe9fde8041a82c660a92539e97ff: Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 13. Note maturity .. 14. Memory repair\nDocument lines: 467-508\n\n## 13. Note maturity\n\nЧтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\n\nПолезный паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note подтвержден несколькими sources\n- note не конфликтует с новыми данными\n- note пережил какое-то время без supersede\n- note важен для recurring rationale questions\n\nЧто может понижать или закрывать note:\n- явный supersede\n- устаревший scope\n- отсутствие использования\n- слаба\n[truncated 380 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff architecture document, not as an immediate task.\n\nFile: agent_memory_handoff/01_architecture.md\n\n# 01. Architecture\n\n## 1. Цель системы\n\nНужна memory layer для AI-агента, которая:\n\n- переживает границы одной сессии\n- умеет хранить факты, preferences, задачи, rationale и evolving plans\n- поддерживает обновление знаний, а не только накопление\n- позволяет объяснить, **откуда** взялась память\n- не превращает каждый turn в permanent knowledge\n- умеет старить, архивировать и чинить память\n\n## 2. Центральная архитектурная идея\n\nВ `v3` у памяти четыре оси, а не одна:\n\n1. **Representation**\n   - `Source`\n   - `Claim`\n   - `Note\n[truncated 10644 chars]\n- note hot-path:note:<0> v3 memory write model uses Direct structured path, Note path, Consolidation, and Repair; In `agent_memory_handoff/01_architecture.md`, the core write model distinguishes two semantic write paths and two maintenance paths: `Direct structured path` is for safely normalized facts, stable preferences, commitments/tasks, and status changes; `Note path` is for important but not-yet-hard-fact material such as design direction, rationale, evolving plans, lessons, document digests, and contextual framing; `Consolidation` promotes mature notes when signal is strong enough; `Repair` fixes memory degradation such as duplicates, stale items, contradictory active items, note spam, profile drift, and bad merges.\n- claim hot-path:claim:<0> Repair fixes memory degradation such as duplicate clusters, stale items, contradictory active items, note spam, profile drift, and bad merges.\n- source external:document-section:5bc1ee88bf79494e60d9bab270290121: Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 11. Write path .. 12. Read path\nDocument lines: 329-466\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entit\n[truncated 1928 chars]\n- note hot-path:note:<1> v3 memory architecture uses four axes; In `v3`, memory is modeled along four axes: **Representation** (`Source`, `Claim`, `Note`, `Profile`, `Task`, `Episode`), **Lifecycle** (write, reconcile, consolidate, repair, retain/archive/delete), **Retrieval policy** (`claim-first`, `note-first`, `mixed`, `evidence-first`, bounded budgets), and **Scope and lineage** (`scope_json`, `scope_text`, source refs, origin note, memory runs). These axes are meant to prevent memory from degrading into either a transcript dump or a brittle fact store.\n- claim hot-path:claim:<1> In the v3 memory architecture write path, candidate memories are retrieved before extraction, including similar claims, similar notes, open tasks, the existing profile, candidate entities or aliases, and recent evidence.\n- note hot-path:note:<2> v3 memory write path steps; In `agent_memory_handoff/01_architecture.md`, section 11 defines the `v3` write path as an ordered flow: persist raw source, route to `noop` / `direct_structured_write` / `note_write` / `mixed`, retrieve candidate memories, canonicalize entities, run specialized extraction prompts, reconcile candidates with existing items, apply all updates in one transaction, and schedule maintenance such as consolidation, duplicate merge, stale cleanup, profile repair, alias merge, and retention/archive.\n- claim hot-path:claim:<2> In the v3 memory architecture write path, memory transaction application atomically upserts entities, applies claim, note, and task operations, updates the profile projection, and stores the memory run log.\n- note hot-path:note:<3> Memory update must reconcile rather than append-only; In `agent_memory_handoff/01_architecture.md`, section 9 states that memory writes must decide whether to write, retrieve similar or conflicting items, convert input into typed candidates, and apply a policy such as `insert`, `update`, `supersede`, `retract`, or `noop`. Skipping retrieval/reconciliation causes duplicates, stale preferences, conflicting notes, task explosion, and summary spam.\n- note hot-path:note:<4> v3 memory read path retrieval modes and budgets; In `agent_memory_handoff/01_architecture.md`, section 12 defines the read path: decide if memory is needed, load core blocks (`short profile`, `active tasks`, optional session summary), choose a retrieval mode (`Claim-first`, `Note-first`, `Mixed`, or `Evidence-first / evidence-fallback`), enforce explicit `v3` budget caps, then compose an answer that distinguishes verified vs provisional information, handles conflicts, respects scope boundaries, can abstain, and does not present notes as hard facts without qualification.\n- claim hot-path:claim:<3> In the memory architecture, retrieval/reconciliation must not be skipped during updates because the database would quickly accumulate duplicates, stale preferences, conflicting notes, task explosion, and summary spam.\n\n        Retrieval plan context:\n        entity_queries=01. Architecture|agent_memory_handoff/01_architecture.md|01. Architecture / 13. Note maturity .. 14. Memory repair|MARKDOWN\n        text_queries=01. Architecture agent_memory_handoff/01_architecture.md 01. Architecture / 13. Note maturity .. 14. Memory repair MARKDOWN Document title: 01. Architecture Document source: agent_memory_handoff/01_architecture.md Document section: 01. Architecture / 13. Note maturity .. 14. Memory repair Document lines: 467-508 ## 13. Note maturity Чтобы `Note` не превратился в summary-store, нужен lifecycle зрелости. Полезный паттерн: - `fresh` - `stabilizing` - `mature` - `consolidated` Что может повышать maturity: - note использовался в retrieval - note подтвержден несколькими sources - note не конфликтует с новыми данными - note пережил какое-то время без supersede - note важен для recurring rationale questions Что может понижать или закрывать note: - явный supersede - устаревший scope - отсутствие использования - слабая поддержка evidence ## 14. Memory repair Repair — это отдельный background workflow. Что он чинит: - duplicate notes / claims - contradictory active items - profile drift - stale task states - bad entity merges - note spam - budget leakage в retrieval Почему это надо выделять отдельно: - consolidation делает память богаче - repair делает память здоровее Это разные работы.\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:3ba1fe9fde8041a82c660a92539e97ff] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/01_architecture.md; title=01. Architecture; heading=01. Architecture / 13. Note maturity .. 14. Memory repair; imported_at=1970-01-01T00:00:00Z\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 13. Note maturity .. 14. Memory repair\nDocument lines: 467-508\n\n## 13. Note maturity\n\nЧтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\n\nПолезный паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note подтвержден несколькими sources\n- note не конфликтует с новыми данными\n- note пережил какое-то время без supersede\n- note важен для recurring rationale questions\n\nЧто может понижать или закрывать note:\n- явный supersede\n- устаревший scope\n- отсутствие использования\n- слабая поддержка evidence\n\n## 14. Memory repair\n\nRepair — это отдельный background workflow.\n\nЧто он чинит:\n- duplicate notes / claims\n- contradictory active items\n- profile drift\n- stale task states\n- bad entity merges\n- note spam\n- budget leakage в retrieval\n\nПочему это надо выделять отдельно:\n- consolidation делает память богаче\n- repair делает память здоровее\n\nЭто разные работы.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:3ba1fe9fde8041a82c660a92539e97ff"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a row in Candidate existing entities safely matches the mention, use \"link_existing\" with that exact row id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe row in Candidate existing entities.\n- Relevant retrieval context can explain meaning, but it is not a linkable entity list. If it mentions a safe referent that is absent from Candidate existing entities, use \"create_new\" with the same canonical identity instead of inventing an entity_id.\n- Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.\n- If distinct referents share the same surface form, disambiguate the canonical_name, for example \"Java (programming language)\" vs \"Java (island)\".\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- Create or link concrete personal items, personal copies, collected objects, signed items, kept media, or digital copies when later claims may need them as objects. First-person possessive wording such as \"my X\", \"our X\", \"my copy of X\", or \"X in my collection\" is direct evidence that X is a reusable item entity, even when the same sentence is also an event.\n- For personal media or collected-item entities, use type \"product\" when the item is a concrete physical or digital artifact. The canonical name may be descriptive when no proper title is available, but it must identify the item well enough for later claim extraction.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id.\n- Do not invent placeholder ids such as \"entity:<5>\", \"entity:<0>\", \"new_entity_1\", or ids copied from retrieval context.\n- entity_id must be an exact id from Candidate existing entities for \"link_existing\"/\"add_alias\", or null for \"create_new\"/\"noop\".\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<1>; type=CONCEPT; name=Memory retrieval budget; aliases=none; summary=Concept named Memory retrieval budget.\n- id=entity:<2>; type=CONCEPT; name=Note-first retrieval mode; aliases=none; summary=Concept named Note-first retrieval mode.\n- id=entity:<3>; type=CONCEPT; name=Rich note memory; aliases=none; summary=Concept named Rich note memory.\n- id=entity:<4>; type=CONCEPT; name=Memory Repair Worker; aliases=none; summary=Concept named Memory Repair Worker.\n- id=entity:<5>; type=CONCEPT; name=Note; aliases=none; summary=Concept named Note.\n- id=entity:<6>; type=CONCEPT; name=Note Constructor; aliases=none; summary=Concept named Note Constructor.\n- id=entity:<7>; type=CONCEPT; name=Note path; aliases=note_write; summary=Concept named Note path.\n- id=entity:<8>; type=CONCEPT; name=Note Reconciler; aliases=none; summary=Concept named Note Reconciler.\n- id=entity:<9>; type=CONCEPT; name=v3 memory architecture; aliases=v3; summary=Concept named v3 memory architecture.\n- id=entity:<10>; type=CONCEPT; name=AI agent memory layer; aliases=none; summary=Concept named AI agent memory layer.\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:3ba1fe9fde8041a82c660a92539e97ff: Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 13. Note maturity .. 14. Memory repair\nDocument lines: 467-508\n\n## 13. Note maturity\n\nЧтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\n\nПолезный паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note подтвержден несколькими sources\n- note не конфликтует с новыми данными\n- note пережил какое-то время без supersede\n- note важен для recurring rationale questions\n\nЧто может понижать или закрывать note:\n- явный supersede\n- устаревший scope\n- отсутствие использования\n- слаба\n[truncated 380 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff architecture document, not as an immediate task.\n\nFile: agent_memory_handoff/01_architecture.md\n\n# 01. Architecture\n\n## 1. Цель системы\n\nНужна memory layer для AI-агента, которая:\n\n- переживает границы одной сессии\n- умеет хранить факты, preferences, задачи, rationale и evolving plans\n- поддерживает обновление знаний, а не только накопление\n- позволяет объяснить, **откуда** взялась память\n- не превращает каждый turn в permanent knowledge\n- умеет старить, архивировать и чинить память\n\n## 2. Центральная архитектурная идея\n\nВ `v3` у памяти четыре оси, а не одна:\n\n1. **Representation**\n   - `Source`\n   - `Claim`\n   - `Note\n[truncated 10644 chars]\n- note hot-path:note:<0> v3 memory write model uses Direct structured path, Note path, Consolidation, and Repair; In `agent_memory_handoff/01_architecture.md`, the core write model distinguishes two semantic write paths and two maintenance paths: `Direct structured path` is for safely normalized facts, stable preferences, commitments/tasks, and status changes; `Note path` is for important but not-yet-hard-fact material such as design direction, rationale, evolving plans, lessons, document digests, and contextual framing; `Consolidation` promotes mature notes when signal is strong enough; `Repair` fixes memory degradation such as duplicates, stale items, contradictory active items, note spam, profile drift, and bad merges.\n- claim hot-path:claim:<0> Repair fixes memory degradation such as duplicate clusters, stale items, contradictory active items, note spam, profile drift, and bad merges.\n- source external:document-section:5bc1ee88bf79494e60d9bab270290121: Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 11. Write path .. 12. Read path\nDocument lines: 329-466\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entit\n[truncated 1928 chars]\n- note hot-path:note:<1> v3 memory architecture uses four axes; In `v3`, memory is modeled along four axes: **Representation** (`Source`, `Claim`, `Note`, `Profile`, `Task`, `Episode`), **Lifecycle** (write, reconcile, consolidate, repair, retain/archive/delete), **Retrieval policy** (`claim-first`, `note-first`, `mixed`, `evidence-first`, bounded budgets), and **Scope and lineage** (`scope_json`, `scope_text`, source refs, origin note, memory runs). These axes are meant to prevent memory from degrading into either a transcript dump or a brittle fact store.\n- claim hot-path:claim:<1> In the v3 memory architecture write path, candidate memories are retrieved before extraction, including similar claims, similar notes, open tasks, the existing profile, candidate entities or aliases, and recent evidence.\n- note hot-path:note:<2> v3 memory write path steps; In `agent_memory_handoff/01_architecture.md`, section 11 defines the `v3` write path as an ordered flow: persist raw source, route to `noop` / `direct_structured_write` / `note_write` / `mixed`, retrieve candidate memories, canonicalize entities, run specialized extraction prompts, reconcile candidates with existing items, apply all updates in one transaction, and schedule maintenance such as consolidation, duplicate merge, stale cleanup, profile repair, alias merge, and retention/archive.\n- claim hot-path:claim:<2> In the v3 memory architecture write path, memory transaction application atomically upserts entities, applies claim, note, and task operations, updates the profile projection, and stores the memory run log.\n- note hot-path:note:<3> Memory update must reconcile rather than append-only; In `agent_memory_handoff/01_architecture.md`, section 9 states that memory writes must decide whether to write, retrieve similar or conflicting items, convert input into typed candidates, and apply a policy such as `insert`, `update`, `supersede`, `retract`, or `noop`. Skipping retrieval/reconciliation causes duplicates, stale preferences, conflicting notes, task explosion, and summary spam.\n- note hot-path:note:<4> v3 memory read path retrieval modes and budgets; In `agent_memory_handoff/01_architecture.md`, section 12 defines the read path: decide if memory is needed, load core blocks (`short profile`, `active tasks`, optional session summary), choose a retrieval mode (`Claim-first`, `Note-first`, `Mixed`, or `Evidence-first / evidence-fallback`), enforce explicit `v3` budget caps, then compose an answer that distinguishes verified vs provisional information, handles conflicts, respects scope boundaries, can abstain, and does not present notes as hard facts without qualification.\n- claim hot-path:claim:<3> In the memory architecture, retrieval/reconciliation must not be skipped during updates because the database would quickly accumulate duplicates, stale preferences, conflicting notes, task explosion, and summary spam.\n\n        Retrieval plan context:\n        entity_queries=01. Architecture|agent_memory_handoff/01_architecture.md|01. Architecture / 13. Note maturity .. 14. Memory repair|MARKDOWN\n        text_queries=01. Architecture agent_memory_handoff/01_architecture.md 01. Architecture / 13. Note maturity .. 14. Memory repair MARKDOWN Document title: 01. Architecture Document source: agent_memory_handoff/01_architecture.md Document section: 01. Architecture / 13. Note maturity .. 14. Memory repair Document lines: 467-508 ## 13. Note maturity Чтобы `Note` не превратился в summary-store, нужен lifecycle зрелости. Полезный паттерн: - `fresh` - `stabilizing` - `mature` - `consolidated` Что может повышать maturity: - note использовался в retrieval - note подтвержден несколькими sources - note не конфликтует с новыми данными - note пережил какое-то время без supersede - note важен для recurring rationale questions Что может понижать или закрывать note: - явный supersede - устаревший scope - отсутствие использования - слабая поддержка evidence ## 14. Memory repair Repair — это отдельный background workflow. Что он чинит: - duplicate notes / claims - contradictory active items - profile drift - stale task states - bad entity merges - note spam - budget leakage в retrieval Почему это надо выделять отдельно: - consolidation делает память богаче - repair делает память здоровее Это разные работы.\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:3ba1fe9fde8041a82c660a92539e97ff] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/01_architecture.md; title=01. Architecture; heading=01. Architecture / 13. Note maturity .. 14. Memory repair; imported_at=1970-01-01T00:00:00Z\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 13. Note maturity .. 14. Memory repair\nDocument lines: 467-508\n\n## 13. Note maturity\n\nЧтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\n\nПолезный паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note подтвержден несколькими sources\n- note не конфликтует с новыми данными\n- note пережил какое-то время без supersede\n- note важен для recurring rationale questions\n\nЧто может понижать или закрывать note:\n- явный supersede\n- устаревший scope\n- отсутствие использования\n- слабая поддержка evidence\n\n## 14. Memory repair\n\nRepair — это отдельный background workflow.\n\nЧто он чинит:\n- duplicate notes / claims\n- contradictory active items\n- profile drift\n- stale task states\n- bad entity merges\n- note spam\n- budget leakage в retrieval\n\nПочему это надо выделять отдельно:\n- consolidation делает память богаче\n- repair делает память здоровее\n\nЭто разные работы.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:3ba1fe9fde8041a82c660a92539e97ff"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<5>\",\"mention\":\"Note\",\"new_entity\":null,\"reason\":\"Target discusses the memory representation `Note`, which safely matches the existing Note concept.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.9,\"entity_id\":null,\"mention\":\"Note maturity\",\"new_entity\":{\"canonical_name\":\"Note maturity\",\"entity_type\":\"concept\",\"summary\":\"Lifecycle maturity model for notes in the memory architecture.\"},\"reason\":\"The section introduces note maturity as a reusable concept and no existing candidate safely matches it.\"},{\"about_file_assertion\":false,\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.78,\"entity_id\":null,\"mention\":\"Memory repair\",\"new_entity\":{\"canonical_name\":\"Memory repair\",\"entity_type\":\"concept\",\"summary\":\"Background workflow for maintaining memory health in the memory architecture.\"},\"reason\":\"The target discusses Repair as a background workflow; existing Memory Repair Worker may be related but is not a safe identity match.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4085,
+                "completionTokens": 577,
+                "thinkingTokens": 324,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -132,6 +132,31 @@ class OpenAiSubscriptionResponseEventCollectorTest {
     }
 
     @Test
+    fun includesIncompleteResponseDetails() {
+        val error = assertFailsWith<OpenAiSubscriptionRequestException> {
+            collector.accept(
+                """
+                {
+                  "type": "response.incomplete",
+                  "response": {
+                    "id": "resp_incomplete",
+                    "status": "incomplete",
+                    "incomplete_details": {
+                      "reason": "max_output_tokens"
+                    }
+                  }
+                }
+                """.trimIndent()
+            )
+        }
+
+        assertEquals(400, error.statusCode)
+        assertContains(error.message.orEmpty(), "status=incomplete")
+        assertContains(error.message.orEmpty(), "reason=max_output_tokens")
+        assertContains(error.message.orEmpty(), "resp_incomplete")
+    }
+
+    @Test
     fun ignoresUnparseableNonFinalEvents() {
         collector.accept(payload = "{not-json", eventName = "response.output_text.delta")
 

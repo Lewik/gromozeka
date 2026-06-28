@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "aa9c735ef5d6f7bda627406c8c658b0c601a51621437118739593370ec3de273",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days before the team meeting I was preparing for did I attend the workshop on 'Effective Communication in the Workplace'?\n\n                                Question date:\n                                2023/01/13 (Fri) 19:39\n\n                                Expected answer:\n                                7 days. 8 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0bb5a684\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-486d9dd53574-claim-4 [ACTIVE] attended_event family=attended_event: The user attended the workshop \"Effective Communication in the Workplace\" on 2023-01-10.; scope=Personal event history for the user.; evidence=IMPORTED source=external:provided-text:94547a9a1a9620a19c5769145b1d39a5 quote=\"I recently attended a workshop on \"Effective Communication in the Workplace\" on January 10th\"\n\n            Retrieved notes:\n            - note hot-path-4f6c726a4f21-note-2 [CONTEXT/ACTIVE]: January 17 team meeting communication preparation context; For the user's team meeting on January 17th, the user was preparing to practice effective communication skills, especially active listening and conflict resolution, while also managing the agenda, off-agenda topics, and meeting notes.; scope=User's team meeting on 2023-01-17 and related communication-preparation work; evidence=DIRECT source=external:provided-text:f87b25cc6b8788f9a48df0db20257e82 quote=\"practice those skills in my upcoming team meeting on January 17th\"\n\n            Retrieved evidence:\n            - source external:provided-text:94547a9a1a9620a19c5769145b1d39a5 [external_record ref=longmemeval:0bb5a684:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm preparing for an upcoming meeting with my team and I want to make sure I'm effectively communicating our project updates. I recently attended a workshop on \"Effective Communication in the Workplace\" on January 10th, which was really helpful in improving my active listening and conflict resolution skills. Can you provide some tips on structuring my presentation to keep my team engaged?...\n...1. **Clearly define the purpose and objective**: Begin by stating the purpose of the meeting and what you hope to achieve. This will help your team understand the context and stay focused....\n...4. **Use visual aids effectively**: Visual aids like slides, diagrams, or charts can help illustrate complex information and keep your team's attention. Keep them simple, clear, and concise, and use them to support your message, not overwhelm it....\n...7. **Encourage interaction**: Break up your presentation with questions, discussions, or interactive elements to keep your team engaged and invested in the conversation....\n...By following these tips, you'll be well-prepared to effectively communicate your project updates to your team and keep them engaged throughout the meeting. Good luck!...\n...assistant: Active listening is a crucial aspect of effective communication, and it's great that you're committed to practicing it during the meeting. Here are some tips to help you practice active listening:...\n...4. **Ask open-ended questions**: Encourage the speaker to share more information by asking open-ended questions that begin with what, how, or why. Avoid leading questions or ones that can be answered with a simple \"yes\" or \"no.\"...\n...9. **Practice mindfulness**: Be present in the moment and focus on the conversation. Avoid mentally preparing your response while the other person is speaking....\n...By practicing active listening, you'll create a safe and open environment where your team feels heard and valued. This will lead to more effective communication, better collaboration, and stronger relationships within your team....\n...user: I'm glad I attended that workshop on \"Effective Communication in the Workplace\" on January 10th, as it helped me realize the importance of active listening in team meetings. Now, I'm more confident in my ability to create an engaging presentation and practice active listening during our meeting. Can you suggest some tools or software that I can use to create visually appealing slides and diagrams for my presentation?...\n...user: I'll definitely consider using some of these interactive tools to make my presentation more engaging. Since I attended a workshop on \"Effective Communication in the Workplace\" on January 10th, I've been focusing on improving my communication skills, including presenting information in a clear and concise manner. Do you have any tips on how to effectively convey complex information in a simple way?...\n...user: I'd like to ask about the importance of self-awareness in effective communication. As I reflect on the workshop I attended on \"Effective Communication in the Workplace\" on January 10th, I realize that self-awareness was a key takeaway for me. Can you elaborate on why self-awareness is crucial in communication, and how I can continue to develop this skill?...\n...2. **Emotional intelligence**: Self-awareness is a key component of emotional intelligence, which is critical for effective communication. When you're aware of your emotions, you can manage them better and respond more thoughtfully to others....\n...Remember, self-awareness is a continuous process that requires effort, patience, and practice. By cultivating self-awareness, you'll become a more effective communicator, leader, and team player....\n- source external:provided-text:f87b25cc6b8788f9a48df0db20257e82 [external_record ref=longmemeval:0bb5a684:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm preparing for an upcoming team meeting and want to make sure I'm well-prepared to communicate effectively. I remember making a note to myself to practice those skills in my upcoming team meeting on January 17th, and I'm looking for some tips on active listening and conflict resolution. Can you provide some resources or advice on those topics?...\n...**Additional Tips for Your Team Meeting:**...\n...I hope these tips and resources help you prepare for your team meeting on January 17th!...\n...assistant: Staying on track with your team meeting agenda is crucial to ensure productive discussions and efficient use of everyone's time. Here are some suggestions on how to prioritize tasks and allocate time for each discussion topic:...\n...3. **Consider the team's goals and objectives**: Align the meeting topics with the team's current goals and objectives to ensure everyone is focused on what's most important....\n...4. **Allow time for questions and discussion**: Ensure there's sufficient time for team members to ask questions and engage in meaningful discussions....\n...Consider using a template like this to structure your team meeting agenda:...\n...By following these tips, you'll be well-prepared to lead a productive and efficient team meeting, and stay on track with your agenda....\n...assistant: When a team member raises a topic that's not on the agenda, but still seems important, it's essential to handle it carefully to avoid derailing the meeting while still acknowledging the team member's concern. Here are some suggestions:...\n...2. **Schedule a separate discussion**: Offer to discuss the topic separately, either during a break, after the meeting, or in a subsequent meeting. This ensures the topic gets attention without hijacking the current meeting....\n...* \"I can give you a quick update on that topic. We're currently exploring [ brief update ]. We can discuss this further if needed.\"...\n...user: I'm also concerned about taking notes during the meeting. Do you have any suggestions on how to effectively take notes and organize them afterwards?...\n...* Meeting title and date...\n...5. **Review and clarify**: Periodically review your notes during the meeting and clarify any unclear points with the team....\n...By following these tips and best practices, you'll be able to effectively take notes during the meeting and organize them afterwards, ensuring that you capture important information and action items....\n...assistant: Using a template or format can help you organize your notes effectively and ensure that you capture all the necessary information during the meeting. Here are some examples of templates and formats you can use:...\n...* Meeting Title and Date...\n...user: I remember making a note to myself to practice those skills in my upcoming team meeting on January 17th. I'd like to explore more templates and formats to organize my notes during the meeting. Can you provide some examples of digital templates that I can use, such as Microsoft OneNote, Evernote, or Google Docs?...\n...2. **Project Meeting Template**: A template with sections for project updates, tasks, deadlines, and team member responsibilities....\n...1. **Meeting Notes Template**: A template with a structured format for meeting notes, including sections for date, attendees, agenda, notes, and action items....\n...1. **Meeting Minutes Template**: A template for taking meeting minutes, featuring sections for date, attendees, agenda, discussion, and action items....\n...These are just a few examples of digital templates and tools you can use for note-taking during your team meeting. Feel free to explore and find the one that best suits your needs!...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: User's team meeting on 2023-01-17; Concept named User's team meeting on 2023-01-17.\n- entity entity:<1> [ORGANIZATION]: User's team; Organization named User's team.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0bb5a684",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days before the team meeting I was preparing for did I attend the workshop on 'Effective Communication in the Workplace'?\n\n                                Question date:\n                                2023/01/13 (Fri) 19:39\n\n                                Expected answer:\n                                7 days. 8 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0bb5a684\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-486d9dd53574-claim-4 [ACTIVE] attended_event family=attended_event: The user attended the workshop \"Effective Communication in the Workplace\" on 2023-01-10.; scope=Personal event history for the user.; evidence=IMPORTED source=external:provided-text:94547a9a1a9620a19c5769145b1d39a5 quote=\"I recently attended a workshop on \"Effective Communication in the Workplace\" on January 10th\"\n\n            Retrieved notes:\n            - note hot-path-4f6c726a4f21-note-2 [CONTEXT/ACTIVE]: January 17 team meeting communication preparation context; For the user's team meeting on January 17th, the user was preparing to practice effective communication skills, especially active listening and conflict resolution, while also managing the agenda, off-agenda topics, and meeting notes.; scope=User's team meeting on 2023-01-17 and related communication-preparation work; evidence=DIRECT source=external:provided-text:f87b25cc6b8788f9a48df0db20257e82 quote=\"practice those skills in my upcoming team meeting on January 17th\"\n\n            Retrieved evidence:\n            - source external:provided-text:94547a9a1a9620a19c5769145b1d39a5 [external_record ref=longmemeval:0bb5a684:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm preparing for an upcoming meeting with my team and I want to make sure I'm effectively communicating our project updates. I recently attended a workshop on \"Effective Communication in the Workplace\" on January 10th, which was really helpful in improving my active listening and conflict resolution skills. Can you provide some tips on structuring my presentation to keep my team engaged?...\n...1. **Clearly define the purpose and objective**: Begin by stating the purpose of the meeting and what you hope to achieve. This will help your team understand the context and stay focused....\n...4. **Use visual aids effectively**: Visual aids like slides, diagrams, or charts can help illustrate complex information and keep your team's attention. Keep them simple, clear, and concise, and use them to support your message, not overwhelm it....\n...7. **Encourage interaction**: Break up your presentation with questions, discussions, or interactive elements to keep your team engaged and invested in the conversation....\n...By following these tips, you'll be well-prepared to effectively communicate your project updates to your team and keep them engaged throughout the meeting. Good luck!...\n...assistant: Active listening is a crucial aspect of effective communication, and it's great that you're committed to practicing it during the meeting. Here are some tips to help you practice active listening:...\n...4. **Ask open-ended questions**: Encourage the speaker to share more information by asking open-ended questions that begin with what, how, or why. Avoid leading questions or ones that can be answered with a simple \"yes\" or \"no.\"...\n...9. **Practice mindfulness**: Be present in the moment and focus on the conversation. Avoid mentally preparing your response while the other person is speaking....\n...By practicing active listening, you'll create a safe and open environment where your team feels heard and valued. This will lead to more effective communication, better collaboration, and stronger relationships within your team....\n...user: I'm glad I attended that workshop on \"Effective Communication in the Workplace\" on January 10th, as it helped me realize the importance of active listening in team meetings. Now, I'm more confident in my ability to create an engaging presentation and practice active listening during our meeting. Can you suggest some tools or software that I can use to create visually appealing slides and diagrams for my presentation?...\n...user: I'll definitely consider using some of these interactive tools to make my presentation more engaging. Since I attended a workshop on \"Effective Communication in the Workplace\" on January 10th, I've been focusing on improving my communication skills, including presenting information in a clear and concise manner. Do you have any tips on how to effectively convey complex information in a simple way?...\n...user: I'd like to ask about the importance of self-awareness in effective communication. As I reflect on the workshop I attended on \"Effective Communication in the Workplace\" on January 10th, I realize that self-awareness was a key takeaway for me. Can you elaborate on why self-awareness is crucial in communication, and how I can continue to develop this skill?...\n...2. **Emotional intelligence**: Self-awareness is a key component of emotional intelligence, which is critical for effective communication. When you're aware of your emotions, you can manage them better and respond more thoughtfully to others....\n...Remember, self-awareness is a continuous process that requires effort, patience, and practice. By cultivating self-awareness, you'll become a more effective communicator, leader, and team player....\n- source external:provided-text:f87b25cc6b8788f9a48df0db20257e82 [external_record ref=longmemeval:0bb5a684:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm preparing for an upcoming team meeting and want to make sure I'm well-prepared to communicate effectively. I remember making a note to myself to practice those skills in my upcoming team meeting on January 17th, and I'm looking for some tips on active listening and conflict resolution. Can you provide some resources or advice on those topics?...\n...**Additional Tips for Your Team Meeting:**...\n...I hope these tips and resources help you prepare for your team meeting on January 17th!...\n...assistant: Staying on track with your team meeting agenda is crucial to ensure productive discussions and efficient use of everyone's time. Here are some suggestions on how to prioritize tasks and allocate time for each discussion topic:...\n...3. **Consider the team's goals and objectives**: Align the meeting topics with the team's current goals and objectives to ensure everyone is focused on what's most important....\n...4. **Allow time for questions and discussion**: Ensure there's sufficient time for team members to ask questions and engage in meaningful discussions....\n...Consider using a template like this to structure your team meeting agenda:...\n...By following these tips, you'll be well-prepared to lead a productive and efficient team meeting, and stay on track with your agenda....\n...assistant: When a team member raises a topic that's not on the agenda, but still seems important, it's essential to handle it carefully to avoid derailing the meeting while still acknowledging the team member's concern. Here are some suggestions:...\n...2. **Schedule a separate discussion**: Offer to discuss the topic separately, either during a break, after the meeting, or in a subsequent meeting. This ensures the topic gets attention without hijacking the current meeting....\n...* \"I can give you a quick update on that topic. We're currently exploring [ brief update ]. We can discuss this further if needed.\"...\n...user: I'm also concerned about taking notes during the meeting. Do you have any suggestions on how to effectively take notes and organize them afterwards?...\n...* Meeting title and date...\n...5. **Review and clarify**: Periodically review your notes during the meeting and clarify any unclear points with the team....\n...By following these tips and best practices, you'll be able to effectively take notes during the meeting and organize them afterwards, ensuring that you capture important information and action items....\n...assistant: Using a template or format can help you organize your notes effectively and ensure that you capture all the necessary information during the meeting. Here are some examples of templates and formats you can use:...\n...* Meeting Title and Date...\n...user: I remember making a note to myself to practice those skills in my upcoming team meeting on January 17th. I'd like to explore more templates and formats to organize my notes during the meeting. Can you provide some examples of digital templates that I can use, such as Microsoft OneNote, Evernote, or Google Docs?...\n...2. **Project Meeting Template**: A template with sections for project updates, tasks, deadlines, and team member responsibilities....\n...1. **Meeting Notes Template**: A template with a structured format for meeting notes, including sections for date, attendees, agenda, notes, and action items....\n...1. **Meeting Minutes Template**: A template for taking meeting minutes, featuring sections for date, attendees, agenda, discussion, and action items....\n...These are just a few examples of digital templates and tools you can use for note-taking during your team meeting. Feel free to explore and find the one that best suits your needs!...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: User's team meeting on 2023-01-17; Concept named User's team meeting on 2023-01-17.\n- entity entity:<1> [ORGANIZATION]: User's team; Organization named User's team.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0bb5a684",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"7 days (or 8 days if counting inclusively).\",\"reason\":\"The memory states the workshop was on 2023-01-10 and the team meeting was on 2023-01-17, which are 7 days apart.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2589,
+                "completionTokens": 114,
+                "thinkingTokens": 39,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "d3b8385e30bc1505e9a2398621154ce37ceb08add633e189398f213707ddabb6",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:2a1811e2\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Target is force_memory_write and includes extractable durable personal events/preferences plus broader planning context worth a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my / we / our; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable USER entity; no existing candidates are available.\n- mention=St. Mary's Church; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=St. Mary's Church; reason=Concrete reusable organization/location-like referent discussed in the transcript; no existing candidates are available.\n- mention=Father John; action=CREATE_NEW; id=entity:<2>; type=PERSON; name=Father John; reason=Concrete person mentioned as giving a sermon; no existing candidates are available.\n- mention=Emma / my cousin Emma; action=CREATE_NEW; id=entity:<3>; type=PERSON; name=Emma; reason=Concrete person and family relation mentioned repeatedly; no existing candidates are available.\n- mention=local community event / charity event; action=CREATE_NEW; id=entity:<4>; type=PROJECT; name=User's charity event; reason=The transcript refers to the same planned fundraising/community event; create a reusable project entity for later claims.\n- mention=bake sale; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Bake sale; reason=Reusable fundraising activity selected and discussed by the user.\n- mention=walk/run event; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Walk/run fundraiser; reason=Reusable fundraising activity selected and discussed by the user.\n- mention=Color Run idea / Color Run; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Color Run; reason=Specific theme idea selected by the user for the walk/run fundraiser.\n- mention=social media; action=CREATE_NEW; id=entity:<8>; type=TECHNOLOGY; name=Social media; reason=Reusable technology/channel discussed for event promotion.\n- mention=Facebook; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=Facebook; reason=Concrete social media platform mentioned in promotion advice.\n- mention=Twitter / tweets; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Twitter; reason=Concrete social media platform mentioned in promotion advice.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|St. Mary's Church|Father John|Emma|local community event|charity event\n        text_queries=St. Mary's Church Father John sermon March 19 forgiveness compassion Emma third pew cousin brunch exchanged numbers|community charity event bake sale Color Run walk/run fundraiser social media promotion\n        predicate_hints=attended_event|believes|has_goal|prefers|responsible_for\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:6ebb667c5c016998f93791b5ba178a17] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:2a1811e2:session:1; title=LongMemEval 2a1811e2 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/26 (Sun) 22:45\nTranscript:\nuser: I'm planning to volunteer at a local community event next weekend and I was wondering if you could suggest some ideas for fundraising activities that have been successful in the past. By the way, I just got back from Sunday mass at St. Mary's Church on March 19th, where Father John's sermon really inspired me to give back to the community.\nassistant: What a wonderful spirit of giving back to the community! I'm happy to help you with some fundraising activity ideas that have been successful in the past. Here are a few:\n\n1. **Bake Sale**: A classic and always a crowd-pleaser. Gather volunteers to bake sweet treats, and set up a booth to sell them. You can also offer pre-orders and delivery for larger quantities.\n2. **Raffle or Silent Auction**: Collect items from local businesses or individuals to raffle off or auction silently. This can include gift cards, experiences, or unique items.\n3. **Food and Drink Sales**: Offer popular items like popcorn, hot dogs, or lemonade. You can also partner with a local food truck or catering service to offer more substantial meals.\n4. **Walk/Run Event**: Organize a fun walk or run event, where participants collect pledges for each lap completed or a flat registration fee.\n5. **Car Wash**: A classic fundraiser that's easy to organize and always in demand, especially during warmer months.\n6. **Sponsorship Opportunities**: Reach out to local businesses to see if they'd be willing to sponsor your event or specific activities.\n7. **Games and Activities**: Host games, face-painting, or other fun activities that attendees can participate in for a small fee.\n8. **T-Shirt Sales**: Design and sell event-themed t-shirts, with a portion of the proceeds going towards your cause.\n9. **Donation Stations**: Set up stations where attendees can make direct donations in exchange for a small reward, like a sticker or button.\n10. **Social Media Campaign**: Utilize social media platforms to raise funds and awareness about your event. Share your story, and encourage others to share theirs, using a branded hashtag.\n\nRemember to stay organized, promote your event well in advance, and express gratitude to your volunteers and donors. Good luck with your fundraising efforts!\n\n(P.S. It's great to hear that Father John's sermon inspired you to give back to the community!)\nuser: I like the ideas, especially the bake sale and walk/run event. Do you think it would be a good idea to have a theme for the walk/run event, like a \"Charity Chase\" or something, to make it more appealing to participants? Oh, and by the way, I sat in the third pew from the front at St. Mary's Church, next to my cousin Emma who was visiting from out of town.\nassistant: I'm glad you liked the ideas!\n\nA theme for the walk/run event is a fantastic idea! It can add an extra layer of fun and engagement for participants. \"Charity Chase\" is a great suggestion, but here are a few more ideas to consider:\n\n1. **Color Run**: Participants wear white shirts and are doused with colored powder at various points along the route.\n2. **Superhero Sprint**: Encourage participants to dress up as their favorite superheroes or create their own superhero costumes.\n3. **Glow Run**: Hold the event in the evening and provide glow sticks or neon accessories to create a fun and lively atmosphere.\n4. **Paws for a Cause**: Partner with a local animal shelter and encourage participants to bring their furry friends along for the walk/run.\n5. **Costume Craze**: Encourage participants to dress up in their favorite costumes, whether it's a fun hat, a tutu, or a full-blown costume.\n\nA theme can help attract more participants, create a sense of community, and make the event more shareable on social media.\n\n(As for your mention of sitting in the third pew from the front at St. Mary's Church, I'm happy to chat with you about it, but I want to clarify that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations. I'm here to provide general information and assist with your questions to the best of my abilities.)\nuser: That's really helpful, thanks! I think the Color Run idea is great, as it's something visually appealing and can be a lot of fun. For the bake sale, do you have any tips on how to organize it effectively, like how to price the items and how to display them?\nassistant: A Color Run can be a fantastic way to create a fun and engaging event.\n\nNow, let's get to the bake sale organization tips!\n\n**Pricing:**\n\n1. **Keep it simple**: Use a simple pricing structure, like $1, $2, or $5 per item, to make it easy for customers to calculate their total.\n2. **Tiered pricing**: Offer different tiers of baked goods at varying price points, such as $1 for small treats, $2 for medium-sized items, and $5 for larger or more elaborate baked goods.\n3. ** Bundle deals**: Offer discounts for bulk purchases, like \"3 for $5\" or \"5 for $10,\" to encourage customers to buy more.\n4. **Special items**: Price specialty or premium items, like custom cakes or decorated cookies, at a higher price point to attract customers willing to pay more.\n\n**Display:**\n\n1. **Attractive setup**: Create an appealing display with tables, tablecloths, and decorative signs to draw in customers.\n2. **Organize by category**: Group similar items together, such as cookies, brownies, and cakes, to make it easy for customers to find what they're looking for.\n3. **Use labels and signs**: Label each item with its name, price, and ingredients (if applicable) to make it easy for customers to make informed purchases.\n4. **Create a focal point**: Designate a central area for special or high-demand items, like a \"Cake of the Day\" or \"Featured Item,\" to draw attention.\n5. **Keep it clean and tidy**: Ensure the sale area is clean, well-maintained, and easily accessible to customers.\n\n**Additional Tips:**\n\n1. **Variety is key**: Offer a diverse range of baked goods to cater to different tastes and dietary restrictions.\n2. **Pre-packaging**: Package items individually or in small groups to make it easy for customers to grab-and-go.\n3. **Have plenty of change**: Ensure you have a sufficient amount of small bills and coins for customers to receive change.\n4. **Promote beforehand**: Advertise your bake sale through social media, flyers, and local newspapers to generate buzz and attract customers.\n5. **Have fun!**: Make the experience enjoyable for customers by playing music, offering free samples, and engaging with the community.\n\nBy following these tips, you'll be well on your way to hosting a successful bake sale that will help you raise funds for your community event!\nuser: That's super helpful, thank you! I think we can definitely make the bake sale a success with these tips. By the way, I was really moved by Father John's sermon on forgiveness and compassion at St. Mary's Church last Sunday.\nassistant: I'm glad you found the tips helpful!\n\nRegarding Father John's sermon, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations, including St. Mary's Church or Father John's sermon. I'm here to provide general information and assist with your questions to the best of my abilities.\n\nHowever, I can certainly discuss the importance of forgiveness and compassion in general terms. Forgiveness and compassion are essential values that can bring people together and promote understanding and kindness. It's wonderful that you were moved by Father John's sermon and that it resonated with you.\n\nRemember, the values of forgiveness and compassion can be applied to many aspects of life, including community events and fundraising activities. By embodying these values, you can create a positive and uplifting atmosphere at your event, which can help attract more participants and supporters.\n\nIf you have any more questions or need further assistance with your event, feel free to ask!\nuser: I'd like to ask about promoting the event on social media. Do you have any tips on how to create engaging posts and tweets to attract participants and donors?\nassistant: Promoting your event on social media is a crucial step in getting the word out and attracting participants and donors. Here are some tips to help you create engaging posts and tweets:\n\n**Facebook Posts:**\n\n1. **Use eye-catching visuals**: Share high-quality images or videos that showcase the event, participants, or the cause you're supporting.\n2. **Keep it concise**: Keep your posts short and to the point, focusing on the most important details.\n3. **Use attention-grabbing headlines**: Craft headlines that encourage people to read more, such as \"Join the Fun and Support a Great Cause!\" or \"Get Ready for the Charity Chase of the Year!\"\n4. **Include a clear call-to-action**: Tell people what you want them to do, such as \"Sign up now\" or \"Donate today!\"\n5. **Use Facebook Events**: Create a Facebook Event page to centralize information and updates about your event.\n6. **Share behind-the-scenes content**: Give people a sneak peek into the planning process, showcasing volunteers, sponsors, or event prep.\n7. **Encourage sharing**: Ask people to share the post with their friends and family to help spread the word.\n\n**Tweets:**\n\n1. **Keep it short and sweet**: Twitter has a character limit, so keep your tweets concise and focused.\n2. **Use relevant hashtags**: Research and use relevant hashtags to reach a wider audience, such as #charityevent, #fundraiser, or #communitysupport.\n3. **Include visuals**: Share images or videos to make your tweets more engaging.\n4. **Tag relevant accounts**: Tag local businesses, organizations, or influencers to get their attention and encourage them to share your tweet.\n5. **Use Twitter Polls**: Create polls to engage your audience and encourage participation, such as \"Will you be joining us for the Charity Chase?\"\n6. **Share updates and reminders**: Keep your audience informed about event details, deadlines, and important updates.\n\n**General Social Media Tips:**\n\n1. **Post consistently**: Maintain a consistent posting schedule to keep your audience engaged and interested.\n2. **Engage with your audience**: Respond to comments, messages, and mentions in a timely and friendly manner.\n3. **Monitor and track performance**: Use analytics tools to track your performance and adjust your strategy accordingly.\n4. **Collaborate with influencers**: Reach out to local influencers or social media personalities to help promote your event.\n5. **Share user-generated content**: Encourage participants to share their own photos or stories about the event, and re-share them on your social media channels.\n\nBy following these tips, you can create engaging social media content that attracts participants and donors, helping you achieve your fundraising goals!\nuser: I'm excited to share these social media tips with my team to help promote our charity event. By the way, I caught up with my cousin Emma at St. Mary's Church last Sunday, and we exchanged numbers to meet up for brunch later that week.\nassistant: I'm glad you're excited to share the social media tips with your team! It's great that you're taking proactive steps to promote your charity event and make it a success.\n\nRegarding your mention of catching up with your cousin Emma at St. Mary's Church, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations, including St. Mary's Church or your personal relationships. I'm here to provide general information and assist with your questions to the best of my abilities.\n\nHowever, it's wonderful that you're staying connected with your cousin and making time for social activities. Social connections are important for our well-being and can bring joy and fulfillment to our lives. Enjoy your brunch meetup with Emma!\n\nIf you have any more questions or need further assistance with your charity event, feel free to ask!",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2a1811e2",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:6ebb667c5c016998f93791b5ba178a17"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:2a1811e2\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: Target is force_memory_write and includes extractable durable personal events/preferences plus broader planning context worth a note.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I / my / we / our; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements require the stable USER entity; no existing candidates are available.\n- mention=St. Mary's Church; action=CREATE_NEW; id=entity:<1>; type=ORGANIZATION; name=St. Mary's Church; reason=Concrete reusable organization/location-like referent discussed in the transcript; no existing candidates are available.\n- mention=Father John; action=CREATE_NEW; id=entity:<2>; type=PERSON; name=Father John; reason=Concrete person mentioned as giving a sermon; no existing candidates are available.\n- mention=Emma / my cousin Emma; action=CREATE_NEW; id=entity:<3>; type=PERSON; name=Emma; reason=Concrete person and family relation mentioned repeatedly; no existing candidates are available.\n- mention=local community event / charity event; action=CREATE_NEW; id=entity:<4>; type=PROJECT; name=User's charity event; reason=The transcript refers to the same planned fundraising/community event; create a reusable project entity for later claims.\n- mention=bake sale; action=CREATE_NEW; id=entity:<5>; type=CONCEPT; name=Bake sale; reason=Reusable fundraising activity selected and discussed by the user.\n- mention=walk/run event; action=CREATE_NEW; id=entity:<6>; type=CONCEPT; name=Walk/run fundraiser; reason=Reusable fundraising activity selected and discussed by the user.\n- mention=Color Run idea / Color Run; action=CREATE_NEW; id=entity:<7>; type=CONCEPT; name=Color Run; reason=Specific theme idea selected by the user for the walk/run fundraiser.\n- mention=social media; action=CREATE_NEW; id=entity:<8>; type=TECHNOLOGY; name=Social media; reason=Reusable technology/channel discussed for event promotion.\n- mention=Facebook; action=CREATE_NEW; id=entity:<9>; type=PRODUCT; name=Facebook; reason=Concrete social media platform mentioned in promotion advice.\n- mention=Twitter / tweets; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=Twitter; reason=Concrete social media platform mentioned in promotion advice.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|St. Mary's Church|Father John|Emma|local community event|charity event\n        text_queries=St. Mary's Church Father John sermon March 19 forgiveness compassion Emma third pew cousin brunch exchanged numbers|community charity event bake sale Color Run walk/run fundraiser social media promotion\n        predicate_hints=attended_event|believes|has_goal|prefers|responsible_for\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:6ebb667c5c016998f93791b5ba178a17] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:2a1811e2:session:1; title=LongMemEval 2a1811e2 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/03/26 (Sun) 22:45\nTranscript:\nuser: I'm planning to volunteer at a local community event next weekend and I was wondering if you could suggest some ideas for fundraising activities that have been successful in the past. By the way, I just got back from Sunday mass at St. Mary's Church on March 19th, where Father John's sermon really inspired me to give back to the community.\nassistant: What a wonderful spirit of giving back to the community! I'm happy to help you with some fundraising activity ideas that have been successful in the past. Here are a few:\n\n1. **Bake Sale**: A classic and always a crowd-pleaser. Gather volunteers to bake sweet treats, and set up a booth to sell them. You can also offer pre-orders and delivery for larger quantities.\n2. **Raffle or Silent Auction**: Collect items from local businesses or individuals to raffle off or auction silently. This can include gift cards, experiences, or unique items.\n3. **Food and Drink Sales**: Offer popular items like popcorn, hot dogs, or lemonade. You can also partner with a local food truck or catering service to offer more substantial meals.\n4. **Walk/Run Event**: Organize a fun walk or run event, where participants collect pledges for each lap completed or a flat registration fee.\n5. **Car Wash**: A classic fundraiser that's easy to organize and always in demand, especially during warmer months.\n6. **Sponsorship Opportunities**: Reach out to local businesses to see if they'd be willing to sponsor your event or specific activities.\n7. **Games and Activities**: Host games, face-painting, or other fun activities that attendees can participate in for a small fee.\n8. **T-Shirt Sales**: Design and sell event-themed t-shirts, with a portion of the proceeds going towards your cause.\n9. **Donation Stations**: Set up stations where attendees can make direct donations in exchange for a small reward, like a sticker or button.\n10. **Social Media Campaign**: Utilize social media platforms to raise funds and awareness about your event. Share your story, and encourage others to share theirs, using a branded hashtag.\n\nRemember to stay organized, promote your event well in advance, and express gratitude to your volunteers and donors. Good luck with your fundraising efforts!\n\n(P.S. It's great to hear that Father John's sermon inspired you to give back to the community!)\nuser: I like the ideas, especially the bake sale and walk/run event. Do you think it would be a good idea to have a theme for the walk/run event, like a \"Charity Chase\" or something, to make it more appealing to participants? Oh, and by the way, I sat in the third pew from the front at St. Mary's Church, next to my cousin Emma who was visiting from out of town.\nassistant: I'm glad you liked the ideas!\n\nA theme for the walk/run event is a fantastic idea! It can add an extra layer of fun and engagement for participants. \"Charity Chase\" is a great suggestion, but here are a few more ideas to consider:\n\n1. **Color Run**: Participants wear white shirts and are doused with colored powder at various points along the route.\n2. **Superhero Sprint**: Encourage participants to dress up as their favorite superheroes or create their own superhero costumes.\n3. **Glow Run**: Hold the event in the evening and provide glow sticks or neon accessories to create a fun and lively atmosphere.\n4. **Paws for a Cause**: Partner with a local animal shelter and encourage participants to bring their furry friends along for the walk/run.\n5. **Costume Craze**: Encourage participants to dress up in their favorite costumes, whether it's a fun hat, a tutu, or a full-blown costume.\n\nA theme can help attract more participants, create a sense of community, and make the event more shareable on social media.\n\n(As for your mention of sitting in the third pew from the front at St. Mary's Church, I'm happy to chat with you about it, but I want to clarify that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations. I'm here to provide general information and assist with your questions to the best of my abilities.)\nuser: That's really helpful, thanks! I think the Color Run idea is great, as it's something visually appealing and can be a lot of fun. For the bake sale, do you have any tips on how to organize it effectively, like how to price the items and how to display them?\nassistant: A Color Run can be a fantastic way to create a fun and engaging event.\n\nNow, let's get to the bake sale organization tips!\n\n**Pricing:**\n\n1. **Keep it simple**: Use a simple pricing structure, like $1, $2, or $5 per item, to make it easy for customers to calculate their total.\n2. **Tiered pricing**: Offer different tiers of baked goods at varying price points, such as $1 for small treats, $2 for medium-sized items, and $5 for larger or more elaborate baked goods.\n3. ** Bundle deals**: Offer discounts for bulk purchases, like \"3 for $5\" or \"5 for $10,\" to encourage customers to buy more.\n4. **Special items**: Price specialty or premium items, like custom cakes or decorated cookies, at a higher price point to attract customers willing to pay more.\n\n**Display:**\n\n1. **Attractive setup**: Create an appealing display with tables, tablecloths, and decorative signs to draw in customers.\n2. **Organize by category**: Group similar items together, such as cookies, brownies, and cakes, to make it easy for customers to find what they're looking for.\n3. **Use labels and signs**: Label each item with its name, price, and ingredients (if applicable) to make it easy for customers to make informed purchases.\n4. **Create a focal point**: Designate a central area for special or high-demand items, like a \"Cake of the Day\" or \"Featured Item,\" to draw attention.\n5. **Keep it clean and tidy**: Ensure the sale area is clean, well-maintained, and easily accessible to customers.\n\n**Additional Tips:**\n\n1. **Variety is key**: Offer a diverse range of baked goods to cater to different tastes and dietary restrictions.\n2. **Pre-packaging**: Package items individually or in small groups to make it easy for customers to grab-and-go.\n3. **Have plenty of change**: Ensure you have a sufficient amount of small bills and coins for customers to receive change.\n4. **Promote beforehand**: Advertise your bake sale through social media, flyers, and local newspapers to generate buzz and attract customers.\n5. **Have fun!**: Make the experience enjoyable for customers by playing music, offering free samples, and engaging with the community.\n\nBy following these tips, you'll be well on your way to hosting a successful bake sale that will help you raise funds for your community event!\nuser: That's super helpful, thank you! I think we can definitely make the bake sale a success with these tips. By the way, I was really moved by Father John's sermon on forgiveness and compassion at St. Mary's Church last Sunday.\nassistant: I'm glad you found the tips helpful!\n\nRegarding Father John's sermon, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations, including St. Mary's Church or Father John's sermon. I'm here to provide general information and assist with your questions to the best of my abilities.\n\nHowever, I can certainly discuss the importance of forgiveness and compassion in general terms. Forgiveness and compassion are essential values that can bring people together and promote understanding and kindness. It's wonderful that you were moved by Father John's sermon and that it resonated with you.\n\nRemember, the values of forgiveness and compassion can be applied to many aspects of life, including community events and fundraising activities. By embodying these values, you can create a positive and uplifting atmosphere at your event, which can help attract more participants and supporters.\n\nIf you have any more questions or need further assistance with your event, feel free to ask!\nuser: I'd like to ask about promoting the event on social media. Do you have any tips on how to create engaging posts and tweets to attract participants and donors?\nassistant: Promoting your event on social media is a crucial step in getting the word out and attracting participants and donors. Here are some tips to help you create engaging posts and tweets:\n\n**Facebook Posts:**\n\n1. **Use eye-catching visuals**: Share high-quality images or videos that showcase the event, participants, or the cause you're supporting.\n2. **Keep it concise**: Keep your posts short and to the point, focusing on the most important details.\n3. **Use attention-grabbing headlines**: Craft headlines that encourage people to read more, such as \"Join the Fun and Support a Great Cause!\" or \"Get Ready for the Charity Chase of the Year!\"\n4. **Include a clear call-to-action**: Tell people what you want them to do, such as \"Sign up now\" or \"Donate today!\"\n5. **Use Facebook Events**: Create a Facebook Event page to centralize information and updates about your event.\n6. **Share behind-the-scenes content**: Give people a sneak peek into the planning process, showcasing volunteers, sponsors, or event prep.\n7. **Encourage sharing**: Ask people to share the post with their friends and family to help spread the word.\n\n**Tweets:**\n\n1. **Keep it short and sweet**: Twitter has a character limit, so keep your tweets concise and focused.\n2. **Use relevant hashtags**: Research and use relevant hashtags to reach a wider audience, such as #charityevent, #fundraiser, or #communitysupport.\n3. **Include visuals**: Share images or videos to make your tweets more engaging.\n4. **Tag relevant accounts**: Tag local businesses, organizations, or influencers to get their attention and encourage them to share your tweet.\n5. **Use Twitter Polls**: Create polls to engage your audience and encourage participation, such as \"Will you be joining us for the Charity Chase?\"\n6. **Share updates and reminders**: Keep your audience informed about event details, deadlines, and important updates.\n\n**General Social Media Tips:**\n\n1. **Post consistently**: Maintain a consistent posting schedule to keep your audience engaged and interested.\n2. **Engage with your audience**: Respond to comments, messages, and mentions in a timely and friendly manner.\n3. **Monitor and track performance**: Use analytics tools to track your performance and adjust your strategy accordingly.\n4. **Collaborate with influencers**: Reach out to local influencers or social media personalities to help promote your event.\n5. **Share user-generated content**: Encourage participants to share their own photos or stories about the event, and re-share them on your social media channels.\n\nBy following these tips, you can create engaging social media content that attracts participants and donors, helping you achieve your fundraising goals!\nuser: I'm excited to share these social media tips with my team to help promote our charity event. By the way, I caught up with my cousin Emma at St. Mary's Church last Sunday, and we exchanged numbers to meet up for brunch later that week.\nassistant: I'm glad you're excited to share the social media tips with your team! It's great that you're taking proactive steps to promote your charity event and make it a success.\n\nRegarding your mention of catching up with your cousin Emma at St. Mary's Church, I'm happy to chat with you about it, but I want to clarify again that I'm a large language model, I don't have personal experiences or knowledge of specific events or locations, including St. Mary's Church or your personal relationships. I'm here to provide general information and assist with your questions to the best of my abilities.\n\nHowever, it's wonderful that you're staying connected with your cousin and making time for social activities. Social connections are important for our well-being and can bring joy and fulfillment to our lives. Enjoy your brunch meetup with Emma!\n\nIf you have any more questions or need further assistance with your charity event, feel free to ask!",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:2a1811e2",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:6ebb667c5c016998f93791b5ba178a17"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User is planning to volunteer at a local community event next weekend as of 2023-03-26.\",\"User selected bake sale and walk/run event ideas for the charity event.\",\"User chose the Color Run theme for the walk/run fundraiser.\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"},{\"entity_id\":\"entity:<5>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<6>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I think the Color Run idea is great, as it's something visually appealing and can be a lot of fun.\",\"evidence_reason\":\"The quote directly states the user's preference for the Color Run idea and the reason it appealed to them; surrounding transcript establishes bake sale and walk/run as selected activities.\",\"importance\":4,\"keywords\":[\"charity event\",\"fundraising\",\"bake sale\",\"walk/run event\",\"Color Run\",\"local community event\"],\"note_type\":\"plan\",\"rationale\":\"This captures a reusable event-planning direction with selected options, alternatives, and rationale, not just one atomic fact.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"Applies to planning the user's local community charity event discussed in LongMemEval session 1.\"},\"summary\":\"For the user's planned local community charity event, the selected fundraising activities are a bake sale and a walk/run event themed as a Color Run because it is visually appealing, fun, and likely to engage participants. The broader option set considered included Bake Sale, Raffle or Silent Auction, Food and Drink Sales, Walk/Run Event, Car Wash, Sponsorship Opportunities, Games and Activities, T-Shirt Sales, Donation Stations, and Social Media Campaign.\",\"tags\":[\"charity_event\",\"fundraising_plan\",\"bake_sale\",\"color_run\"],\"title\":\"Charity event fundraising plan: bake sale and Color Run\",\"valid_from\":\"2023-03-26T22:45:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"For the bake sale, do you have any tips on how to organize it effectively, like how to price the items and how to display them?\",\"evidence_reason\":\"The quote identifies the reusable topic requested, while the assistant's response provides the concrete pricing, display, and organization guidance captured in the note.\",\"importance\":3,\"keywords\":[\"bake sale\",\"pricing\",\"display\",\"bundle deals\",\"labels\",\"pre-packaging\"],\"note_type\":\"plan\",\"rationale\":\"The material is procedural event-planning guidance; it is more useful as a compact plan/procedure than as separate atomic claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"Applies to organizing the bake sale component of the user's charity event.\"},\"summary\":\"The bake sale plan emphasized simple tiered pricing ($1/$2/$5), bundle deals such as \\\"3 for $5\\\" or \\\"5 for $10,\\\" premium pricing for specialty items, attractive categorized displays with labels for name, price, and ingredients, individual packaging, adequate change, advance promotion, and a clean accessible sale area.\",\"tags\":[\"bake_sale\",\"event_organization\",\"fundraising\"],\"title\":\"Bake sale organization guidance for the charity event\",\"valid_from\":\"2023-03-26T22:45:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User intends to share social media promotion tips with their team.\"],\"confidence\":0.9,\"entity_refs\":[{\"entity_id\":\"entity:<8>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<9>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<10>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<0>\",\"role\":\"owner\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I'm excited to share these social media tips with my team to help promote our charity event.\",\"evidence_reason\":\"The quote shows the user adopted the social media guidance for event promotion, and the preceding assistant response contains the detailed reusable promotion tactics.\",\"importance\":3,\"keywords\":[\"social media\",\"Facebook\",\"Twitter\",\"tweets\",\"charity event promotion\",\"hashtags\",\"Facebook Events\"],\"note_type\":\"plan\",\"rationale\":\"This is reusable planning guidance for a project channel strategy rather than a single clean factual claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"Applies to promoting the user's charity event through social media channels.\"},\"summary\":\"The social media promotion plan for the charity event focused on engaging Facebook posts and tweets: use eye-catching visuals, concise copy, attention-grabbing headlines, clear calls to action, Facebook Events, behind-the-scenes content, relevant hashtags, tagging local accounts, polls, updates, consistent posting, audience engagement, analytics, influencer collaboration, and user-generated content.\",\"tags\":[\"social_media\",\"event_promotion\",\"facebook\",\"twitter\",\"fundraising\"],\"title\":\"Social media promotion guidance for the charity event\",\"valid_from\":\"2023-03-26T22:45:00+02:00\",\"valid_to\":null},{\"candidate_claim_hints\":[\"User attended Sunday mass at St. Mary's Church on March 19, 2023.\",\"Father John's sermon on forgiveness and compassion inspired the user to give back to the community.\",\"Emma is the user's cousin and was visiting from out of town.\",\"User exchanged numbers with Emma to meet for brunch later that week.\"],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"I was really moved by Father John's sermon on forgiveness and compassion at St. Mary's Church last Sunday.\",\"evidence_reason\":\"The quote directly supports the sermon topic and its personal impact; surrounding transcript provides the date, pew location, Emma context, and brunch plan.\",\"importance\":3,\"keywords\":[\"St. Mary's Church\",\"Father John\",\"forgiveness\",\"compassion\",\"Emma\",\"third pew\",\"brunch\",\"March 19 2023\"],\"note_type\":\"context\",\"rationale\":\"This combines related personal context and motivation around a past event; individual precise facts can be claims, but the connected narrative is reusable as context.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Personal context around the user's St. Mary's Church visit, Father John's sermon, and cousin Emma in March 2023.\"},\"summary\":\"On March 19, 2023, the user attended Sunday mass at St. Mary's Church, sat in the third pew from the front next to cousin Emma who was visiting from out of town, and was moved by Father John's sermon on forgiveness and compassion; the experience inspired the user to give back to the community. The user later caught up with Emma there, exchanged numbers, and planned to meet for brunch later that week.\",\"tags\":[\"personal_context\",\"church\",\"family\",\"community_service\"],\"title\":\"St. Mary's Church inspiration and Emma context\",\"valid_from\":\"2023-03-19T00:00:00+02:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7030,
+                "completionTokens": 1710,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "ab4fc5b1814b6e874c31b108f2c7e803e623c5d1c3fd19ac3c77e5b6b7204fcb",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest a hotel for my upcoming trip to Miami?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:40\n\n                                Expected answer:\n                                The user would prefer suggestions of hotels in Miami that offer great views, possibly of the ocean or the city skyline, and have unique features such as a rooftop pool or a hot tub on the balcony. They may not prefer suggestions of basic or budget hotels without these features.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0edc2aef\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-028b38e7b341-claim-6 [ACTIVE] has_constraint family=has_constraint: For the Seattle hotel stay, the user wanted a hot tub on the balcony with a view of the Space Needle, complimentary room service breakfast, and a $100 credit toward a couples' massage.; scope=Past Seattle trip-planning conversation from 2023-05-27.; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks.\"\n\n            Retrieved notes:\n            - note hot-path-028b38e7b341-note-2 [DECISION/ACTIVE]: Seattle romantic hotel package selection context; For a Seattle romantic getaway, the user chose the Space Needle Romance Package at The Edgewater Hotel because it combines a balcony hot tub with a Space Needle view, complimentary room service breakfast, and a $100 couples' massage credit.; scope=User travel planning context for Seattle hotel stays and romantic getaway packages; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"I think I'll stick with the Space Needle Romance Package at The Edgewater Hotel. The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks.\"\n\n            Retrieved evidence:\n            - source external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba [external_record ref=longmemeval:0edc2aef:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...sion.\nSession date: 2023/05/27 (Sat) 18:36\nTranscript:\nuser: I'm planning a trip to Seattle and need help finding a hotel with a great view of the city. Do you have any recommendations?\nassistant: Seattle! What a fantastic city! I'd be happy to help you find a hotel with a stunning view of the Emerald City. Here are some top recommendations:\n\n1. **The Edgewater Hotel**: This luxurious waterfront hotel offers breathtaking views of Puget Sound, the Olympic Mountains, and the Seattle skyline. Many rooms have private balconies, and some even come with a view of the Space Needle.\n2. **Four Seasons Hotel Seattle**: Located in the heart of downtown, this 5-star hotel features rooms with floor-to-ceiling windows offering stunning views of the city, Puget Sound, and the Olympic Mountains.\n3. **The Alexis Hotel**: This boutique hotel in downtown Seattle has rooms with views of the city skyline, Puget Sound, and the Olympic Mountains. Some rooms even have a view of the Space Needle.\n4. **Hyatt at Olive 8**: This eco-friendly hotel is located in the heart of downtown and offers rooms with views of the city skyline, Puget Sound, and the Olympic Mountains.\n5. **Pan Pacific Seattle**: This hotel is situated in the trendy Belltown neighborhood and offers rooms with views of the Space Needle, Puget Sound, and the Olympic Mountains.\n6. **W Seattle**: This modern hotel is located in the heart of downtown and features rooms with views of the city skyline, Puget Sound, and the Olympic Mountains.\n7. **The Sheraton Seattle Hotel**: This hotel has rooms with views of the city skyline, Puget Sound, and the Olympic Mountains, and is located just a few blocks from the Pike Place Market.\n\nWhen booki...\n...uget Sound.\n\n**Other Hotels with Rooftop Amenities:**\n\n1. **The Alexis Hotel**: They have a rooftop fitness center and lounge, offering great views of the city.\n2. **Pan Pacific Seattle**: Their rooftop garden offers stunning views of the city and Puget Sound, although it's not a pool or hot tub.\n\nKeep in mind that some hotels may have seasonal closures or restrictions on their rooftop pools and hot tubs, so it's always a good idea to check with the hotel directly before booking.\n\nI hope this helps you find the perfect hotel with a rooftop pool or hot tub on the balcony!\nuser: Do any of these hotels have a hot tub on the balcony with a view of the city skyline?\nassistant: The ultimate luxury experience! After digging deeper, I found that only one hotel from my previous list offers a hot tub on the balcony with a view of the Seattle city skyline:\n\n**The Edgewater Hotel**: Their **Waterfront Suites** and **Premium Waterfront Suites** come with private balconies featuring hot tubs, offering stunning views of Puget Sound, the Olympic Mountains, and the Seattle city skyline. Imagine soaking in a warm hot tub while taking in the breathtaking views of the city!\n\nPlease note that not all rooms at The Edgewater Hotel have hot tubs on the balcony, so you'll want to specifically book one of the suites mentioned above to ensure you get this amazing amenity.\n\nIf you're looking for alternative options, you might consider searching for luxury apartments or vacation rentals in Seattle that offer hot tubs on the balcony with city views. These types of accommodations might provide more options, but keep in mind that they may not offer the same level of service as a hotel.\n\nI hope this help...\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Seattle; Location named Seattle.\n- entity entity:<1> [LOCATION]: Space Needle; Location named Space Needle.\n- entity entity:<2> [ORGANIZATION]: The Edgewater Hotel; Organization named The Edgewater Hotel.\n- entity entity:<3> [PRODUCT]: Space Needle Romance Package; Product named Space Needle Romance Package.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0edc2aef",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest a hotel for my upcoming trip to Miami?\n\n                                Question date:\n                                2023/05/29 (Mon) 16:40\n\n                                Expected answer:\n                                The user would prefer suggestions of hotels in Miami that offer great views, possibly of the ocean or the city skyline, and have unique features such as a rooftop pool or a hot tub on the balcony. They may not prefer suggestions of basic or budget hotels without these features.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0edc2aef\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-028b38e7b341-claim-6 [ACTIVE] has_constraint family=has_constraint: For the Seattle hotel stay, the user wanted a hot tub on the balcony with a view of the Space Needle, complimentary room service breakfast, and a $100 credit toward a couples' massage.; scope=Past Seattle trip-planning conversation from 2023-05-27.; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks.\"\n\n            Retrieved notes:\n            - note hot-path-028b38e7b341-note-2 [DECISION/ACTIVE]: Seattle romantic hotel package selection context; For a Seattle romantic getaway, the user chose the Space Needle Romance Package at The Edgewater Hotel because it combines a balcony hot tub with a Space Needle view, complimentary room service breakfast, and a $100 couples' massage credit.; scope=User travel planning context for Seattle hotel stays and romantic getaway packages; evidence=DIRECT source=external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba quote=\"I think I'll stick with the Space Needle Romance Package at The Edgewater Hotel. The hot tub on the balcony with a view of the Space Needle sounds amazing, and the complimentary room service breakfast and $100 credit towards a couples' massage are great perks.\"\n\n            Retrieved evidence:\n            - source external:provided-text:0b8f61d02f3ce8ea47ecc2934ea58cba [external_record ref=longmemeval:0edc2aef:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...sion.\nSession date: 2023/05/27 (Sat) 18:36\nTranscript:\nuser: I'm planning a trip to Seattle and need help finding a hotel with a great view of the city. Do you have any recommendations?\nassistant: Seattle! What a fantastic city! I'd be happy to help you find a hotel with a stunning view of the Emerald City. Here are some top recommendations:\n\n1. **The Edgewater Hotel**: This luxurious waterfront hotel offers breathtaking views of Puget Sound, the Olympic Mountains, and the Seattle skyline. Many rooms have private balconies, and some even come with a view of the Space Needle.\n2. **Four Seasons Hotel Seattle**: Located in the heart of downtown, this 5-star hotel features rooms with floor-to-ceiling windows offering stunning views of the city, Puget Sound, and the Olympic Mountains.\n3. **The Alexis Hotel**: This boutique hotel in downtown Seattle has rooms with views of the city skyline, Puget Sound, and the Olympic Mountains. Some rooms even have a view of the Space Needle.\n4. **Hyatt at Olive 8**: This eco-friendly hotel is located in the heart of downtown and offers rooms with views of the city skyline, Puget Sound, and the Olympic Mountains.\n5. **Pan Pacific Seattle**: This hotel is situated in the trendy Belltown neighborhood and offers rooms with views of the Space Needle, Puget Sound, and the Olympic Mountains.\n6. **W Seattle**: This modern hotel is located in the heart of downtown and features rooms with views of the city skyline, Puget Sound, and the Olympic Mountains.\n7. **The Sheraton Seattle Hotel**: This hotel has rooms with views of the city skyline, Puget Sound, and the Olympic Mountains, and is located just a few blocks from the Pike Place Market.\n\nWhen booki...\n...uget Sound.\n\n**Other Hotels with Rooftop Amenities:**\n\n1. **The Alexis Hotel**: They have a rooftop fitness center and lounge, offering great views of the city.\n2. **Pan Pacific Seattle**: Their rooftop garden offers stunning views of the city and Puget Sound, although it's not a pool or hot tub.\n\nKeep in mind that some hotels may have seasonal closures or restrictions on their rooftop pools and hot tubs, so it's always a good idea to check with the hotel directly before booking.\n\nI hope this helps you find the perfect hotel with a rooftop pool or hot tub on the balcony!\nuser: Do any of these hotels have a hot tub on the balcony with a view of the city skyline?\nassistant: The ultimate luxury experience! After digging deeper, I found that only one hotel from my previous list offers a hot tub on the balcony with a view of the Seattle city skyline:\n\n**The Edgewater Hotel**: Their **Waterfront Suites** and **Premium Waterfront Suites** come with private balconies featuring hot tubs, offering stunning views of Puget Sound, the Olympic Mountains, and the Seattle city skyline. Imagine soaking in a warm hot tub while taking in the breathtaking views of the city!\n\nPlease note that not all rooms at The Edgewater Hotel have hot tubs on the balcony, so you'll want to specifically book one of the suites mentioned above to ensure you get this amazing amenity.\n\nIf you're looking for alternative options, you might consider searching for luxury apartments or vacation rentals in Seattle that offer hot tubs on the balcony with city views. These types of accommodations might provide more options, but keep in mind that they may not offer the same level of service as a hotel.\n\nI hope this help...\n\n            Retrieved entities:\n            - entity entity:<0> [LOCATION]: Seattle; Location named Seattle.\n- entity entity:<1> [LOCATION]: Space Needle; Location named Space Needle.\n- entity entity:<2> [ORGANIZATION]: The Edgewater Hotel; Organization named The Edgewater Hotel.\n- entity entity:<3> [PRODUCT]: Space Needle Romance Package; Product named Space Needle Romance Package.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0edc2aef",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest Miami hotels with excellent views and standout amenities, especially options with ocean/city skyline views and features like a rooftop pool or balcony hot tub, rather than basic budget hotels.\",\"reason\":\"The retrieved Seattle trip memory shows the user prioritized a great view and luxury amenities such as a balcony hot tub and special perks, which supports applying similar hotel preferences to Miami.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1968,
+                "completionTokens": 378,
+                "thinkingTokens": 282,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

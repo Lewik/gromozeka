@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "f48d50af3919772667ea437c15bdb3b872ac99def590a5b68a6cffc3d4ce8a51",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What was my personal best time in the charity 5K run?\n\n                                Question date:\n                                2023/06/01 (Thu) 00:58\n\n                                Expected answer:\n                                25 minutes and 50 seconds (or 25:50)\n\n                                Retrieved memory context:\n                                MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nThe retrieved memory below was selected for the immediately following user request.\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\nIf Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\nNamespace: benchmark:longmemeval:6a1eabeb\nContext mode: FACTUAL\nCoverage mode: MINIMAL\nRequire evidence fallback: false\n\nRetrieved profile:\nnone\n\nRetrieved action items:\nnone\n\nRetrieved claims:\n- claim hot-path-5123d2a9210e-claim-5 [ACTIVE] current_metric_value family=current_metric_value: The user's personal best time for a charity 5K run is 25:50.; scope=User's charity 5K personal-best benchmark\n\nRetrieved notes:\nnone\n\nRetrieved evidence:\nnot requested for this context mode\n\nRetrieved entities:\n- entity entity:<0> [USER]: User; The user interacting with this agent.\n\nRetrieved episodes:\nnone",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6a1eabeb",
+                "questionType": "knowledge-update"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                What was my personal best time in the charity 5K run?\n\n                                Question date:\n                                2023/06/01 (Thu) 00:58\n\n                                Expected answer:\n                                25 minutes and 50 seconds (or 25:50)\n\n                                Retrieved memory context:\n                                MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nThe retrieved memory below was selected for the immediately following user request.\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\nIf Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\nNamespace: benchmark:longmemeval:6a1eabeb\nContext mode: FACTUAL\nCoverage mode: MINIMAL\nRequire evidence fallback: false\n\nRetrieved profile:\nnone\n\nRetrieved action items:\nnone\n\nRetrieved claims:\n- claim hot-path-5123d2a9210e-claim-5 [ACTIVE] current_metric_value family=current_metric_value: The user's personal best time for a charity 5K run is 25:50.; scope=User's charity 5K personal-best benchmark\n\nRetrieved notes:\nnone\n\nRetrieved evidence:\nnot requested for this context mode\n\nRetrieved entities:\n- entity entity:<0> [USER]: User; The user interacting with this agent.\n\nRetrieved episodes:\nnone",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6a1eabeb",
+                "questionType": "knowledge-update"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"25 minutes and 50 seconds (25:50).\",\"reason\":\"The retrieved claim explicitly states the user's charity 5K personal best is 25:50.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 673,
+                "completionTokens": 74,
+                "thinkingTokens": 16,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

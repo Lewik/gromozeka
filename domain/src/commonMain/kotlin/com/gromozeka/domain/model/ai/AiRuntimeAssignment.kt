@@ -46,6 +46,11 @@ data class AiRuntimeAssignment(
             displayName = "Memory read / Selector",
             description = "Optional override for selecting recalled candidates before prompt injection.",
         ),
+        MEMORY_READ_ANSWER(
+            requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            displayName = "Memory read / Answer",
+            description = "Optional override for answering direct questions from selected memory context.",
+        ),
         MEMORY_WRITE(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Memory write",
@@ -153,7 +158,8 @@ data class AiRuntimeAssignment(
             get() = when (this) {
                 MEMORY_READ_CONTEXT_COMPACTOR,
                 MEMORY_READ_PLANNER,
-                MEMORY_READ_SELECTOR -> MEMORY_READ
+                MEMORY_READ_SELECTOR,
+                MEMORY_READ_ANSWER -> MEMORY_READ
 
                 MEMORY_WRITE_CONTEXT_COMPACTOR,
                 MEMORY_WRITE_ROUTER,

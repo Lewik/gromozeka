@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "cdad9643189adaf9dca720d6158ffc36f9086af802d8453c591209b0a30151f5",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some resources where I can learn more about video editing?\n\n                                Question date:\n                                2023/05/24 (Wed) 22:03\n\n                                Expected answer:\n                                The user would prefer responses that suggest resources specifically tailored to Adobe Premiere Pro, especially those that delve into its advanced settings. They might not prefer general video editing resources or resources related to other video editing software.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:8a2466db\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-52ea0760518b-claim-5 [ACTIVE] has_goal family=has_goal: The user wanted to learn more about advanced settings for video editing with Adobe Premiere Pro.; scope=User learning interests as stated in the imported 2023-05-20 chat session.; evidence=DIRECT source=external:provided-text:76eeb0339305323ac8fd6ac01bf3607a quote=\"I'm trying to learn more about some advanced settings for video editing with Adobe Premiere Pro\"\n- claim hot-path-52ea0760518b-claim-6 [ACTIVE] prefers family=prefers: The user enjoys using Adobe Premiere Pro.; scope=User software affinity as stated in the imported 2023-05-20 chat session.; evidence=DIRECT source=external:provided-text:76eeb0339305323ac8fd6ac01bf3607a quote=\"Adobe Premiere Pro, which I enjoy to use\"\n\n            Retrieved notes:\n            - note hot-path-52ea0760518b-note-2 [CONTEXT/ACTIVE]: User is learning Premiere Pro Lumetri color grading; The user is learning advanced Adobe Premiere Pro video editing with a current focus on Lumetri Color Panel color grading, especially Color Match, Creative panel, Curves panel, Toe/Shoulder controls, Color Wheels, and general grading workflow. They indicated they will stick with the Lumetri Color Panel for now while getting the hang of color grading.; scope=Applies to the user's ongoing video-editing and color-grading learning context from the imported 2023-05-20 session.; evidence=DIRECT source=external:provided-text:76eeb0339305323ac8fd6ac01bf3607a quote=\"I think I'll stick with the Lumetri Color Panel for now, as I'm still getting the hang of color grading.\"\n\n            Retrieved evidence:\n            - source external:provided-text:76eeb0339305323ac8fd6ac01bf3607a [external_record ref=longmemeval:8a2466db:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 01:03\nTranscript:\nuser: I'm trying to learn more about some advanced settings for video editing with Adobe Premiere Pro, which I enjoy to use. Can you give me some tips on where to start?\nassistant: Adobe Premiere Pro is a powerful video editing software with a vast array of advanced settings that can help you take your editing skills to the next level. Here are some tips to get you started:\n\n1. **Master the Timeline Panel**: The Timeline Panel is the heart of Premiere Pro. Learn to customize it by adding or removing tracks, adjusting track heights, and using the Timeline Panel Menu to access advanced features like track patching and clip grouping.\n2. **Understand the Render Cache**: Premiere Pro's render cache can significantly impact performance. Learn how to manage the cache by adjusting the Render Cache settings in Preferences, using the \"Render and Replace\" feature, and understanding when to purge the cache.\n3. **Lumetri Color Panel**: The Lumetri Color Panel offers advanced color grading tools. Familiarize yourself with the different color wheels, curves, and creative tools like the Color Match feature.\n4. **Audio Advanced Settings**: Premiere Pro's audio advanced settings allow for precise control over audio mixing. Explore the Audio Clip Mixer, learn about audio plugins like the Dynamics and EQ effects, and understand how to use the Audio Gain and Normalize features.\n5. **Effects and Transitions**: Premiere Pro's Effects and Transitions panel offers a vast library of built-in effects and transitions. Learn how to customize and combine effects us...\n...formance and workflow. Understand how to create proxy media, adjust ingest settings, and use the Media Encoder to batch-process files.\n8. **Multi-Camera Editing**: Premiere Pro's multi-camera editing feature allows you to work with multiple camera angles simultaneously. Learn how to create a multi-camera sequence, sync camera angles, and use the Multi-Camera Monitor.\n9. **Export Settings and Media Encoder**: Premiere Pro's export settings and Media Encoder offer advanced options for delivering your final output. Familiarize yourself with the different export formats, codecs, and settings, and learn how to use the Media Encoder to batch-export files.\n10. **Practice and Experiment**: The best way to learn Premiere Pro's advanced settings is by practicing and experimenting with different techniques and features. Start with small projects and gradually move on to more complex ones.\n\nTo dive deeper into these topics, I recommend the following resources:\n\n* Adobe Premiere Pro's official documentation and tutorials\n* YouTube channels like Premiere Bro, Video Copilot, and Adobe Creative Cloud\n* Online courses on platforms like Udemy, LinkedIn Learning, and Skillshare\n* Premiere Pro communities and forums, such as Reddit's r/premierepro and Adobe's Premiere Pro forum\n\nRemember, mastering Premiere Pro's advanced settings takes time and practice. Start with the topics that interest you the most, and gradually build your skills to become a proficient video editor.\nuser: I want to know more about the Lumetri Color Panel, can you tell me more about the Color Match feature?\nassistant: The Lumetri Color Panel is a powerful tool in Adobe Premiere Pro, and the Color Match feature is one of...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: color grading; Concept named color grading.\n- entity entity:<1> [CONCEPT]: video editing; Concept named video editing.\n- entity entity:<2> [PRODUCT]: Adobe Premiere Pro; Product named Adobe Premiere Pro.\n- entity entity:<3> [PRODUCT]: Lumetri Color Panel; Product named Lumetri Color Panel.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "8a2466db",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some resources where I can learn more about video editing?\n\n                                Question date:\n                                2023/05/24 (Wed) 22:03\n\n                                Expected answer:\n                                The user would prefer responses that suggest resources specifically tailored to Adobe Premiere Pro, especially those that delve into its advanced settings. They might not prefer general video editing resources or resources related to other video editing software.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:8a2466db\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-52ea0760518b-claim-5 [ACTIVE] has_goal family=has_goal: The user wanted to learn more about advanced settings for video editing with Adobe Premiere Pro.; scope=User learning interests as stated in the imported 2023-05-20 chat session.; evidence=DIRECT source=external:provided-text:76eeb0339305323ac8fd6ac01bf3607a quote=\"I'm trying to learn more about some advanced settings for video editing with Adobe Premiere Pro\"\n- claim hot-path-52ea0760518b-claim-6 [ACTIVE] prefers family=prefers: The user enjoys using Adobe Premiere Pro.; scope=User software affinity as stated in the imported 2023-05-20 chat session.; evidence=DIRECT source=external:provided-text:76eeb0339305323ac8fd6ac01bf3607a quote=\"Adobe Premiere Pro, which I enjoy to use\"\n\n            Retrieved notes:\n            - note hot-path-52ea0760518b-note-2 [CONTEXT/ACTIVE]: User is learning Premiere Pro Lumetri color grading; The user is learning advanced Adobe Premiere Pro video editing with a current focus on Lumetri Color Panel color grading, especially Color Match, Creative panel, Curves panel, Toe/Shoulder controls, Color Wheels, and general grading workflow. They indicated they will stick with the Lumetri Color Panel for now while getting the hang of color grading.; scope=Applies to the user's ongoing video-editing and color-grading learning context from the imported 2023-05-20 session.; evidence=DIRECT source=external:provided-text:76eeb0339305323ac8fd6ac01bf3607a quote=\"I think I'll stick with the Lumetri Color Panel for now, as I'm still getting the hang of color grading.\"\n\n            Retrieved evidence:\n            - source external:provided-text:76eeb0339305323ac8fd6ac01bf3607a [external_record ref=longmemeval:8a2466db:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 01:03\nTranscript:\nuser: I'm trying to learn more about some advanced settings for video editing with Adobe Premiere Pro, which I enjoy to use. Can you give me some tips on where to start?\nassistant: Adobe Premiere Pro is a powerful video editing software with a vast array of advanced settings that can help you take your editing skills to the next level. Here are some tips to get you started:\n\n1. **Master the Timeline Panel**: The Timeline Panel is the heart of Premiere Pro. Learn to customize it by adding or removing tracks, adjusting track heights, and using the Timeline Panel Menu to access advanced features like track patching and clip grouping.\n2. **Understand the Render Cache**: Premiere Pro's render cache can significantly impact performance. Learn how to manage the cache by adjusting the Render Cache settings in Preferences, using the \"Render and Replace\" feature, and understanding when to purge the cache.\n3. **Lumetri Color Panel**: The Lumetri Color Panel offers advanced color grading tools. Familiarize yourself with the different color wheels, curves, and creative tools like the Color Match feature.\n4. **Audio Advanced Settings**: Premiere Pro's audio advanced settings allow for precise control over audio mixing. Explore the Audio Clip Mixer, learn about audio plugins like the Dynamics and EQ effects, and understand how to use the Audio Gain and Normalize features.\n5. **Effects and Transitions**: Premiere Pro's Effects and Transitions panel offers a vast library of built-in effects and transitions. Learn how to customize and combine effects us...\n...formance and workflow. Understand how to create proxy media, adjust ingest settings, and use the Media Encoder to batch-process files.\n8. **Multi-Camera Editing**: Premiere Pro's multi-camera editing feature allows you to work with multiple camera angles simultaneously. Learn how to create a multi-camera sequence, sync camera angles, and use the Multi-Camera Monitor.\n9. **Export Settings and Media Encoder**: Premiere Pro's export settings and Media Encoder offer advanced options for delivering your final output. Familiarize yourself with the different export formats, codecs, and settings, and learn how to use the Media Encoder to batch-export files.\n10. **Practice and Experiment**: The best way to learn Premiere Pro's advanced settings is by practicing and experimenting with different techniques and features. Start with small projects and gradually move on to more complex ones.\n\nTo dive deeper into these topics, I recommend the following resources:\n\n* Adobe Premiere Pro's official documentation and tutorials\n* YouTube channels like Premiere Bro, Video Copilot, and Adobe Creative Cloud\n* Online courses on platforms like Udemy, LinkedIn Learning, and Skillshare\n* Premiere Pro communities and forums, such as Reddit's r/premierepro and Adobe's Premiere Pro forum\n\nRemember, mastering Premiere Pro's advanced settings takes time and practice. Start with the topics that interest you the most, and gradually build your skills to become a proficient video editor.\nuser: I want to know more about the Lumetri Color Panel, can you tell me more about the Color Match feature?\nassistant: The Lumetri Color Panel is a powerful tool in Adobe Premiere Pro, and the Color Match feature is one of...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: color grading; Concept named color grading.\n- entity entity:<1> [CONCEPT]: video editing; Concept named video editing.\n- entity entity:<2> [PRODUCT]: Adobe Premiere Pro; Product named Adobe Premiere Pro.\n- entity entity:<3> [PRODUCT]: Lumetri Color Panel; Product named Lumetri Color Panel.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "8a2466db",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Recommend Adobe Premiere Pro-focused learning resources, particularly ones covering advanced settings such as Lumetri Color, rather than generic video editing or other software resources.\",\"reason\":\"The memory directly states the user wanted to learn advanced video editing settings in Adobe Premiere Pro and enjoys using it.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1941,
+                "completionTokens": 130,
+                "thinkingTokens": 52,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

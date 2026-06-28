@@ -1,0 +1,403 @@
+{
+    "version": 1,
+    "hash": "902c844f49e5020e0f2e25295c815f6d70ac2ecfa020194bc3d810c567e70356",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Question only; no durable information to store.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"FACTUAL\",\"retrieved_count\":6,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Context mode: FACTUAL\\n            Coverage mode: MINIMAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] has_goal family=has_goal: NoteConstructor v2's goal is to create candidate notes as reusable semantic fragments.; scope=Applies to the NoteConstructor v2 prompt stage as specified in agent_memory_handoff/03_prompts.md lines 239-415.; evidence=IMPORTED source=external:document-section:22b71459a2c768f0b9721fd3a6223954 quote=\\\"Создать candidate notes как reusable semantic fragments.\\\"\\n- claim hot-path:claim:<1> [ACTIVE] has_goal family=has_goal: Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.; evidence=IMPORTED source=external:document-section:e61471277609e2eeef0f7ba7476af6e7 quote=\\\"decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use\\\"\\n\\n            Retrieved notes:\\n            - note hot-path:note:<0> [DOC_DIGEST/ACTIVE]: NoteConstructor v2 candidate-note construction role; `NoteConstructor v2` is invoked when the router selects `note_write` or `mixed`, and creates reusable semantic candidate notes from latest turns rather than raw transcripts or hard facts. Good targets include rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests, with one self-contained semantic fragment per note and conservative optional candidate claims.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 4. Note Constructor v2`, lines 239-335; evidence=DIRECT source=external:document-section:22b71459a2c768f0b9721fd3a6223954 quote=\\\"Create reusable semantic notes from the latest turns.\\\"\\n\\n            Retrieved evidence:\\n            - source external:document-section:22b71459a2c768f0b9721fd3a6223954 [external_record ref=agent_memory_handoff/03_prompts.md#section:4 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\\nDocument title: 03. Prompt Pack\\nDocument source: agent_memory_handoff/03_prompts.md\\nDocument section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2\\nDocument lines: 239-415\\n\\n## 4. Note Constructor v2\\n\\n### Когда вызывать\\nКогда router выбрал `note_write` или `mixed`.\\n\\n### Цель\\nСоздать candidate notes как reusable semantic fragments.\\n\\n### Выход\\n\\n```json\\n[\\n  {\\n    \\\"note_type\\\": \\\"decision\\\",\\n    \\\"title\\\": \\\"...\\\",\\n    \\\"summary\\\": \\\"...\\\",\\n    \\\"scope_text\\\": \\\"...\\\",\\n    \\\"scope_json\\\": {},\\n    \\\"status\\\": \\\"active\\\",\\n    \\\"entity_refs\\\": [\\n      {\\\"entity_id\\\": \\\"uuid\\\", \\\"role\\\": \\\"primary\\\"}\\n    ],\\n    \\\"keywords\\\": [\\\"...\\\"],\\n    \\\"tags\\\": [\\\"...\\\"],\\n    \\\"candidate_claims\\\": [],\\n    \\\"confidence\\\": 0.0,\\n    \\\"importance\\\": 1,\\n    \\\"maturity_hint\\\": \\\"fresh | stabilizing | mature\\\",\\n    \\\"valid_from\\\": null,\\n    \\\"valid_to\\\": null,\\n    \\\"rationale\\\": \\\"short explanation\\\"\\n  }\\n]\\n```\\n\\n### Prompt\\n\\n```text\\nYou are NoteConstructor v2 for a long-term AI agent.\\n\\nGoal:\\nCreate reusable semantic notes from the latest turns.\\nA note is not a raw transcript and not a hard fact. It is a compact self-contained memory fragment that is already useful, but may still be too soft, contextual, or evo...\\n...: 1,\\n    \\\"maturity_hint\\\": \\\"fresh | stabilizing | mature\\\",\\n    \\\"valid_from\\\": \\\"ISO-8601 or null\\\",\\n    \\\"valid_to\\\": \\\"ISO-8601 or null\\\",\\n    \\\"rationale\\\": \\\"short explanation\\\"\\n  }\\n]\\n\\nRules:\\n- One note = one reusable semantic fragment.\\n- The note must be understandable without the original chat.\\n- Preserve ambiguity when the evidence is still soft.\\n- Use scope_json to prevent over-generalization.\\n- Good note targets: rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests.\\n- Bad note targets: filler, greetings, raw paraphrases, and chain-of-thought.\\n- Keep candidate_claims optional and conservative.\\n- Prefer zero or one strong note over many weak ones.\\n- Return valid JSON only.\\n```\\n\\n## 5. Note Reconciler v2\\n\\n### Когда вызывать\\nПосле `NoteConstructor`.\\n\\n### Цель\\nРешить, что делать с candidate note и как меняется его lifecycle.\\n\\n### Выход\\n\\n```json\\n[\\n  {\\n    \\\"action\\\": \\\"insert | update | supersede | retract | noop\\\",\\n    \\\"target_note_id\\\": \\\"uuid-or-null\\\",\\n    \\\"updated_note\\\": {\\n      \\\"title\\\": \\\"...\\\",\\n      \\\"summary\\\": \\\"...\\\",\\n      \\\"scope_text\\\": \\\"...\\\",\\n      \\\"scope_json\\\": {},\\n      \\\"status\\\": \\\"active\\\",\\n      \\\"retrieval_state\\\": \\\"active\\\",\\n      \\\"maturity_state\\\": \\\"fresh\\\"\\n    },\\n    \\\"links_to_create\\\": [],\\n    \\\"reason\\\": \\\"short explanation\\\"\\n  }\\n]\\n```\\n\\n### Prompt\\n\\n```text\\nYou are NoteReconciler v2.\\n\\nGoal:\\nCompare candidate notes against existing notes and decide the correct update operation.\\n\\nCurrent time: {{current_time_iso}}\\nNamespace: {{namespace_id}}\\n\\nCandidate notes:\\n{{candidate_notes}}\\n\\nNearby existing notes:\\n{{existing_notes}}\\n\\nReturn a JSON array:\\n[\\n  {\\n    \\\"action\\\": \\\"insert | update | supersede | retract | noop\\\",\\n    \\\"target_note_id\\\": \\\"uui...\\n...tate\\\": \\\"active | warm | cold | archived | deleted\\\",\\n      \\\"maturity_state\\\": \\\"fresh | stabilizing | mature | consolidated\\\"\\n    },\\n    \\\"links_to_create\\\": [\\n      {\\n        \\\"to_note_id\\\": \\\"uuid\\\",\\n        \\\"link_type\\\": \\\"supports | contradicts | refines | related | supersedes | derived_from\\\",\\n        \\\"link_weight\\\": 0.0\\n      }\\n    ],\\n    \\\"reason\\\": \\\"short explanation\\\"\\n  }\\n]\\n\\nRules:\\n- Use \\\"noop\\\" for near-duplicates with no meaningful improvement.\\n- Use \\\"update\\\" when the same note becomes clearer without changing core meaning.\\n- Use \\\"supersede\\\" when the new note replaces an earlier direction or plan.\\n- Keep both notes when the scope differs by time, project, entity, or modality.\\n- Do not delete useful rationale just because a newer note exists; prefer supersede + link.\\n- Return valid JSON only.\\n```\\n\\n            Retrieved entities:\\n            - entity entity:<0> [AGENT]: Memory Router v3; Agent named Memory Router v3.\\n- entity entity:<1> [AGENT]: NoteConstructor v2; Agent named NoteConstructor v2.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"SOURCE\",\"id\":\"external:document-section:22b71459a2c768f0b9721fd3a6223954\",\"summary\":\"Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2 Document lines: 239-415 ## 4. Note Constructor v2 ##...[truncated 4162 chars]\",\"evidence_source_ids\":[\"external:document-section:22b71459a2c768f0b9721fd3a6223954\"]},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"NoteConstructor v2's goal is to create candidate notes as reusable semantic fragments.\",\"predicate\":\"has_goal\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:22b71459a2c768f0b9721fd3a6223954\"]},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"summary\":\"Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.\",\"predicate\":\"has_goal\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\"]},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"summary\":\"NoteConstructor v2 candidate-note construction role: `NoteConstructor v2` is invoked when the router selects `note_write` or `mixed`, and creates reusable semantic candidate notes from latest turns rather than raw transc...[truncated 243 chars]\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:22b71459a2c768f0b9721fd3a6223954\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"AGENT:Memory Router v3\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"AGENT:NoteConstructor v2\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Directly states what Memory Router v3 decides.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":2,\"reason\":\"Directly states what NoteConstructor v2 creates.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":true,\"rank\":3,\"reason\":\"Concise context on Memory Router v3 write-mode choices.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":true,\"rank\":4,\"reason\":\"Concise context on NoteConstructor v2 candidate-note role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Invocation condition, not what it creates.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"General semantic rules, not the asked components' roles.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Release-priority detail, not what MemoryRouter decides.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, Note Reconciler.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Mentions Note Constructor v3 rollout, not NoteConstructor v2 role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, NoteConsolidator.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<8>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Output schema details are more specific than needed for what it creates.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<9>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"General prompt input requirements, not asked roles.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<10>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"General design principle, not component-specific answer.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<11>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component rollout detail.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, Entity Canonicalizer.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, Write-Time Retrieval Planner.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 840000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Question only; no durable information to store.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"actionItems\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"ROUTE\",\"summary\":\"Direct structured write skipped by router: NOOP\"}],\"claims\":[],\"notes\":[],\"actionItems\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"context_mode\":\"FACTUAL\",\"retrieved_count\":6,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Context mode: FACTUAL\\n            Coverage mode: MINIMAL\\n            Require evidence fallback: true\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] has_goal family=has_goal: NoteConstructor v2's goal is to create candidate notes as reusable semantic fragments.; scope=Applies to the NoteConstructor v2 prompt stage as specified in agent_memory_handoff/03_prompts.md lines 239-415.; evidence=IMPORTED source=external:document-section:22b71459a2c768f0b9721fd3a6223954 quote=\\\"Создать candidate notes как reusable semantic fragments.\\\"\\n- claim hot-path:claim:<1> [ACTIVE] has_goal family=has_goal: Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.; scope=Applies to the Memory Router v3 prompt in agent_memory_handoff/03_prompts.md.; evidence=IMPORTED source=external:document-section:e61471277609e2eeef0f7ba7476af6e7 quote=\\\"decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use\\\"\\n\\n            Retrieved notes:\\n            - note hot-path:note:<0> [DOC_DIGEST/ACTIVE]: NoteConstructor v2 candidate-note construction role; `NoteConstructor v2` is invoked when the router selects `note_write` or `mixed`, and creates reusable semantic candidate notes from latest turns rather than raw transcripts or hard facts. Good targets include rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests, with one self-contained semantic fragment per note and conservative optional candidate claims.; scope=Document `agent_memory_handoff/03_prompts.md`, section `03. Prompt Pack / 4. Note Constructor v2`, lines 239-335; evidence=DIRECT source=external:document-section:22b71459a2c768f0b9721fd3a6223954 quote=\\\"Create reusable semantic notes from the latest turns.\\\"\\n\\n            Retrieved evidence:\\n            - source external:document-section:22b71459a2c768f0b9721fd3a6223954 [external_record ref=agent_memory_handoff/03_prompts.md#section:4 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\\nDocument title: 03. Prompt Pack\\nDocument source: agent_memory_handoff/03_prompts.md\\nDocument section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2\\nDocument lines: 239-415\\n\\n## 4. Note Constructor v2\\n\\n### Когда вызывать\\nКогда router выбрал `note_write` или `mixed`.\\n\\n### Цель\\nСоздать candidate notes как reusable semantic fragments.\\n\\n### Выход\\n\\n```json\\n[\\n  {\\n    \\\"note_type\\\": \\\"decision\\\",\\n    \\\"title\\\": \\\"...\\\",\\n    \\\"summary\\\": \\\"...\\\",\\n    \\\"scope_text\\\": \\\"...\\\",\\n    \\\"scope_json\\\": {},\\n    \\\"status\\\": \\\"active\\\",\\n    \\\"entity_refs\\\": [\\n      {\\\"entity_id\\\": \\\"uuid\\\", \\\"role\\\": \\\"primary\\\"}\\n    ],\\n    \\\"keywords\\\": [\\\"...\\\"],\\n    \\\"tags\\\": [\\\"...\\\"],\\n    \\\"candidate_claims\\\": [],\\n    \\\"confidence\\\": 0.0,\\n    \\\"importance\\\": 1,\\n    \\\"maturity_hint\\\": \\\"fresh | stabilizing | mature\\\",\\n    \\\"valid_from\\\": null,\\n    \\\"valid_to\\\": null,\\n    \\\"rationale\\\": \\\"short explanation\\\"\\n  }\\n]\\n```\\n\\n### Prompt\\n\\n```text\\nYou are NoteConstructor v2 for a long-term AI agent.\\n\\nGoal:\\nCreate reusable semantic notes from the latest turns.\\nA note is not a raw transcript and not a hard fact. It is a compact self-contained memory fragment that is already useful, but may still be too soft, contextual, or evo...\\n...: 1,\\n    \\\"maturity_hint\\\": \\\"fresh | stabilizing | mature\\\",\\n    \\\"valid_from\\\": \\\"ISO-8601 or null\\\",\\n    \\\"valid_to\\\": \\\"ISO-8601 or null\\\",\\n    \\\"rationale\\\": \\\"short explanation\\\"\\n  }\\n]\\n\\nRules:\\n- One note = one reusable semantic fragment.\\n- The note must be understandable without the original chat.\\n- Preserve ambiguity when the evidence is still soft.\\n- Use scope_json to prevent over-generalization.\\n- Good note targets: rationale, trade-offs, design direction, evolving plans, lessons, local conclusions, and document digests.\\n- Bad note targets: filler, greetings, raw paraphrases, and chain-of-thought.\\n- Keep candidate_claims optional and conservative.\\n- Prefer zero or one strong note over many weak ones.\\n- Return valid JSON only.\\n```\\n\\n## 5. Note Reconciler v2\\n\\n### Когда вызывать\\nПосле `NoteConstructor`.\\n\\n### Цель\\nРешить, что делать с candidate note и как меняется его lifecycle.\\n\\n### Выход\\n\\n```json\\n[\\n  {\\n    \\\"action\\\": \\\"insert | update | supersede | retract | noop\\\",\\n    \\\"target_note_id\\\": \\\"uuid-or-null\\\",\\n    \\\"updated_note\\\": {\\n      \\\"title\\\": \\\"...\\\",\\n      \\\"summary\\\": \\\"...\\\",\\n      \\\"scope_text\\\": \\\"...\\\",\\n      \\\"scope_json\\\": {},\\n      \\\"status\\\": \\\"active\\\",\\n      \\\"retrieval_state\\\": \\\"active\\\",\\n      \\\"maturity_state\\\": \\\"fresh\\\"\\n    },\\n    \\\"links_to_create\\\": [],\\n    \\\"reason\\\": \\\"short explanation\\\"\\n  }\\n]\\n```\\n\\n### Prompt\\n\\n```text\\nYou are NoteReconciler v2.\\n\\nGoal:\\nCompare candidate notes against existing notes and decide the correct update operation.\\n\\nCurrent time: {{current_time_iso}}\\nNamespace: {{namespace_id}}\\n\\nCandidate notes:\\n{{candidate_notes}}\\n\\nNearby existing notes:\\n{{existing_notes}}\\n\\nReturn a JSON array:\\n[\\n  {\\n    \\\"action\\\": \\\"insert | update | supersede | retract | noop\\\",\\n    \\\"target_note_id\\\": \\\"uui...\\n...tate\\\": \\\"active | warm | cold | archived | deleted\\\",\\n      \\\"maturity_state\\\": \\\"fresh | stabilizing | mature | consolidated\\\"\\n    },\\n    \\\"links_to_create\\\": [\\n      {\\n        \\\"to_note_id\\\": \\\"uuid\\\",\\n        \\\"link_type\\\": \\\"supports | contradicts | refines | related | supersedes | derived_from\\\",\\n        \\\"link_weight\\\": 0.0\\n      }\\n    ],\\n    \\\"reason\\\": \\\"short explanation\\\"\\n  }\\n]\\n\\nRules:\\n- Use \\\"noop\\\" for near-duplicates with no meaningful improvement.\\n- Use \\\"update\\\" when the same note becomes clearer without changing core meaning.\\n- Use \\\"supersede\\\" when the new note replaces an earlier direction or plan.\\n- Keep both notes when the scope differs by time, project, entity, or modality.\\n- Do not delete useful rationale just because a newer note exists; prefer supersede + link.\\n- Return valid JSON only.\\n```\\n\\n            Retrieved entities:\\n            - entity entity:<0> [AGENT]: Memory Router v3; Agent named Memory Router v3.\\n- entity entity:<1> [AGENT]: NoteConstructor v2; Agent named NoteConstructor v2.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"SOURCE\",\"id\":\"external:document-section:22b71459a2c768f0b9721fd3a6223954\",\"summary\":\"Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 4. Note Constructor v2 .. 5. Note Reconciler v2 Document lines: 239-415 ## 4. Note Constructor v2 ##...[truncated 4162 chars]\",\"evidence_source_ids\":[\"external:document-section:22b71459a2c768f0b9721fd3a6223954\"]},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"NoteConstructor v2's goal is to create candidate notes as reusable semantic fragments.\",\"predicate\":\"has_goal\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:22b71459a2c768f0b9721fd3a6223954\"]},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"summary\":\"Memory Router v3’s goal is to decide whether the latest turns contain durable information worth storing in long-term memory and which write mode to use.\",\"predicate\":\"has_goal\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:e61471277609e2eeef0f7ba7476af6e7\"]},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"summary\":\"NoteConstructor v2 candidate-note construction role: `NoteConstructor v2` is invoked when the router selects `note_write` or `mixed`, and creates reusable semantic candidate notes from latest turns rather than raw transc...[truncated 243 chars]\",\"status\":\"ACTIVE\",\"evidence_source_ids\":[\"external:document-section:22b71459a2c768f0b9721fd3a6223954\"]},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"AGENT:Memory Router v3\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"AGENT:NoteConstructor v2\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Directly states what Memory Router v3 decides.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":2,\"reason\":\"Directly states what NoteConstructor v2 creates.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":true,\"rank\":3,\"reason\":\"Concise context on Memory Router v3 write-mode choices.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":true,\"rank\":4,\"reason\":\"Concise context on NoteConstructor v2 candidate-note role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Invocation condition, not what it creates.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"General semantic rules, not the asked components' roles.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<4>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Release-priority detail, not what MemoryRouter decides.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<5>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, Note Reconciler.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<6>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Mentions Note Constructor v3 rollout, not NoteConstructor v2 role.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<7>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, NoteConsolidator.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<8>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Output schema details are more specific than needed for what it creates.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<9>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"General prompt input requirements, not asked roles.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<10>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"General design principle, not component-specific answer.\"},{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<11>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component rollout detail.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, Entity Canonicalizer.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Different component, Write-Time Retrieval Planner.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 840000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.5",
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "MemoryRouter v3 decides whether latest turns are worth storing and which write mode to use. NoteConstructor v2 creates candidate notes as reusable semantic fragments.",
+                                "ttsText": "MemoryRouter decides whether to store and which write mode to use. NoteConstructor creates reusable candidate notes.",
+                                "voiceTone": "concise",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4185,
+                "completionTokens": 104,
+                "thinkingTokens": 26,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

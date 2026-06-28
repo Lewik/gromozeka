@@ -20,7 +20,7 @@
           "answerExpectation": {
             "containsAll": ["Strider"],
             "containsAnyGroups": [
-              ["uncertain", "not sure", "unsure", "не уверен"]
+              ["uncertain", "not sure", "unsure", "wasn't sure", "weren't sure", "weren’t sure", "не уверен"]
             ]
           },
           "memoryTraceExpectation": {

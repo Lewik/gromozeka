@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "4bd475eec78e7ffcd1f5eb6a5d0bef0d85c5edce45bb6ef2b0cca3d4a9cebebb",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which event did I attend first, the 'Effective Time Management' workshop or the 'Data Analysis using Python' webinar?\n\n                                Question date:\n                                2023/05/28 (Sun) 06:47\n\n                                Expected answer:\n                                'Data Analysis using Python' webinar\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2487a7cb\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-63d3740a9144-claim-7 [ACTIVE] attended_event family=attended_event: The user participated in the \"Data Analysis using Python\" webinar around March 2023.; scope=User's learning history; evidence=DIRECT source=external:provided-text:436454573fb4c6be48ba55c7264293f7 quote=\"I participated in a webinar on \"Data Analysis using Python\" two months ago\"\n- claim hot-path-0c2dd82e3ede-claim-12 [ACTIVE] attended_event family=attended_event: The user attended the \"Effective Time Management\" workshop at the local community center on 2023-05-20.; scope=User dated learning-event history; evidence=DIRECT source=external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 quote=\"the workshop on \"Effective Time Management\" at the local community center last Saturday\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 [external_record ref=longmemeval:gpt4_2487a7cb:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 21:04\nTranscript:\nuser: I'm trying to get more organized and stay on top of my tasks. Can you recommend any apps or tools that can help me prioritize my tasks and avoid procrastination?\nassistant: Congratulations on taking the first step towards improving your time management skills! There are many fantastic apps and tools that can help you prioritize tasks, stay organized, and overcome procrastination. Here are some popular ones:\n\n**Task Management Apps:**\n\n1. ** Todoist**: A highly-rated app that allows you to create and manage your to-do lists, set priorities, and track progress.\n2. **Trello**: A visual project management tool that uses boards, lists, and cards to organize tasks and projects.\n3. **Asana**: A comprehensive task management platform that helps you create and assign tasks, set deadlines, and track progress.\n4. **Wunderlist**: A simple and intuitive app for creating to-do lists, setting reminders, and sharing tasks with others.\n\n**Productivity Tools:**\n\n1. **RescueTime**: A time management tool that tracks how you spend your time on your computer or mobile device, providing insights to help you stay focused.\n2. **Focus@Will**: An music service specifically designed to help you concentrate and stay productive.\n3. **StayFocusd**: A Chrome extension that blocks distracting websites and helps you stay on track.\n4. **Pomodoro Timer**: A time management technique that involves working in focused 25-minute increments, with regular breaks. You can use a physical timer or apps like Pomofocus or Tomato Timer.\n\n**...\n...connect with others who are facing similar challenges.\n9. **Reward yourself for progress**:\n\t* Celebrate small victories, like a day or a week without mindlessly checking your phone, with small rewards or treats.\n\t* Use the time and energy you've saved by not checking your phone to do something enjoyable or productive.\n10. **Be patient and persistent**:\n\t* Breaking a habit takes time and effort. Don't be too hard on yourself if you slip up. Instead, acknowledge the setback and gently refocus on your goals.\n\nRemember, breaking the habit of mindless phone checking is a process. It may take some time to develop new habits and strategies, but with persistence and patience, you can overcome it.\nuser: I've been thinking about my goals and priorities lately, and I realized that I want to focus more on learning new skills and expanding my knowledge in different areas. I've been attending various workshops and lectures, like the workshop on \"Effective Time Management\" at the local community center last Saturday, and I'm finding them really helpful. Do you have any suggestions for online resources or courses that could help me learn new skills or expand my knowledge?\nassistant: That's a great goal to have! Continuously learning and expanding your knowledge is essential for personal and professional growth. There are numerous online resources and courses available that can help you achieve your goal. Here are some suggestions:\n\n**Online Learning Platforms:**\n\n1. **Coursera**: Partners with top universities to offer courses on a wide range of subjects, including business, computer science, and data science.\n2. **Udemy**: Offers courses and tutorials on various topics, including progr...\n- source external:provided-text:436454573fb4c6be48ba55c7264293f7 [external_record ref=longmemeval:gpt4_2487a7cb:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 07:17\nTranscript:\nuser: I'm trying to work on a project that involves data analysis, and I was wondering if you could recommend some resources for learning more about data visualization in Python?\nassistant: Data visualization is a crucial step in data analysis, and Python is an excellent choice for it. Here are some top-notch resources to help you learn data visualization in Python:\n\n**Online Courses and Tutorials:**\n\n1. **DataCamp's Python Data Visualization Course**: A comprehensive course covering the basics of data visualization in Python using popular libraries like Matplotlib, Seaborn, and Plotly.\n2. **Coursera's Data Visualization with Python Specialization**: A 4-course specialization by the University of California, Berkeley, covering the fundamentals of data visualization and Python programming.\n3. **edX's Python for Data Science and Visualization**: A course by Microsoft that covers the basics of Python programming and data visualization using popular libraries.\n\n**Libraries and Frameworks:**\n\n1. **Matplotlib**: A popular Python library for creating static, animated, and interactive visualizations. [Documentation](https://matplotlib.org/stable/tutorials/introductory/pyplot.html)\n2. **Seaborn**: A visualization library built on top of Matplotlib, providing a high-level interface for creating informative and attractive statistical graphics. [Documentation](https://seaborn.pydata.org/tutorial.html)\n3. **Plotly**: A popular l...\n...automation, custom data connections, and custom application development.\n\nGiven your Python background and focus on ease of use and customization, I think both Tableau and Power BI are viable options. If you're already familiar with Python, you might find Tableau's Python API more intuitive and easier to use. However, Power BI's Python API is also well-documented and widely adopted.\n\nTo make a final decision, I recommend:\n\n1. Trying out both Tableau and Power BI's free trials to get a feel for their interfaces and customization options.\n2. Exploring their Python APIs and documentation to see which one feels more comfortable for you.\n3. Considering the specific features and functionalities you need for your project, and seeing which tool better aligns with your requirements.\n\nGood luck with your project, and I hope this helps you make an informed decision!\nuser: I think I'll try out both Tableau and Power BI's free trials to get a feel for their interfaces and customization options. I'll also explore their Python APIs and documentation to see which one feels more comfortable for me. Thanks for the advice!\nassistant: You're welcome! I'm glad I could help.\n\nTrying out both Tableau and Power BI's free trials is a great idea. It'll give you hands-on experience with their interfaces, customization options, and Python APIs. You'll be able to see which one feels more intuitive and comfortable for you.\n\nRemember to take your time, and don't hesitate to reach out to their support teams or online communities if you have any questions or need help.\n\nAlso, don't forget to explore their documentation and tutorials to get a better understanding of their capabilities and limitations.\n\nO...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2487a7cb",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which event did I attend first, the 'Effective Time Management' workshop or the 'Data Analysis using Python' webinar?\n\n                                Question date:\n                                2023/05/28 (Sun) 06:47\n\n                                Expected answer:\n                                'Data Analysis using Python' webinar\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_2487a7cb\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-63d3740a9144-claim-7 [ACTIVE] attended_event family=attended_event: The user participated in the \"Data Analysis using Python\" webinar around March 2023.; scope=User's learning history; evidence=DIRECT source=external:provided-text:436454573fb4c6be48ba55c7264293f7 quote=\"I participated in a webinar on \"Data Analysis using Python\" two months ago\"\n- claim hot-path-0c2dd82e3ede-claim-12 [ACTIVE] attended_event family=attended_event: The user attended the \"Effective Time Management\" workshop at the local community center on 2023-05-20.; scope=User dated learning-event history; evidence=DIRECT source=external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 quote=\"the workshop on \"Effective Time Management\" at the local community center last Saturday\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:cfd951cb736caceb4cd5044c37fb29d6 [external_record ref=longmemeval:gpt4_2487a7cb:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 21:04\nTranscript:\nuser: I'm trying to get more organized and stay on top of my tasks. Can you recommend any apps or tools that can help me prioritize my tasks and avoid procrastination?\nassistant: Congratulations on taking the first step towards improving your time management skills! There are many fantastic apps and tools that can help you prioritize tasks, stay organized, and overcome procrastination. Here are some popular ones:\n\n**Task Management Apps:**\n\n1. ** Todoist**: A highly-rated app that allows you to create and manage your to-do lists, set priorities, and track progress.\n2. **Trello**: A visual project management tool that uses boards, lists, and cards to organize tasks and projects.\n3. **Asana**: A comprehensive task management platform that helps you create and assign tasks, set deadlines, and track progress.\n4. **Wunderlist**: A simple and intuitive app for creating to-do lists, setting reminders, and sharing tasks with others.\n\n**Productivity Tools:**\n\n1. **RescueTime**: A time management tool that tracks how you spend your time on your computer or mobile device, providing insights to help you stay focused.\n2. **Focus@Will**: An music service specifically designed to help you concentrate and stay productive.\n3. **StayFocusd**: A Chrome extension that blocks distracting websites and helps you stay on track.\n4. **Pomodoro Timer**: A time management technique that involves working in focused 25-minute increments, with regular breaks. You can use a physical timer or apps like Pomofocus or Tomato Timer.\n\n**...\n...connect with others who are facing similar challenges.\n9. **Reward yourself for progress**:\n\t* Celebrate small victories, like a day or a week without mindlessly checking your phone, with small rewards or treats.\n\t* Use the time and energy you've saved by not checking your phone to do something enjoyable or productive.\n10. **Be patient and persistent**:\n\t* Breaking a habit takes time and effort. Don't be too hard on yourself if you slip up. Instead, acknowledge the setback and gently refocus on your goals.\n\nRemember, breaking the habit of mindless phone checking is a process. It may take some time to develop new habits and strategies, but with persistence and patience, you can overcome it.\nuser: I've been thinking about my goals and priorities lately, and I realized that I want to focus more on learning new skills and expanding my knowledge in different areas. I've been attending various workshops and lectures, like the workshop on \"Effective Time Management\" at the local community center last Saturday, and I'm finding them really helpful. Do you have any suggestions for online resources or courses that could help me learn new skills or expand my knowledge?\nassistant: That's a great goal to have! Continuously learning and expanding your knowledge is essential for personal and professional growth. There are numerous online resources and courses available that can help you achieve your goal. Here are some suggestions:\n\n**Online Learning Platforms:**\n\n1. **Coursera**: Partners with top universities to offer courses on a wide range of subjects, including business, computer science, and data science.\n2. **Udemy**: Offers courses and tutorials on various topics, including progr...\n- source external:provided-text:436454573fb4c6be48ba55c7264293f7 [external_record ref=longmemeval:gpt4_2487a7cb:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 07:17\nTranscript:\nuser: I'm trying to work on a project that involves data analysis, and I was wondering if you could recommend some resources for learning more about data visualization in Python?\nassistant: Data visualization is a crucial step in data analysis, and Python is an excellent choice for it. Here are some top-notch resources to help you learn data visualization in Python:\n\n**Online Courses and Tutorials:**\n\n1. **DataCamp's Python Data Visualization Course**: A comprehensive course covering the basics of data visualization in Python using popular libraries like Matplotlib, Seaborn, and Plotly.\n2. **Coursera's Data Visualization with Python Specialization**: A 4-course specialization by the University of California, Berkeley, covering the fundamentals of data visualization and Python programming.\n3. **edX's Python for Data Science and Visualization**: A course by Microsoft that covers the basics of Python programming and data visualization using popular libraries.\n\n**Libraries and Frameworks:**\n\n1. **Matplotlib**: A popular Python library for creating static, animated, and interactive visualizations. [Documentation](https://matplotlib.org/stable/tutorials/introductory/pyplot.html)\n2. **Seaborn**: A visualization library built on top of Matplotlib, providing a high-level interface for creating informative and attractive statistical graphics. [Documentation](https://seaborn.pydata.org/tutorial.html)\n3. **Plotly**: A popular l...\n...automation, custom data connections, and custom application development.\n\nGiven your Python background and focus on ease of use and customization, I think both Tableau and Power BI are viable options. If you're already familiar with Python, you might find Tableau's Python API more intuitive and easier to use. However, Power BI's Python API is also well-documented and widely adopted.\n\nTo make a final decision, I recommend:\n\n1. Trying out both Tableau and Power BI's free trials to get a feel for their interfaces and customization options.\n2. Exploring their Python APIs and documentation to see which one feels more comfortable for you.\n3. Considering the specific features and functionalities you need for your project, and seeing which tool better aligns with your requirements.\n\nGood luck with your project, and I hope this helps you make an informed decision!\nuser: I think I'll try out both Tableau and Power BI's free trials to get a feel for their interfaces and customization options. I'll also explore their Python APIs and documentation to see which one feels more comfortable for me. Thanks for the advice!\nassistant: You're welcome! I'm glad I could help.\n\nTrying out both Tableau and Power BI's free trials is a great idea. It'll give you hands-on experience with their interfaces, customization options, and Python APIs. You'll be able to see which one feels more intuitive and comfortable for you.\n\nRemember to take your time, and don't hesitate to reach out to their support teams or online communities if you have any questions or need help.\n\nAlso, don't forget to explore their documentation and tutorials to get a better understanding of their capabilities and limitations.\n\nO...\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_2487a7cb",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The 'Data Analysis using Python' webinar came first.\",\"reason\":\"The memory states the webinar was around March 2023, before the Effective Time Management workshop on 2023-05-20.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2308,
+                "completionTokens": 107,
+                "thinkingTokens": 42,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

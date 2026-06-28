@@ -51,7 +51,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("What matters for memory selector batching?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.MIXED,
+                    contextMode = MemoryReadPlan.ContextMode.MIXED,
                     retrievalBudget = MemoryRetrievalBudget(notes = 2),
                 ),
                 candidateHits = notes.mapIndexed { index, note ->
@@ -106,7 +106,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("What matters for memory selector batching?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.MIXED,
+                    contextMode = MemoryReadPlan.ContextMode.MIXED,
                     retrievalBudget = MemoryRetrievalBudget(notes = 1),
                 ),
                 candidateHits = notes.mapIndexed { index, note ->
@@ -143,6 +143,7 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-33"),
             finalSelectedIds = setOf("source-01"),
+            emitRejectedItems = false,
         )
         val hits = notes.take(14).mapIndexed { index, note ->
             MemoryStore.SearchHit.NoteHit(note, score = 1.0 - index / 100.0)
@@ -161,7 +162,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many distinct matching items are remembered?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(notes = 1, sources = 3),
                     requireEvidenceFallback = true,
@@ -209,6 +210,7 @@ class LlmMemoryReadSelectorTest {
         val runtime = SelectingRuntime(
             intermediateSelectedIds = setOf("note-38"),
             finalSelectedIds = setOf("source-personal-copy"),
+            emitRejectedItems = false,
         )
 
         val result = LlmMemoryReadSelector(
@@ -220,7 +222,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many complete-set items did I acquire?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(notes = 1, sources = 1, claims = 1),
                     requireEvidenceFallback = true,
@@ -276,7 +278,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many distinct matching items are remembered?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(notes = 1, sources = 3),
                     requireEvidenceFallback = true,
@@ -321,7 +323,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many months ago did I book the Airbnb in San Francisco?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                 ),
                 candidateHits = claims.mapIndexed { index, claim ->
@@ -334,6 +336,11 @@ class LlmMemoryReadSelectorTest {
         assertTrue(
             runtime.prompts.single().contains(
                 "Rejecting an event-date or question-date anchor as \"not needed\" is incorrect"
+            )
+        )
+        assertTrue(
+            runtime.prompts.single().contains(
+                "that candidate supplies an offset, not elapsed time from the current/question date"
             )
         )
     }
@@ -369,7 +376,7 @@ class LlmMemoryReadSelectorTest {
                 ),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                 ),
                 candidateHits = claims.mapIndexed { index, claim ->
@@ -429,7 +436,7 @@ class LlmMemoryReadSelectorTest {
                 ),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                 ),
                 candidateHits = claims.mapIndexed { index, claim ->
@@ -480,7 +487,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many years did I spend in formal education from high school to my Bachelor's degree?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 3),
                 ),
                 candidateHits = claims.mapIndexed { index, claim ->
@@ -526,7 +533,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many rare items do I have in total?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                 ),
@@ -543,15 +550,15 @@ class LlmMemoryReadSelectorTest {
     }
 
     @Test
-    fun promptKeepsMusicCarriersForBroadReleaseCounts() = runBlocking {
+    fun promptKeepsContentCarriersForBroadWorkCounts() = runBlocking {
         val claims = listOf(
             claim(
-                id = "claim-signed-vinyl",
-                normalizedText = "The user owns a signed vinyl record after the show.",
+                id = "claim-personal-media-copy",
+                normalizedText = "The user owns a signed personal media copy after the show.",
                 predicate = "owns",
             )
         )
-        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-signed-vinyl"))
+        val runtime = SelectingRuntime(finalSelectedIds = setOf("claim-personal-media-copy"))
 
         LlmMemoryReadSelector(
             runtime = runtime,
@@ -559,10 +566,10 @@ class LlmMemoryReadSelectorTest {
             runtimeTools = emptyList(),
         ).select(
             MemoryReadSelectionRequest(
-                readRequest = readRequest("How many music albums or EPs have I purchased or downloaded?"),
+                readRequest = readRequest("How many creative works or content items have I acquired?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                 ),
@@ -574,8 +581,8 @@ class LlmMemoryReadSelectorTest {
         )
 
         val prompt = runtime.prompts.single()
-        assertTrue(prompt.contains("For broad counts of music works or releases"), prompt)
-        assertTrue(prompt.contains("can count as an album/EP/release item"), prompt)
+        assertTrue(prompt.contains("For broad counts of works or content items"), prompt)
+        assertTrue(prompt.contains("physical or digital carrier, copy, file, license, or collection item"), prompt)
     }
 
     @Test
@@ -598,7 +605,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many projects have I led or am currently leading?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                 ),
@@ -645,7 +652,7 @@ class LlmMemoryReadSelectorTest {
                 ),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                 ),
                 candidateHits = claims.mapIndexed { index, claim ->
@@ -689,7 +696,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many weddings did I attend this year?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                 ),
                 candidateHits = listOf(MemoryStore.SearchHit.ClaimHit(claim, score = 1.0)),
@@ -722,7 +729,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("What camera lens did I purchase most recently?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(sources = 1),
                 ),
                 candidateHits = listOf(MemoryStore.SearchHit.SourceHit(source, score = 1.0)),
@@ -760,7 +767,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("What was the increase in newsletter subscribers after two weeks?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                 ),
@@ -800,7 +807,7 @@ class LlmMemoryReadSelectorTest {
                 readRequest = readRequest("How many days ago did I attend the workshop when the product launch happened?"),
                 plan = MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2),
                 ),
@@ -822,6 +829,7 @@ class LlmMemoryReadSelectorTest {
     private class SelectingRuntime(
         private val intermediateSelectedIds: Set<String> = emptySet(),
         private val finalSelectedIds: Set<String> = intermediateSelectedIds,
+        private val emitRejectedItems: Boolean = true,
     ) : AiRuntime {
         val candidateCounts = mutableListOf<Int>()
         val finalCandidateIds = mutableListOf<List<String>>()
@@ -850,7 +858,11 @@ class LlmMemoryReadSelectorTest {
             }
             val selectedIds = if (isIntermediate) intermediateSelectedIds else finalSelectedIds
             val selected = candidateRefs.filter { it.id in selectedIds }
-            val rejected = candidateRefs.filterNot { it.id in selectedIds }
+            val rejected = if (emitRejectedItems) {
+                candidateRefs.filterNot { it.id in selectedIds }
+            } else {
+                emptyList()
+            }
 
             return AiRuntimeResponse(
                 messages = listOf(

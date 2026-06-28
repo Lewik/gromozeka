@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "f42e0088d931a1387c6d8edeb7170004eb8a072bdc00532efd8a016c136044f3",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many playlists do I have on Spotify?\n\n                                Question date:\n                                2023/05/24 (Wed) 23:54\n\n                                Expected answer:\n                                20\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:c960da58\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-707d21392a22-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user has 20 playlists on Spotify.; scope=User Spotify playlist library size as of the 2023-05-20 session.; evidence=DIRECT source=external:provided-text:0d9f3e2219fac60063035637977f32f6 quote=\"I have 20 playlists on Spotify already\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:0d9f3e2219fac60063035637977f32f6 [external_record ref=longmemeval:c960da58:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 20:46\nTranscript:\nuser: I'm trying to find more music similar to Tameca Jones. Can you recommend some artists or playlists that might fit my taste?...\n...**Playlists:**\n\n1. **\"Neo-Soul Revival\"** by Spotify: This playlist features a curated selection of contemporary neo-soul and R&B artists, including some of the above recommendations....\n...user: I've been listening to a mix of Lo-Fi hip hop beats and Tameca Jones' album on repeat lately, and I realized I want to create a new playlist for relaxing music. Can you suggest some mellow artists or songs that might fit the vibe? Also, by the way, I have 20 playlists on Spotify already, and I'm looking to organize them better - do you have any tips on how to categorize them?...\n...**Organizing Your Playlists:**\n\nWith 20 playlists, it's great that you're looking to organize them better! Here are some tips to help you categorize your playlists:\n\n1. **Genre-based playlists**: Create playlists based on specific genres, such as Lo-Fi hip hop, indie rock, or electronic music.\n2. **Mood-based playlists**: Organize playlists by the mood or atmosphere you want to create, like relaxing, energetic, or nostalgic.\n3. **Activity-based playlists**: Create playlists for specific activities, such as workout, study, or sleep.\n4. **Decade-based playlists**: Organize playlists by decade, featuring music from the 60s, 70s, 80s, and so on.\n5. **Artist-based playlists**: Create playlists dedicated to specific artists or bands, featuring their discography or favorite tracks.\n6. **Themed playlists**: Organize playlists around specific themes, such as summer vibes, winter chill, or road trip anthems.\n7. **Collaborative playlists**: Create playlists with friends or family members, allowing you to discover new music and share tastes.\n8. **Archival playlists**: Use playlists to archive music from specific eras or events in your life, like music from your teenage years or songs from a memorable concert.\n\nConsider using a combination of these methods to organize your playlists. You can also use Spotify's built-in features, such as playlist folders and collaborative playlists, to help keep your music library tidy.\n\nFeel free to experiment and find the organizational system that works best for you!\nuser: I'll definitely check out those artists and songs for my new relaxing playlist. I think I'll organize my playlists by mood, like you suggested. I have a lot of playlists for different moods or activities, like \"Morning Boost\" for upbeat tracks and \"Focus Flow\" for instrumental music to help me concentrate....\n...I love the names of your playlists, by the way! \"Morning Boost\" and \"Focus Flow\" are very descriptive and catchy. You might also consider using emojis or keywords in your playlist names to help you quickly identify the mood or theme.\n\nHere are a few more ideas for mood-based playlist names to get you started:...\n...user: That's a great idea about using emojis or keywords in playlist names. I think I'll start doing that to make it easier to identify the mood or theme. By the way, do you have any recommendations for music discovery platforms or websites that can help me find new artists and songs for my playlists? I've been relying on Spotify's Discover Weekly and Release Radar, but I'm open to exploring other options....\n...user: That's a great list of resources! I'll definitely check them out to find new music for my playlists. I've been meaning to explore more music blogs and websites, and I'll definitely give those a try. I've also been thinking about attending more concerts and music events in my area, so that's a great reminder....\n...2. **Local Music Blogs and Websites:** Many local music blogs and websites feature event listings, reviews, and interviews with local artists. They often have a finger on the pulse of the local music scene and can recommend great venues....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "c960da58",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many playlists do I have on Spotify?\n\n                                Question date:\n                                2023/05/24 (Wed) 23:54\n\n                                Expected answer:\n                                20\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:c960da58\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-707d21392a22-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user has 20 playlists on Spotify.; scope=User Spotify playlist library size as of the 2023-05-20 session.; evidence=DIRECT source=external:provided-text:0d9f3e2219fac60063035637977f32f6 quote=\"I have 20 playlists on Spotify already\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:0d9f3e2219fac60063035637977f32f6 [external_record ref=longmemeval:c960da58:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 20:46\nTranscript:\nuser: I'm trying to find more music similar to Tameca Jones. Can you recommend some artists or playlists that might fit my taste?...\n...**Playlists:**\n\n1. **\"Neo-Soul Revival\"** by Spotify: This playlist features a curated selection of contemporary neo-soul and R&B artists, including some of the above recommendations....\n...user: I've been listening to a mix of Lo-Fi hip hop beats and Tameca Jones' album on repeat lately, and I realized I want to create a new playlist for relaxing music. Can you suggest some mellow artists or songs that might fit the vibe? Also, by the way, I have 20 playlists on Spotify already, and I'm looking to organize them better - do you have any tips on how to categorize them?...\n...**Organizing Your Playlists:**\n\nWith 20 playlists, it's great that you're looking to organize them better! Here are some tips to help you categorize your playlists:\n\n1. **Genre-based playlists**: Create playlists based on specific genres, such as Lo-Fi hip hop, indie rock, or electronic music.\n2. **Mood-based playlists**: Organize playlists by the mood or atmosphere you want to create, like relaxing, energetic, or nostalgic.\n3. **Activity-based playlists**: Create playlists for specific activities, such as workout, study, or sleep.\n4. **Decade-based playlists**: Organize playlists by decade, featuring music from the 60s, 70s, 80s, and so on.\n5. **Artist-based playlists**: Create playlists dedicated to specific artists or bands, featuring their discography or favorite tracks.\n6. **Themed playlists**: Organize playlists around specific themes, such as summer vibes, winter chill, or road trip anthems.\n7. **Collaborative playlists**: Create playlists with friends or family members, allowing you to discover new music and share tastes.\n8. **Archival playlists**: Use playlists to archive music from specific eras or events in your life, like music from your teenage years or songs from a memorable concert.\n\nConsider using a combination of these methods to organize your playlists. You can also use Spotify's built-in features, such as playlist folders and collaborative playlists, to help keep your music library tidy.\n\nFeel free to experiment and find the organizational system that works best for you!\nuser: I'll definitely check out those artists and songs for my new relaxing playlist. I think I'll organize my playlists by mood, like you suggested. I have a lot of playlists for different moods or activities, like \"Morning Boost\" for upbeat tracks and \"Focus Flow\" for instrumental music to help me concentrate....\n...I love the names of your playlists, by the way! \"Morning Boost\" and \"Focus Flow\" are very descriptive and catchy. You might also consider using emojis or keywords in your playlist names to help you quickly identify the mood or theme.\n\nHere are a few more ideas for mood-based playlist names to get you started:...\n...user: That's a great idea about using emojis or keywords in playlist names. I think I'll start doing that to make it easier to identify the mood or theme. By the way, do you have any recommendations for music discovery platforms or websites that can help me find new artists and songs for my playlists? I've been relying on Spotify's Discover Weekly and Release Radar, but I'm open to exploring other options....\n...user: That's a great list of resources! I'll definitely check them out to find new music for my playlists. I've been meaning to explore more music blogs and websites, and I'll definitely give those a try. I've also been thinking about attending more concerts and music events in my area, so that's a great reminder....\n...2. **Local Music Blogs and Websites:** Many local music blogs and websites feature event listings, reviews, and interviews with local artists. They often have a finger on the pulse of the local music scene and can recommend great venues....\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "c960da58",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You have 20 playlists on Spotify.\",\"reason\":\"The retrieved claim and transcript explicitly state the user has 20 playlists on Spotify.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1715,
+                "completionTokens": 70,
+                "thinkingTokens": 19,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

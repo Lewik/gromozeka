@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "81ed11795b92157c21f825cc8c51174b217e8097fc0541776232a39b93493be9",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many items of clothing do I need to pick up or return from a store?\n\n                                Question date:\n                                2023/02/15 (Wed) 19:47\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0a995998\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-81d4fde232b4-claim-6 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the dry cleaning for their navy blue blazer.; scope=Applies to the user's dry-cleaning errand for the navy blue blazer.; evidence=IMPORTED source=external:provided-text:1991b24e465cc7c4d035ae3a3b325442 quote=\"I still need to pick up my dry cleaning for the navy blue blazer\"\n- claim hot-path-9b7a94388618-claim-12 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the larger-size replacement boots from Zara.; scope=Applies to the user's Zara boots exchange workflow from the imported 2023-02-15 session.; evidence=IMPORTED source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I exchanged them for a larger size. I just haven't had a chance to pick them up yet.\"\n- claim hot-path-9b7a94388618-claim-11 [ACTIVE] pending_return family=pending_return: The user needs to return the too-small boots to Zara.; scope=Applies to the user's Zara boots exchange workflow from the imported 2023-02-15 session.; evidence=IMPORTED source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I need to return some boots to Zara\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:196013f63fba96efe4a670763eafe70b [external_record ref=longmemeval:0a995998:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 07:47\nTranscript:\nuser: I'm looking for some organization tips for my closet. It's been a mess since the holidays and I still have winter clothes to put away.\nassistant: The post-holiday closet chaos is real! Don't worry, I'm here to help you get your closet organized and tidy again. Here are some practical tips to get you started:\n\n1. **Purge and declutter**: Begin by taking everything out of your closet and sorting items into three piles: keep, donate/sell, and discard. Be ruthless – if you haven't worn something in a year, it's probably safe to let it go.\n2. **Categorize and group**: Once you've purged your closet, group similar items together (e.g., tops, bottoms, dresses, outerwear). This will make it easier to see what you have and where it should go.\n3. **Assign a home**: Designate a specific area of your closet for each category of items. For example, all dresses might go on one side, while tops and bottoms are on the other.\n4. **Use storage containers**: Invest in storage bins, baskets, or shelves to store items like socks, accessories, and out-of-season clothing. Label each container so you can easily find what you need.\n5. **Utilize vertical space**: Maximize your closet's vertical space by using stackable shelves or hanging rods with multiple levels. This will help keep your floor clear and make the most of your closet's square footage.\n6. **Implement a \"one in, one out\" policy**: To maintain your newly organized closet, adopt a rule where you get rid of an old item every time you bri...\n...g them on a high shelf or underbed storage. This will free up space in your main closet area for current season clothes.\n8. **Hang clothes by type**: Organize your clothes by type, such as dresses, tops, pants, and skirts. Within each category, arrange items by color, sleeve length, or occasion.\n9. **Use dividers**: Use dividers or bins to separate items within a category. For example, you might have a divider for work clothes, casual clothes, and formal wear.\n10. **Keep shoes in order**: Store your shoes in a designated area, such as on a shoe rack or in a shoe organizer. This will keep them from getting scattered throughout your closet.\n11. **Maintain your closet**: Set aside some time each week to maintain your organized closet. Hang up clothes that are wrinkled or out of place, and put away items that are not being used.\n\nAdditional tips for storing winter clothes:\n\n* Consider using vacuum storage bags or compression bags to store winter clothes to save space and prevent wrinkles.\n* Store winter accessories like hats, gloves, and scarves in a designated bin or basket.\n* If you have limited storage space, consider storing winter clothes in a separate area, like a garage or attic, until next winter.\n\nRemember, the key to a well-organized closet is to create a system that works for you and your lifestyle. Take your time, stay focused, and you'll be enjoying your newly organized closet in no time!\nuser: I'm also trying to decide what to wear to an outdoor concert this weekend. I was thinking of wearing my green sweater, but I lent it to my sister and I'm not sure when she'll return it. Do you have any other suggestions?\nassistant: I'm happy to help you with that!\n\nFirstly...\n- source external:provided-text:1991b24e465cc7c4d035ae3a3b325442 [external_record ref=longmemeval:0a995998:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 03:35\nTranscript:\nuser: I need help organizing my closet. Can you give me some tips on how to declutter and categorize my clothes? Also, by the way, I still need to pick up my dry cleaning for the navy blue blazer I wore to a meeting a few weeks ago.\nassistant: I'd be happy to help you with organizing your closet and decluttering your clothes!\n\nAs for your dry cleaning, don't forget to pick it up soon! You might want to add it to your to-do list or set a reminder so you don't forget.\n\nNow, let's get started on organizing your closet!\n\n**Decluttering Tips:**\n\n1. **Take everything out**: Start by removing everything from your closet, including clothes, shoes, accessories, and storage containers. This will give you a clear view of what you have and help you decide what to keep, donate, or discard.\n2. **Sort into piles**: Create three piles: keep, donate/sell, and discard. Be honest with yourself about each item – when was the last time you wore it? Does it fit? Is it in good condition?\n3. **Consider the 80/20 rule**: 80% of the time, you likely wear 20% of your clothes. Identify your favorite items and consider letting go of the rest.\n4. **Let go of duplicates**: If you have multiple items that serve the same purpose, consider keeping only your favorite and letting go of the rest.\n\n**Categorizing Tips:**\n\n1. **Group similar items together**: Organize clothes by type (e.g., tops, bottoms, dresses, outerwear).\n2. **Organize by occasion**: Group clothes by occasion or ac...\n...re out-of-season items**: Consider storing out-of-season tops in storage bins or containers and keeping them on a high shelf or underbed storage to free up space in your dresser.\n7. **Maintain your space**: Set aside time each week to maintain your organized dresser drawers. Hang up items that are wrinkled or out of place, and put away items that are clean and folded.\n\n**Additional Tips:**\n\n* **Use the \"one in, one out\" rule**: Whenever you purchase a new top, get rid of an old one to maintain a balanced amount of clothing.\n* **Consider a dresser organizer system**: If you have a lot of small items like socks, underwear, or accessories, consider investing in a dresser organizer system with separate compartments.\n* **Keep frequently worn items accessible**: Store your most frequently worn tops in easy-to-reach locations, like the top drawer or near the front of the drawer.\n\nNow, let's get started on decluttering and organizing your tops! Which category of tops do you want to tackle first?\nuser: I'll start with my short-sleeve shirts. I've got a lot of them, and some of them are from last summer. I'm not sure if I'll wear them again this year.\nassistant: Short-sleeve shirts can be a great place to start!\n\n**Evaluating Your Short-Sleeve Shirts:**\n\n1. **Try them on**: Try on each short-sleeve shirt and ask yourself:\n\t* Does it fit well?\n\t* Is it comfortable?\n\t* Do I feel confident and happy wearing it?\n2. **Check the condition**: Inspect each shirt for:\n\t* Stains or discoloration\n\t* Tears or holes\n\t* Fading or pilling\n\t* Missing buttons or broken zippers\n3. **Consider the style**: Think about:\n\t* Is the style still current or is it outdated?\n\t* Does it fit with your current p...\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: User's Zara boots; Product named User's Zara boots.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0a995998",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many items of clothing do I need to pick up or return from a store?\n\n                                Question date:\n                                2023/02/15 (Wed) 19:47\n\n                                Expected answer:\n                                3\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:0a995998\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-81d4fde232b4-claim-6 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the dry cleaning for their navy blue blazer.; scope=Applies to the user's dry-cleaning errand for the navy blue blazer.; evidence=IMPORTED source=external:provided-text:1991b24e465cc7c4d035ae3a3b325442 quote=\"I still need to pick up my dry cleaning for the navy blue blazer\"\n- claim hot-path-9b7a94388618-claim-12 [ACTIVE] pending_pickup family=pending_pickup: The user needs to pick up the larger-size replacement boots from Zara.; scope=Applies to the user's Zara boots exchange workflow from the imported 2023-02-15 session.; evidence=IMPORTED source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I exchanged them for a larger size. I just haven't had a chance to pick them up yet.\"\n- claim hot-path-9b7a94388618-claim-11 [ACTIVE] pending_return family=pending_return: The user needs to return the too-small boots to Zara.; scope=Applies to the user's Zara boots exchange workflow from the imported 2023-02-15 session.; evidence=IMPORTED source=external:provided-text:196013f63fba96efe4a670763eafe70b quote=\"I need to return some boots to Zara\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:196013f63fba96efe4a670763eafe70b [external_record ref=longmemeval:0a995998:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 07:47\nTranscript:\nuser: I'm looking for some organization tips for my closet. It's been a mess since the holidays and I still have winter clothes to put away.\nassistant: The post-holiday closet chaos is real! Don't worry, I'm here to help you get your closet organized and tidy again. Here are some practical tips to get you started:\n\n1. **Purge and declutter**: Begin by taking everything out of your closet and sorting items into three piles: keep, donate/sell, and discard. Be ruthless – if you haven't worn something in a year, it's probably safe to let it go.\n2. **Categorize and group**: Once you've purged your closet, group similar items together (e.g., tops, bottoms, dresses, outerwear). This will make it easier to see what you have and where it should go.\n3. **Assign a home**: Designate a specific area of your closet for each category of items. For example, all dresses might go on one side, while tops and bottoms are on the other.\n4. **Use storage containers**: Invest in storage bins, baskets, or shelves to store items like socks, accessories, and out-of-season clothing. Label each container so you can easily find what you need.\n5. **Utilize vertical space**: Maximize your closet's vertical space by using stackable shelves or hanging rods with multiple levels. This will help keep your floor clear and make the most of your closet's square footage.\n6. **Implement a \"one in, one out\" policy**: To maintain your newly organized closet, adopt a rule where you get rid of an old item every time you bri...\n...g them on a high shelf or underbed storage. This will free up space in your main closet area for current season clothes.\n8. **Hang clothes by type**: Organize your clothes by type, such as dresses, tops, pants, and skirts. Within each category, arrange items by color, sleeve length, or occasion.\n9. **Use dividers**: Use dividers or bins to separate items within a category. For example, you might have a divider for work clothes, casual clothes, and formal wear.\n10. **Keep shoes in order**: Store your shoes in a designated area, such as on a shoe rack or in a shoe organizer. This will keep them from getting scattered throughout your closet.\n11. **Maintain your closet**: Set aside some time each week to maintain your organized closet. Hang up clothes that are wrinkled or out of place, and put away items that are not being used.\n\nAdditional tips for storing winter clothes:\n\n* Consider using vacuum storage bags or compression bags to store winter clothes to save space and prevent wrinkles.\n* Store winter accessories like hats, gloves, and scarves in a designated bin or basket.\n* If you have limited storage space, consider storing winter clothes in a separate area, like a garage or attic, until next winter.\n\nRemember, the key to a well-organized closet is to create a system that works for you and your lifestyle. Take your time, stay focused, and you'll be enjoying your newly organized closet in no time!\nuser: I'm also trying to decide what to wear to an outdoor concert this weekend. I was thinking of wearing my green sweater, but I lent it to my sister and I'm not sure when she'll return it. Do you have any other suggestions?\nassistant: I'm happy to help you with that!\n\nFirstly...\n- source external:provided-text:1991b24e465cc7c4d035ae3a3b325442 [external_record ref=longmemeval:0a995998:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/02/15 (Wed) 03:35\nTranscript:\nuser: I need help organizing my closet. Can you give me some tips on how to declutter and categorize my clothes? Also, by the way, I still need to pick up my dry cleaning for the navy blue blazer I wore to a meeting a few weeks ago.\nassistant: I'd be happy to help you with organizing your closet and decluttering your clothes!\n\nAs for your dry cleaning, don't forget to pick it up soon! You might want to add it to your to-do list or set a reminder so you don't forget.\n\nNow, let's get started on organizing your closet!\n\n**Decluttering Tips:**\n\n1. **Take everything out**: Start by removing everything from your closet, including clothes, shoes, accessories, and storage containers. This will give you a clear view of what you have and help you decide what to keep, donate, or discard.\n2. **Sort into piles**: Create three piles: keep, donate/sell, and discard. Be honest with yourself about each item – when was the last time you wore it? Does it fit? Is it in good condition?\n3. **Consider the 80/20 rule**: 80% of the time, you likely wear 20% of your clothes. Identify your favorite items and consider letting go of the rest.\n4. **Let go of duplicates**: If you have multiple items that serve the same purpose, consider keeping only your favorite and letting go of the rest.\n\n**Categorizing Tips:**\n\n1. **Group similar items together**: Organize clothes by type (e.g., tops, bottoms, dresses, outerwear).\n2. **Organize by occasion**: Group clothes by occasion or ac...\n...re out-of-season items**: Consider storing out-of-season tops in storage bins or containers and keeping them on a high shelf or underbed storage to free up space in your dresser.\n7. **Maintain your space**: Set aside time each week to maintain your organized dresser drawers. Hang up items that are wrinkled or out of place, and put away items that are clean and folded.\n\n**Additional Tips:**\n\n* **Use the \"one in, one out\" rule**: Whenever you purchase a new top, get rid of an old one to maintain a balanced amount of clothing.\n* **Consider a dresser organizer system**: If you have a lot of small items like socks, underwear, or accessories, consider investing in a dresser organizer system with separate compartments.\n* **Keep frequently worn items accessible**: Store your most frequently worn tops in easy-to-reach locations, like the top drawer or near the front of the drawer.\n\nNow, let's get started on decluttering and organizing your tops! Which category of tops do you want to tackle first?\nuser: I'll start with my short-sleeve shirts. I've got a lot of them, and some of them are from last summer. I'm not sure if I'll wear them again this year.\nassistant: Short-sleeve shirts can be a great place to start!\n\n**Evaluating Your Short-Sleeve Shirts:**\n\n1. **Try them on**: Try on each short-sleeve shirt and ask yourself:\n\t* Does it fit well?\n\t* Is it comfortable?\n\t* Do I feel confident and happy wearing it?\n2. **Check the condition**: Inspect each shirt for:\n\t* Stains or discoloration\n\t* Tears or holes\n\t* Fading or pilling\n\t* Missing buttons or broken zippers\n3. **Consider the style**: Think about:\n\t* Is the style still current or is it outdated?\n\t* Does it fit with your current p...\n\n            Retrieved entities:\n            - entity entity:<0> [PRODUCT]: User's Zara boots; Product named User's Zara boots.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "0a995998",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"3\",\"reason\":\"The context lists three pending clothing-related pickup/return items: a navy blue blazer, replacement Zara boots, and too-small Zara boots.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2678,
+                "completionTokens": 124,
+                "thinkingTokens": 68,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

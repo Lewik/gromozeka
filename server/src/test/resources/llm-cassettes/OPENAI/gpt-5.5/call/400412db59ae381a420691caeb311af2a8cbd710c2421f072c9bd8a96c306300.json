@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "400412db59ae381a420691caeb311af2a8cbd710c2421f072c9bd8a96c306300",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days did I take social media breaks in total?\n\n                                Question date:\n                                2023/03/14 (Tue) 22:35\n\n                                Expected answer:\n                                17 days\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6cb6f249\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-141d77acafbc-claim-7 [ACTIVE] attended_event family=attended_event: The user took a 10-day break from social media in mid-February 2023.; scope=User's past social media reduction experiments from the imported 2023-03-14 session.; evidence=DIRECT source=external:provided-text:3ca49c7c583ae001fb2cb11fe307fe41 quote=\"I actually just got back from a 10-day break in mid-February\"\n- claim hot-path-e50f49b8b911-claim-11 [ACTIVE] attended_event family=attended_event: The user took a week-long break from social media in mid-January 2023.; scope=User's past digital detox experience.; evidence=DIRECT source=external:provided-text:de53752eedc4f15bc9e1b891e64d3d86 quote=\"I even took a week-long break from it in mid-January, and it was really refreshing.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:de53752eedc4f15bc9e1b891e64d3d86 [external_record ref=longmemeval:6cb6f249:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/03/14 (Tue) 14:30\nTranscript:\nuser: I'm trying to track my screen time and social media usage. Can you suggest some apps or tools that can help me monitor and manage my online activities? By the way, I've been making an effort to cut down on social media lately - I even took a week-long break from it in mid-January, and it was really refreshing.\nassistant: Congratulations on taking a week-long break from social media! That's a great step towards digital detox and self-awareness. Here are some apps and tools that can help you track and manage your screen time and social media usage:...\n...**Social Media Tracking and Management Tools:**\n\n1. **RescueTime** (Web, iOS, Android): Tracks how you spend your time on your computer or mobile device, providing insights into your productivity and social media usage.\n2. **Hootsuite Insights** (Web): A social media analytics tool that provides insights into your social media usage, including time spent on each platform.\n3. **Cold Turkey** (Web, iOS, Android): Blocks social media and other distracting websites, helping you stay focused and avoid mindless scrolling....\n...5. **StayAway** (iOS): Tracks your social media usage and provides features like app blocking, screen time tracking, and goal setting.\n\n**Other Tools:**\n\n1. **Website blockers:** Tools like uBlock Origin, AdBlock, and News Feed Eradicator can help you avoid distracting websites and reduce your social media usage.\n2. **Browser extensions:** Extensions like News Feed Eradicator, Facebook Demetricator, and Twitter Demetricator can help you avoid algorithmic feeds and reduce your social media usage.\n3. **Phone features:** Many phones have built-in features like Do Not Disturb mode, App Timer, and Screen Time tracking that can help you manage your screen time and social media usage.\n\nRemember, the key to successfully managing your screen time and social media usage is to set goals, track your progress, and be mindful of your behavior. These tools can help you stay on track, but it's up to you to make conscious choices about how you spend your time online. Good luck!...\n...1. **App Blocking:** Freedom blocks distracting apps, such as social media, email, or games, on your phone, tablet, or computer....\n...3. **Select \"Social Media\":** Tap on the \"Social Media\" category or select individual social media apps like Facebook, Instagram, or Twitter.\n4. **Tap on \"Set Goal\":** Tap on the \"Set Goal\" button next to the social media category or individual app.\n5. **Choose a daily time limit:** Select the daily time limit you want to set for social media. You can choose from preset options like 30 minutes, 1 hour, or 2 hours, or set a custom time limit.\n6. **Schedule the goal:** Choose the days of the week and the time of day when you want the goal to be active. For example, you might set a goal to limit social media usage to 30 minutes per day, Monday to Friday, from 8am to 10pm....\n...1. **Tracking:** Moment will track your social media usage in the background, monitoring how much time you spend in social media apps.\n2. **Alerts:** When you've reached your daily time limit, Moment will send you a notification reminding you to take a break from social media.\n3. **Blocking:** If you've enabled blocking, Moment will temporarily block access to social media apps until the next day or until you've reached a specific time of day when you've allowed yourself to use social media again....\n...Remember, the goal is to find a balance that works for you, not to completely eliminate social media from your life. By being more intentional with your phone usage, you'll be able to free up time and energy for more important things in your life....\n- source external:provided-text:3ca49c7c583ae001fb2cb11fe307fe41 [external_record ref=longmemeval:6cb6f249:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/14 (Tue) 19:03\nTranscript:\nuser: I'm trying to get back into journaling and reading more. Can you recommend some books on mindfulness and self-improvement? By the way, I've been making an effort to cut down on social media lately - I actually just got back from a 10-day break in mid-February.\nassistant: Congratulations on taking a 10-day break from social media! That's a great step towards creating a healthier relationship with technology and making time for more meaningful activities like journaling and reading....\n...1. **\"Atomic Habits\" by James Clear**: A practical guide to building good habits and breaking bad ones....\n...Keep up the good work on reducing your social media usage, and enjoy your journey of self-discovery through journaling and reading!\nuser: That's a great list, thanks! I've actually already read \"The 7 Habits of Highly Effective People\" and it really opened my eyes to how much time I was wasting on social media. I'll definitely check out some of the other books on the list. Do you have any recommendations for journaling apps or tools that can help me stay consistent with my journaling practice?...\n...1. **Date**: Write the date at the top of the page....\n...5. **What self-care did I practice today?**: Reflect on how you took care of your physical, emotional, and mental well-being....\n...4. **Streaks**: A habit tracker that helps you form streaks of consecutive days for your habits. It's available on iOS....\n...user: I think I'll start with a digital app, maybe Habitica or HabitBull. I like the idea of being able to track my habits and journaling practice on my phone, and the reminders will definitely help me stay on track. I'll also consider using a physical planner or journal as a backup, just in case I need a break from screens or want to add some creativity to my tracking. Do you have any tips on how to set up my habit tracker effectively?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Social media; Concept named Social media.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6cb6f249",
+                "questionType": "multi-session"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days did I take social media breaks in total?\n\n                                Question date:\n                                2023/03/14 (Tue) 22:35\n\n                                Expected answer:\n                                17 days\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:6cb6f249\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-141d77acafbc-claim-7 [ACTIVE] attended_event family=attended_event: The user took a 10-day break from social media in mid-February 2023.; scope=User's past social media reduction experiments from the imported 2023-03-14 session.; evidence=DIRECT source=external:provided-text:3ca49c7c583ae001fb2cb11fe307fe41 quote=\"I actually just got back from a 10-day break in mid-February\"\n- claim hot-path-e50f49b8b911-claim-11 [ACTIVE] attended_event family=attended_event: The user took a week-long break from social media in mid-January 2023.; scope=User's past digital detox experience.; evidence=DIRECT source=external:provided-text:de53752eedc4f15bc9e1b891e64d3d86 quote=\"I even took a week-long break from it in mid-January, and it was really refreshing.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:de53752eedc4f15bc9e1b891e64d3d86 [external_record ref=longmemeval:6cb6f249:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/03/14 (Tue) 14:30\nTranscript:\nuser: I'm trying to track my screen time and social media usage. Can you suggest some apps or tools that can help me monitor and manage my online activities? By the way, I've been making an effort to cut down on social media lately - I even took a week-long break from it in mid-January, and it was really refreshing.\nassistant: Congratulations on taking a week-long break from social media! That's a great step towards digital detox and self-awareness. Here are some apps and tools that can help you track and manage your screen time and social media usage:...\n...**Social Media Tracking and Management Tools:**\n\n1. **RescueTime** (Web, iOS, Android): Tracks how you spend your time on your computer or mobile device, providing insights into your productivity and social media usage.\n2. **Hootsuite Insights** (Web): A social media analytics tool that provides insights into your social media usage, including time spent on each platform.\n3. **Cold Turkey** (Web, iOS, Android): Blocks social media and other distracting websites, helping you stay focused and avoid mindless scrolling....\n...5. **StayAway** (iOS): Tracks your social media usage and provides features like app blocking, screen time tracking, and goal setting.\n\n**Other Tools:**\n\n1. **Website blockers:** Tools like uBlock Origin, AdBlock, and News Feed Eradicator can help you avoid distracting websites and reduce your social media usage.\n2. **Browser extensions:** Extensions like News Feed Eradicator, Facebook Demetricator, and Twitter Demetricator can help you avoid algorithmic feeds and reduce your social media usage.\n3. **Phone features:** Many phones have built-in features like Do Not Disturb mode, App Timer, and Screen Time tracking that can help you manage your screen time and social media usage.\n\nRemember, the key to successfully managing your screen time and social media usage is to set goals, track your progress, and be mindful of your behavior. These tools can help you stay on track, but it's up to you to make conscious choices about how you spend your time online. Good luck!...\n...1. **App Blocking:** Freedom blocks distracting apps, such as social media, email, or games, on your phone, tablet, or computer....\n...3. **Select \"Social Media\":** Tap on the \"Social Media\" category or select individual social media apps like Facebook, Instagram, or Twitter.\n4. **Tap on \"Set Goal\":** Tap on the \"Set Goal\" button next to the social media category or individual app.\n5. **Choose a daily time limit:** Select the daily time limit you want to set for social media. You can choose from preset options like 30 minutes, 1 hour, or 2 hours, or set a custom time limit.\n6. **Schedule the goal:** Choose the days of the week and the time of day when you want the goal to be active. For example, you might set a goal to limit social media usage to 30 minutes per day, Monday to Friday, from 8am to 10pm....\n...1. **Tracking:** Moment will track your social media usage in the background, monitoring how much time you spend in social media apps.\n2. **Alerts:** When you've reached your daily time limit, Moment will send you a notification reminding you to take a break from social media.\n3. **Blocking:** If you've enabled blocking, Moment will temporarily block access to social media apps until the next day or until you've reached a specific time of day when you've allowed yourself to use social media again....\n...Remember, the goal is to find a balance that works for you, not to completely eliminate social media from your life. By being more intentional with your phone usage, you'll be able to free up time and energy for more important things in your life....\n- source external:provided-text:3ca49c7c583ae001fb2cb11fe307fe41 [external_record ref=longmemeval:6cb6f249:session:2 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/14 (Tue) 19:03\nTranscript:\nuser: I'm trying to get back into journaling and reading more. Can you recommend some books on mindfulness and self-improvement? By the way, I've been making an effort to cut down on social media lately - I actually just got back from a 10-day break in mid-February.\nassistant: Congratulations on taking a 10-day break from social media! That's a great step towards creating a healthier relationship with technology and making time for more meaningful activities like journaling and reading....\n...1. **\"Atomic Habits\" by James Clear**: A practical guide to building good habits and breaking bad ones....\n...Keep up the good work on reducing your social media usage, and enjoy your journey of self-discovery through journaling and reading!\nuser: That's a great list, thanks! I've actually already read \"The 7 Habits of Highly Effective People\" and it really opened my eyes to how much time I was wasting on social media. I'll definitely check out some of the other books on the list. Do you have any recommendations for journaling apps or tools that can help me stay consistent with my journaling practice?...\n...1. **Date**: Write the date at the top of the page....\n...5. **What self-care did I practice today?**: Reflect on how you took care of your physical, emotional, and mental well-being....\n...4. **Streaks**: A habit tracker that helps you form streaks of consecutive days for your habits. It's available on iOS....\n...user: I think I'll start with a digital app, maybe Habitica or HabitBull. I like the idea of being able to track my habits and journaling practice on my phone, and the reminders will definitely help me stay on track. I'll also consider using a physical planner or journal as a backup, just in case I need a break from screens or want to add some creativity to my tracking. Do you have any tips on how to set up my habit tracker effectively?...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Social media; Concept named Social media.\n- entity entity:<1> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "6cb6f249",
+                "questionType": "multi-session"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"17 days\",\"reason\":\"The memory states a 10-day break in mid-February and a week-long (7-day) break in mid-January, totaling 17 days.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2308,
+                "completionTokens": 92,
+                "thinkingTokens": 31,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

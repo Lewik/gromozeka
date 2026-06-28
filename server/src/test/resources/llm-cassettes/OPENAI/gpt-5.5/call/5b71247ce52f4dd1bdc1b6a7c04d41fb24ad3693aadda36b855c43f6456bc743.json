@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "5b71247ce52f4dd1bdc1b6a7c04d41fb24ad3693aadda36b855c43f6456bc743",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many amateur comedians did I watch perform at the open mic night?\n\n                                Question date:\n                                2023/05/30 (Tue) 03:13\n\n                                Noisy expected-answer label:\n                                10\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:95bcc1c8\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-9344cce71324-claim-6 [ACTIVE] attended_event family=attended_event: The user attended an open mic night a few weeks before 2023-05-22 and saw 10 amateur comedians perform.; scope=User's attended comedy events around May 2023.; context=\"The user described the open mic night as inspiring and later said they had a great time there.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I recently went to an open mic night and saw 10 amateur comedians perform\"\n- claim hot-path-9344cce71324-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to apply improv principles to daily life by being more open to new experiences and overthinking less.; scope=User's daily-life improv application goals as of the 2023-05-22 chat session.; context=\"The user answered how they planned to keep using improv principles outside comedy.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"apply the principles of improv to my daily life by being more open to new experiences and not overthinking things as much\"\n- claim hot-path-9344cce71324-claim-17 [ACTIVE] has_constraint family=has_constraint: The user sometimes gets nervous and freezes up during performances.; scope=User's comedy performance pain points as of the 2023-05-22 chat session.; context=\"The user described this as a challenge that affects responding to unexpected moments or hecklers on stage.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"Sometimes I get nervous and freeze up\"\n- claim hot-path-9344cce71324-claim-5 [ACTIVE] has_goal family=has_goal: The user is trying to come up with new stand-up comedy material.; scope=User's comedy writing goals as of the 2023-05-22 chat session.; context=\"The user requested comedy writing tips because they were taking a stand-up comedy class and wanted new material.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I'm trying to come up with some new material\"\n- claim hot-path-9344cce71324-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to connect their jokes into a cohesive stand-up set.; scope=User's stand-up set development goals as of the 2023-05-22 chat session.; context=\"The user said their jokes felt all over the place and asked for tips on structuring a set.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"connect them together into a cohesive set\"\n- claim hot-path-9344cce71324-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to get more comfortable with improvising and thinking on their feet.; scope=User's improv skill-development goals as of the 2023-05-22 chat session.; context=\"The user asked for tips to improve improv skills and later described practicing improv in daily life.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I've been trying to get more comfortable with improvising and thinking on my feet\"\n- claim hot-path-9344cce71324-claim-16 [ACTIVE] has_goal family=has_goal: The user wants to improve their ability to think on their feet during performances.; scope=User's comedy performance goals as of the 2023-05-22 chat session.; context=\"The user identified on-stage responsiveness as a focus area, especially for unexpected moments and hecklers.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"improving is my ability to think on my feet during performances\"\n- claim hot-path-9344cce71324-claim-15 [ACTIVE] has_goal family=has_goal: The user wants to incorporate more improv into their comedy writing process, using improvisational exercises or freewriting to generate new jokes and ideas.; scope=User's comedy writing process goals as of the 2023-05-22 chat session.; context=\"The user said improv could help generate new comedy ideas and material and proposed exercises/freewriting as methods.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"try incorporating more improv into my writing process, maybe by doing some improvisational exercises or freewriting\"\n\n            Retrieved notes:\n            - note hot-path-9344cce71324-note-2 [DIRECTION/ACTIVE]: Improv as a daily-life and comedy-writing practice; The user sees improv as a practice for becoming more open to new experiences, reducing overthinking, staying present in conversations, and generating new comedy material through improvisational exercises or freewriting.; scope=User's ongoing approach to applying improv beyond class, especially to daily interactions and comedy writing.; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I'd like to try incorporating more improv into my writing process, maybe by doing some improvisational exercises or freewriting to come up with new jokes and ideas.\"\n\n            Retrieved evidence:\n            - source external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 [external_record ref=longmemeval:95bcc1c8:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 20:25\nTranscript:\nuser: I'm looking for some comedy writing tips. I've been taking a stand-up comedy class and I'm trying to come up with some new material. Do you have any advice on how to write a good joke? Oh, and by the way, I recently went to an open mic night and saw 10 amateur comedians perform - it was really inspiring to see people trying out new stuff!\nassistant: A stand-up comedy class, that's awesome! I'm happy to help you with some comedy writing tips.\n\nFirstly, congratulations on taking the leap and attending an open mic night. That takes a lot of courage, and it's great that you found it inspiring. Now, let's dive into some tips to help you craft a good joke:...\n...8. **Test and iterate**: Comedy is all about trial and error. Try out your jokes on friends, family, or at open mic nights, and be open to feedback and revision....\n...1. **Start strong**: Your opening joke should be a strong, attention-grabbing one. This sets the tone for the rest of your set and gets the audience on your side....\n...4. **Vary your pace and tone**: Mix up the pace and tone of your jokes to keep the audience engaged. Fast-paced jokes can be followed by slower, more introspective ones. This creates a dynamic and keeps the audience on their toes....\n...**Original experience:** You had a bad date last week and felt really awkward.\n\n**Joke:** \"I went on a date last week and it was so bad, I think I'd rather get a root canal without anesthesia. I mean, who tries to order for someone else at a restaurant? 'I'll have the salmon, and you'll have the chicken.' No, I'll have the dignity, and you can have the awkward silence.\"\n\nIn this example, the joke is relatable because it's based on a common experience (bad dates), but it's also authentic because it's specific to the comedian's life. The exaggeration and embellishment (root canal without anesthesia) add to the comedic effect....\n...assistant: Improvisation is a fantastic skill to develop, and it can greatly benefit your comedy writing and performance! Improv can help you think on your feet, be more spontaneous, and respond to unexpected situations. Here are some tips to improve your improv skills:...\n...2. **Practice regularly**: Regular practice is essential to improve your improv skills. Try to improvise with friends, family, or fellow comedians as often as possible.\n3. **Play improv games**: There are many improv games that can help you develop specific skills, such as \"Yes, And...\", \"Freeze\", \"Scenes from a Hat\", and more. These games can help you focus on specific aspects of improv, like listening, agreement, or creativity....\n...Some additional tips for comedians:...\n...One area I'd like to focus on improving is my ability to think on my feet during performances. Sometimes I get nervous and freeze up, and I'd like to be able to respond more quickly and confidently to unexpected moments or hecklers. I think continuing to practice improv and taking more risks on stage will help me build that confidence.\n\nOh, and I almost forgot to mention - I had a great time at that open mic night a few weeks ago....\n...As for thinking on your feet during performances, that's a great area to focus on. With continued practice and experience, you'll become more comfortable responding to unexpected moments and hecklers. Remember that it's okay to make mistakes – it's all part of the learning process. The more you take risks and push yourself outside of your comfort zone, the more confident you'll become.\n\nAnd yay for the open mic night! I'm so glad you had a great time. It's always exciting to share your comedy with others and get feedback. Keep performing and honing your craft – you got this!...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Comedy writing; Concept named Comedy writing.\n- entity entity:<1> [CONCEPT]: Improv; Concept named Improv.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "95bcc1c8",
+                "questionType": "single-session-user"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many amateur comedians did I watch perform at the open mic night?\n\n                                Question date:\n                                2023/05/30 (Tue) 03:13\n\n                                Noisy expected-answer label:\n                                10\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:95bcc1c8\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-9344cce71324-claim-6 [ACTIVE] attended_event family=attended_event: The user attended an open mic night a few weeks before 2023-05-22 and saw 10 amateur comedians perform.; scope=User's attended comedy events around May 2023.; context=\"The user described the open mic night as inspiring and later said they had a great time there.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I recently went to an open mic night and saw 10 amateur comedians perform\"\n- claim hot-path-9344cce71324-claim-13 [ACTIVE] has_goal family=has_goal: The user wants to apply improv principles to daily life by being more open to new experiences and overthinking less.; scope=User's daily-life improv application goals as of the 2023-05-22 chat session.; context=\"The user answered how they planned to keep using improv principles outside comedy.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"apply the principles of improv to my daily life by being more open to new experiences and not overthinking things as much\"\n- claim hot-path-9344cce71324-claim-17 [ACTIVE] has_constraint family=has_constraint: The user sometimes gets nervous and freezes up during performances.; scope=User's comedy performance pain points as of the 2023-05-22 chat session.; context=\"The user described this as a challenge that affects responding to unexpected moments or hecklers on stage.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"Sometimes I get nervous and freeze up\"\n- claim hot-path-9344cce71324-claim-5 [ACTIVE] has_goal family=has_goal: The user is trying to come up with new stand-up comedy material.; scope=User's comedy writing goals as of the 2023-05-22 chat session.; context=\"The user requested comedy writing tips because they were taking a stand-up comedy class and wanted new material.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I'm trying to come up with some new material\"\n- claim hot-path-9344cce71324-claim-7 [ACTIVE] has_goal family=has_goal: The user wants to connect their jokes into a cohesive stand-up set.; scope=User's stand-up set development goals as of the 2023-05-22 chat session.; context=\"The user said their jokes felt all over the place and asked for tips on structuring a set.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"connect them together into a cohesive set\"\n- claim hot-path-9344cce71324-claim-9 [ACTIVE] has_goal family=has_goal: The user wants to get more comfortable with improvising and thinking on their feet.; scope=User's improv skill-development goals as of the 2023-05-22 chat session.; context=\"The user asked for tips to improve improv skills and later described practicing improv in daily life.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I've been trying to get more comfortable with improvising and thinking on my feet\"\n- claim hot-path-9344cce71324-claim-16 [ACTIVE] has_goal family=has_goal: The user wants to improve their ability to think on their feet during performances.; scope=User's comedy performance goals as of the 2023-05-22 chat session.; context=\"The user identified on-stage responsiveness as a focus area, especially for unexpected moments and hecklers.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"improving is my ability to think on my feet during performances\"\n- claim hot-path-9344cce71324-claim-15 [ACTIVE] has_goal family=has_goal: The user wants to incorporate more improv into their comedy writing process, using improvisational exercises or freewriting to generate new jokes and ideas.; scope=User's comedy writing process goals as of the 2023-05-22 chat session.; context=\"The user said improv could help generate new comedy ideas and material and proposed exercises/freewriting as methods.\"; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"try incorporating more improv into my writing process, maybe by doing some improvisational exercises or freewriting\"\n\n            Retrieved notes:\n            - note hot-path-9344cce71324-note-2 [DIRECTION/ACTIVE]: Improv as a daily-life and comedy-writing practice; The user sees improv as a practice for becoming more open to new experiences, reducing overthinking, staying present in conversations, and generating new comedy material through improvisational exercises or freewriting.; scope=User's ongoing approach to applying improv beyond class, especially to daily interactions and comedy writing.; evidence=DIRECT source=external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 quote=\"I'd like to try incorporating more improv into my writing process, maybe by doing some improvisational exercises or freewriting to come up with new jokes and ideas.\"\n\n            Retrieved evidence:\n            - source external:provided-text:63db18e1ff56ecf3ba5cfea3732bfb95 [external_record ref=longmemeval:95bcc1c8:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/22 (Mon) 20:25\nTranscript:\nuser: I'm looking for some comedy writing tips. I've been taking a stand-up comedy class and I'm trying to come up with some new material. Do you have any advice on how to write a good joke? Oh, and by the way, I recently went to an open mic night and saw 10 amateur comedians perform - it was really inspiring to see people trying out new stuff!\nassistant: A stand-up comedy class, that's awesome! I'm happy to help you with some comedy writing tips.\n\nFirstly, congratulations on taking the leap and attending an open mic night. That takes a lot of courage, and it's great that you found it inspiring. Now, let's dive into some tips to help you craft a good joke:...\n...8. **Test and iterate**: Comedy is all about trial and error. Try out your jokes on friends, family, or at open mic nights, and be open to feedback and revision....\n...1. **Start strong**: Your opening joke should be a strong, attention-grabbing one. This sets the tone for the rest of your set and gets the audience on your side....\n...4. **Vary your pace and tone**: Mix up the pace and tone of your jokes to keep the audience engaged. Fast-paced jokes can be followed by slower, more introspective ones. This creates a dynamic and keeps the audience on their toes....\n...**Original experience:** You had a bad date last week and felt really awkward.\n\n**Joke:** \"I went on a date last week and it was so bad, I think I'd rather get a root canal without anesthesia. I mean, who tries to order for someone else at a restaurant? 'I'll have the salmon, and you'll have the chicken.' No, I'll have the dignity, and you can have the awkward silence.\"\n\nIn this example, the joke is relatable because it's based on a common experience (bad dates), but it's also authentic because it's specific to the comedian's life. The exaggeration and embellishment (root canal without anesthesia) add to the comedic effect....\n...assistant: Improvisation is a fantastic skill to develop, and it can greatly benefit your comedy writing and performance! Improv can help you think on your feet, be more spontaneous, and respond to unexpected situations. Here are some tips to improve your improv skills:...\n...2. **Practice regularly**: Regular practice is essential to improve your improv skills. Try to improvise with friends, family, or fellow comedians as often as possible.\n3. **Play improv games**: There are many improv games that can help you develop specific skills, such as \"Yes, And...\", \"Freeze\", \"Scenes from a Hat\", and more. These games can help you focus on specific aspects of improv, like listening, agreement, or creativity....\n...Some additional tips for comedians:...\n...One area I'd like to focus on improving is my ability to think on my feet during performances. Sometimes I get nervous and freeze up, and I'd like to be able to respond more quickly and confidently to unexpected moments or hecklers. I think continuing to practice improv and taking more risks on stage will help me build that confidence.\n\nOh, and I almost forgot to mention - I had a great time at that open mic night a few weeks ago....\n...As for thinking on your feet during performances, that's a great area to focus on. With continued practice and experience, you'll become more comfortable responding to unexpected moments and hecklers. Remember that it's okay to make mistakes – it's all part of the learning process. The more you take risks and push yourself outside of your comfort zone, the more confident you'll become.\n\nAnd yay for the open mic night! I'm so glad you had a great time. It's always exciting to share your comedy with others and get feedback. Keep performing and honing your craft – you got this!...\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Comedy writing; Concept named Comedy writing.\n- entity entity:<1> [CONCEPT]: Improv; Concept named Improv.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "95bcc1c8",
+                "questionType": "single-session-user"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"10\",\"reason\":\"The retrieved claim and transcript explicitly state the user saw 10 amateur comedians perform at the open mic night.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2946,
+                "completionTokens": 77,
+                "thinkingTokens": 27,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

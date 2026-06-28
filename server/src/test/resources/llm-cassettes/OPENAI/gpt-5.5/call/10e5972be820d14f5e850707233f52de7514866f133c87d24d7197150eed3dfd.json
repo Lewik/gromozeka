@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "10e5972be820d14f5e850707233f52de7514866f133c87d24d7197150eed3dfd",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some useful accessories for my phone?\n\n                                Question date:\n                                2023/05/28 (Sun) 00:20\n\n                                Noisy expected-answer label:\n                                The user would prefer suggestions of accessories that are compatible with an iPhone 13 Pro, such as high-quality screen protectors, durable cases, portable power banks, or phone wallet cases. They may not prefer suggestions of accessories that are not compatible with Apple products or do not enhance the functionality or protection of their phone.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:07b6f563\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-dd0a2f8c91e5-claim-8 [ACTIVE] has_goal family=has_goal: The user was looking for a high-quality phone wallet case for their iPhone 13 Pro.; scope=Accessory-shopping goal expressed in the imported 2023-05-27 chat session.; context=\"In the imported 2023-05-27 chat session, the user asked for wallet case brand recommendations for their iPhone 13 Pro and later asked whether an OtterBox wallet case would fit their needs.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I'm also looking for a phone wallet case\"\n- claim hot-path-dd0a2f8c91e5-claim-4 [ACTIVE] works_with family=works_with: The user uses an iPhone 13 Pro.; scope=User's current phone/accessory context in the imported 2023-05-27 chat session.; context=\"The user repeatedly asked for accessories compatible with their iPhone 13 Pro, including a screen protector, wallet case, and wireless charging power bank.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"my iPhone 13 Pro\"\n- claim hot-path-dd0a2f8c91e5-claim-7 [ACTIVE] has_goal family=has_goal: The user was looking for a new screen protector to replace a cracked one on their iPhone 13 Pro.; scope=Accessory-shopping goal expressed in the imported 2023-05-27 chat session.; context=\"In the imported 2023-05-27 chat session, the user asked for good brands of high-quality screen protectors for an iPhone 13 Pro because their current protector was cracked.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I'm looking for a new screen protector to replace the cracked one on my iPhone 13 Pro\"\n- claim hot-path-dd0a2f8c91e5-claim-9 [ACTIVE] has_goal family=has_goal: The user was considering getting a wireless charging power bank for convenient cable-free charging of their iPhone 13 Pro.; scope=Power-bank upgrade consideration expressed in the imported 2023-05-27 chat session.; context=\"The user said a wireless charging power bank seemed convenient because they could place the iPhone 13 Pro on the power bank and charge without cables.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I think I'll consider getting a wireless charging power bank\"\n- claim hot-path-dd0a2f8c91e5-claim-5 [ACTIVE] owns family=owns: The user owns a portable power bank from Best Buy.; scope=User's portable charger ownership context from the imported 2023-05-27 chat session.; context=\"The user said their existing Best Buy portable power bank has been working well, while considering whether to get a newer one with more capacity or advanced features.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I actually already have a portable power bank from Best Buy\"\n\n            Retrieved notes:\n            - note hot-path-dd0a2f8c91e5-note-2 [CONTEXT/ACTIVE]: Wireless charging power bank buying criteria for iPhone 13 Pro; When evaluating a wireless charging power bank for the user's iPhone 13 Pro, the reusable criteria are Qi/WPC certification, Qi standard support, adequate wireless power output, high mAh capacity, USB ports, fast charging protocols such as QuickCharge/VOOC/PD, safety protections, compactness, brand reputation, and reviews. Optional differentiators include wireless charging distance, foreign object detection, and multi-device charging.; scope=Applies to future shopping advice for wireless charging power banks compatible with the user's iPhone 13 Pro.; evidence=SUMMARIZED source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"When shopping for a wireless charging power bank, here are some key features and certifications to look for:\"\n\n            Retrieved evidence:\n            - source external:provided-text:1b0576324baf47333f7b592c3a6b6ebb [external_record ref=longmemeval:07b6f563:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 04:34\nTranscript:\nuser: I'm looking for a new screen protector to replace the cracked one on my iPhone 13 Pro. Can you recommend some good brands that offer high-quality protectors?\nassistant: Cracked screen protectors can be a real nuisance! Don't worry, I'm here to help you find a high-quality replacement. Here are some excellent brands that offer top-notch screen protectors for your iPhone 13 Pro:...\n...2. **TechArmor**: TechArmor provides high-definition clarity and maximum protection with their screen protectors, which are designed to withstand scratches and drops.\n3. **Spigen**: Spigen is a popular brand among iPhone users, offering a variety of screen protectors, including tempered glass and film-based options, with excellent reviews.\n4. **BodyGuardz**: BodyGuardz offers a range of screen protectors, including tempered glass and screen armor options, designed to provide maximum protection and durability.\n5. **Belkin**: Belkin is a well-known brand that offers high-quality screen protectors with advanced features like anti-glare and fingerprint resistance.\n6. **Anker**: Anker is a popular brand that offers a range of affordable and high-quality screen protectors, including tempered glass and film-based options.\n7. **OtterBox**: OtterBox is a well-known brand that offers rugged and durable screen protectors, designed to withstand extreme conditions.\n8. **Mophie**: Mophie offers a range of premium screen protectors with advanced features like anti-glare and smudge-resistance.\n9. **UAG**: UAG (Urban Armor Gear) offers rugged and durable screen protectors designed for active users who need maximum protection.\n10. **Skinomi**: Skinomi offers a range of high-quality screen protectors, including tempered glass and film-based options, with a focus on clarity and durability.\n\nWhen choosing a screen protector, consider the following factors:\n\n* Material: Tempered glass or film-based (PET or TPU)\n* Thickness: Thicker protectors offer more protection, but may affect screen responsiveness\n* Clarity: Look for protectors with high-definition clarity to maintain your iPhone's screen quality...\n...Remember to read reviews and check the compatibility of the screen protector with your iPhone 13 Pro before making a purchase.\nuser: I'm also looking for a phone wallet case. Can you recommend some good brands that offer high-quality wallet cases for my iPhone 13 Pro?\nassistant: Phone wallet cases are super convenient! I'd be happy to help you find a high-quality one for your iPhone 13 Pro. Here are some excellent brands that offer top-notch wallet cases:...\n...When choosing a phone wallet case, consider the following factors:...\n...assistant: OtterBox is a well-known and reputable brand in the phone case industry! Their wallet cases are popular among users who need a combination of protection, functionality, and style. Here's a balanced review of the OtterBox wallet case to help you decide if it's the right fit for you:...\n...Ultimately, the OtterBox wallet case is a great choice for those who value protection, functionality, and durability. If you're willing to compromise on slimness and weight, you'll be rewarded with a high-quality case that will keep your iPhone 13 Pro safe and secure....\n...Wireless charging power banks are portable power banks that support wireless charging, allowing you to charge your devices without the need for a cable. They typically use the Qi (pronounced \"chee\") wireless charging standard, which is widely supported by many devices, including iPhones, Samsung phones, and more....\n...user: I think I'll consider getting a wireless charging power bank. It seems like it would be really convenient to just place my iPhone 13 Pro on the power bank and have it charge without having to deal with cables. Do you think I should look for any specific features or certifications when shopping for a wireless charging power bank?...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Wireless Power Consortium; Organization named Wireless Power Consortium.\n- entity entity:<1> [PRODUCT]: Best Buy portable power bank; Product named Best Buy portable power bank.\n- entity entity:<2> [PRODUCT]: iPhone 13 Pro; Product named iPhone 13 Pro.\n- entity entity:<3> [PRODUCT]: Wireless charging power bank; Product named Wireless charging power bank.\n- entity entity:<4> [TECHNOLOGY]: Qi wireless charging standard; Technology named Qi wireless charging standard.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "07b6f563",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you suggest some useful accessories for my phone?\n\n                                Question date:\n                                2023/05/28 (Sun) 00:20\n\n                                Noisy expected-answer label:\n                                The user would prefer suggestions of accessories that are compatible with an iPhone 13 Pro, such as high-quality screen protectors, durable cases, portable power banks, or phone wallet cases. They may not prefer suggestions of accessories that are not compatible with Apple products or do not enhance the functionality or protection of their phone.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:07b6f563\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-dd0a2f8c91e5-claim-8 [ACTIVE] has_goal family=has_goal: The user was looking for a high-quality phone wallet case for their iPhone 13 Pro.; scope=Accessory-shopping goal expressed in the imported 2023-05-27 chat session.; context=\"In the imported 2023-05-27 chat session, the user asked for wallet case brand recommendations for their iPhone 13 Pro and later asked whether an OtterBox wallet case would fit their needs.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I'm also looking for a phone wallet case\"\n- claim hot-path-dd0a2f8c91e5-claim-4 [ACTIVE] works_with family=works_with: The user uses an iPhone 13 Pro.; scope=User's current phone/accessory context in the imported 2023-05-27 chat session.; context=\"The user repeatedly asked for accessories compatible with their iPhone 13 Pro, including a screen protector, wallet case, and wireless charging power bank.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"my iPhone 13 Pro\"\n- claim hot-path-dd0a2f8c91e5-claim-7 [ACTIVE] has_goal family=has_goal: The user was looking for a new screen protector to replace a cracked one on their iPhone 13 Pro.; scope=Accessory-shopping goal expressed in the imported 2023-05-27 chat session.; context=\"In the imported 2023-05-27 chat session, the user asked for good brands of high-quality screen protectors for an iPhone 13 Pro because their current protector was cracked.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I'm looking for a new screen protector to replace the cracked one on my iPhone 13 Pro\"\n- claim hot-path-dd0a2f8c91e5-claim-9 [ACTIVE] has_goal family=has_goal: The user was considering getting a wireless charging power bank for convenient cable-free charging of their iPhone 13 Pro.; scope=Power-bank upgrade consideration expressed in the imported 2023-05-27 chat session.; context=\"The user said a wireless charging power bank seemed convenient because they could place the iPhone 13 Pro on the power bank and charge without cables.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I think I'll consider getting a wireless charging power bank\"\n- claim hot-path-dd0a2f8c91e5-claim-5 [ACTIVE] owns family=owns: The user owns a portable power bank from Best Buy.; scope=User's portable charger ownership context from the imported 2023-05-27 chat session.; context=\"The user said their existing Best Buy portable power bank has been working well, while considering whether to get a newer one with more capacity or advanced features.\"; evidence=DIRECT source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"I actually already have a portable power bank from Best Buy\"\n\n            Retrieved notes:\n            - note hot-path-dd0a2f8c91e5-note-2 [CONTEXT/ACTIVE]: Wireless charging power bank buying criteria for iPhone 13 Pro; When evaluating a wireless charging power bank for the user's iPhone 13 Pro, the reusable criteria are Qi/WPC certification, Qi standard support, adequate wireless power output, high mAh capacity, USB ports, fast charging protocols such as QuickCharge/VOOC/PD, safety protections, compactness, brand reputation, and reviews. Optional differentiators include wireless charging distance, foreign object detection, and multi-device charging.; scope=Applies to future shopping advice for wireless charging power banks compatible with the user's iPhone 13 Pro.; evidence=SUMMARIZED source=external:provided-text:1b0576324baf47333f7b592c3a6b6ebb quote=\"When shopping for a wireless charging power bank, here are some key features and certifications to look for:\"\n\n            Retrieved evidence:\n            - source external:provided-text:1b0576324baf47333f7b592c3a6b6ebb [external_record ref=longmemeval:07b6f563:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/27 (Sat) 04:34\nTranscript:\nuser: I'm looking for a new screen protector to replace the cracked one on my iPhone 13 Pro. Can you recommend some good brands that offer high-quality protectors?\nassistant: Cracked screen protectors can be a real nuisance! Don't worry, I'm here to help you find a high-quality replacement. Here are some excellent brands that offer top-notch screen protectors for your iPhone 13 Pro:...\n...2. **TechArmor**: TechArmor provides high-definition clarity and maximum protection with their screen protectors, which are designed to withstand scratches and drops.\n3. **Spigen**: Spigen is a popular brand among iPhone users, offering a variety of screen protectors, including tempered glass and film-based options, with excellent reviews.\n4. **BodyGuardz**: BodyGuardz offers a range of screen protectors, including tempered glass and screen armor options, designed to provide maximum protection and durability.\n5. **Belkin**: Belkin is a well-known brand that offers high-quality screen protectors with advanced features like anti-glare and fingerprint resistance.\n6. **Anker**: Anker is a popular brand that offers a range of affordable and high-quality screen protectors, including tempered glass and film-based options.\n7. **OtterBox**: OtterBox is a well-known brand that offers rugged and durable screen protectors, designed to withstand extreme conditions.\n8. **Mophie**: Mophie offers a range of premium screen protectors with advanced features like anti-glare and smudge-resistance.\n9. **UAG**: UAG (Urban Armor Gear) offers rugged and durable screen protectors designed for active users who need maximum protection.\n10. **Skinomi**: Skinomi offers a range of high-quality screen protectors, including tempered glass and film-based options, with a focus on clarity and durability.\n\nWhen choosing a screen protector, consider the following factors:\n\n* Material: Tempered glass or film-based (PET or TPU)\n* Thickness: Thicker protectors offer more protection, but may affect screen responsiveness\n* Clarity: Look for protectors with high-definition clarity to maintain your iPhone's screen quality...\n...Remember to read reviews and check the compatibility of the screen protector with your iPhone 13 Pro before making a purchase.\nuser: I'm also looking for a phone wallet case. Can you recommend some good brands that offer high-quality wallet cases for my iPhone 13 Pro?\nassistant: Phone wallet cases are super convenient! I'd be happy to help you find a high-quality one for your iPhone 13 Pro. Here are some excellent brands that offer top-notch wallet cases:...\n...When choosing a phone wallet case, consider the following factors:...\n...assistant: OtterBox is a well-known and reputable brand in the phone case industry! Their wallet cases are popular among users who need a combination of protection, functionality, and style. Here's a balanced review of the OtterBox wallet case to help you decide if it's the right fit for you:...\n...Ultimately, the OtterBox wallet case is a great choice for those who value protection, functionality, and durability. If you're willing to compromise on slimness and weight, you'll be rewarded with a high-quality case that will keep your iPhone 13 Pro safe and secure....\n...Wireless charging power banks are portable power banks that support wireless charging, allowing you to charge your devices without the need for a cable. They typically use the Qi (pronounced \"chee\") wireless charging standard, which is widely supported by many devices, including iPhones, Samsung phones, and more....\n...user: I think I'll consider getting a wireless charging power bank. It seems like it would be really convenient to just place my iPhone 13 Pro on the power bank and have it charge without having to deal with cables. Do you think I should look for any specific features or certifications when shopping for a wireless charging power bank?...\n\n            Retrieved entities:\n            - entity entity:<0> [ORGANIZATION]: Wireless Power Consortium; Organization named Wireless Power Consortium.\n- entity entity:<1> [PRODUCT]: Best Buy portable power bank; Product named Best Buy portable power bank.\n- entity entity:<2> [PRODUCT]: iPhone 13 Pro; Product named iPhone 13 Pro.\n- entity entity:<3> [PRODUCT]: Wireless charging power bank; Product named Wireless charging power bank.\n- entity entity:<4> [TECHNOLOGY]: Qi wireless charging standard; Technology named Qi wireless charging standard.\n- entity entity:<5> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "07b6f563",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Suggest accessories compatible with the user's iPhone 13 Pro, especially high-quality screen protectors, phone wallet cases, and wireless/portable power banks.\",\"reason\":\"The memory states the user uses an iPhone 13 Pro and had recently sought a replacement screen protector, a phone wallet case, and a wireless charging power bank for it.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2898,
+                "completionTokens": 144,
+                "thinkingTokens": 52,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

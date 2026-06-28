@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "d3908be5281026d42fd1ca5f13981dd2460ed7d6b6db248666319c34c34645b6",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some interesting cultural events happening around me this weekend?\n\n                                Question date:\n                                2023/05/24 (Wed) 18:12\n\n                                Expected answer:\n                                The user would prefer responses that suggest cultural events where they can practice their language skills, particularly Spanish and French. They would also appreciate if the event has a focus on language learning resources. They would not prefer events that do not provide opportunities for language practice or cultural exchange.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:35a27287\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e4653fe5477c-claim-12 [ACTIVE] has_goal family=has_goal: The user wants to explore more local language exchange opportunities and cultural events focused on French and Spanish.; scope=User local event and language exchange interests.; evidence=DIRECT source=external:provided-text:b842ca75cb952cef3a66a88a6fc12877 quote=\"explore more language exchange opportunities and cultural events in my area\"\n- claim hot-path-e4653fe5477c-claim-14 [ACTIVE] prefers family=prefers: The user is interested in cultural events and festivals that celebrate language diversity and cultural exchange.; scope=User preferences for cultural events and festivals.; evidence=DIRECT source=external:provided-text:b842ca75cb952cef3a66a88a6fc12877 quote=\"cultural events or festivals in my area that celebrate language diversity and cultural exchange\"\n\n            Retrieved notes:\n            - note hot-path-e4653fe5477c-note-5 [CONTEXT/ACTIVE]: Cultural events as language-learning context; The user connects language learning with cultural exchange and language diversity events, including prior volunteering at a cultural festival, and may value recommendations that combine language practice with cultural festivals, embassies/consulates, cultural centers, community organizations, and international or heritage events.; scope=Applies when suggesting cultural or community events related to the user's language learning interests.; evidence=SUMMARIZED source=external:provided-text:b842ca75cb952cef3a66a88a6fc12877 quote=\"the cultural festival I volunteered at last month\"\n\n            Retrieved evidence:\n            - source external:provided-text:b842ca75cb952cef3a66a88a6fc12877 [external_record ref=longmemeval:35a27287:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/20 (Sat) 03:58...\n...1. **Coffee Break French**: A well-known podcast that offers lessons for beginners and intermediate learners. Each episode is around 20-30 minutes long and covers various topics, including grammar, vocabulary, and cultural insights....\n...4. **French for Beginners**: A podcast designed for beginners, covering basic grammar, vocabulary, and phrases. Each episode is around 10-15 minutes long and includes interactive exercises....\n...* Starting with podcasts that match your current level of French proficiency...\n...assistant: I'm happy to help you discover cultural events and festivals in your area that celebrate language diversity and cultural exchange! Since I'm a large language model, I don't have access to your location, but I can suggest some ways to find these events:...\n...* Follow local cultural organizations, language schools, and community centers on social media platforms like Facebook, Twitter, or Instagram. They often post about upcoming events and festivals....\n...* Reach out to local language schools, cultural centers, or institutions that promote language diversity and cultural exchange. They might host or know about upcoming events that align with your interests....\n...* Reach out to embassies or consulates of countries with languages you're interested in. They often host cultural events, language festivals, or national day celebrations that are open to the public....\n...3. **International Festivals**: Events that celebrate the culture, food, music, and traditions of specific countries or regions, such as Chinese New Year, Diwali, or Cinco de Mayo festivals....\n...Remember to search for events in your local area, and don't be afraid to reach out to organizations or individuals who might be hosting or participating in these events. Good luck, and I hope you find an event that resonates with your interests!...\n...1. ** FluentU**: A popular platform that uses real-world videos, including movie trailers, music videos, and talks, to teach French idioms and colloquialisms....\n...user: I'm interested in attending language exchange events, especially those that focus on conversational practice. Can you suggest some websites or apps that can help me find language exchange partners or events in my area?...\n...1. **Conversation Exchange**: A platform that connects language learners for conversation exchange, language exchange, and cultural exchange. You can search for language exchange partners or events in your area....\n...4. **Language Exchange Net**: A website that allows you to search for language exchange partners or events in your area. You can also post your own language exchange event or activity....\n...3. **Speaky**: A language exchange app that connects you with native speakers of the language you want to learn. You can filter by location to find language exchange partners or events near you....\n...user: I'd like to explore more language exchange opportunities and cultural events in my area. Can you suggest some ways to find language exchange partners or events that focus on French and Spanish languages?...\n...1. **Conversation Exchange**: A website that connects language learners for conversation exchange, language exchange, and cultural exchange. You can search for language exchange partners or events in your area....\n...2. **Local Language Schools or Universities**: Reach out to local language schools or universities that offer French and Spanish language courses. They might host language exchange events, conversation practice groups, or cultural events....\n...2. **Cultural Events**: Attend cultural events, festivals, or concerts that celebrate French and Spanish cultures. These events can be a great way to meet language learners and native speakers....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Cultural events and festivals; Concept named Cultural events and festivals.\n- entity entity:<1> [CONCEPT]: Language exchange events; Concept named Language exchange events.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "35a27287",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Can you recommend some interesting cultural events happening around me this weekend?\n\n                                Question date:\n                                2023/05/24 (Wed) 18:12\n\n                                Expected answer:\n                                The user would prefer responses that suggest cultural events where they can practice their language skills, particularly Spanish and French. They would also appreciate if the event has a focus on language learning resources. They would not prefer events that do not provide opportunities for language practice or cultural exchange.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:35a27287\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-e4653fe5477c-claim-12 [ACTIVE] has_goal family=has_goal: The user wants to explore more local language exchange opportunities and cultural events focused on French and Spanish.; scope=User local event and language exchange interests.; evidence=DIRECT source=external:provided-text:b842ca75cb952cef3a66a88a6fc12877 quote=\"explore more language exchange opportunities and cultural events in my area\"\n- claim hot-path-e4653fe5477c-claim-14 [ACTIVE] prefers family=prefers: The user is interested in cultural events and festivals that celebrate language diversity and cultural exchange.; scope=User preferences for cultural events and festivals.; evidence=DIRECT source=external:provided-text:b842ca75cb952cef3a66a88a6fc12877 quote=\"cultural events or festivals in my area that celebrate language diversity and cultural exchange\"\n\n            Retrieved notes:\n            - note hot-path-e4653fe5477c-note-5 [CONTEXT/ACTIVE]: Cultural events as language-learning context; The user connects language learning with cultural exchange and language diversity events, including prior volunteering at a cultural festival, and may value recommendations that combine language practice with cultural festivals, embassies/consulates, cultural centers, community organizations, and international or heritage events.; scope=Applies when suggesting cultural or community events related to the user's language learning interests.; evidence=SUMMARIZED source=external:provided-text:b842ca75cb952cef3a66a88a6fc12877 quote=\"the cultural festival I volunteered at last month\"\n\n            Retrieved evidence:\n            - source external:provided-text:b842ca75cb952cef3a66a88a6fc12877 [external_record ref=longmemeval:35a27287:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...Session date: 2023/05/20 (Sat) 03:58...\n...1. **Coffee Break French**: A well-known podcast that offers lessons for beginners and intermediate learners. Each episode is around 20-30 minutes long and covers various topics, including grammar, vocabulary, and cultural insights....\n...4. **French for Beginners**: A podcast designed for beginners, covering basic grammar, vocabulary, and phrases. Each episode is around 10-15 minutes long and includes interactive exercises....\n...* Starting with podcasts that match your current level of French proficiency...\n...assistant: I'm happy to help you discover cultural events and festivals in your area that celebrate language diversity and cultural exchange! Since I'm a large language model, I don't have access to your location, but I can suggest some ways to find these events:...\n...* Follow local cultural organizations, language schools, and community centers on social media platforms like Facebook, Twitter, or Instagram. They often post about upcoming events and festivals....\n...* Reach out to local language schools, cultural centers, or institutions that promote language diversity and cultural exchange. They might host or know about upcoming events that align with your interests....\n...* Reach out to embassies or consulates of countries with languages you're interested in. They often host cultural events, language festivals, or national day celebrations that are open to the public....\n...3. **International Festivals**: Events that celebrate the culture, food, music, and traditions of specific countries or regions, such as Chinese New Year, Diwali, or Cinco de Mayo festivals....\n...Remember to search for events in your local area, and don't be afraid to reach out to organizations or individuals who might be hosting or participating in these events. Good luck, and I hope you find an event that resonates with your interests!...\n...1. ** FluentU**: A popular platform that uses real-world videos, including movie trailers, music videos, and talks, to teach French idioms and colloquialisms....\n...user: I'm interested in attending language exchange events, especially those that focus on conversational practice. Can you suggest some websites or apps that can help me find language exchange partners or events in my area?...\n...1. **Conversation Exchange**: A platform that connects language learners for conversation exchange, language exchange, and cultural exchange. You can search for language exchange partners or events in your area....\n...4. **Language Exchange Net**: A website that allows you to search for language exchange partners or events in your area. You can also post your own language exchange event or activity....\n...3. **Speaky**: A language exchange app that connects you with native speakers of the language you want to learn. You can filter by location to find language exchange partners or events near you....\n...user: I'd like to explore more language exchange opportunities and cultural events in my area. Can you suggest some ways to find language exchange partners or events that focus on French and Spanish languages?...\n...1. **Conversation Exchange**: A website that connects language learners for conversation exchange, language exchange, and cultural exchange. You can search for language exchange partners or events in your area....\n...2. **Local Language Schools or Universities**: Reach out to local language schools or universities that offer French and Spanish language courses. They might host language exchange events, conversation practice groups, or cultural events....\n...2. **Cultural Events**: Attend cultural events, festivals, or concerts that celebrate French and Spanish cultures. These events can be a great way to meet language learners and native speakers....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Cultural events and festivals; Concept named Cultural events and festivals.\n- entity entity:<1> [CONCEPT]: Language exchange events; Concept named Language exchange events.\n- entity entity:<2> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "35a27287",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Recommend local cultural events that include language exchange or conversational practice, especially for French and Spanish, and favor events tied to language-learning resources or cultural exchange.\",\"reason\":\"The memory explicitly says the user wants local language exchange opportunities and cultural events focused on French and Spanish and values language diversity/cultural exchange.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1913,
+                "completionTokens": 180,
+                "thinkingTokens": 96,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

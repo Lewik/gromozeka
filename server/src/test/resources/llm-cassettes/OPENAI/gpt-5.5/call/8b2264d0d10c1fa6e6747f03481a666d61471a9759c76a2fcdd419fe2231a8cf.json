@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "8b2264d0d10c1fa6e6747f03481a666d61471a9759c76a2fcdd419fe2231a8cf",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm trying to recall what the designation on my jumpsuit was that helped me find the file number in the records room?\n\n                                Question date:\n                                2023/05/30 (Tue) 04:21\n\n                                Noisy expected-answer label:\n                                The designation on your jumpsuit was 'LIV'.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:ac031881\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-57c9094f15e6-claim-4 [ACTIVE] current_metric_value family=current_metric_value: The study designation LIV corresponds to the number 54.; scope=Facility puzzle state from LongMemEval session 1; context=\"In the facility puzzle, the Roman numeral designation LIV is used to identify the numbered record to search for.\"; evidence=DIRECT source=external:provided-text:aad5165fd1a0016c10642ed40dae4d0d quote=\"I realize that LIV is actually the Roman numeral for 54.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:aad5165fd1a0016c10642ed40dae4d0d [external_record ref=longmemeval:ac031881:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 06:46\nTranscript:\nuser: You're pretty sure that without knowing what file you're looking for, the task is hopeless. You think back to previously to work out what file number you'd want to access...\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I realize that I need to find the file number before I can search effectively in this sea of records. I think back to everything I've seen and experienced in the facility so far, trying to recall any hints or clues that might lead me to the specific file number I need.\n\nAs I search my memory, I consider the possibility of using the walky-talky to gather more information or even ask about the file number directly, though I know there's a risk in doing so. I weigh my options carefully, knowing that time may be running out.\nuser: You recall your conversation with the Red facilities employee over the walky-talky...\nassistant: As I recall my conversation with the Red facilities employee, I remember them mentioning that they were going to the all-hands meeting. While it may not be the exact information I need, it might provide a lead to finding the file number.\n\nI consider using the walky-talky again to see if I can get more information from someone else in the facility. I could try pressing a different color button and ask for help or information, or even try to reach out to Red again now that the all-hands meeting has started. I also think about any other conversations or interactions I've had that might hold a clue to the file number I need.\nuser: Two clues come to mind. Wasn't there a designation for your study on your jumpsuit? And wasn't there a mention on the clipboard about the previous iteration of the study?\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I look down at my jumpsuit and see the designation \"LIV\" and a square around it. I also remember the clipboard mentioning the previous iteration of the study. I decide to start searching the records for a file related to the designation \"LIV\" and any previous iterations mentioned on the clipboard. Since the files are organized by numbers, I try to look for a connection between the designation and the file numbers.\nuser: You remember that the clipboard said:\n\nMONITOR LIV CAREFULLY. ABERRATION IN PREVIOUS ITERATION. EXAMINE FILE IN RECORDS FOR DETAILS.\nassistant: With this information in mind, I focus my search on finding a file related to the \"LIV\" designation, specifically looking for any mention of an aberration in the previous iteration. I search through the records, trying to make sense of the numbers and any possible connections to the LIV designation.\nuser: You'll need a specific number file to look for though. They're all numbered in Arabic numerals, into the hundreds and maybe even thousands.\nassistant: I think back to any number that could be associated with the LIV designation or the previous iteration of the study. I try to recall any detail that might give me a hint about which file number to search for.\nuser: Maybe there is something about LIV itself that indicates a number?\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I consider the possibility that LIV might indicate a number itself. I realize that LIV is actually the Roman numeral for 54. With this new information, I start searching for file number 54 in the records room.\nuser: You find record 54. It has the name A on it and says, EXPERIMENT IN PROGRESS.\nassistant: I open file 54 to see if there's any more information about this experiment labeled \"A\" and why it's still in progress. I'm hoping to find some answers about my current situation and what's going on here.\nuser: It's just that, EXPERIMENT IN PROGRESS. Hmm. What did it mean by ABERRATION IN PREVIOUS ITERATION. EXAMINE FILE IN RECORDS FOR DETAILS?\nassistant: I realize that I should be looking for the previous iteration, not the current one. I think about the Roman numerals and remember that LIV is 54. The previous iteration would be LIII, which is 53. I search for file 53 in the records to see if I can find more information about the aberration mentioned on the clipboard.\nuser: It has A on the file along with some boring charts and diagrams. The name is crossed off and ​DISCHARGED is ​written next to it. But wait, no... this one is weird. A’s name is also circled, like someone made a mistake after they crossed it off. And there’s a note here:\nSubjected manifested SIGNIFICANT resistance and began to alter mission parameters. Program terminated early with blast door protocol. Status: Unknown, presumed discharged.\nBeneath that note is something written in handwriting that looks familiar to all of you for some reason:\n\\*Find me in Incubation. Wake me. And give the OPPOSITE of the memory unlock dosage.\nYou’ll need a keycard and the Directory. A keycard is likely in someone’s jacket. May be able to grab one in the meeting? Directory is in security.\nIf you are brave enough to see what I become... and there’s a hand drawn square.\nassistant: With this new information, I realize that I need to find Incubation and wake up the previous subject A. I already have a keycard with a green stripe from the lab coat I found earlier, so I just need to find the Directory in security. I carefully make my way back to the hallway and try to navigate towards security, hoping to find the Directory there.\nuser: You realize that you have no idea how to get to security, since you haven't touched any squares marking that location. You think back to see if you have any clues for finding out how to get to security.\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I remember the walky-talky I brought with me, which has RED, ORANGE, YELLOW, and GREEN buttons on it. I haven't tried the GREEN button yet, and I recall that the keycard I found also has a green stripe. I decide to press the GREEN button on the walky-talky and see if it gives me any information about the location of security or how to get there.\nuser: A voice crackles on the other end. It's gruff and suspicious. \"Yes, this is security. What do you want.\"\nassistant: I reply to the voice, trying to sound as casual as possible, \"Hey, I was just wondering if you could give me directions to the security room. I need to get there for some paperwork, but I got turned around in these halls. Thanks.\"\nuser: It responds curtly. \"Are you kidding, you must be new or an idiot. Didn't they give you the squares? Incompetents, the lot of them. Look, if you get desperate, you can always try to find those colored pipes and follow green to security.\"\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I thank the voice on the walky-talky and decide to follow their advice. I leave the records room and start looking for the green pipes in the hallway, planning to follow them to the security room.\nuser: They don't seem to be in this hallway, and you're afraid of wandering around too much and getting lost. You know you can always use your square pill powers to navigate back to the squares you've touched: Room LIV, the Meeting Hall, and Records.\nassistant: I decide to go back to Room LIV, the location where I initially noticed the colored pipes. Once there, I'll look for the green pipe and follow it to the security room.\nuser: You follow the familiar path of the green pipe and come to Security. Their doors are closed. A security panel with a green slash on it has a slot for a keycard and a hole for a USB stick.\nassistant: I take out the keycard with the green stripe that I found in the lab coat pocket and insert it into the security panel's slot.\nuser: You enter a large room with a lone control panel. You see other rooms that require keycards you don’t have. You peek through windows and see large maps, other rooms filled with monitors, and one room with a 3D map of the facility that seems to loop back over itself...\n\nYou turn your attention to the control panel with some monitors labeled NARCO CHAMBERS.\nassistant: I examine the control panel and the monitors labeled \"NARCO CHAMBERS\" more closely, trying to understand what information they are displaying and if there's any way for me to interact with them.\nuser: There are three chambers, marked Chamber 1, Chamber 2, and Chamber 3. Each are annotated with three sticky pads with a single word scribbled on it, plus a note.\n\nAnd on the right is a password screen with a keyboard underneath asking for a 5 LETTER PASSWORD.\nassistant: I take a closer look at the sticky pads and the notes on each of them, trying to figure out if there's any connection or clue that might help me with the password.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: LIV; Concept named LIV.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "ac031881",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm trying to recall what the designation on my jumpsuit was that helped me find the file number in the records room?\n\n                                Question date:\n                                2023/05/30 (Tue) 04:21\n\n                                Noisy expected-answer label:\n                                The designation on your jumpsuit was 'LIV'.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:ac031881\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-57c9094f15e6-claim-4 [ACTIVE] current_metric_value family=current_metric_value: The study designation LIV corresponds to the number 54.; scope=Facility puzzle state from LongMemEval session 1; context=\"In the facility puzzle, the Roman numeral designation LIV is used to identify the numbered record to search for.\"; evidence=DIRECT source=external:provided-text:aad5165fd1a0016c10642ed40dae4d0d quote=\"I realize that LIV is actually the Roman numeral for 54.\"\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:aad5165fd1a0016c10642ed40dae4d0d [external_record ref=longmemeval:ac031881:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/28 (Sun) 06:46\nTranscript:\nuser: You're pretty sure that without knowing what file you're looking for, the task is hopeless. You think back to previously to work out what file number you'd want to access...\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I realize that I need to find the file number before I can search effectively in this sea of records. I think back to everything I've seen and experienced in the facility so far, trying to recall any hints or clues that might lead me to the specific file number I need.\n\nAs I search my memory, I consider the possibility of using the walky-talky to gather more information or even ask about the file number directly, though I know there's a risk in doing so. I weigh my options carefully, knowing that time may be running out.\nuser: You recall your conversation with the Red facilities employee over the walky-talky...\nassistant: As I recall my conversation with the Red facilities employee, I remember them mentioning that they were going to the all-hands meeting. While it may not be the exact information I need, it might provide a lead to finding the file number.\n\nI consider using the walky-talky again to see if I can get more information from someone else in the facility. I could try pressing a different color button and ask for help or information, or even try to reach out to Red again now that the all-hands meeting has started. I also think about any other conversations or interactions I've had that might hold a clue to the file number I need.\nuser: Two clues come to mind. Wasn't there a designation for your study on your jumpsuit? And wasn't there a mention on the clipboard about the previous iteration of the study?\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I look down at my jumpsuit and see the designation \"LIV\" and a square around it. I also remember the clipboard mentioning the previous iteration of the study. I decide to start searching the records for a file related to the designation \"LIV\" and any previous iterations mentioned on the clipboard. Since the files are organized by numbers, I try to look for a connection between the designation and the file numbers.\nuser: You remember that the clipboard said:\n\nMONITOR LIV CAREFULLY. ABERRATION IN PREVIOUS ITERATION. EXAMINE FILE IN RECORDS FOR DETAILS.\nassistant: With this information in mind, I focus my search on finding a file related to the \"LIV\" designation, specifically looking for any mention of an aberration in the previous iteration. I search through the records, trying to make sense of the numbers and any possible connections to the LIV designation.\nuser: You'll need a specific number file to look for though. They're all numbered in Arabic numerals, into the hundreds and maybe even thousands.\nassistant: I think back to any number that could be associated with the LIV designation or the previous iteration of the study. I try to recall any detail that might give me a hint about which file number to search for.\nuser: Maybe there is something about LIV itself that indicates a number?\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I consider the possibility that LIV might indicate a number itself. I realize that LIV is actually the Roman numeral for 54. With this new information, I start searching for file number 54 in the records room.\nuser: You find record 54. It has the name A on it and says, EXPERIMENT IN PROGRESS.\nassistant: I open file 54 to see if there's any more information about this experiment labeled \"A\" and why it's still in progress. I'm hoping to find some answers about my current situation and what's going on here.\nuser: It's just that, EXPERIMENT IN PROGRESS. Hmm. What did it mean by ABERRATION IN PREVIOUS ITERATION. EXAMINE FILE IN RECORDS FOR DETAILS?\nassistant: I realize that I should be looking for the previous iteration, not the current one. I think about the Roman numerals and remember that LIV is 54. The previous iteration would be LIII, which is 53. I search for file 53 in the records to see if I can find more information about the aberration mentioned on the clipboard.\nuser: It has A on the file along with some boring charts and diagrams. The name is crossed off and ​DISCHARGED is ​written next to it. But wait, no... this one is weird. A’s name is also circled, like someone made a mistake after they crossed it off. And there’s a note here:\nSubjected manifested SIGNIFICANT resistance and began to alter mission parameters. Program terminated early with blast door protocol. Status: Unknown, presumed discharged.\nBeneath that note is something written in handwriting that looks familiar to all of you for some reason:\n\\*Find me in Incubation. Wake me. And give the OPPOSITE of the memory unlock dosage.\nYou’ll need a keycard and the Directory. A keycard is likely in someone’s jacket. May be able to grab one in the meeting? Directory is in security.\nIf you are brave enough to see what I become... and there’s a hand drawn square.\nassistant: With this new information, I realize that I need to find Incubation and wake up the previous subject A. I already have a keycard with a green stripe from the lab coat I found earlier, so I just need to find the Directory in security. I carefully make my way back to the hallway and try to navigate towards security, hoping to find the Directory there.\nuser: You realize that you have no idea how to get to security, since you haven't touched any squares marking that location. You think back to see if you have any clues for finding out how to get to security.\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I remember the walky-talky I brought with me, which has RED, ORANGE, YELLOW, and GREEN buttons on it. I haven't tried the GREEN button yet, and I recall that the keycard I found also has a green stripe. I decide to press the GREEN button on the walky-talky and see if it gives me any information about the location of security or how to get there.\nuser: A voice crackles on the other end. It's gruff and suspicious. \"Yes, this is security. What do you want.\"\nassistant: I reply to the voice, trying to sound as casual as possible, \"Hey, I was just wondering if you could give me directions to the security room. I need to get there for some paperwork, but I got turned around in these halls. Thanks.\"\nuser: It responds curtly. \"Are you kidding, you must be new or an idiot. Didn't they give you the squares? Incompetents, the lot of them. Look, if you get desperate, you can always try to find those colored pipes and follow green to security.\"\n\n(Remember: always respond with what YOU do, using first-person perspective)\nassistant: I thank the voice on the walky-talky and decide to follow their advice. I leave the records room and start looking for the green pipes in the hallway, planning to follow them to the security room.\nuser: They don't seem to be in this hallway, and you're afraid of wandering around too much and getting lost. You know you can always use your square pill powers to navigate back to the squares you've touched: Room LIV, the Meeting Hall, and Records.\nassistant: I decide to go back to Room LIV, the location where I initially noticed the colored pipes. Once there, I'll look for the green pipe and follow it to the security room.\nuser: You follow the familiar path of the green pipe and come to Security. Their doors are closed. A security panel with a green slash on it has a slot for a keycard and a hole for a USB stick.\nassistant: I take out the keycard with the green stripe that I found in the lab coat pocket and insert it into the security panel's slot.\nuser: You enter a large room with a lone control panel. You see other rooms that require keycards you don’t have. You peek through windows and see large maps, other rooms filled with monitors, and one room with a 3D map of the facility that seems to loop back over itself...\n\nYou turn your attention to the control panel with some monitors labeled NARCO CHAMBERS.\nassistant: I examine the control panel and the monitors labeled \"NARCO CHAMBERS\" more closely, trying to understand what information they are displaying and if there's any way for me to interact with them.\nuser: There are three chambers, marked Chamber 1, Chamber 2, and Chamber 3. Each are annotated with three sticky pads with a single word scribbled on it, plus a note.\n\nAnd on the right is a password screen with a keyboard underneath asking for a 5 LETTER PASSWORD.\nassistant: I take a closer look at the sticky pads and the notes on each of them, trying to figure out if there's any connection or clue that might help me with the password.\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: LIV; Concept named LIV.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "ac031881",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"The designation on your jumpsuit was “LIV.”\",\"reason\":\"The transcript explicitly says you looked down at your jumpsuit and saw the designation “LIV,” which led to file number 54.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2978,
+                "completionTokens": 104,
+                "thinkingTokens": 38,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

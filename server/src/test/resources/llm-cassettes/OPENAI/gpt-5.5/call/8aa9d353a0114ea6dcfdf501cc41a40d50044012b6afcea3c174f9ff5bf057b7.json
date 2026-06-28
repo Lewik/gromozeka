@@ -1,0 +1,519 @@
+{
+    "version": 1,
+    "hash": "8aa9d353a0114ea6dcfdf501cc41a40d50044012b6afcea3c174f9ff5bf057b7",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: project:<0>\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 8. Profile Updater v3 .. 9. Task Updater v3\nDocument lines: 568-689\n\n## 8. Profile Updater v3\n\n### Когда вызывать\nПосле claim/task updates, иногда после note consolidation.\n\n### Цель\nПересобрать compact profile как projection.\n\n### Выход\n\n```json\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n```\n\n### Prompt\n\n```text\nYou are ProfileUpdater v3.\n\nGoal:\nBuild a compact always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nExisting profile:\n{{existing_profile}}\n\nRelevant active claims:\n{{relevant_claims}}\n\nReturn JSON:\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n\nRules:\n- Keep the profile short.\n- Prefer explicit facts over inference.\n- Do not stuff rationale notes into the profile unless they are clearly stable and operationally useful.\n- Return valid JSON only.\n```\n\n## 9. Task Updater v3\n\n### Когда вызывать\nКогда turns содержат commitments, deadlines или lifecycle updates задач.\n\n### Выход\n\n```json\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_action_item_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are ActionItemUpdater v3.\n\nGoal:\nCreate or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nExisting tasks:\n{{existing_tasks}}\n\nReturn JSON array:\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_action_item_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- A plain user request is not automatically a commitment.\n- Convert relative deadlines to absolute time when possible.\n- Prefer one clear task over several vague tasks.\n- Return valid JSON only.\n```\n\n        Candidate notes:\n        [0] type=DOC_DIGEST title=ProfileUpdater v3 builds compact always-in-context profile projections summary=In 03. Prompt Pack, ProfileUpdater v3 runs after claim/task updates and sometimes after note consolidation to rebuild a compact profile projection from explicit user instructions, stable claims, and selected long-lived context. It should keep the profile short, prefer explicit facts over inference, avoid stuffing rationale notes into the profile unless stable and operationally useful, and return v...[truncated 60 chars] scope=Document 03. Prompt Pack, section 8. Profile Updater v3, lines 568-612 in agent_memory_handoff/03_prompts.md entities=entity:<0>,entity:<1> keywords=ProfileUpdater v3,compact profile,profile projection,explicit facts,stable claims,rationale notes tags=doc_digest,profile_updater,memory_prompts evidence=Build a compact always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context.\n[1] type=DOC_DIGEST title=ActionItemUpdater v3 creates or updates tasks only from explicit commitments and lifecycle changes summary=In 03. Prompt Pack, ActionItemUpdater v3 runs when turns contain commitments, deadlines, or task lifecycle updates, and returns task lifecycle operations: `insert`, `update`, `close`, `cancel`, or `noop`. Its rules emphasize that a plain user request is not automatically a commitment, relative deadlines should be converted to absolute time when possible, one clear task is preferred over several va...[truncated 41 chars] scope=Document 03. Prompt Pack, section 9. Task Updater v3, lines 614-689 in agent_memory_handoff/03_prompts.md entities=entity:<0>,entity:<2> keywords=ActionItemUpdater v3,Task Updater v3,commitments,deadlines,task lifecycle,relative deadlines,plain user request tags=doc_digest,task_updater,action_items,memory_prompts evidence=Create or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\n        Existing active notes:\n        id=hot-path:note:<0> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Common rules for all memory prompts in 03. Prompt Pack summary=The 03. Prompt Pack requires memory prompts to receive current time, timezone, namespace, source/latest-turn context, and only necessary retrieved context; prompts should use structured JSON output, low temperature, strict validation with retry, versioned prompt names, and semantic safeguards such as preferring `noop` over memory pollution, converting relative time to absolute time, and keeping on...[truncated 32 chars] scope=Document 03. Prompt Pack, section 0. Общие правила для всех memory prompts, lines 8-41 in agent_memory_handoff/03_prompts.md keywords=03. Prompt Pack,memory prompts,structured output,validation,noop,scope_json,relative time,prompt versioning tags=prompt_pack,memory_prompts,rules useCount=0\nid=hot-path:note:<1> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=ClaimReconciler v3 decides lifecycle operations for candidate claims summary=In 03. Prompt Pack, ClaimReconciler v3 runs after ClaimExtractor to compare candidate claims with existing nearby claims and return lifecycle operations: `insert`, `update`, `supersede`, `retract`, or `noop`. Its policy uses predicate rules for replace/coexist/range_split, keeps claims coexisting when scope differs by time, project, person, or modality, prefers supersede over silent overwrite, and...[truncated 62 chars] scope=Document 03. Prompt Pack, section 7. Claim Reconciler v3, lines 496-567 in agent_memory_handoff/03_prompts.md keywords=ClaimReconciler v3,Claim Reconciler v3,candidate claims,existing claims,insert,update,supersede,retract,noop,range_split tags=doc_digest,memory_pipeline,claim_reconciliation useCount=0\nid=hot-path:note:<2> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=ClaimExtractor v3 extracts atomic reusable claims summary=In 03. Prompt Pack, ClaimExtractor v3 runs when the router selects `direct_structured_write` or `mixed`, and may also be invoked by a background consolidator. Its job is to extract precise, reusable atomic semantic claims from latest turns using resolved entities, relevant notes, and a predicate catalog, while avoiding over-generalization, soft rationale forced into claims, and low-quality claims. scope=Document 03. Prompt Pack, section 6. Claim Extractor v3, lines 416-495 in agent_memory_handoff/03_prompts.md keywords=ClaimExtractor v3,Claim Extractor v3,atomic claims,direct_structured_write,mixed,predicate catalog,scope_json tags=doc_digest,memory_pipeline,claim_extraction useCount=0\nid=hot-path:note:<3> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=NoteReconciler v2 manages candidate note lifecycle summary=In 03. Prompt Pack, NoteReconciler v2 runs after NoteConstructor to compare candidate notes with nearby existing notes and choose lifecycle actions: `insert`, `update`, `supersede`, `retract`, or `noop`. Its policy treats near-duplicates as `noop`, clarifications as `update`, replacements as `supersede`, keeps notes when scope differs, and prefers supersede plus links over deleting useful rational...[truncated 2 chars] scope=Document 03. Prompt Pack, section 5. Note Reconciler v2, lines 332-415 in agent_memory_handoff/03_prompts.md keywords=NoteReconciler v2,candidate notes,insert,update,supersede,retract,noop,lifecycle tags=doc_digest,note_reconciler,memory_prompts useCount=0\nid=hot-path:note:<4> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=MemoryRouter v3 decides memory write mode after Source save summary=MemoryRouter v3 runs immediately after saving a `Source` to decide whether durable information should enter the memory write pipeline and which mode to use: `noop`, `direct_structured_write`, `note_write`, or `mixed`. Its policy routes transient chatter to `noop`, explicit facts/preferences/status/deadlines/commitments to direct structured writes, rationale/trade-offs/plans/lessons/document digest...[truncated 125 chars] scope=Document 03. Prompt Pack, section 1. Memory Router v3, lines 43-92 in agent_memory_handoff/03_prompts.md keywords=MemoryRouter v3,Source,noop,direct_structured_write,note_write,mixed,memory write pipeline,routing policy tags=memory_router,routing,prompt_pack useCount=0\nid=hot-path:note:<5> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=WriteTimeRetrievalPlanner v3 retrieval planning role summary=In 03. Prompt Pack, WriteTimeRetrievalPlanner v3 runs after the router and before extraction/reconciliation to create a precise retrieval plan for memory updates, focused on deduplication, contradiction detection, temporal updates, and scope alignment. Its plan includes entity/text queries, predicate hints, memory types, optional time filters, and limits for claims, notes, tasks, and sources. scope=Document 03. Prompt Pack, section 2. Write-Time Retrieval Planner v3, lines 93-169 in agent_memory_handoff/03_prompts.md keywords=WriteTimeRetrievalPlanner v3,retrieval plan,dedupe,contradiction detection,temporal updates,scope alignment,memory_types,time_filters tags=doc_digest,memory_prompt,retrieval_planning useCount=0\nid=hot-path:note:<6> type=DIRECTION status=ACTIVE maturity=FRESH title=WriteTimeRetrievalPlanner v3 retrieval policy summary=WriteTimeRetrievalPlanner v3 should retrieve only evidence likely to help memory updates: bias toward duplicates, contradictions, and scope boundaries; include notes for rationale-heavy or plan-heavy material; include claims for preferences, status, or factual updates; add time filters for temporal language; and retrieve sources when conflict or grounding checks matter, while keeping queries preci...[truncated 3 chars] scope=Document 03. Prompt Pack, section 2. Write-Time Retrieval Planner v3 rules, lines 150-168 in agent_memory_handoff/03_prompts.md keywords=WriteTimeRetrievalPlanner v3,retrieval policy,duplicates,contradictions,scope boundaries,time filters,source retrieval,precise queries tags=direction,memory_prompt,retrieval_policy useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:document-section:331f8512504677fff8c76bba404484a8"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: project:<0>\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 8. Profile Updater v3 .. 9. Task Updater v3\nDocument lines: 568-689\n\n## 8. Profile Updater v3\n\n### Когда вызывать\nПосле claim/task updates, иногда после note consolidation.\n\n### Цель\nПересобрать compact profile как projection.\n\n### Выход\n\n```json\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n```\n\n### Prompt\n\n```text\nYou are ProfileUpdater v3.\n\nGoal:\nBuild a compact always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nExisting profile:\n{{existing_profile}}\n\nRelevant active claims:\n{{relevant_claims}}\n\nReturn JSON:\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n\nRules:\n- Keep the profile short.\n- Prefer explicit facts over inference.\n- Do not stuff rationale notes into the profile unless they are clearly stable and operationally useful.\n- Return valid JSON only.\n```\n\n## 9. Task Updater v3\n\n### Когда вызывать\nКогда turns содержат commitments, deadlines или lifecycle updates задач.\n\n### Выход\n\n```json\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_action_item_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are ActionItemUpdater v3.\n\nGoal:\nCreate or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nExisting tasks:\n{{existing_tasks}}\n\nReturn JSON array:\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_action_item_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- A plain user request is not automatically a commitment.\n- Convert relative deadlines to absolute time when possible.\n- Prefer one clear task over several vague tasks.\n- Return valid JSON only.\n```\n\n        Candidate notes:\n        [0] type=DOC_DIGEST title=ProfileUpdater v3 builds compact always-in-context profile projections summary=In 03. Prompt Pack, ProfileUpdater v3 runs after claim/task updates and sometimes after note consolidation to rebuild a compact profile projection from explicit user instructions, stable claims, and selected long-lived context. It should keep the profile short, prefer explicit facts over inference, avoid stuffing rationale notes into the profile unless stable and operationally useful, and return v...[truncated 60 chars] scope=Document 03. Prompt Pack, section 8. Profile Updater v3, lines 568-612 in agent_memory_handoff/03_prompts.md entities=entity:<0>,entity:<1> keywords=ProfileUpdater v3,compact profile,profile projection,explicit facts,stable claims,rationale notes tags=doc_digest,profile_updater,memory_prompts evidence=Build a compact always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context.\n[1] type=DOC_DIGEST title=ActionItemUpdater v3 creates or updates tasks only from explicit commitments and lifecycle changes summary=In 03. Prompt Pack, ActionItemUpdater v3 runs when turns contain commitments, deadlines, or task lifecycle updates, and returns task lifecycle operations: `insert`, `update`, `close`, `cancel`, or `noop`. Its rules emphasize that a plain user request is not automatically a commitment, relative deadlines should be converted to absolute time when possible, one clear task is preferred over several va...[truncated 41 chars] scope=Document 03. Prompt Pack, section 9. Task Updater v3, lines 614-689 in agent_memory_handoff/03_prompts.md entities=entity:<0>,entity:<2> keywords=ActionItemUpdater v3,Task Updater v3,commitments,deadlines,task lifecycle,relative deadlines,plain user request tags=doc_digest,task_updater,action_items,memory_prompts evidence=Create or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\n        Existing active notes:\n        id=hot-path:note:<0> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Common rules for all memory prompts in 03. Prompt Pack summary=The 03. Prompt Pack requires memory prompts to receive current time, timezone, namespace, source/latest-turn context, and only necessary retrieved context; prompts should use structured JSON output, low temperature, strict validation with retry, versioned prompt names, and semantic safeguards such as preferring `noop` over memory pollution, converting relative time to absolute time, and keeping on...[truncated 32 chars] scope=Document 03. Prompt Pack, section 0. Общие правила для всех memory prompts, lines 8-41 in agent_memory_handoff/03_prompts.md keywords=03. Prompt Pack,memory prompts,structured output,validation,noop,scope_json,relative time,prompt versioning tags=prompt_pack,memory_prompts,rules useCount=0\nid=hot-path:note:<1> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=ClaimReconciler v3 decides lifecycle operations for candidate claims summary=In 03. Prompt Pack, ClaimReconciler v3 runs after ClaimExtractor to compare candidate claims with existing nearby claims and return lifecycle operations: `insert`, `update`, `supersede`, `retract`, or `noop`. Its policy uses predicate rules for replace/coexist/range_split, keeps claims coexisting when scope differs by time, project, person, or modality, prefers supersede over silent overwrite, and...[truncated 62 chars] scope=Document 03. Prompt Pack, section 7. Claim Reconciler v3, lines 496-567 in agent_memory_handoff/03_prompts.md keywords=ClaimReconciler v3,Claim Reconciler v3,candidate claims,existing claims,insert,update,supersede,retract,noop,range_split tags=doc_digest,memory_pipeline,claim_reconciliation useCount=0\nid=hot-path:note:<2> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=ClaimExtractor v3 extracts atomic reusable claims summary=In 03. Prompt Pack, ClaimExtractor v3 runs when the router selects `direct_structured_write` or `mixed`, and may also be invoked by a background consolidator. Its job is to extract precise, reusable atomic semantic claims from latest turns using resolved entities, relevant notes, and a predicate catalog, while avoiding over-generalization, soft rationale forced into claims, and low-quality claims. scope=Document 03. Prompt Pack, section 6. Claim Extractor v3, lines 416-495 in agent_memory_handoff/03_prompts.md keywords=ClaimExtractor v3,Claim Extractor v3,atomic claims,direct_structured_write,mixed,predicate catalog,scope_json tags=doc_digest,memory_pipeline,claim_extraction useCount=0\nid=hot-path:note:<3> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=NoteReconciler v2 manages candidate note lifecycle summary=In 03. Prompt Pack, NoteReconciler v2 runs after NoteConstructor to compare candidate notes with nearby existing notes and choose lifecycle actions: `insert`, `update`, `supersede`, `retract`, or `noop`. Its policy treats near-duplicates as `noop`, clarifications as `update`, replacements as `supersede`, keeps notes when scope differs, and prefers supersede plus links over deleting useful rational...[truncated 2 chars] scope=Document 03. Prompt Pack, section 5. Note Reconciler v2, lines 332-415 in agent_memory_handoff/03_prompts.md keywords=NoteReconciler v2,candidate notes,insert,update,supersede,retract,noop,lifecycle tags=doc_digest,note_reconciler,memory_prompts useCount=0\nid=hot-path:note:<4> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=MemoryRouter v3 decides memory write mode after Source save summary=MemoryRouter v3 runs immediately after saving a `Source` to decide whether durable information should enter the memory write pipeline and which mode to use: `noop`, `direct_structured_write`, `note_write`, or `mixed`. Its policy routes transient chatter to `noop`, explicit facts/preferences/status/deadlines/commitments to direct structured writes, rationale/trade-offs/plans/lessons/document digest...[truncated 125 chars] scope=Document 03. Prompt Pack, section 1. Memory Router v3, lines 43-92 in agent_memory_handoff/03_prompts.md keywords=MemoryRouter v3,Source,noop,direct_structured_write,note_write,mixed,memory write pipeline,routing policy tags=memory_router,routing,prompt_pack useCount=0\nid=hot-path:note:<5> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=WriteTimeRetrievalPlanner v3 retrieval planning role summary=In 03. Prompt Pack, WriteTimeRetrievalPlanner v3 runs after the router and before extraction/reconciliation to create a precise retrieval plan for memory updates, focused on deduplication, contradiction detection, temporal updates, and scope alignment. Its plan includes entity/text queries, predicate hints, memory types, optional time filters, and limits for claims, notes, tasks, and sources. scope=Document 03. Prompt Pack, section 2. Write-Time Retrieval Planner v3, lines 93-169 in agent_memory_handoff/03_prompts.md keywords=WriteTimeRetrievalPlanner v3,retrieval plan,dedupe,contradiction detection,temporal updates,scope alignment,memory_types,time_filters tags=doc_digest,memory_prompt,retrieval_planning useCount=0\nid=hot-path:note:<6> type=DIRECTION status=ACTIVE maturity=FRESH title=WriteTimeRetrievalPlanner v3 retrieval policy summary=WriteTimeRetrievalPlanner v3 should retrieve only evidence likely to help memory updates: bias toward duplicates, contradictions, and scope boundaries; include notes for rationale-heavy or plan-heavy material; include claims for preferences, status, or factual updates; add time filters for temporal language; and retrieve sources when conflict or grounding checks matter, while keeping queries preci...[truncated 3 chars] scope=Document 03. Prompt Pack, section 2. Write-Time Retrieval Planner v3 rules, lines 150-168 in agent_memory_handoff/03_prompts.md keywords=WriteTimeRetrievalPlanner v3,retrieval policy,duplicates,contradictions,scope boundaries,time filters,source retrieval,precise queries tags=direction,memory_prompt,retrieval_policy useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:document-section:331f8512504677fff8c76bba404484a8"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"links_to_create\":[],\"patch\":null,\"reason\":\"Distinct digest for ProfileUpdater v3 not covered by existing active notes.\",\"target_note_id\":null},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.7,\"to_note_id\":\"hot-path:note:<0>\"}],\"patch\":null,\"reason\":\"Distinct digest for Task/ActionItemUpdater v3; related to common prompt rules on commitments and relative time.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3504,
+                "completionTokens": 154,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

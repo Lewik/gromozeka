@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_ANSWER_QUESTION_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_EMBEDDING_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
@@ -131,6 +132,7 @@ class GromozekaMcpServerFactory(
                 inputSchema = MCP_MEMORY_REMEMBER_INPUT_SCHEMA,
             )
             MEMORY_ENRICH_CONTEXT_TOOL_NAME -> copy(description = MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION)
+            MEMORY_ANSWER_QUESTION_TOOL_NAME -> copy(description = MCP_MEMORY_ANSWER_QUESTION_DESCRIPTION)
             MEMORY_LIST_NAMESPACES_TOOL_NAME -> copy(description = MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION)
             MEMORY_MAINTENANCE_TOOL_NAME -> copy(description = MCP_MEMORY_MAINTENANCE_DESCRIPTION)
             MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME -> copy(description = MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION)
@@ -243,6 +245,7 @@ class GromozekaMcpServerFactory(
             ## Reading memory
 
             Use `memory_enrich_context` to enrich a context, not to ask a question.
+            Use `memory_answer_question` when you need a direct answer that must be derived from persisted memory only.
 
             Good inputs look like:
 
@@ -251,6 +254,8 @@ class GromozekaMcpServerFactory(
             - `current action item: debug Bedrock JSON schema errors in memory note constructor`
 
             The tool returns structured JSON containing a rendered `memory_context` block plus trace/status metadata. Inject the returned `memory_context` into your reasoning or answer only when it is relevant. Treat selected memory as strong remembered context, but still reject it if it is clearly stale, contradicted, irrelevant, or insufficient.
+
+            `memory_answer_question` returns structured JSON containing `answer`, `sufficiency`, evidence refs, and the same selected `memory_context`. Use it for "what do you remember / what do you know about..." style questions when the answer itself should be produced by the memory subsystem.
 
             ## Maintenance and status
 
@@ -266,9 +271,10 @@ class GromozekaMcpServerFactory(
 
             1. Call `memory_help` if unsure how to use the memory MCP surface.
             2. Call `memory_list_namespaces` if namespace choice is not obvious.
-            3. Call `memory_enrich_context` before answering or acting when remembered context may matter.
-            4. Call `memory_remember` only for explicit user-approved content.
-            5. Call `memory_run_status` or `memory_queue_status` when a write/import looks slow or unclear.
+            3. Call `memory_answer_question` for direct memory-only questions.
+            4. Call `memory_enrich_context` before answering or acting when remembered context may matter.
+            5. Call `memory_remember` only for explicit user-approved content.
+            6. Call `memory_run_status` or `memory_queue_status` when a write/import looks slow or unclear.
         """.trimIndent()
 
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
@@ -276,6 +282,9 @@ class GromozekaMcpServerFactory(
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
             "Retrieve persisted memory relevant to a supplied context. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_help for interpretation guidance."
+
+        const val MCP_MEMORY_ANSWER_QUESTION_DESCRIPTION =
+            "Answer a direct question from persisted memory only. Returns answer, sufficiency, evidence refs, selected refs, and memory_context. Use memory_help for workflow guidance."
 
         const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
             "List readable memory namespaces, item counts, and the configured default namespace."
@@ -360,6 +369,7 @@ internal class GromozekaMcpToolExposure private constructor(
             MCP_MEMORY_HELP_TOOL_NAME,
             MEMORY_QUEUE_STATUS_TOOL_NAME,
             MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+            MEMORY_ANSWER_QUESTION_TOOL_NAME,
             MEMORY_LIST_NAMESPACES_TOOL_NAME,
             MEMORY_MAINTENANCE_TOOL_NAME,
             MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,

@@ -1,0 +1,511 @@
+{
+    "version": 1,
+    "hash": "d697d5457206989c892b8085fa8f8926a47b13fddb5dc2b4a456cb680118dbe7",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; v3 cross-cutting scope, retrieval lifecycle, and usage fields; The v3 data model treats `scope` and `retrieval lifecycle` as cross-cutting concerns: most memory items except raw `Source` should have human-readable `scope_text` for explainability and machine-readable `scope_json` for retrieval and reconciliation. `truth status` and `retrieval_state` are separate axes, and notes / claims / tasks / episodes should track usage fields such as `use_count`, `last_used_at`, and `last_validated_at` to support maturity, retention, and repair.; scope=Document section `02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля` in `agent_memory_handoff/02_data_model.md`, especially common cross-cutting fields for v3 memory items.\n- note hot-path:note:<1> DOC_DIGEST; Note as intermediate semantic memory fragment; In `agent_memory_handoff/02_data_model.md`, `Note` is an intermediate semantic memory fragment: not a `Source`, not a final `Claim`, and not chain-of-thought. It is meant for important, retrieval-useful context that should not yet be cemented as a hard fact, such as design directions, decision rationales, evolving plans, hypotheses, lessons, doc digests, and contextual framing.; scope=Document section `02. Data Model / 3. Главные сущности / 3.4 `Note`` in `agent_memory_handoff/02_data_model.md`, especially the definition and intended use cases for Note.\n- claim hot-path:claim:<0> has_constraint; In the v3 memory data model, Profile is not a source of truth; it is a projection layer over explicit user instructions, stable claims, and selected long-lived context.; scope=agent_memory_handoff/02_data_model.md section 3.6 Profile\n- note hot-path:note:<2> DOC_DIGEST; Note invariants emphasize self-contained semantic fragments; In `agent_memory_handoff/02_data_model.md`, `Note` invariants require one note to represent one semantic fragment, remain understandable without the original chat, add value beyond duplicating a source, treat `candidate_claims_json` only as hints, and allow a useful retrieval note to persist long-term without becoming a claim.; scope=Document section `02. Data Model / 3. Главные сущности / 3.4 `Note`` in `agent_memory_handoff/02_data_model.md`, specifically the Note invariants.\n- note hot-path:note:<3> DOC_DIGEST; Note schema and relationship tables; In `agent_memory_handoff/02_data_model.md`, the `Note` schema combines identity, type, title/summary, scope, status, retrieval and maturity states, anchor entity, keywords/tags, candidate claim hints, metadata, confidence/importance, validity windows, supersession, run lineage, embeddings, usage tracking, validation, evidence counts, and archival timestamps. Related tables `note_entities`, `note_sources`, and `note_links` connect notes to entities, evidence sources, and other notes with typed roles/support/link semantics.; scope=Document section `02. Data Model / 3. Главные сущности / 3.4 `Note`` in `agent_memory_handoff/02_data_model.md`, especially recommended fields and additional tables.\n- note hot-path:note:<4> DOC_DIGEST; Claim invariants favor atomic, self-contained, explicit facts; The `Claim` invariants in `agent_memory_handoff/02_data_model.md` require each claim to represent one predicate application, make sense without the original chat, prefer explicit statements over inference, normalize relative time, and use `Note` instead of a weak `Claim` when the meaning is too soft.; scope=Document section `02. Data Model / 3. Главные сущности / 3.5 `Claim``, especially Claim invariants.\n- note hot-path:note:<5> DOC_DIGEST; Source as immutable evidence layer in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Source` is the raw knowledge source for chat turns, tool outputs, imported notes, and external records; it acts as the primary evidence layer for re-check and explainability. Its design emphasizes immutability, separate `observed_at` versus ingestion time, `content_hash` for dedupe, and an explicit delete policy.; scope=Document section `02. Data Model / 3. Главные сущности / 3.1 `Source`` in `agent_memory_handoff/02_data_model.md`.\n- note hot-path:note:<6> DOC_DIGEST; Claim schema and evidence linkage in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Claim` is the atomic fact or relation-edge table used for factual answers, predicate-based reconciliation, and explainable retrieval. Its schema tracks subject/predicate/object, normalized/context text, scope and qualifiers, confidence/importance, truth and retrieval states, temporal validity, supersession/retraction lineage, run lineage, embeddings, usage tracking, validation, and archival timestamps; `claim_sources` links claims to sources with support type, evidence span/quote, and support confidence.; scope=Document section `02. Data Model / 3. Главные сущности / 3.5 `Claim`` in `agent_memory_handoff/02_data_model.md`, including recommended fields and the `claim_sources` table.\n- note hot-path:note:<7> DOC_DIGEST; Profile is a compact projection, not source of truth; In `agent_memory_handoff/02_data_model.md`, `Profile` is defined as a compact always-in-context projection over explicit user instructions, stable claims, and selected long-lived context, not as the source of truth. Its recommended structure covers preferred name, languages, timezone, response preferences, expertise, stable preferences, constraints, current goals, and soft signals, with invariants that it stay short, prefer explicit facts, leave disputed facts in claim/note, and remain rebuildable.; scope=Document section `02. Data Model / 3. Главные сущности / 3.6 `Profile`` in `agent_memory_handoff/02_data_model.md`, including definition, recommended structure, and invariants.\n- note hot-path:note:<8> DOC_DIGEST; Claim and Note have distinct memory roles; In `agent_memory_handoff/02_data_model.md`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The section warns that storing everything as `Claim` creates false precision, while storing everything as `Note` makes memory too soft.; scope=Document section `02. Data Model / 4. Почему `Note` не заменяет `Claim`` in `agent_memory_handoff/02_data_model.md`, covering the role split between Claim and Note.\n- claim hot-path:claim:<1> answers_question; In the v3 memory data model, retrieval_state answers how often an item should participate in search and whether it is hot, warm, cold, archived, or hidden from ordinary retrieval.; scope=agent_memory_handoff/02_data_model.md, section 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля\n- claim hot-path:claim:<2> supports_purpose; In the v3 memory data model, Note is for information that is already important and useful for retrieval but should not yet be cemented as a hard fact.; scope=agent_memory_handoff/02_data_model.md section 3.4 Note\n- claim hot-path:claim:<3> has_constraint; In the v3 memory data model, if meaning is still too soft, a Note is preferred over a poor Claim.; scope=agent_memory_handoff/02_data_model.md section 3.5 Claim invariants\n- note hot-path:note:<9> DOC_DIGEST; PredicateCatalog configures predicate reconciliation; In `agent_memory_handoff/02_data_model.md`, `PredicateCatalog` is not a memory item but a reconciliation configuration that captures predicate-specific cardinality, temporal semantics, conflict behavior, projection sync flags, default importance, and active status. Its purpose is to handle predicates differently because some facts replace each other, some coexist, and some flow into profile or task projections.; scope=Document section `02. Data Model / 3. Главные сущности / 3.3 `PredicateCatalog`` in `agent_memory_handoff/02_data_model.md`.\n- claim hot-path:claim:<4> has_constraint; In the v3 memory data model, disputed facts are better left in Claim or Note rather than pulled into Profile.; scope=agent_memory_handoff/02_data_model.md section 3.6 Profile invariants\n- claim hot-path:claim:<5> has_constraint; In the v3 memory data model, Episode is not needed in the MVP and is intended for later use when storing successful tactics, failure patterns, or reusable lessons is desired.; scope=agent_memory_handoff/02_data_model.md section 3.8 Episode\n- claim hot-path:claim:<6> supports_purpose; In the v3 memory data model, Note is used for later consolidation.; scope=Applies to the v3 memory data model described in agent_memory_handoff/02_data_model.md.\n- claim hot-path:claim:<7> must_not_be_mixed_with; In the v3 memory data model, truth status and retrieval_state are separate axes and must not be mixed.; scope=agent_memory_handoff/02_data_model.md, section 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля\n- claim hot-path:claim:<8> supports_purpose; In the v3 memory data model, Claim is used for precise factual answers.; scope=Applies to the v3 memory data model described in agent_memory_handoff/02_data_model.md.\n- claim hot-path:claim:<9> supports_purpose; In the v3 memory data model, Note is used for partial or evolving meaning.; scope=Applies to the v3 memory data model described in agent_memory_handoff/02_data_model.md.\n\n        Resolved entities:\n        - mention=v3; action=LINK_EXISTING; id=entity:<0>; type=existing; name=v3; reason=The section refers to the v3 memory data model, matching the existing concept.\n- mention=retention policy; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Retention policy (memory data model); reason=A durable memory data model concept is discussed and no existing candidate safely matches it.\n- mention=Note; action=LINK_EXISTING; id=entity:<2>; type=existing; name=Note; reason=The section explicitly gives field descriptions for Note in the memory data model.\n- mention=Claim; action=LINK_EXISTING; id=entity:<3>; type=existing; name=Claim; reason=The section explicitly gives field descriptions for Claim in the memory data model.\n- mention=Task; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Task; reason=The section explicitly gives field descriptions for Task in the memory data model.\n- mention=Profile; action=LINK_EXISTING; id=entity:<5>; type=existing; name=Profile; reason=The section explicitly gives field descriptions for Profile in the memory data model.\n- mention=source data; action=LINK_EXISTING; id=entity:<6>; type=existing; name=source data; reason=In this memory data model context, source data refers to Source-like evidence data; the existing Source concept is the safest match.\n- mention=scope_json; action=LINK_EXISTING; id=entity:<7>; type=existing; name=scope_json; reason=scope_json is a field representing machine-readable scope, matching the existing scope concept.\n- mention=maturity_score; action=LINK_EXISTING; id=entity:<8>; type=existing; name=maturity_score; reason=maturity_score describes note stability/reusability and safely maps to the existing Note maturity concept.\n- mention=retrieval_state; action=CREATE_NEW; id=entity:<9>; type=CONCEPT; name=retrieval_state (memory data model); reason=The field is described as distinct from truth status and is a durable data model concept absent from candidates.\n- mention=truth status; action=CREATE_NEW; id=entity:<10>; type=CONCEPT; name=truth status (memory data model); reason=The section contrasts retrieval_state with truth status; no existing candidate safely matches this concept.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=02. Data Model|agent_memory_handoff/02_data_model.md|02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic|MARKDOWN\n        text_queries=02. Data Model agent_memory_handoff/02_data_model.md 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic MARKDOWN Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic Document lines: 584-618 ## 6. Retention / forgetting `v3` требует явной retention policy. Минимум: - low-use notes можно переводить в `cold` - old resolved items — в `archived` - sensitive source data — soft/hard delete по request - historical claims могут оставаться explainable, но редко участвовать в top retrieval Отдельно полезно хранить: - `retention_class` - `expires_at` - `deleted_at` - `archived_at` ## 7. Recommended field descriptions для schema / Pydantic ### Для `Note` - `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\" - `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\" - `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\" ### Для `Claim` - `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\" - `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\" - `retrieval_state`: \"Search temperature, distinct from truth status.\" ### Для `Task` - `acceptance_criteria_json`: \"Observable conditions for task completion.\" - `scope_json`: \"What this task applies to and where it should not leak.\" ### Для `Profile` - `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/02_data_model.md; title=02. Data Model; heading=02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic; imported_at=1970-01-01T00:00:00Z\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; v3 cross-cutting scope, retrieval lifecycle, and usage fields; The v3 data model treats `scope` and `retrieval lifecycle` as cross-cutting concerns: most memory items except raw `Source` should have human-readable `scope_text` for explainability and machine-readable `scope_json` for retrieval and reconciliation. `truth status` and `retrieval_state` are separate axes, and notes / claims / tasks / episodes should track usage fields such as `use_count`, `last_used_at`, and `last_validated_at` to support maturity, retention, and repair.; scope=Document section `02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля` in `agent_memory_handoff/02_data_model.md`, especially common cross-cutting fields for v3 memory items.\n- note hot-path:note:<1> DOC_DIGEST; Note as intermediate semantic memory fragment; In `agent_memory_handoff/02_data_model.md`, `Note` is an intermediate semantic memory fragment: not a `Source`, not a final `Claim`, and not chain-of-thought. It is meant for important, retrieval-useful context that should not yet be cemented as a hard fact, such as design directions, decision rationales, evolving plans, hypotheses, lessons, doc digests, and contextual framing.; scope=Document section `02. Data Model / 3. Главные сущности / 3.4 `Note`` in `agent_memory_handoff/02_data_model.md`, especially the definition and intended use cases for Note.\n- claim hot-path:claim:<0> has_constraint; In the v3 memory data model, Profile is not a source of truth; it is a projection layer over explicit user instructions, stable claims, and selected long-lived context.; scope=agent_memory_handoff/02_data_model.md section 3.6 Profile\n- note hot-path:note:<2> DOC_DIGEST; Note invariants emphasize self-contained semantic fragments; In `agent_memory_handoff/02_data_model.md`, `Note` invariants require one note to represent one semantic fragment, remain understandable without the original chat, add value beyond duplicating a source, treat `candidate_claims_json` only as hints, and allow a useful retrieval note to persist long-term without becoming a claim.; scope=Document section `02. Data Model / 3. Главные сущности / 3.4 `Note`` in `agent_memory_handoff/02_data_model.md`, specifically the Note invariants.\n- note hot-path:note:<3> DOC_DIGEST; Note schema and relationship tables; In `agent_memory_handoff/02_data_model.md`, the `Note` schema combines identity, type, title/summary, scope, status, retrieval and maturity states, anchor entity, keywords/tags, candidate claim hints, metadata, confidence/importance, validity windows, supersession, run lineage, embeddings, usage tracking, validation, evidence counts, and archival timestamps. Related tables `note_entities`, `note_sources`, and `note_links` connect notes to entities, evidence sources, and other notes with typed roles/support/link semantics.; scope=Document section `02. Data Model / 3. Главные сущности / 3.4 `Note`` in `agent_memory_handoff/02_data_model.md`, especially recommended fields and additional tables.\n- note hot-path:note:<4> DOC_DIGEST; Claim invariants favor atomic, self-contained, explicit facts; The `Claim` invariants in `agent_memory_handoff/02_data_model.md` require each claim to represent one predicate application, make sense without the original chat, prefer explicit statements over inference, normalize relative time, and use `Note` instead of a weak `Claim` when the meaning is too soft.; scope=Document section `02. Data Model / 3. Главные сущности / 3.5 `Claim``, especially Claim invariants.\n- note hot-path:note:<5> DOC_DIGEST; Source as immutable evidence layer in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Source` is the raw knowledge source for chat turns, tool outputs, imported notes, and external records; it acts as the primary evidence layer for re-check and explainability. Its design emphasizes immutability, separate `observed_at` versus ingestion time, `content_hash` for dedupe, and an explicit delete policy.; scope=Document section `02. Data Model / 3. Главные сущности / 3.1 `Source`` in `agent_memory_handoff/02_data_model.md`.\n- note hot-path:note:<6> DOC_DIGEST; Claim schema and evidence linkage in v3 memory model; In `agent_memory_handoff/02_data_model.md`, `Claim` is the atomic fact or relation-edge table used for factual answers, predicate-based reconciliation, and explainable retrieval. Its schema tracks subject/predicate/object, normalized/context text, scope and qualifiers, confidence/importance, truth and retrieval states, temporal validity, supersession/retraction lineage, run lineage, embeddings, usage tracking, validation, and archival timestamps; `claim_sources` links claims to sources with support type, evidence span/quote, and support confidence.; scope=Document section `02. Data Model / 3. Главные сущности / 3.5 `Claim`` in `agent_memory_handoff/02_data_model.md`, including recommended fields and the `claim_sources` table.\n- note hot-path:note:<7> DOC_DIGEST; Profile is a compact projection, not source of truth; In `agent_memory_handoff/02_data_model.md`, `Profile` is defined as a compact always-in-context projection over explicit user instructions, stable claims, and selected long-lived context, not as the source of truth. Its recommended structure covers preferred name, languages, timezone, response preferences, expertise, stable preferences, constraints, current goals, and soft signals, with invariants that it stay short, prefer explicit facts, leave disputed facts in claim/note, and remain rebuildable.; scope=Document section `02. Data Model / 3. Главные сущности / 3.6 `Profile`` in `agent_memory_handoff/02_data_model.md`, including definition, recommended structure, and invariants.\n- note hot-path:note:<8> DOC_DIGEST; Claim and Note have distinct memory roles; In `agent_memory_handoff/02_data_model.md`, `Claim` is for precise factual answers, predicate-rule reconciliation, profile updates, and time-aware status answers, while `Note` is for richer retrieval, decision history, rationale, partial or evolving meaning, and later consolidation. The section warns that storing everything as `Claim` creates false precision, while storing everything as `Note` makes memory too soft.; scope=Document section `02. Data Model / 4. Почему `Note` не заменяет `Claim`` in `agent_memory_handoff/02_data_model.md`, covering the role split between Claim and Note.\n- claim hot-path:claim:<1> answers_question; In the v3 memory data model, retrieval_state answers how often an item should participate in search and whether it is hot, warm, cold, archived, or hidden from ordinary retrieval.; scope=agent_memory_handoff/02_data_model.md, section 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля\n- claim hot-path:claim:<2> supports_purpose; In the v3 memory data model, Note is for information that is already important and useful for retrieval but should not yet be cemented as a hard fact.; scope=agent_memory_handoff/02_data_model.md section 3.4 Note\n- claim hot-path:claim:<3> has_constraint; In the v3 memory data model, if meaning is still too soft, a Note is preferred over a poor Claim.; scope=agent_memory_handoff/02_data_model.md section 3.5 Claim invariants\n- note hot-path:note:<9> DOC_DIGEST; PredicateCatalog configures predicate reconciliation; In `agent_memory_handoff/02_data_model.md`, `PredicateCatalog` is not a memory item but a reconciliation configuration that captures predicate-specific cardinality, temporal semantics, conflict behavior, projection sync flags, default importance, and active status. Its purpose is to handle predicates differently because some facts replace each other, some coexist, and some flow into profile or task projections.; scope=Document section `02. Data Model / 3. Главные сущности / 3.3 `PredicateCatalog`` in `agent_memory_handoff/02_data_model.md`.\n- claim hot-path:claim:<4> has_constraint; In the v3 memory data model, disputed facts are better left in Claim or Note rather than pulled into Profile.; scope=agent_memory_handoff/02_data_model.md section 3.6 Profile invariants\n- claim hot-path:claim:<5> has_constraint; In the v3 memory data model, Episode is not needed in the MVP and is intended for later use when storing successful tactics, failure patterns, or reusable lessons is desired.; scope=agent_memory_handoff/02_data_model.md section 3.8 Episode\n- claim hot-path:claim:<6> supports_purpose; In the v3 memory data model, Note is used for later consolidation.; scope=Applies to the v3 memory data model described in agent_memory_handoff/02_data_model.md.\n- claim hot-path:claim:<7> must_not_be_mixed_with; In the v3 memory data model, truth status and retrieval_state are separate axes and must not be mixed.; scope=agent_memory_handoff/02_data_model.md, section 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля\n- claim hot-path:claim:<8> supports_purpose; In the v3 memory data model, Claim is used for precise factual answers.; scope=Applies to the v3 memory data model described in agent_memory_handoff/02_data_model.md.\n- claim hot-path:claim:<9> supports_purpose; In the v3 memory data model, Note is used for partial or evolving meaning.; scope=Applies to the v3 memory data model described in agent_memory_handoff/02_data_model.md.\n\n        Resolved entities:\n        - mention=v3; action=LINK_EXISTING; id=entity:<0>; type=existing; name=v3; reason=The section refers to the v3 memory data model, matching the existing concept.\n- mention=retention policy; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Retention policy (memory data model); reason=A durable memory data model concept is discussed and no existing candidate safely matches it.\n- mention=Note; action=LINK_EXISTING; id=entity:<2>; type=existing; name=Note; reason=The section explicitly gives field descriptions for Note in the memory data model.\n- mention=Claim; action=LINK_EXISTING; id=entity:<3>; type=existing; name=Claim; reason=The section explicitly gives field descriptions for Claim in the memory data model.\n- mention=Task; action=LINK_EXISTING; id=entity:<4>; type=existing; name=Task; reason=The section explicitly gives field descriptions for Task in the memory data model.\n- mention=Profile; action=LINK_EXISTING; id=entity:<5>; type=existing; name=Profile; reason=The section explicitly gives field descriptions for Profile in the memory data model.\n- mention=source data; action=LINK_EXISTING; id=entity:<6>; type=existing; name=source data; reason=In this memory data model context, source data refers to Source-like evidence data; the existing Source concept is the safest match.\n- mention=scope_json; action=LINK_EXISTING; id=entity:<7>; type=existing; name=scope_json; reason=scope_json is a field representing machine-readable scope, matching the existing scope concept.\n- mention=maturity_score; action=LINK_EXISTING; id=entity:<8>; type=existing; name=maturity_score; reason=maturity_score describes note stability/reusability and safely maps to the existing Note maturity concept.\n- mention=retrieval_state; action=CREATE_NEW; id=entity:<9>; type=CONCEPT; name=retrieval_state (memory data model); reason=The field is described as distinct from truth status and is a durable data model concept absent from candidates.\n- mention=truth status; action=CREATE_NEW; id=entity:<10>; type=CONCEPT; name=truth status (memory data model); reason=The section contrasts retrieval_state with truth status; no existing candidate safely matches this concept.\n- mention=current project; action=CREATE_NEW; id=entity:<11>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=02. Data Model|agent_memory_handoff/02_data_model.md|02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic|MARKDOWN\n        text_queries=02. Data Model agent_memory_handoff/02_data_model.md 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic MARKDOWN Document title: 02. Data Model Document source: agent_memory_handoff/02_data_model.md Document section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic Document lines: 584-618 ## 6. Retention / forgetting `v3` требует явной retention policy. Минимум: - low-use notes можно переводить в `cold` - old resolved items — в `archived` - sensitive source data — soft/hard delete по request - historical claims могут оставаться explainable, но редко участвовать в top retrieval Отдельно полезно хранить: - `retention_class` - `expires_at` - `deleted_at` - `archived_at` ## 7. Recommended field descriptions для schema / Pydantic ### Для `Note` - `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\" - `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\" - `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\" ### Для `Claim` - `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\" - `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\" - `retrieval_state`: \"Search temperature, distinct from truth status.\" ### Для `Task` - `acceptance_criteria_json`: \"Observable conditions for task completion.\" - `scope_json`: \"What this task applies to and where it should not leak.\" ### Для `Profile` - `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/02_data_model.md; title=02. Data Model; heading=02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic; imported_at=1970-01-01T00:00:00Z\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"`v3` requires an explicit retention policy.\",\"Low-use notes can be moved to `cold`.\",\"Old resolved items can be moved to `archived`.\",\"Sensitive source data can be soft/hard deleted by request.\",\"Historical claims can remain explainable but rarely participate in top retrieval.\"],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<3>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"`v3` требует явной retention policy.\",\"evidence_reason\":\"The section explicitly states the need for a v3 retention policy and lists minimum forgetting behaviors and fields.\",\"importance\":4,\"keywords\":[\"v3\",\"retention policy\",\"forgetting\",\"cold\",\"archived\",\"soft delete\",\"hard delete\",\"historical claims\",\"retention_class\",\"expires_at\",\"deleted_at\",\"archived_at\"],\"note_type\":\"doc_digest\",\"rationale\":\"This captures a reusable policy/design fragment involving lifecycle behavior and trade-offs, broader than a single atomic claim.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Document section `02. Data Model / 6. Retention / forgetting` in `agent_memory_handoff/02_data_model.md`, covering retention/forgetting behavior and retention metadata fields for v3 memory items.\"},\"summary\":\"In `agent_memory_handoff/02_data_model.md`, the v3 memory model requires an explicit retention policy: low-use notes may move to `cold`, old resolved items to `archived`, sensitive source data may be soft/hard deleted by request, and historical claims may remain explainable while rarely participating in top retrieval. Useful retention fields include `retention_class`, `expires_at`, `deleted_at`, and `archived_at`.\",\"tags\":[\"doc_digest\",\"retention\",\"memory_model\"],\"title\":\"v3 retention policy and forgetting states\",\"valid_from\":null,\"valid_to\":null},{\"candidate_claim_hints\":[\"`Note.summary` should be a self-contained semantic fragment and keep uncertainty explicit.\",\"`scope_json` is used to prevent over-generalization across projects, environments, or conversations.\",\"`Claim.retrieval_state` is search temperature distinct from truth status.\",\"`Task.acceptance_criteria_json` describes observable conditions for task completion.\",\"`Profile.soft_signals` are weakly inferred stable tendencies that should be low confidence or omitted.\"],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<5>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<7>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<9>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<10>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Recommended field descriptions для schema / Pydantic\",\"evidence_reason\":\"The section provides exact recommended descriptions for schema/Pydantic fields across the core memory item types.\",\"importance\":4,\"keywords\":[\"Note.summary\",\"Note.scope_json\",\"maturity_score\",\"Claim.normalized_text\",\"Claim.scope_json\",\"retrieval_state\",\"Task.acceptance_criteria_json\",\"Profile.soft_signals\",\"Pydantic\",\"schema\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is reusable schema guidance spanning several entities and design principles, so a compact document digest is more appropriate than isolated claims.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"document\",\"text\":\"Document section `02. Data Model / 7. Recommended field descriptions для schema / Pydantic` in `agent_memory_handoff/02_data_model.md`, covering recommended field descriptions for Note, Claim, Task, and Profile schemas.\"},\"summary\":\"In `agent_memory_handoff/02_data_model.md`, recommended Pydantic/schema descriptions emphasize self-contained semantics and bounded scope: `Note.summary` should preserve uncertainty, `Note.scope_json` prevents over-generalization, `Claim.normalized_text` should be stand-alone, `Claim.retrieval_state` is search temperature distinct from truth status, `Task.acceptance_criteria_json` defines observable completion, and `Profile.soft_signals` should remain low-confidence or be omitted.\",\"tags\":[\"doc_digest\",\"schema_fields\",\"pydantic\"],\"title\":\"Recommended schema field descriptions for Note, Claim, Task, and Profile\",\"valid_from\":null,\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5645,
+                "completionTokens": 1080,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "a6f93e08f60ef171baf8680524616271b8b8dd794e63e50ddb1f01af5a1edc89",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm getting excited about my visit to the music store this weekend. Any tips on what to look for in a new guitar?\n\n                                Question date:\n                                2023/05/28 (Sun) 01:56\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that highlight the differences between Fender Stratocaster and Gibson Les Paul electric guitars, such as the feel of the neck, weight, and sound profile. They might not prefer general tips on buying an electric guitar or suggestions that do not take into account their current guitar and desired upgrade.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:95228167\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-155c78842596-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has experience with a Fender Stratocaster as their current comparison point for a possible guitar upgrade.; scope=User's guitar experience and purchase-comparison context from the 2023-05-21 imported chat session.; evidence=INFERRED source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"I'm considering upgrading from a Fender Stratocaster to a Gibson Les Paul.\"\n- claim hot-path-155c78842596-claim-6 [ACTIVE] has_goal family=has_goal: The user is evaluating an upgrade from a Fender Stratocaster to a Gibson Les Paul.; scope=Guitar purchase and upgrade exploration from the 2023-05-21 imported chat session.; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"I'm considering upgrading from a Fender Stratocaster to a Gibson Les Paul.\"\n- claim hot-path-155c78842596-claim-8 [ACTIVE] has_goal family=has_goal: The user is evaluating whether a Gibson Les Paul with coil-tap or coil-splitting would provide more tonal flexibility, especially for open D tuning.; scope=Gibson Les Paul feature evaluation from the 2023-05-21 imported chat session.; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"What do you think about trying out a Les Paul with a coil-tap or coil-splitting feature? This could give you more tonal options and flexibility, especially when playing in open D tuning.\"\n\n            Retrieved notes:\n            - note hot-path-155c78842596-note-3 [LESSON/ACTIVE]: Open D sound strategy on a Les Paul; For open D tuning on a Les Paul, the reusable approach is to compensate for lower pitch and potential muddiness with heavier strings, proper action/intonation, lowered pickup height, reduced gain and treble, boosted bass warmth, some mid cut, neck pickup use, relaxed right-hand technique, and optional compression.; scope=Practical tone-shaping guidance for playing open D tuning on a Gibson Les Paul or similar electric guitar; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"Getting a great sound out of open D tuning on an electric guitar like the Les Paul requires some adjustments to your playing technique, amp settings, and guitar setup.\"\n- note hot-path-155c78842596-note-2 [CONTEXT/ACTIVE]: Les Paul trade-offs for acoustic-like fingerpicking; When considering a Gibson Les Paul for acoustic-like fingerpicking such as the intro to \"Blackbird\", the key trade-off is that it can work but is not ideal: humbuckers, long sustain, potentially higher action, and a wider/substantial neck may reduce clarity and ease for intricate fingerpicking. Better results may come from lighter touch, neck pickup, lighter strings, and possibly acoustic-simulator tools.; scope=Gibson Les Paul suitability for acoustic-like fingerpicking patterns in the user's guitar exploration context; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"it can be used to play acoustic-like fingerpicking patterns, including the intro to \"Blackbird\". However, the Les Paul's tone and response might not be the most ideal for this type of playing.\"\n\n            Retrieved evidence:\n            - source external:provided-text:72bf1ae6608a99c36799986f84d68d4c [external_record ref=longmemeval:95228167:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm considering upgrading from a Fender Stratocaster to a Gibson Les Paul. Can you tell me the main differences between these two guitars?\nassistant: What a great question! The Fender Stratocaster and Gibson Les Paul are two of the most iconic electric guitars in the world, and they have many differences that set them apart. Here are the main differences to consider:...\n...Now, consider your playing style and musical preferences:...\n...Ultimately, the decision comes down to personal preference and your individual playing needs. It's a good idea to try out both guitars before making a purchase to see which one feels and sounds more like \"home\" to you.\nuser: What are the most common types of music that people play on a Les Paul?\nassistant: The Gibson Les Paul is a versatile guitar that can be used to play a wide range of music genres, but it's particularly well-suited to certain styles that benefit from its warm, rich, and sustainful tone. Here are some of the most common types of music associated with the Les Paul:...\n...Of course, these are just a few examples of the many genres and styles that can be played on a Les Paul. The guitar's versatility and range make it a popular choice among guitarists from many different musical backgrounds.\nuser: Do you think the Les Paul is suitable for playing acoustic-like fingerpicking patterns, like the intro to \"Blackbird\"?\nassistant: While the Les Paul is primarily known for its electric capabilities, it can be used to play acoustic-like fingerpicking patterns, including the intro to \"Blackbird\". However, the Les Paul's tone and response might not be the most ideal for this type of playing.\n\nHere's why:\n\n1. **Tone**: The Les Paul's humbuckers are designed to produce a strong, full-bodied electric tone, which might not be the most suitable for delicate, acoustic-like fingerpicking. The tone might be too thick and heavy, lacking the clarity and definition you'd want for intricate fingerpicking patterns.\n2. **Sustain**: While the Les Paul is known for its sustain, it's primarily designed for electric playing, where sustain is a desirable trait. For acoustic-like fingerpicking, you might want a guitar with a more controlled, balanced sustain that doesn't ring out too long....\n...Keep in mind that while the Les Paul can be used for acoustic-like fingerpicking, it might not be the most ideal guitar for this style of playing. If you're serious about playing intricate fingerpicking patterns, you might want to consider an acoustic guitar or a guitar specifically designed for fingerstyle playing....\n...Ultimately, the choice between standard tuning and open D tuning depends on your personal playing style, musical preferences, and the sound you're trying to achieve.\nuser: What's the best way to get a good sound out of open D tuning on an electric guitar like the Les Paul?\nassistant: Getting a great sound out of open D tuning on an electric guitar like the Les Paul requires some adjustments to your playing technique, amp settings, and guitar setup. Here are some tips to help you get the best sound out of open D tuning on your Les Paul:...\n...By following these tips, you should be able to get a great sound out of open D tuning on your Les Paul. Remember to experiment and find what works best for your playing style and musical preferences.\nuser: What do you think about trying out a Les Paul with a coil-tap or coil-splitting feature? This could give you more tonal options and flexibility, especially when playing in open D tuning....\n...When trying out a Les Paul with a coil-tap or coil-splitting feature, be sure to experiment with different tone settings and playing styles to get a sense of the guitar's capabilities. You may also want to consider consulting with a guitar technician or instructor to get a better understanding of how to use these features to enhance your playing....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Open D tuning; Concept named Open D tuning.\n- entity entity:<1> [OTHER]: Blackbird (song); Entity named Blackbird (song).\n- entity entity:<2> [PRODUCT]: Fender Stratocaster; Product named Fender Stratocaster.\n- entity entity:<3> [PRODUCT]: Gibson Les Paul; Product named Gibson Les Paul.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "95228167",
+                "questionType": "single-session-preference"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm getting excited about my visit to the music store this weekend. Any tips on what to look for in a new guitar?\n\n                                Question date:\n                                2023/05/28 (Sun) 01:56\n\n                                Noisy expected-answer label:\n                                The user would prefer responses that highlight the differences between Fender Stratocaster and Gibson Les Paul electric guitars, such as the feel of the neck, weight, and sound profile. They might not prefer general tips on buying an electric guitar or suggestions that do not take into account their current guitar and desired upgrade.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:95228167\n            Context mode: MIXED\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-155c78842596-claim-5 [ACTIVE] has_experience_with family=has_experience_with: The user has experience with a Fender Stratocaster as their current comparison point for a possible guitar upgrade.; scope=User's guitar experience and purchase-comparison context from the 2023-05-21 imported chat session.; evidence=INFERRED source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"I'm considering upgrading from a Fender Stratocaster to a Gibson Les Paul.\"\n- claim hot-path-155c78842596-claim-6 [ACTIVE] has_goal family=has_goal: The user is evaluating an upgrade from a Fender Stratocaster to a Gibson Les Paul.; scope=Guitar purchase and upgrade exploration from the 2023-05-21 imported chat session.; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"I'm considering upgrading from a Fender Stratocaster to a Gibson Les Paul.\"\n- claim hot-path-155c78842596-claim-8 [ACTIVE] has_goal family=has_goal: The user is evaluating whether a Gibson Les Paul with coil-tap or coil-splitting would provide more tonal flexibility, especially for open D tuning.; scope=Gibson Les Paul feature evaluation from the 2023-05-21 imported chat session.; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"What do you think about trying out a Les Paul with a coil-tap or coil-splitting feature? This could give you more tonal options and flexibility, especially when playing in open D tuning.\"\n\n            Retrieved notes:\n            - note hot-path-155c78842596-note-3 [LESSON/ACTIVE]: Open D sound strategy on a Les Paul; For open D tuning on a Les Paul, the reusable approach is to compensate for lower pitch and potential muddiness with heavier strings, proper action/intonation, lowered pickup height, reduced gain and treble, boosted bass warmth, some mid cut, neck pickup use, relaxed right-hand technique, and optional compression.; scope=Practical tone-shaping guidance for playing open D tuning on a Gibson Les Paul or similar electric guitar; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"Getting a great sound out of open D tuning on an electric guitar like the Les Paul requires some adjustments to your playing technique, amp settings, and guitar setup.\"\n- note hot-path-155c78842596-note-2 [CONTEXT/ACTIVE]: Les Paul trade-offs for acoustic-like fingerpicking; When considering a Gibson Les Paul for acoustic-like fingerpicking such as the intro to \"Blackbird\", the key trade-off is that it can work but is not ideal: humbuckers, long sustain, potentially higher action, and a wider/substantial neck may reduce clarity and ease for intricate fingerpicking. Better results may come from lighter touch, neck pickup, lighter strings, and possibly acoustic-simulator tools.; scope=Gibson Les Paul suitability for acoustic-like fingerpicking patterns in the user's guitar exploration context; evidence=DIRECT source=external:provided-text:72bf1ae6608a99c36799986f84d68d4c quote=\"it can be used to play acoustic-like fingerpicking patterns, including the intro to \"Blackbird\". However, the Les Paul's tone and response might not be the most ideal for this type of playing.\"\n\n            Retrieved evidence:\n            - source external:provided-text:72bf1ae6608a99c36799986f84d68d4c [external_record ref=longmemeval:95228167:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\n...user: I'm considering upgrading from a Fender Stratocaster to a Gibson Les Paul. Can you tell me the main differences between these two guitars?\nassistant: What a great question! The Fender Stratocaster and Gibson Les Paul are two of the most iconic electric guitars in the world, and they have many differences that set them apart. Here are the main differences to consider:...\n...Now, consider your playing style and musical preferences:...\n...Ultimately, the decision comes down to personal preference and your individual playing needs. It's a good idea to try out both guitars before making a purchase to see which one feels and sounds more like \"home\" to you.\nuser: What are the most common types of music that people play on a Les Paul?\nassistant: The Gibson Les Paul is a versatile guitar that can be used to play a wide range of music genres, but it's particularly well-suited to certain styles that benefit from its warm, rich, and sustainful tone. Here are some of the most common types of music associated with the Les Paul:...\n...Of course, these are just a few examples of the many genres and styles that can be played on a Les Paul. The guitar's versatility and range make it a popular choice among guitarists from many different musical backgrounds.\nuser: Do you think the Les Paul is suitable for playing acoustic-like fingerpicking patterns, like the intro to \"Blackbird\"?\nassistant: While the Les Paul is primarily known for its electric capabilities, it can be used to play acoustic-like fingerpicking patterns, including the intro to \"Blackbird\". However, the Les Paul's tone and response might not be the most ideal for this type of playing.\n\nHere's why:\n\n1. **Tone**: The Les Paul's humbuckers are designed to produce a strong, full-bodied electric tone, which might not be the most suitable for delicate, acoustic-like fingerpicking. The tone might be too thick and heavy, lacking the clarity and definition you'd want for intricate fingerpicking patterns.\n2. **Sustain**: While the Les Paul is known for its sustain, it's primarily designed for electric playing, where sustain is a desirable trait. For acoustic-like fingerpicking, you might want a guitar with a more controlled, balanced sustain that doesn't ring out too long....\n...Keep in mind that while the Les Paul can be used for acoustic-like fingerpicking, it might not be the most ideal guitar for this style of playing. If you're serious about playing intricate fingerpicking patterns, you might want to consider an acoustic guitar or a guitar specifically designed for fingerstyle playing....\n...Ultimately, the choice between standard tuning and open D tuning depends on your personal playing style, musical preferences, and the sound you're trying to achieve.\nuser: What's the best way to get a good sound out of open D tuning on an electric guitar like the Les Paul?\nassistant: Getting a great sound out of open D tuning on an electric guitar like the Les Paul requires some adjustments to your playing technique, amp settings, and guitar setup. Here are some tips to help you get the best sound out of open D tuning on your Les Paul:...\n...By following these tips, you should be able to get a great sound out of open D tuning on your Les Paul. Remember to experiment and find what works best for your playing style and musical preferences.\nuser: What do you think about trying out a Les Paul with a coil-tap or coil-splitting feature? This could give you more tonal options and flexibility, especially when playing in open D tuning....\n...When trying out a Les Paul with a coil-tap or coil-splitting feature, be sure to experiment with different tone settings and playing styles to get a sense of the guitar's capabilities. You may also want to consider consulting with a guitar technician or instructor to get a better understanding of how to use these features to enhance your playing....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: Open D tuning; Concept named Open D tuning.\n- entity entity:<1> [OTHER]: Blackbird (song); Entity named Blackbird (song).\n- entity entity:<2> [PRODUCT]: Fender Stratocaster; Product named Fender Stratocaster.\n- entity entity:<3> [PRODUCT]: Gibson Les Paul; Product named Gibson Les Paul.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "95228167",
+                "questionType": "single-session-preference"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"Tailor the store advice to the user's planned upgrade from a Fender Stratocaster to a Gibson Les Paul, focusing on hands-on comparisons like feel, tone, tonal flexibility, and suitability for open D/fingerpicking rather than generic guitar-buying tips.\",\"reason\":\"The retrieved memory directly says the user is evaluating upgrading from a Fender Stratocaster to a Gibson Les Paul and contains related Les Paul trade-offs and tonal-flexibility considerations.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2675,
+                "completionTokens": 248,
+                "thinkingTokens": 135,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

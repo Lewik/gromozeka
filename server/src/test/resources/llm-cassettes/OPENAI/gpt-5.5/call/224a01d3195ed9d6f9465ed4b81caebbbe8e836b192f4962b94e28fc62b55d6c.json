@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "224a01d3195ed9d6f9465ed4b81caebbbe8e836b192f4962b94e28fc62b55d6c",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which pair of shoes did I clean last month?\n\n                                Question date:\n                                2023/05/30 (Tue) 01:50\n\n                                Expected answer:\n                                white Adidas sneakers\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_5dcc0aab\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:427bc9c05a4694b00011f4f6b401db1e [external_record ref=longmemeval:gpt4_5dcc0aab:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/30 (Tue) 16:26\nTranscript:\nuser: I'm trying to decide between two hiking boots for my upcoming trip to the mountains. I've narrowed it down to the Merrell Moab 2 Mid Waterproof and the Keen Targhee II Mid WP. Do you have any info on these models or can you recommend one over the other? By the way, I just got a new pair of sneakers last weekend - black and white Vans Old Skool - and they're really comfortable....\n...Ultimately, both boots are excellent choices, and you can't go wrong with either one. If possible, try on both pairs to see which one feels more comfortable and suits your needs better.\nuser: That's really helpful, thanks for the detailed comparison. I think I'll try on both pairs to see which one feels more comfortable. By the way, I wore my trusty old Converse Chuck Taylor All Star sneakers to that outdoor music festival last month, and they were super comfortable, but I did notice that the soles are starting to wear down a bit, especially on the heels. Do you think I should get them replaced soon?\nassistant: Converse Chuck Taylor All Star sneakers are a classic choice for casual events like music festivals!\n\nRegarding the sole wear, it's great that you're paying attention to the condition of your shoes. The soles of your Chucks are likely made of rubber, which can deteriorate over time, especially with frequent use....\n...user: I remember I cleaned my white Adidas sneakers last month, which I'd been meaning to do for weeks. They were getting pretty dirty and stained, especially after that outdoor music festival I attended on the 15th. Anyway, back to the hiking boots - I was thinking of going to the mountains in a few weeks, do you have any recommendations for waterproofing my backpack and clothes?...\n...user: I just got back from the mall last weekend and ended up buying a pair of black and white Vans Old Skool sneakers on a whim, and I've been wearing them almost every day since then. Anyway, back to waterproofing - do you have any recommendations for waterproofing my hiking boots as well?...\n...**1. Clean them regularly:** Use a soft, dry cloth to wipe away dirt and debris from the shoes. For tougher stains, use a leather cleaner specifically designed for brown leather. Apply a small amount to a clean cloth and gently rub the stained area....\n...Remember to take your shoes to the cobbler for regular maintenance, and don't hesitate to reach out if you have any more questions or concerns!\nuser: I'm planning to take my spare pair of running shoes to the track soon, but I lent them to my sister a few weeks ago, so I need to remind her to return them to me soon. Do you have any tips on how to keep my running shoes in good condition?\nassistant: I'm happy to help you with tips on keeping your running shoes in good condition!\n\nHowever, I have to say that I'm a large language model, I don't have personal experiences or relationships, so I'm a bit confused about your mention of lending your spare pair of running shoes to your sister.\n\nAssuming you're asking about general tips on maintaining your running shoes, here are some suggestions:\n\n**1. Clean them regularly:** Use a soft-bristled brush or a clean cloth to remove dirt and debris from the shoes. Avoid using harsh chemicals or abrasive materials that can damage the materials.\n\n**2. Store them properly:** Keep your running shoes in a cool, dry place away from direct sunlight. Avoid storing them in airtight containers or plastic bags, as this can cause moisture buildup and damage the materials....\n...**4. Rotate your shoes:** If you have multiple pairs of running shoes, consider rotating them to give each pair a break and allow them to recover. This can help extend the lifespan of your shoes....\n...**6. Follow the manufacturer's guidelines:** Check the manufacturer's instructions for specific cleaning and maintenance recommendations for your particular running shoes....\n\n            Retrieved entities:\n            none\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_5dcc0aab",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the expected answer.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                Which pair of shoes did I clean last month?\n\n                                Question date:\n                                2023/05/30 (Tue) 01:50\n\n                                Expected answer:\n                                white Adidas sneakers\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_5dcc0aab\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:427bc9c05a4694b00011f4f6b401db1e [external_record ref=longmemeval:gpt4_5dcc0aab:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/05/30 (Tue) 16:26\nTranscript:\nuser: I'm trying to decide between two hiking boots for my upcoming trip to the mountains. I've narrowed it down to the Merrell Moab 2 Mid Waterproof and the Keen Targhee II Mid WP. Do you have any info on these models or can you recommend one over the other? By the way, I just got a new pair of sneakers last weekend - black and white Vans Old Skool - and they're really comfortable....\n...Ultimately, both boots are excellent choices, and you can't go wrong with either one. If possible, try on both pairs to see which one feels more comfortable and suits your needs better.\nuser: That's really helpful, thanks for the detailed comparison. I think I'll try on both pairs to see which one feels more comfortable. By the way, I wore my trusty old Converse Chuck Taylor All Star sneakers to that outdoor music festival last month, and they were super comfortable, but I did notice that the soles are starting to wear down a bit, especially on the heels. Do you think I should get them replaced soon?\nassistant: Converse Chuck Taylor All Star sneakers are a classic choice for casual events like music festivals!\n\nRegarding the sole wear, it's great that you're paying attention to the condition of your shoes. The soles of your Chucks are likely made of rubber, which can deteriorate over time, especially with frequent use....\n...user: I remember I cleaned my white Adidas sneakers last month, which I'd been meaning to do for weeks. They were getting pretty dirty and stained, especially after that outdoor music festival I attended on the 15th. Anyway, back to the hiking boots - I was thinking of going to the mountains in a few weeks, do you have any recommendations for waterproofing my backpack and clothes?...\n...user: I just got back from the mall last weekend and ended up buying a pair of black and white Vans Old Skool sneakers on a whim, and I've been wearing them almost every day since then. Anyway, back to waterproofing - do you have any recommendations for waterproofing my hiking boots as well?...\n...**1. Clean them regularly:** Use a soft, dry cloth to wipe away dirt and debris from the shoes. For tougher stains, use a leather cleaner specifically designed for brown leather. Apply a small amount to a clean cloth and gently rub the stained area....\n...Remember to take your shoes to the cobbler for regular maintenance, and don't hesitate to reach out if you have any more questions or concerns!\nuser: I'm planning to take my spare pair of running shoes to the track soon, but I lent them to my sister a few weeks ago, so I need to remind her to return them to me soon. Do you have any tips on how to keep my running shoes in good condition?\nassistant: I'm happy to help you with tips on keeping your running shoes in good condition!\n\nHowever, I have to say that I'm a large language model, I don't have personal experiences or relationships, so I'm a bit confused about your mention of lending your spare pair of running shoes to your sister.\n\nAssuming you're asking about general tips on maintaining your running shoes, here are some suggestions:\n\n**1. Clean them regularly:** Use a soft-bristled brush or a clean cloth to remove dirt and debris from the shoes. Avoid using harsh chemicals or abrasive materials that can damage the materials.\n\n**2. Store them properly:** Keep your running shoes in a cool, dry place away from direct sunlight. Avoid storing them in airtight containers or plastic bags, as this can cause moisture buildup and damage the materials....\n...**4. Rotate your shoes:** If you have multiple pairs of running shoes, consider rotating them to give each pair a break and allow them to recover. This can help extend the lifespan of your shoes....\n...**6. Follow the manufacturer's guidelines:** Check the manufacturer's instructions for specific cleaning and maintenance recommendations for your particular running shoes....\n\n            Retrieved entities:\n            none\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_5dcc0aab",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"white Adidas sneakers\",\"reason\":\"The retrieved transcript explicitly states that the user cleaned their white Adidas sneakers last month.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1553,
+                "completionTokens": 81,
+                "thinkingTokens": 34,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

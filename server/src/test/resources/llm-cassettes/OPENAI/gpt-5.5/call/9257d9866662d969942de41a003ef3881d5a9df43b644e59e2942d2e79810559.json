@@ -1,0 +1,464 @@
+{
+    "version": 1,
+    "hash": "9257d9866662d969942de41a003ef3881d5a9df43b644e59e2942d2e79810559",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/task-path-cancel",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to run a temporary task memory cancellation experiment.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Noted — I’ll keep the Memory MVP follow-up task open: **Run temporary task memory cancellation experiment**.",
+                            "ttsText": "Noted. I’ll keep that Memory MVP follow-up task open.",
+                            "voiceTone": "brief confirmation"
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Cancel the temporary task memory cancellation experiment follow-up because we decided not to do it.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n        Pass mode: final_selection\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - This is the final global pass. Prefer precision over keeping marginal context.\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, predicate_semantic_kinds, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers when they directly answer and are not incomplete, stale, or contradicted by newer active typed context.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, contextual meaning, and summarized factual details that do not have a complete current claim.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - For advice, improvement, troubleshooting, or \"how should I do better\" questions, select concrete user-specific successes, failures, constraints, goals, preferences, and prior attempts. Do not drop a specific successful/failed example merely because a broader experience claim was selected.\n        - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.\n        - For count, list, \"how many\", and COMPLETE_SET questions, do not require exact target wording. Select plausible action, lifecycle, ownership, ordering, delivery, repair, completion, attendance, and status variants when they may contribute a separate answer item.\n- For aggregate total/count questions, when compatible metric_observation, current_metric_value, or other explicit numeric aggregate candidates are available, treat those numeric operands as the counted inventory. Reject separate singular POSSESSION or owns candidates unless the candidate explicitly says the singular item belongs to the same counted aggregate and is not already covered by a numeric operand.\n- For increase, decrease, change, delta, difference, gain, loss, or net-movement questions, keep compatible baseline/previous and later/current/final numeric operands for the same metric or aggregate. A baseline operand is relevant even when it is not the final value; rejecting it can make the arithmetic impossible.\n- For historical aggregate totals across metric_observation candidates, keep every distinct observed operand. Do not collapse two metric_observation candidates merely because they share the same named subject; different attempt, event, condition, session, source, date, difficulty, route, measurement context, or wording can be separate operands. Reject one as duplicate only when it is the same measurement slot or the memory explicitly says it corrects, replaces, retracts, or repeats the other.\n- Apply latest/current-value replacement logic to current_metric_value candidates, not to independent metric_observation candidates. A newer metric_observation does not make an older metric_observation stale by itself.\n- For imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, keep otherwise matching explicit numeric operands instead of rejecting them solely as future or outside-window.\n- For project leadership, ownership, or responsibility count/list questions, select explicit responsible_for, lead/led/managed/owned, team-leadership, solo-project, or user-owned-project candidates. Treat plain works_on_project, generic project association, research topic, paper, poster, broad interest, \"my research\", or \"working on research\" candidates as supporting or exclusion context unless they explicitly say the user owns, leads, is responsible for, or is the sole actor on that project.\n- For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, keep evidence-backed variants that may satisfy the requested category even when the source uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not keep merely adjacent examples.\n- For count/list questions scoped before, prior to, until, or at a commitment/decision about a named target, keep the named target as boundary context but do not treat it as a prior alternative/item unless the question explicitly asks to include the target itself. This remains true even when the named target has its own matching action before the boundary event.\n- For replaced/fixed/upgraded functional-slot counts, keep paired evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\n- For indirect replacement/upgrade evidence, keep both sides of the functional slot when memory connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\n- Treat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is relevant replacement/upgrade evidence unless memory explicitly says the items are unrelated.\n- For acquisition-style count/list questions, keep concrete physical or digital items when memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; reject mere mentions, interests, recommendations, or assistant-only suggestions.\n- For acquisition-style count/list questions, POSSESSION semantic claims are strong typed evidence when the possessed item fits the requested category.\n- For acquisition-style count/list questions, selected ACTIVE \"owns\" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.\n- Explicitly ordered, reserved, or preordered concrete items are acquisition evidence when the requested category fits; pending delivery, receipt, or pickup only excludes the item when the target specifically asks for completed receipt, delivery, pickup, or current possession after a contradictory later status.\n- First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Keep it unless the question specifically asks for purchase/download transaction details such as price, store, payment, download source, or exact date.\n- Treat \"how many X did I buy/download/acquire/get\" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.\n- In count/list questions, broad category labels are semantic category-fit tests, not exact-word qualifiers. Do not reject a plausible counted item solely because memory names a member, carrier, copy, component, concrete instance, or ordinary subtype instead of repeating the category label.\n- For broad counts of works or content items, a user-attributed physical or digital carrier, copy, file, license, or collection item can count as the represented work or content item when ordinary language supports that category fit. The material, format, or access method is not a separate category requirement unless the question asks for format-specific or transaction-specific details.\n- For location-scoped item count/list questions, keep concrete objects explicitly placed in that location or whose ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\n- For functional category count/list questions, keep concrete objects whose ordinary role, use, or support function satisfies the requested category even when memory names only the concrete subtype. Reject adjacent decor, accessories, optional examples, and suggestions unless they themselves satisfy the requested category or the question asks for them.\n- For broad category counts, a missing exact subtype word is not a contradiction. Exclude a selected user-attributed copy/member/carrier/subtype only when retrieved memory gives an explicit conflicting subtype or category, or when the question asks for exact subtype/transaction details.\n        - For specifically qualified questions, keep sources or candidates needed to satisfy every explicit qualifier in the question. Do not select only a simpler direct claim when it conflicts with a required qualifier such as ingredient, place, date, participant, role, job title, position, source, color, amount, or relation.\n        - A shared anchor can connect candidates only when it explicitly identifies the same fully-qualified target. Do not treat related work, roles, job titles, positions, artifacts, projects, events, routes, or relationships as interchangeable merely because they share a topic, venue, person, or generic label. A different job role, role title, or position title is a different qualified target unless retrieved memory explicitly says the titles refer to the same role.\n        - Keep anchor-level metadata candidates when they can supply a missing requested detail for an already matched target: for example a venue, publisher, conference, program, service, route, or event date, deadline, schedule, price, policy, or threshold. This is allowed only when another candidate explicitly links the asked target to the same named anchor and the metadata is not tied to a different named target. Reject the bridge when retrieved memory has competing anchors or competing values for the same target.\n        - For multi-hop temporal questions, keep complementary facts together: event dates, question dates, relative offsets, lead times, durations, and sources with exact timing wording. Do not select only the candidate that contains the last lexical hop.\n        - For derived answers, a candidate that supplies a missing operand is relevant even when it lacks the other operands. Keep complementary operand candidates together; do not reject one solely because another selected candidate is needed to use it.\n        - For relative-duration questions that name an anchor event, such as \"how many days/weeks/months ago did X when/at the time Y\", keep the dated candidate for X and the dated anchor event Y. Do not default to the current/question date when the wording asks for the interval as of another remembered event.\n        - For questions asking how long the user had been doing an activity when an anchor event happened, keep explicit start/begin/first-participation evidence for that activity even when an as-of duration or tenure candidate also exists. Do not reject the start event as less direct; it can be the required duration-to-anchor operand.\n        - When one candidate gives a relative time anchored to another event, select the anchor event timing candidate too. A lead time or offset alone is not sufficient for \"when\" or \"how long ago\" questions.\n        - For relative-time arithmetic, a selected set is insufficient unless it includes every explicit anchor needed to compute the answer. Rejecting an event-date or question-date anchor as \"not needed\" is incorrect when another selected candidate only gives a lead time, offset, or duration.\n        - For derived duration answers, keep every operand needed for the calculation even when an operand is not itself the final answer. Examples: current role tenure may require both total company tenure and time before promotion to the current role; membership duration may require both join date and target date; recurring activity totals may require each contributing count.\n        - For formal education timeline or duration questions from one education stage to completion of another, keep intermediate formal education credentials, institutions, enrollment, transfer, and completion milestones. Endpoints or direct degree-duration claims alone may undercount the elapsed formal education path.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - For named-date or relative-date questions, compare the target date with candidate event dates and source/session dates. When the question asks which event the user experienced, candidate event dates and local event wording are stronger than a matching source/session date. Keep a source/session-date match only when the candidate text describes the same target event or no event-dated candidate matches.\n        - For completed-experience questions, evidence that the user actually did, attended, took, used, received, or completed something is stronger than same-date planning, booking, reservation, recommendation, or generated artifact evidence. A booking or reservation date is not the event date unless memory explicitly says the booked event happened on that date.\n        - For relative month-count questions such as \"two months ago\", derive the approximate calendar-offset target from the current/question date and prefer candidates closest to that offset. Do not treat any earlier recent event as matching the requested offset; for example, one month ago is not two months ago when another otherwise relevant candidate is near the two-month target.\n        - For \"past weekend\", \"last week\", \"yesterday\", or other relative-window questions, derive the target interval from the current/question date. An event with its own local cue such as \"today\" resolves to the source/session date and is outside the window when that date is outside the target interval.\n        - Do not smear one relative date cue across unrelated events in the same source. A source can mention \"this weekend\" for one event and \"today\" for another; resolve each event from its own local wording and the source/session date.\n        - First-person recency wording such as \"still recovering from\", \"just got back from\", \"previous\", \"recent\", or \"last\" can make a completed event relevant to the source/session date. Prefer that completed event over a plan or booking created in the same source when the question asks what the user experienced.\n        - Missing date evidence is uncertainty, not contradiction. Keep otherwise matching candidates or sources with no explicit date so the answer can compare them; treat candidates with an explicit different date as lower-priority conflict or exclusion evidence unless the question asks for that period.\n        - For named-date or relative-window questions with broad or noisy action wording, target-period relevance can beat literal verb matching. Keep target-period lifecycle variants such as plans, checklists, appointments, requests, estimates, recommendations, setup discussions, or other object-matching lifecycle evidence before outside-period completed actions only when the requested action/status is not itself a required qualifier. Preserve lifecycle state instead of treating plans, bookings, or recommendations as completed user-experienced events.\n        - For place-visit questions, treat user-attended venue events such as lectures, guided tours, exhibits, appointments, or behind-the-scenes tours at that venue as visit evidence when the venue and target time match. Prefer the venue/time match over a more literal \"visited\" or \"guided tour\" event from a different time period.\n        - Do not infer that an unrelated explicit date satisfies a named date such as Valentine's Day, birthday, holiday, or anniversary. If date evidence conflicts, select enough candidates to expose the conflict.\n        - When Planned context mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - When candidates disagree about a current/usual value, schedule, time, preference, or constraint, select enough candidates to expose the conflict and prefer the newer relevant active typed memory or its supporting source evidence.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - For current-state answers, never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - For current-state answers at a later target date, keep later dated plans, intentions, or scheduled changes that may have become the current state by that date. Select them together with any older current-state candidate so the answer can reason about whether the old state is stale.\n        - For questions about an initial, original, previous, older, or before/after state, non-current typed memory can be the direct historical answer. A direct SUPERSEDED, RETRACTED, EXPIRED, or otherwise non-current typed claim for the same semantic slot is higher priority than the active replacement for the historical value being asked. Select both the older candidate and the current replacement when the answer depends on comparing old vs current state; do not reject the older candidate merely because the active replacement answers the current value.\n        - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.\n        - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned context mode: ACTION_ITEM\n        Planned coverage mode: MINIMAL\n        Require evidence fallback: false\n        Retrieval budget: claims=0 notes=0 actionItems=2 sources=0 episodes=0\n        Target message:\n        Cancel the temporary task memory cancellation experiment follow-up because we decided not to do it.\n\n        Candidate memory items:\n        1. {\"type\":\"entity\",\"id\":\"entity:<0>\",\"score\":2.1,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"PROJECT\",\"name\":\"Memory MVP\",\"text\":\"Project named Memory MVP.\"}\n2. {\"type\":\"action_item\",\"id\":\"hot-path:actionItem:<0>\",\"score\":1.801785714285714,\"status\":\"CANCELLED\",\"lifecycle_state\":\"cancelled\",\"selection_hint\":\"Action item memory is for open commitments/workflow state; select only when the target asks about work to do or action item status.\",\"title\":\"Run temporary task memory cancellation experiment\",\"text\":\"The Memory MVP follow-up to run a temporary task memory cancellation experiment is cancelled because it was decided not to do it.\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"keep an open task to run a temporary task memory cancellation experiment\"},{\"source_id\":\"chat:<0>\",\"kind\":\"DIRECT\",\"quote\":\"Cancel the temporary task memory cancellation experiment follow-up because we decided not to do it.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to run a temporary task memory cancellation experiment.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Noted — I’ll keep the Memory MVP follow-up task open: **Run temporary task memory cancellation experiment**.",
+                            "ttsText": "Noted. I’ll keep that Memory MVP follow-up task open.",
+                            "voiceTone": "brief confirmation"
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Cancel the temporary task memory cancellation experiment follow-up because we decided not to do it.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n        Pass mode: final_selection\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - This is the final global pass. Prefer precision over keeping marginal context.\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, predicate_semantic_kinds, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers when they directly answer and are not incomplete, stale, or contradicted by newer active typed context.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, contextual meaning, and summarized factual details that do not have a complete current claim.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - For advice, improvement, troubleshooting, or \"how should I do better\" questions, select concrete user-specific successes, failures, constraints, goals, preferences, and prior attempts. Do not drop a specific successful/failed example merely because a broader experience claim was selected.\n        - When Planned coverage mode is COMPLETE_SET, select every relevant distinct typed memory item and every required evidence source that may contain a separate missing item. Do not collapse to the first good match.\n        - For count, list, \"how many\", and COMPLETE_SET questions, do not require exact target wording. Select plausible action, lifecycle, ownership, ordering, delivery, repair, completion, attendance, and status variants when they may contribute a separate answer item.\n- For aggregate total/count questions, when compatible metric_observation, current_metric_value, or other explicit numeric aggregate candidates are available, treat those numeric operands as the counted inventory. Reject separate singular POSSESSION or owns candidates unless the candidate explicitly says the singular item belongs to the same counted aggregate and is not already covered by a numeric operand.\n- For increase, decrease, change, delta, difference, gain, loss, or net-movement questions, keep compatible baseline/previous and later/current/final numeric operands for the same metric or aggregate. A baseline operand is relevant even when it is not the final value; rejecting it can make the arithmetic impossible.\n- For historical aggregate totals across metric_observation candidates, keep every distinct observed operand. Do not collapse two metric_observation candidates merely because they share the same named subject; different attempt, event, condition, session, source, date, difficulty, route, measurement context, or wording can be separate operands. Reject one as duplicate only when it is the same measurement slot or the memory explicitly says it corrects, replaces, retracts, or repeats the other.\n- Apply latest/current-value replacement logic to current_metric_value candidates, not to independent metric_observation candidates. A newer metric_observation does not make an older metric_observation stale by itself.\n- For imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, keep otherwise matching explicit numeric operands instead of rejecting them solely as future or outside-window.\n- For project leadership, ownership, or responsibility count/list questions, select explicit responsible_for, lead/led/managed/owned, team-leadership, solo-project, or user-owned-project candidates. Treat plain works_on_project, generic project association, research topic, paper, poster, broad interest, \"my research\", or \"working on research\" candidates as supporting or exclusion context unless they explicitly say the user owns, leads, is responsible for, or is the sole actor on that project.\n- For count/list questions about acquired, kept, used, completed, attended, or otherwise user-attributed items, keep evidence-backed variants that may satisfy the requested category even when the source uses a different lifecycle or status verb than the question. Require explicit user attribution and category fit; do not keep merely adjacent examples.\n- For count/list questions scoped before, prior to, until, or at a commitment/decision about a named target, keep the named target as boundary context but do not treat it as a prior alternative/item unless the question explicitly asks to include the target itself. This remains true even when the named target has its own matching action before the boundary event.\n- For replaced/fixed/upgraded functional-slot counts, keep paired evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\n- For indirect replacement/upgrade evidence, keep both sides of the functional slot when memory connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\n- Treat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is relevant replacement/upgrade evidence unless memory explicitly says the items are unrelated.\n- For acquisition-style count/list questions, keep concrete physical or digital items when memory places that item in the user's acquisition, possession, collection, or use history and the requested category fits. Do not require the exact action verb from the question; reject mere mentions, interests, recommendations, or assistant-only suggestions.\n- For acquisition-style count/list questions, POSSESSION semantic claims are strong typed evidence when the possessed item fits the requested category.\n- For acquisition-style count/list questions, selected ACTIVE \"owns\" or POSSESSION claims are direct acquisition/possession evidence when the item fits the requested category. The words purchased, bought, downloaded, acquired, or got in a how-many/list question are lifecycle hints, not transaction-detail requirements by themselves.\n- Explicitly ordered, reserved, or preordered concrete items are acquisition evidence when the requested category fits; pending delivery, receipt, or pickup only excludes the item when the target specifically asks for completed receipt, delivery, pickup, or current possession after a contradictory later status.\n- First-person evidence of a concrete personal copy or item can satisfy an acquisition-style broad category count even without a transaction verb. Keep it unless the question specifically asks for purchase/download transaction details such as price, store, payment, download source, or exact date.\n- Treat \"how many X did I buy/download/acquire/get\" as a broad category count unless the user asks for transaction details. For broad category counts, do not require exact subtype words or exact title when ordinary language makes the remembered personal item a member, copy, or instance of the requested category.\n- In count/list questions, broad category labels are semantic category-fit tests, not exact-word qualifiers. Do not reject a plausible counted item solely because memory names a member, carrier, copy, component, concrete instance, or ordinary subtype instead of repeating the category label.\n- For broad counts of works or content items, a user-attributed physical or digital carrier, copy, file, license, or collection item can count as the represented work or content item when ordinary language supports that category fit. The material, format, or access method is not a separate category requirement unless the question asks for format-specific or transaction-specific details.\n- For location-scoped item count/list questions, keep concrete objects explicitly placed in that location or whose ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\n- For functional category count/list questions, keep concrete objects whose ordinary role, use, or support function satisfies the requested category even when memory names only the concrete subtype. Reject adjacent decor, accessories, optional examples, and suggestions unless they themselves satisfy the requested category or the question asks for them.\n- For broad category counts, a missing exact subtype word is not a contradiction. Exclude a selected user-attributed copy/member/carrier/subtype only when retrieved memory gives an explicit conflicting subtype or category, or when the question asks for exact subtype/transaction details.\n        - For specifically qualified questions, keep sources or candidates needed to satisfy every explicit qualifier in the question. Do not select only a simpler direct claim when it conflicts with a required qualifier such as ingredient, place, date, participant, role, job title, position, source, color, amount, or relation.\n        - A shared anchor can connect candidates only when it explicitly identifies the same fully-qualified target. Do not treat related work, roles, job titles, positions, artifacts, projects, events, routes, or relationships as interchangeable merely because they share a topic, venue, person, or generic label. A different job role, role title, or position title is a different qualified target unless retrieved memory explicitly says the titles refer to the same role.\n        - Keep anchor-level metadata candidates when they can supply a missing requested detail for an already matched target: for example a venue, publisher, conference, program, service, route, or event date, deadline, schedule, price, policy, or threshold. This is allowed only when another candidate explicitly links the asked target to the same named anchor and the metadata is not tied to a different named target. Reject the bridge when retrieved memory has competing anchors or competing values for the same target.\n        - For multi-hop temporal questions, keep complementary facts together: event dates, question dates, relative offsets, lead times, durations, and sources with exact timing wording. Do not select only the candidate that contains the last lexical hop.\n        - For derived answers, a candidate that supplies a missing operand is relevant even when it lacks the other operands. Keep complementary operand candidates together; do not reject one solely because another selected candidate is needed to use it.\n        - For relative-duration questions that name an anchor event, such as \"how many days/weeks/months ago did X when/at the time Y\", keep the dated candidate for X and the dated anchor event Y. Do not default to the current/question date when the wording asks for the interval as of another remembered event.\n        - For questions asking how long the user had been doing an activity when an anchor event happened, keep explicit start/begin/first-participation evidence for that activity even when an as-of duration or tenure candidate also exists. Do not reject the start event as less direct; it can be the required duration-to-anchor operand.\n        - When one candidate gives a relative time anchored to another event, select the anchor event timing candidate too. A lead time or offset alone is not sufficient for \"when\" or \"how long ago\" questions.\n        - For relative-time arithmetic, a selected set is insufficient unless it includes every explicit anchor needed to compute the answer. Rejecting an event-date or question-date anchor as \"not needed\" is incorrect when another selected candidate only gives a lead time, offset, or duration.\n        - For derived duration answers, keep every operand needed for the calculation even when an operand is not itself the final answer. Examples: current role tenure may require both total company tenure and time before promotion to the current role; membership duration may require both join date and target date; recurring activity totals may require each contributing count.\n        - For formal education timeline or duration questions from one education stage to completion of another, keep intermediate formal education credentials, institutions, enrollment, transfer, and completion milestones. Endpoints or direct degree-duration claims alone may undercount the elapsed formal education path.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - For named-date or relative-date questions, compare the target date with candidate event dates and source/session dates. When the question asks which event the user experienced, candidate event dates and local event wording are stronger than a matching source/session date. Keep a source/session-date match only when the candidate text describes the same target event or no event-dated candidate matches.\n        - For completed-experience questions, evidence that the user actually did, attended, took, used, received, or completed something is stronger than same-date planning, booking, reservation, recommendation, or generated artifact evidence. A booking or reservation date is not the event date unless memory explicitly says the booked event happened on that date.\n        - For relative month-count questions such as \"two months ago\", derive the approximate calendar-offset target from the current/question date and prefer candidates closest to that offset. Do not treat any earlier recent event as matching the requested offset; for example, one month ago is not two months ago when another otherwise relevant candidate is near the two-month target.\n        - For \"past weekend\", \"last week\", \"yesterday\", or other relative-window questions, derive the target interval from the current/question date. An event with its own local cue such as \"today\" resolves to the source/session date and is outside the window when that date is outside the target interval.\n        - Do not smear one relative date cue across unrelated events in the same source. A source can mention \"this weekend\" for one event and \"today\" for another; resolve each event from its own local wording and the source/session date.\n        - First-person recency wording such as \"still recovering from\", \"just got back from\", \"previous\", \"recent\", or \"last\" can make a completed event relevant to the source/session date. Prefer that completed event over a plan or booking created in the same source when the question asks what the user experienced.\n        - Missing date evidence is uncertainty, not contradiction. Keep otherwise matching candidates or sources with no explicit date so the answer can compare them; treat candidates with an explicit different date as lower-priority conflict or exclusion evidence unless the question asks for that period.\n        - For named-date or relative-window questions with broad or noisy action wording, target-period relevance can beat literal verb matching. Keep target-period lifecycle variants such as plans, checklists, appointments, requests, estimates, recommendations, setup discussions, or other object-matching lifecycle evidence before outside-period completed actions only when the requested action/status is not itself a required qualifier. Preserve lifecycle state instead of treating plans, bookings, or recommendations as completed user-experienced events.\n        - For place-visit questions, treat user-attended venue events such as lectures, guided tours, exhibits, appointments, or behind-the-scenes tours at that venue as visit evidence when the venue and target time match. Prefer the venue/time match over a more literal \"visited\" or \"guided tour\" event from a different time period.\n        - Do not infer that an unrelated explicit date satisfies a named date such as Valentine's Day, birthday, holiday, or anniversary. If date evidence conflicts, select enough candidates to expose the conflict.\n        - When Planned context mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - When candidates disagree about a current/usual value, schedule, time, preference, or constraint, select enough candidates to expose the conflict and prefer the newer relevant active typed memory or its supporting source evidence.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - For current-state answers, never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - For current-state answers at a later target date, keep later dated plans, intentions, or scheduled changes that may have become the current state by that date. Select them together with any older current-state candidate so the answer can reason about whether the old state is stale.\n        - For questions about an initial, original, previous, older, or before/after state, non-current typed memory can be the direct historical answer. A direct SUPERSEDED, RETRACTED, EXPIRED, or otherwise non-current typed claim for the same semantic slot is higher priority than the active replacement for the historical value being asked. Select both the older candidate and the current replacement when the answer depends on comparing old vs current state; do not reject the older candidate merely because the active replacement answers the current value.\n        - For target questions about a current named metric, record, score, benchmark, quota, threshold, or personal best, prefer a direct current metric/record typed claim over a contextual historical event or goal claim. Historical events answer when the event happened; current metric claims answer what the remembered value is.\n        - Do not reject a direct current metric/record claim merely because its normalized text uses a broader metric label than the target wording when its context, scope, or evidence binds it to the same named domain.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned context mode: ACTION_ITEM\n        Planned coverage mode: MINIMAL\n        Require evidence fallback: false\n        Retrieval budget: claims=0 notes=0 actionItems=2 sources=0 episodes=0\n        Target message:\n        Cancel the temporary task memory cancellation experiment follow-up because we decided not to do it.\n\n        Candidate memory items:\n        1. {\"type\":\"entity\",\"id\":\"entity:<0>\",\"score\":2.1,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"PROJECT\",\"name\":\"Memory MVP\",\"text\":\"Project named Memory MVP.\"}\n2. {\"type\":\"action_item\",\"id\":\"hot-path:actionItem:<0>\",\"score\":1.801785714285714,\"status\":\"CANCELLED\",\"lifecycle_state\":\"cancelled\",\"selection_hint\":\"Action item memory is for open commitments/workflow state; select only when the target asks about work to do or action item status.\",\"title\":\"Run temporary task memory cancellation experiment\",\"text\":\"The Memory MVP follow-up to run a temporary task memory cancellation experiment is cancelled because it was decided not to do it.\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"keep an open task to run a temporary task memory cancellation experiment\"},{\"source_id\":\"chat:<0>\",\"kind\":\"DIRECT\",\"quote\":\"Cancel the temporary task memory cancellation experiment follow-up because we decided not to do it.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Generic project anchor not needed because the action item contains sufficient context.\"}],\"selected_items\":[{\"item_id\":\"hot-path:actionItem:<0>\",\"item_type\":\"action_item\",\"rank\":1,\"reason\":\"Directly records the requested cancellation of the temporary task memory cancellation experiment follow-up.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the cancelled action item that directly matches the target request.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 4934,
+                "completionTokens": 140,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

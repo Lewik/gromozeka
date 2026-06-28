@@ -200,7 +200,7 @@ class PersistentMemoryTraceSink(
         }
 
     private fun MemoryReadTraceEvent.readTraceSummary(): String =
-        "Memory read trace: need=${result.plan.needMemory} mode=${result.plan.answerMode.name} coverage=${result.plan.coverageMode.name} " +
+        "Memory read trace: need=${result.plan.needMemory} mode=${result.plan.contextMode.name} coverage=${result.plan.coverageMode.name} " +
             "retrieved=${result.retrievedHits.size} selected=${result.trace.selectedHits.size} " +
             "promptChars=${result.runtimePrompt?.length ?: 0}"
 

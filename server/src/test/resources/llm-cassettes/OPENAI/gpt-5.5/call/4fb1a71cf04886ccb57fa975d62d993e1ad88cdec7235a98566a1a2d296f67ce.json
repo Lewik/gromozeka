@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "4fb1a71cf04886ccb57fa975d62d993e1ad88cdec7235a98566a1a2d296f67ce",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about natural remedies for dark circles under the eyes. You mentioned applying tomato juice mixed with lemon juice, how long did you say I should leave it on for?\n\n                                Question date:\n                                2023/05/28 (Sun) 19:59\n\n                                Noisy expected-answer label:\n                                10 minutes\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:3e321797\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:167147b51ae4317fc1e366b5045bb8aa [external_record ref=longmemeval:3e321797:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:47\nTranscript:\nuser: What are some natural remedies for treating dark circles under the eyes?\nassistant: 1. Cucumber - Place chilled cucumber slices on your eyes for 10-15 minutes to reduce swelling and soothe skin.\n\n2. Tea bags - Use cool tea bags on your eyes for 10-15 minutes to reduce inflammation and swelling.\n\n3. Tomato - Apply tomato juice mixed with lemon juice on your under-eye area and wash off after 10 minutes with cold water for lightening dark circles.\n\n4. Almond oil - Massage almond oil on the affected area regularly for moisturization and lightening the skin.\n\n5. Rose water - Dip a cotton ball in rosewater and place it on your eyes to soothe and hydrate the skin.\n\n6. Aloe vera - Apply fresh aloe vera gel under your eyes to reduce puffiness and lighten dark circles.\n\n7. Turmeric - Mix turmeric powder with pineapple juice and apply it on the affected area for about 10 minutes. Rinse it off with lukewarm water.\n\n8. Coconut oil - Massage coconut oil under your eyes before sleeping, and in the morning, wash it off with warm water for smooth and hydrated skin.\n\n9. Lemon juice - Apply a mixture of lemon juice and honey on the affected area for 15 minutes, then rinse with warm water for lightening dark circles.\n\n10. Mint leaves - Crush fresh mint leaves and apply them as a paste under your eyes for about 10 minutes. Wash it off with warm water.\nuser: I'm excited to try them out. Which one do you think will work the best?\nassistant: As an AI language model, I cannot provide medical advice. It varies from person to person, so it's best to try out a few methods and stick to the one that works best for you. However, make sure to consult with a doctor before trying any new remedies, especially if you have a pre-existing medical condition.\nuser: Yeah, that's a good point. I'll make sure to consult with my doctor before trying any of these remedies.\nassistant: Always prioritize your health and safety first, and it's important to consult with your doctor before trying any new remedies or treatments, even if they are natural remedies. Best of luck to you!\nuser: Yeah, I'll definitely book an appointment with my doctor next week. But I'm excited to try out some of these remedies in the meantime. Have you personally tried any of them?\nassistant: As an AI language model, I do not have a physical body to try these remedies. However, these natural remedies have been recommended by many people and they have been found to be effective in reducing the appearance of dark circles under the eyes for some. But as I mentioned earlier, it's always important to consult with your doctor before trying any new remedies or treatments, especially if you have any pre-existing conditions or allergies.\n\n            Retrieved entities:\n            none\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "3e321797",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I wanted to follow up on our previous conversation about natural remedies for dark circles under the eyes. You mentioned applying tomato juice mixed with lemon juice, how long did you say I should leave it on for?\n\n                                Question date:\n                                2023/05/28 (Sun) 19:59\n\n                                Noisy expected-answer label:\n                                10 minutes\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks about an initial, previous, older, or otherwise historical state, non-current typed memory and older evidence may be the direct answer; compare it with current active memory instead of blindly preferring the current value.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:3e321797\n            Context mode: FACTUAL\n            Coverage mode: MINIMAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source external:provided-text:167147b51ae4317fc1e366b5045bb8aa [external_record ref=longmemeval:3e321797:session:1 observedAt=1970-01-01T00:00:00Z]: LongMemEval past chat session.\nSession date: 2023/05/26 (Fri) 11:47\nTranscript:\nuser: What are some natural remedies for treating dark circles under the eyes?\nassistant: 1. Cucumber - Place chilled cucumber slices on your eyes for 10-15 minutes to reduce swelling and soothe skin.\n\n2. Tea bags - Use cool tea bags on your eyes for 10-15 minutes to reduce inflammation and swelling.\n\n3. Tomato - Apply tomato juice mixed with lemon juice on your under-eye area and wash off after 10 minutes with cold water for lightening dark circles.\n\n4. Almond oil - Massage almond oil on the affected area regularly for moisturization and lightening the skin.\n\n5. Rose water - Dip a cotton ball in rosewater and place it on your eyes to soothe and hydrate the skin.\n\n6. Aloe vera - Apply fresh aloe vera gel under your eyes to reduce puffiness and lighten dark circles.\n\n7. Turmeric - Mix turmeric powder with pineapple juice and apply it on the affected area for about 10 minutes. Rinse it off with lukewarm water.\n\n8. Coconut oil - Massage coconut oil under your eyes before sleeping, and in the morning, wash it off with warm water for smooth and hydrated skin.\n\n9. Lemon juice - Apply a mixture of lemon juice and honey on the affected area for 15 minutes, then rinse with warm water for lightening dark circles.\n\n10. Mint leaves - Crush fresh mint leaves and apply them as a paste under your eyes for about 10 minutes. Wash it off with warm water.\nuser: I'm excited to try them out. Which one do you think will work the best?\nassistant: As an AI language model, I cannot provide medical advice. It varies from person to person, so it's best to try out a few methods and stick to the one that works best for you. However, make sure to consult with a doctor before trying any new remedies, especially if you have a pre-existing medical condition.\nuser: Yeah, that's a good point. I'll make sure to consult with my doctor before trying any of these remedies.\nassistant: Always prioritize your health and safety first, and it's important to consult with your doctor before trying any new remedies or treatments, even if they are natural remedies. Best of luck to you!\nuser: Yeah, I'll definitely book an appointment with my doctor next week. But I'm excited to try out some of these remedies in the meantime. Have you personally tried any of them?\nassistant: As an AI language model, I do not have a physical body to try these remedies. However, these natural remedies have been recommended by many people and they have been found to be effective in reducing the appearance of dark circles under the eyes for some. But as I mentioned earlier, it's always important to consult with your doctor before trying any new remedies or treatments, especially if you have any pre-existing conditions or allergies.\n\n            Retrieved entities:\n            none\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "3e321797",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You should leave the tomato juice mixed with lemon juice on for 10 minutes before washing it off.\",\"reason\":\"The retrieved transcript explicitly says to apply tomato juice mixed with lemon juice and wash it off after 10 minutes.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1541,
+                "completionTokens": 96,
+                "thinkingTokens": 27,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,189 @@
+{
+    "version": 1,
+    "hash": "55dd5d40d47484c7237ec3df51e8c56950a887287353823fee7402d18eceb2ac",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I participate in the 5K charity run?\n\n                                Question date:\n                                2023/03/26 (Sun) 10:22\n\n                                Noisy expected-answer label:\n                                7 days ago. 8 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_b0863698\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-438df246ede9-claim-5 [ACTIVE] attended_event family=attended_event: The user completed a 5K charity run on 2023-03-19.; scope=User's dated running event history from the imported chat session.; context=\"The event was described as completed today in a session dated 2023-03-19.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"did a 5K charity run today\"\n- claim hot-path-438df246ede9-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user's 5K charity run finish time was 27 minutes and 12 seconds.; scope=User's running performance metric for the 2023-03-19 5K charity run.; context=\"The user reported this finish time for the 5K charity run completed on 2023-03-19.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"finishing in 27 minutes and 12 seconds\"\n- claim hot-path-438df246ede9-claim-11 [ACTIVE] current_metric_value family=current_metric_value: The user usually runs in the morning around 7-8 am.; scope=User's usual running schedule for route planning.; context=\"The user gave this as their usual running time when discussing route recommendations.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"I usually run in the morning, around 7-8 am\"\n- claim hot-path-438df246ede9-claim-15 [ACTIVE] prefers family=prefers: The user is interested in joining a running group or club to meet other runners and get route suggestions.; scope=User's social running and route-discovery preference from the imported chat session.; context=\"The user repeatedly described joining a running group or club as a good idea and asked how to contact one.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"joining a running group or club is a great idea\"\n- claim hot-path-438df246ede9-claim-8 [ACTIVE] prefers family=prefers: The user prefers road running.; scope=User's running surface preference when looking for routes.; context=\"The user described route preferences for running in the city.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"I prefer running on roads\"\n- claim hot-path-438df246ede9-claim-9 [ACTIVE] has_constraint family=has_constraint: The user wants running routes that are flat, easy to navigate, and have minimal traffic.; scope=User's route constraints for running recommendations.; context=\"The user specified criteria for city running routes.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"routes that are flat and easy to navigate, with minimal traffic\"\n- claim hot-path-438df246ede9-claim-10 [ACTIVE] has_constraint family=has_constraint: The user wants running routes with good lighting and sidewalks or pedestrian paths.; scope=User's safety constraints for running-route recommendations.; context=\"The user specified safety-related criteria for running routes.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"routes with good lighting and sidewalks or pedestrian paths\"\n- claim hot-path-438df246ede9-claim-7 [ACTIVE] has_goal family=has_goal: The user wants new running routes around 3-5 miles long.; scope=User's running route search preferences from the imported chat session.; context=\"The user asked for route recommendations after getting back into running.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"recommendations for routes that are around 3-5 miles long\"\n\n            Retrieved notes:\n            - note hot-path-438df246ede9-note-3 [CONTEXT/ACTIVE]: Motivation for joining a running group; The user sees joining a running group as a way to explore more of the city, get route suggestions from experienced runners, and gain the same social motivation they enjoy from volleyball and tennis with friends.; scope=User's motivation and social context for running group participation; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"I've also been enjoying the social aspect of playing volleyball and tennis with friends, so I think I'd really benefit from running with a group too.\"\n\n            Retrieved evidence:\n            - source external:provided-text:928bcbe4a664944b1640f25790d1ad45 [external_record ref=longmemeval:gpt4_b0863698:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/19 (Sun) 07:16\nTranscript:\nuser: I'm looking for some new running routes in my area. I just got back into running and did a 5K charity run today, finishing in 27 minutes and 12 seconds, which was a great motivator. Do you have any recommendations for routes that are around 3-5 miles long?...\n...user: I live in the city, and I prefer running on roads. I'm looking for routes that are flat and easy to navigate, with minimal traffic. I usually run in the morning, around 7-8 am. As for safety, I'd prefer routes with good lighting and sidewalks or pedestrian paths....\n...2. Avoid routes with many turns or confusing intersections....\n...user: I was thinking of exploring some new areas of the city to run in, but I'm not sure where to start. Do you know of any running groups or clubs in the city that I could join to meet other runners and get some route suggestions?...\n...1. **Local Running Stores:** Visit local running stores in your area and ask if they know of any running groups or clubs that meet regularly. Many running stores sponsor or host running groups, and their staff may be able to provide valuable information....\n...* Nike Run Club: Many cities have Nike Run Club groups that offer free, coached runs and social events....\n...user: I think joining a running group or club is a great idea. I've been meaning to explore more of the city on my runs, and getting route suggestions from experienced runners would be super helpful. I've also been enjoying the social aspect of playing volleyball and tennis with friends, so I think I'd really benefit from running with a group too. Do you know if any of these groups offer beginner-friendly routes or training programs for someone like me who's just getting back into running?\nassistant: Many running groups and clubs offer beginner-friendly routes and training programs specifically designed for new runners or those getting back into running. These programs are usually led by experienced runners or coaches who can provide guidance, support, and encouragement....\n...2. **Training programs:** Many running groups offer structured training programs for beginners, which typically include:...\n...When searching for a running group or club, be sure to ask about their beginner-friendly offerings and what they can provide to support your running goals. Some questions to ask include:...\n...user: I'm thinking of joining a running group that meets on Saturday mornings. Would it be possible to get a route suggestion from them before I decide to join, so I can get an idea of the type of routes they typically do? That way, I can make sure it's a good fit for me.\nassistant: That's a great idea! It's completely reasonable to ask for a route suggestion from the running group before joining. In fact, many running groups would be happy to provide you with route information or even invite you to join a trial run to get a feel for the group's dynamics and routes....\n...Remember, it's okay to ask questions and do your due diligence before committing to a running group. Good luck, and I hope you find a group that suits your needs!\nuser: I'm excited to explore new routes and join a running group to stay motivated and accountable. Can you suggest a good way to reach out to the running group and ask for a route suggestion?...\n...I'm [Your Name], and I'm interested in joining your Saturday morning running group. I recently completed a 5K charity run with a time of 27:12 and am looking to continue improving my running while exploring new routes and meeting fellow runners....\n...1. **Be respectful of their time:** Keep your message concise and to the point. Avoid asking too many questions or requesting too much information upfront....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: running group or club; Concept named running group or club.\n- entity entity:<1> [CONCEPT]: running; Concept named running.\n- entity entity:<2> [CONCEPT]: tennis; Concept named tennis.\n- entity entity:<3> [CONCEPT]: volleyball; Concept named volleyball.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_b0863698",
+                "questionType": "temporal-reasoning"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the retrieved memory context is sufficient to answer the question in the same core direction as the noisy expected-answer label.\nRetrieved memory context is the only source of truth. The expected-answer label is a comparison hint, not evidence.\nMark supported=true when the context contains equivalent source-grounded facts, preferences, events, or rationale, even if wording differs.\nFor imported chat transcripts, source-grounded support may come from adjacent turns and the active topic, not only from one sentence that literally repeats the answer.\nAccept a strong conversational entailment when the expected answer follows from the surrounding user/assistant turns and no other retrieved source points to a competing answer.\nDetails that appear only in the expected-answer label but not in retrieved memory are non-binding and must not be called central unless the retrieved context itself makes them necessary for answering the question.\nThe official expected answer can contain noisy illustrative examples or broad inferences not literally present in the source. Do not require every illustrative example when the memory supports the central answer.\nFor preference or personalization questions, supported=true when the retrieved memory contains the concrete user-specific consideration needed to personalize the answer in the same core direction, even if the expected answer lists additional absent examples.\nDo not mark unsupported solely because the official answer names an extra participant, pet name, or causal detail that is absent from the retrieved source while the central remembered event, preference, count, or rationale is still supported.\nMark supported=false when the context is missing the central answer, contradicts it, leaves several plausible competing answers, or only supports a weaker unrelated subset.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                How many days ago did I participate in the 5K charity run?\n\n                                Question date:\n                                2023/03/26 (Sun) 10:22\n\n                                Noisy expected-answer label:\n                                7 days ago. 8 days (including the last day) is also acceptable.\n\n                                Retrieved memory context:\n                                            MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            The retrieved memory below was selected for the immediately following user request.\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            \n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n            If Coverage mode is COMPLETE_SET, enumerate all retrieved matching items before answering; do not answer from the first matching item only.\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\n\n            Namespace: benchmark:longmemeval:gpt4_b0863698\n            Context mode: FACTUAL\n            Coverage mode: COMPLETE_SET\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved action items:\n            none\n\n            Retrieved claims:\n            - claim hot-path-438df246ede9-claim-5 [ACTIVE] attended_event family=attended_event: The user completed a 5K charity run on 2023-03-19.; scope=User's dated running event history from the imported chat session.; context=\"The event was described as completed today in a session dated 2023-03-19.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"did a 5K charity run today\"\n- claim hot-path-438df246ede9-claim-6 [ACTIVE] current_metric_value family=current_metric_value: The user's 5K charity run finish time was 27 minutes and 12 seconds.; scope=User's running performance metric for the 2023-03-19 5K charity run.; context=\"The user reported this finish time for the 5K charity run completed on 2023-03-19.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"finishing in 27 minutes and 12 seconds\"\n- claim hot-path-438df246ede9-claim-11 [ACTIVE] current_metric_value family=current_metric_value: The user usually runs in the morning around 7-8 am.; scope=User's usual running schedule for route planning.; context=\"The user gave this as their usual running time when discussing route recommendations.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"I usually run in the morning, around 7-8 am\"\n- claim hot-path-438df246ede9-claim-15 [ACTIVE] prefers family=prefers: The user is interested in joining a running group or club to meet other runners and get route suggestions.; scope=User's social running and route-discovery preference from the imported chat session.; context=\"The user repeatedly described joining a running group or club as a good idea and asked how to contact one.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"joining a running group or club is a great idea\"\n- claim hot-path-438df246ede9-claim-8 [ACTIVE] prefers family=prefers: The user prefers road running.; scope=User's running surface preference when looking for routes.; context=\"The user described route preferences for running in the city.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"I prefer running on roads\"\n- claim hot-path-438df246ede9-claim-9 [ACTIVE] has_constraint family=has_constraint: The user wants running routes that are flat, easy to navigate, and have minimal traffic.; scope=User's route constraints for running recommendations.; context=\"The user specified criteria for city running routes.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"routes that are flat and easy to navigate, with minimal traffic\"\n- claim hot-path-438df246ede9-claim-10 [ACTIVE] has_constraint family=has_constraint: The user wants running routes with good lighting and sidewalks or pedestrian paths.; scope=User's safety constraints for running-route recommendations.; context=\"The user specified safety-related criteria for running routes.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"routes with good lighting and sidewalks or pedestrian paths\"\n- claim hot-path-438df246ede9-claim-7 [ACTIVE] has_goal family=has_goal: The user wants new running routes around 3-5 miles long.; scope=User's running route search preferences from the imported chat session.; context=\"The user asked for route recommendations after getting back into running.\"; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"recommendations for routes that are around 3-5 miles long\"\n\n            Retrieved notes:\n            - note hot-path-438df246ede9-note-3 [CONTEXT/ACTIVE]: Motivation for joining a running group; The user sees joining a running group as a way to explore more of the city, get route suggestions from experienced runners, and gain the same social motivation they enjoy from volleyball and tennis with friends.; scope=User's motivation and social context for running group participation; evidence=DIRECT source=external:provided-text:928bcbe4a664944b1640f25790d1ad45 quote=\"I've also been enjoying the social aspect of playing volleyball and tennis with friends, so I think I'd really benefit from running with a group too.\"\n\n            Retrieved evidence:\n            - source external:provided-text:928bcbe4a664944b1640f25790d1ad45 [external_record ref=longmemeval:gpt4_b0863698:session:1 observedAt=1970-01-01T00:00:00Z]: ...[matching excerpts]...\nLongMemEval past chat session.\nSession date: 2023/03/19 (Sun) 07:16\nTranscript:\nuser: I'm looking for some new running routes in my area. I just got back into running and did a 5K charity run today, finishing in 27 minutes and 12 seconds, which was a great motivator. Do you have any recommendations for routes that are around 3-5 miles long?...\n...user: I live in the city, and I prefer running on roads. I'm looking for routes that are flat and easy to navigate, with minimal traffic. I usually run in the morning, around 7-8 am. As for safety, I'd prefer routes with good lighting and sidewalks or pedestrian paths....\n...2. Avoid routes with many turns or confusing intersections....\n...user: I was thinking of exploring some new areas of the city to run in, but I'm not sure where to start. Do you know of any running groups or clubs in the city that I could join to meet other runners and get some route suggestions?...\n...1. **Local Running Stores:** Visit local running stores in your area and ask if they know of any running groups or clubs that meet regularly. Many running stores sponsor or host running groups, and their staff may be able to provide valuable information....\n...* Nike Run Club: Many cities have Nike Run Club groups that offer free, coached runs and social events....\n...user: I think joining a running group or club is a great idea. I've been meaning to explore more of the city on my runs, and getting route suggestions from experienced runners would be super helpful. I've also been enjoying the social aspect of playing volleyball and tennis with friends, so I think I'd really benefit from running with a group too. Do you know if any of these groups offer beginner-friendly routes or training programs for someone like me who's just getting back into running?\nassistant: Many running groups and clubs offer beginner-friendly routes and training programs specifically designed for new runners or those getting back into running. These programs are usually led by experienced runners or coaches who can provide guidance, support, and encouragement....\n...2. **Training programs:** Many running groups offer structured training programs for beginners, which typically include:...\n...When searching for a running group or club, be sure to ask about their beginner-friendly offerings and what they can provide to support your running goals. Some questions to ask include:...\n...user: I'm thinking of joining a running group that meets on Saturday mornings. Would it be possible to get a route suggestion from them before I decide to join, so I can get an idea of the type of routes they typically do? That way, I can make sure it's a good fit for me.\nassistant: That's a great idea! It's completely reasonable to ask for a route suggestion from the running group before joining. In fact, many running groups would be happy to provide you with route information or even invite you to join a trial run to get a feel for the group's dynamics and routes....\n...Remember, it's okay to ask questions and do your due diligence before committing to a running group. Good luck, and I hope you find a group that suits your needs!\nuser: I'm excited to explore new routes and join a running group to stay motivated and accountable. Can you suggest a good way to reach out to the running group and ask for a route suggestion?...\n...I'm [Your Name], and I'm interested in joining your Saturday morning running group. I recently completed a 5K charity run with a time of 27:12 and am looking to continue improving my running while exploring new routes and meeting fellow runners....\n...1. **Be respectful of their time:** Keep your message concise and to the point. Avoid asking too many questions or requesting too much information upfront....\n\n            Retrieved entities:\n            - entity entity:<0> [CONCEPT]: running group or club; Concept named running group or club.\n- entity entity:<1> [CONCEPT]: running; Concept named running.\n- entity entity:<2> [CONCEPT]: tennis; Concept named tennis.\n- entity entity:<3> [CONCEPT]: volleyball; Concept named volleyball.\n- entity entity:<4> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_memory_support_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "hypothesis": {
+                            "description": "Short answer that can be produced from the retrieved memory context.",
+                            "type": "string"
+                        },
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether retrieved memory is sufficient to support the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "hypothesis",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalSupportJudge": true,
+                "questionId": "gpt4_b0863698",
+                "questionType": "temporal-reasoning"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [],
+                    "metadata": {
+                        "openaiReasoningItems": [
+                            {
+                                "encrypted_content": "<encrypted-content>",
+                                "summary": [],
+                                "type": "reasoning"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"hypothesis\":\"You participated in the 5K charity run 7 days ago.\",\"reason\":\"The memory states the user completed the 5K charity run on 2023-03-19, which is 7 days before the question date 2023-03-26.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2807,
+                "completionTokens": 133,
+                "thinkingTokens": 54,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

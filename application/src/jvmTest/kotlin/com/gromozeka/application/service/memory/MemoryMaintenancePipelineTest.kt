@@ -165,7 +165,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(sources = 3),
                     retrievalRequests = listOf(
@@ -246,7 +246,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(sources = 3),
                     retrievalRequests = listOf(
@@ -2425,7 +2425,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.RATIONALE,
+                    contextMode = MemoryReadPlan.ContextMode.RATIONALE,
                     retrievalBudget = MemoryRetrievalBudget(episodes = 1),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
@@ -2507,7 +2507,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.RATIONALE,
+                    contextMode = MemoryReadPlan.ContextMode.RATIONALE,
                     retrievalBudget = MemoryRetrievalBudget(sources = 2, episodes = 2),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
@@ -2582,7 +2582,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     retrievalBudget = MemoryRetrievalBudget(claims = 4),
                     retrievalRequests = listOf(
@@ -2653,7 +2653,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(sources = 2, claims = 1),
                     retrievalRequests = emptyList(),
                 )
@@ -2740,7 +2740,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 3),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
@@ -2803,7 +2803,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coreBlocks = setOf(MemoryReadPlan.CoreBlock.PROFILE),
                     retrievalBudget = MemoryRetrievalBudget(claims = 1, sources = 1),
                     retrievalRequests = listOf(
@@ -2936,7 +2936,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coreBlocks = setOf(MemoryReadPlan.CoreBlock.PROFILE),
                     retrievalBudget = MemoryRetrievalBudget(claims = 5, notes = 2),
                     retrievalRequests = listOf(
@@ -3045,7 +3045,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(notes = 1),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
@@ -3310,7 +3310,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 3),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
@@ -3381,7 +3381,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1, sources = 2),
                     retrievalRequests = listOf(
@@ -3456,7 +3456,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 2),
                     retrievalRequests = listOf(
@@ -3529,7 +3529,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 2),
@@ -3586,7 +3586,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.ACTION_ITEM,
+                    contextMode = MemoryReadPlan.ContextMode.ACTION_ITEM,
                     requireEvidenceFallback = false,
                     retrievalBudget = MemoryRetrievalBudget(actionItems = 1, sources = 1),
                     retrievalRequests = listOf(
@@ -3608,7 +3608,7 @@ class MemoryMaintenancePipelineTest {
         assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, taskSource.id.value) })
         assertTrue(prompt.contains("title=\"Add selector trace report to memory e2e\""))
         assertTrue(prompt.contains("description=\"Expose selector decisions in memory e2e reports.\""))
-        assertTrue(prompt.contains("Retrieved evidence:\nnot requested for this answer mode"))
+        assertTrue(prompt.contains("Retrieved evidence:\nnot requested for this context mode"))
     }
 
     @Test
@@ -3638,7 +3638,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
@@ -3695,7 +3695,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 2),
                     retrievalRequests = listOf(
@@ -3790,7 +3790,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 1),
                     retrievalRequests = listOf(
@@ -3929,7 +3929,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 0, sources = 1),
                     retrievalRequests = listOf(
@@ -3993,7 +3993,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.MIXED,
+                    contextMode = MemoryReadPlan.ContextMode.MIXED,
                     requireEvidenceFallback = false,
                     retrievalBudget = MemoryRetrievalBudget(claims = 0, sources = 1),
                     retrievalRequests = listOf(
@@ -4061,7 +4061,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     coverageMode = MemoryReadPlan.CoverageMode.COMPLETE_SET,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 0, sources = 1),
@@ -4138,7 +4138,7 @@ class MemoryMaintenancePipelineTest {
         )
         val readPlan = MemoryReadPlan(
             needMemory = true,
-            answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+            contextMode = MemoryReadPlan.ContextMode.FACTUAL,
             retrievalBudget = MemoryRetrievalBudget(claims = 4),
             retrievalRequests = listOf(
                 MemoryReadPlan.RetrievalRequest(
@@ -4232,7 +4232,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.MIXED,
+                    contextMode = MemoryReadPlan.ContextMode.MIXED,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1, notes = 1, sources = 2),
                     retrievalRequests = listOf(
@@ -4300,7 +4300,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.RATIONALE,
+                    contextMode = MemoryReadPlan.ContextMode.RATIONALE,
                     requireEvidenceFallback = true,
                     retrievalBudget = MemoryRetrievalBudget(sources = 1),
                     retrievalRequests = listOf(
@@ -4412,7 +4412,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = false,
                     retrievalBudget = MemoryRetrievalBudget(sources = 1),
                     retrievalRequests = listOf(
@@ -4432,7 +4432,7 @@ class MemoryMaintenancePipelineTest {
 
         assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, striderSource.id.value)))
         assertTrue(prompt.contains("Кажется, Strider раньше работал стабильнее, но я не уверен."))
-        assertTrue(!prompt.contains("Retrieved evidence:\nnot requested for this answer mode"))
+        assertTrue(!prompt.contains("Retrieved evidence:\nnot requested for this context mode"))
     }
 
     @Test
@@ -4458,7 +4458,7 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    contextMode = MemoryReadPlan.ContextMode.FACTUAL,
                     requireEvidenceFallback = false,
                     retrievalBudget = MemoryRetrievalBudget(claims = 1),
                     retrievalRequests = listOf(
@@ -4896,7 +4896,7 @@ private fun projectFactReadPlan(
 ): MemoryReadPlan =
     MemoryReadPlan(
         needMemory = true,
-        answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+        contextMode = MemoryReadPlan.ContextMode.FACTUAL,
         coreBlocks = setOf(MemoryReadPlan.CoreBlock.PROFILE),
         retrievalBudget = MemoryRetrievalBudget(claims = claims, notes = notes),
         retrievalRequests = listOf(
