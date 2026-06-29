@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "46198ff8c6812147be3f5c12a5077b422bddb32b48d5856918c3a4e36f2a7b83",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "/Users/lewik/code/gromozeka/dev",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning another trip to New York City and I was wondering if you could remind me of that vegan eatery you recommended last time, the one with multiple locations throughout the city?\n\n                                Question date:\n                                2023/05/29 (Mon) 18:21\n\n                                Noisy expected-answer label:\n                                By Chloe\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 05:17\nTranscript:\nuser: As an avid foodie, I'm interested in trying out some local cuisine. Can you suggest any off-the-beaten-path restaurants or food markets?\nassistant: Certainly! Depending on the area you're in, there are likely some hidden gems for food explorers. Here are a few suggestions:\n\n1. If you're in a coastal area, check out fish markets that offer fresh catches from the sea. These markets often have local, seasonal specialties that you won't find anywhere else.\n\n2. Look for farmer's markets or farm-to-table restaurants. These are great places to try local produce that's in season, along with other specialties like artisanal cheeses, homemade jams, and locally sourced meats.\n\n3. Explore ethnic neighborhoods, where you can find authentic restaurants offering traditional dishes from different cultures. For example, you might find a Vietnamese pho spot, a Mexican taqueria, or an Indian curry house.\n\n4. Look for food trucks or street food vendors. Many cities have \"food truck courts\" or \"street food festivals,\" where you can sample various dishes from mobile vendors.\n\n5. Check out local microbreweries or distilleries, many of which have tasting rooms that offer small bites to complement their libations.\n\nRemember, half the fun of food exploration is in the discovery. So don't be afraid to wander into a new neighborhood or strike up a conversation with a local about their favorite food spots!\nuser: I absolutely love trying out new types of food! Do you have any specific recommendations for a city like New York? I'm always looking for new ideas when I'm there.\nassistant: Certainly! New York City is a mecca for foodies, full of endless options for exploring new flavors and cuisines. Here are a few suggestions:\n\n1. Check out the many food halls scattered throughout the city, such as Chelsea Market or Smorgasburg. These markets offer a plethora of food options all in one place.\n\n2. Venture into Flushing, Queens, for some of the best Chinese, Korean, and Japanese food in the city. You'll find everything from dim sum to Korean BBQ to sushi.\n\n3. Head to Jackson Heights, Queens, for authentic South Asian cuisine, such as Indian and Pakistani food. Be sure to try some delicious biryani or kebabs.\n\n4. Visit Arthur Avenue in the Bronx, the city's \"real Little Italy,\" for delicious Italian food. You can indulge in fresh mozzarella, homemade pasta, and some of the best Italian pastries in the city.\n\n5. Take a food tour of the Lower East Side, where you can try Jewish favorites like knishes and pastrami, as well as other international foods.\n\nRemember, these are only a few ideas to get you started. New York City is full of surprises, so keep an open mind and be ready to discover new flavors and cuisines!\nuser: Wow, those suggestions all sound amazing! My mouth is watering just thinking about it. Do you have any recommendations for vegan or vegetarian options in the city?\nassistant: Absolutely! New York City is very vegan and vegetarian friendly, and there are countless options to choose from. Here are some recommendations:\n\n1. Check out By Chloe, a popular plant-based eatery with multiple locations throughout the city. They offer vegan burgers, salads, pastas, and baked goods.\n\n2. Visit Candle 79 in the Upper East Side. This restaurant offers upscale vegan cuisine made from organic, locally-sourced ingredients.\n\n3. Try Superiority Burger, a small spot in the East Village that is very popular for its plant-based burger and unique vegetarian sides.\n\n4. Look for juice bars like Juice Generation and Pure Green, which offer a variety of healthy, plant-based bowls, smoothies, and juices. \n\n5. Pop into Peacefood Cafe, a cozy spot offering a wide variety of vegan soups, sandwiches, salads, and desserts. \n\nThese are just a few of the many vegan and vegetarian options available in New York City. Be sure to do some research in advance and ask locals for recommendations, as there are a ton of hidden gems throughout the city!\nuser: Wow, these recommendations all have me drooling! I can't wait to indulge in some delicious eats. Do you have any suggestions for the best coffee shops in the city? I can't explore on an empty stomach!\nassistant: Of course! New York City has no shortage of excellent coffee shops. Here are a few recommendations:\n\n1. Blue Bottle Coffee - with multiple locations throughout the city, Blue Bottle is known for its high-quality, carefully crafted coffee.\n\n2. Toby's Estate Coffee - located in Brooklyn, with other locations throughout NYC, Toby's Estate offers a variety of specialty coffee drinks, including pour-overs and nitro cold brew.\n\n3. Joe Coffee - another popular spot with multiple locations throughout the city, Joe's focuses on single-origin specialty coffee and offers a sophisticated atmosphere.\n\n4. Irving Farm Coffee Roasters - with locations in Manhattan and Brooklyn, Irving Farm sources and roasts their own coffee beans and offers a variety of brewing methods, including pour-overs and French press.\n\n5. Café Grumpy - a local favorite with locations throughout Brooklyn and Manhattan, this coffee shop offers a cozy atmosphere and a variety of coffee and espresso drinks.\n\nThese are just a few options to get you started. New York City is home to countless coffee shops, so be sure to ask locals for their favorites and do some exploring!\n                                ```\n\n                                Candidate answer:\n                                By Chloe.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "responseFormat": {
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "d596882b",
+                "questionType": "single-session-assistant"
+            }
+        },
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are an objective evaluator for a long-term-memory benchmark.\nDecide whether the candidate answer correctly answers the question in the same core direction as the noisy expected-answer label.\nThe expected-answer label can contain noisy illustrative examples, broad inferences, or details not present in the gold evidence.\nUse the gold evidence only to decide which expected-answer details are actually evidence-backed.\nMark supported=true when the candidate answer is equivalent to the evidence-backed central expected answer or contains all evidence-backed central facts needed to answer.\nMark supported=false when the candidate answer misses an evidence-backed central answer, contradicts it, leaves several plausible competing answers, or only answers a weaker unrelated subset.\nDo not require expected-answer details that are absent from the gold evidence.\nFor count/list questions, independently enumerate the evidence-backed items from the gold evidence. If the expected numeric count is evidence-backed, mark supported=false when the candidate gives a different count or misses a counted evidence-backed item.\nFor count/list questions, judge evidence-backed item equivalence by category fit and explicit user attribution rather than exact verb wording. A different lifecycle or status verb can still support the answer when the gold evidence clearly places the item inside the requested category.\nFor imported-source events with an explicit month/day but no explicit year, past-tense wording, and a same-year normalization that would put the event after the source or question date, treat the inferred year as uncertain. For relative-window aggregate/count questions, do not reject otherwise matching explicit numeric operands solely as future or outside-window.\nFor replaced/fixed/upgraded functional-slot counts, count paired gold evidence that an old item was removed, discarded, donated, given away, or got rid of and a new item or upgrade took over the same ordinary function. The new item's source, such as gift, purchase, or existing ownership, is not an exclusion reason by itself.\nFor indirect replacement/upgrade evidence, count one functional slot when gold evidence connects a newly acquired, gifted, bought, adopted, or started-using item with removal, donation, give-away, or discard of an older same-role item, even when the source does not use the exact word \"replace\".\nTreat successor or substitute items as same-role when they serve the same ordinary user function or routine, even if their exact subtype differs. A same-source/session pattern of \"newer or more capable item introduced for a routine\" plus \"older same-domain item removed from inventory\" is replacement/upgrade evidence unless evidence explicitly says the items are unrelated.\nFor acquisition-style broad category counts, first-person evidence of a concrete personal copy or item is enough to count that item unless the question asks for transaction details such as price, store, payment, download source, or exact date.\nFor acquisition-style count/list questions, first-person evidence that the user got, received, acquired, bought, downloaded, adopted, or was given a concrete item from another person or source is acquisition evidence. Relative timing such as \"last month\" resolves from the source/session date unless contradicted by more specific evidence.\nFor relative month-window questions over imported chat sources, a first-person source-local cue such as \"last month\" can satisfy the requested month window when the source/session date is close to the question date and no explicit date places the event outside the window. Do not reject it solely because the exact day inside that relative month is unknown.\nFor broad category counts, do not require exact subtype words or exact title when ordinary language makes the evidence-backed personal item a member, copy, or instance of the requested category.\nFor broad counts of works or content items, count evidence-backed physical or digital carriers, copies, files, or personal items of that work as the work itself when user attribution is explicit.\nFor count/list questions, judge broad category labels as category-fit tests rather than exact-word qualifiers. Do not mark an answer unsupported only because the evidence names a member, carrier, copy, or concrete instance instead of repeating the category label.\nFor broad category counts, do not require an exact subtype word in evidence unless the evidence gives an explicit conflicting subtype/category or the question asks for exact subtype/transaction details.\nFor location-scoped item count/list questions, judge concrete objects as category-fitting when gold evidence explicitly places them in that location or their ordinary function fits that location. Do not narrow a location item category to an arbitrary subtype unless the question says so.\nFor qualified recall questions, the candidate's direct primary answer must satisfy every explicit qualifier supported by the gold evidence. Qualifiers include item ingredients, components, materials, features, owner, source, role, date, venue, relation, and other descriptive modifiers. Mark supported=false when it answers only a weaker partial match while another evidence-backed item satisfies the full qualified description. Mark supported=false when the candidate gives a conflicting or weaker primary answer and mentions the evidence-backed fully-qualified answer only as a caveat, aside, alternative, or correction.\nFor concrete who/from-whom/source/giver expected-answer labels, mark supported=false when the candidate answers that memory is insufficient or unknown without providing the evidence-backed expected giver/source. If the gold evidence contains the expected giver/source for the only target-period received/acquired personal item, noisy or mismatched object wording in the question does not make an insufficiency answer supported; the candidate may caveat the object mismatch, but it must still provide the giver/source.\nWhen the expected-answer label says the information is not enough, not mentioned, unknown, or similar, mark a concrete candidate answer supported=true only if the gold evidence explicitly contains the asked fully-qualified fact. Do not overturn an insufficiency label by stitching together adjacent facts whose modifiers differ.\nFor preference or personalization questions, supported=true when the candidate uses the relevant user-specific preference or fact in the same core direction.\nFor temporal questions, do not penalize off-by-one errors for counts of days, weeks, months, or similar durations.\nFor remaining-amount questions such as \"how many/much do I need to earn/save/add/pay/lose to reach/redeem/qualify\", the evidence-backed central answer is the remaining delta between current value and required target. Mark supported=false when the candidate's primary answer gives only the target total or only the current value instead of the remaining delta, even if that total/current value appears in gold evidence.\nFor knowledge-update questions, the candidate may mention previous information if it also clearly gives the updated required answer.\nReturn only the configured JSON object."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                                Question:\n                                I'm planning another trip to New York City and I was wondering if you could remind me of that vegan eatery you recommended last time, the one with multiple locations throughout the city?\n\n                                Question date:\n                                2023/05/29 (Mon) 18:21\n\n                                Noisy expected-answer label:\n                                By Chloe\n\n                                Gold evidence:\n                                ```text\n                                LongMemEval past chat session.\nSession date: 2023/05/23 (Tue) 05:17\nTranscript:\nuser: As an avid foodie, I'm interested in trying out some local cuisine. Can you suggest any off-the-beaten-path restaurants or food markets?\nassistant: Certainly! Depending on the area you're in, there are likely some hidden gems for food explorers. Here are a few suggestions:\n\n1. If you're in a coastal area, check out fish markets that offer fresh catches from the sea. These markets often have local, seasonal specialties that you won't find anywhere else.\n\n2. Look for farmer's markets or farm-to-table restaurants. These are great places to try local produce that's in season, along with other specialties like artisanal cheeses, homemade jams, and locally sourced meats.\n\n3. Explore ethnic neighborhoods, where you can find authentic restaurants offering traditional dishes from different cultures. For example, you might find a Vietnamese pho spot, a Mexican taqueria, or an Indian curry house.\n\n4. Look for food trucks or street food vendors. Many cities have \"food truck courts\" or \"street food festivals,\" where you can sample various dishes from mobile vendors.\n\n5. Check out local microbreweries or distilleries, many of which have tasting rooms that offer small bites to complement their libations.\n\nRemember, half the fun of food exploration is in the discovery. So don't be afraid to wander into a new neighborhood or strike up a conversation with a local about their favorite food spots!\nuser: I absolutely love trying out new types of food! Do you have any specific recommendations for a city like New York? I'm always looking for new ideas when I'm there.\nassistant: Certainly! New York City is a mecca for foodies, full of endless options for exploring new flavors and cuisines. Here are a few suggestions:\n\n1. Check out the many food halls scattered throughout the city, such as Chelsea Market or Smorgasburg. These markets offer a plethora of food options all in one place.\n\n2. Venture into Flushing, Queens, for some of the best Chinese, Korean, and Japanese food in the city. You'll find everything from dim sum to Korean BBQ to sushi.\n\n3. Head to Jackson Heights, Queens, for authentic South Asian cuisine, such as Indian and Pakistani food. Be sure to try some delicious biryani or kebabs.\n\n4. Visit Arthur Avenue in the Bronx, the city's \"real Little Italy,\" for delicious Italian food. You can indulge in fresh mozzarella, homemade pasta, and some of the best Italian pastries in the city.\n\n5. Take a food tour of the Lower East Side, where you can try Jewish favorites like knishes and pastrami, as well as other international foods.\n\nRemember, these are only a few ideas to get you started. New York City is full of surprises, so keep an open mind and be ready to discover new flavors and cuisines!\nuser: Wow, those suggestions all sound amazing! My mouth is watering just thinking about it. Do you have any recommendations for vegan or vegetarian options in the city?\nassistant: Absolutely! New York City is very vegan and vegetarian friendly, and there are countless options to choose from. Here are some recommendations:\n\n1. Check out By Chloe, a popular plant-based eatery with multiple locations throughout the city. They offer vegan burgers, salads, pastas, and baked goods.\n\n2. Visit Candle 79 in the Upper East Side. This restaurant offers upscale vegan cuisine made from organic, locally-sourced ingredients.\n\n3. Try Superiority Burger, a small spot in the East Village that is very popular for its plant-based burger and unique vegetarian sides.\n\n4. Look for juice bars like Juice Generation and Pure Green, which offer a variety of healthy, plant-based bowls, smoothies, and juices. \n\n5. Pop into Peacefood Cafe, a cozy spot offering a wide variety of vegan soups, sandwiches, salads, and desserts. \n\nThese are just a few of the many vegan and vegetarian options available in New York City. Be sure to do some research in advance and ask locals for recommendations, as there are a ton of hidden gems throughout the city!\nuser: Wow, these recommendations all have me drooling! I can't wait to indulge in some delicious eats. Do you have any suggestions for the best coffee shops in the city? I can't explore on an empty stomach!\nassistant: Of course! New York City has no shortage of excellent coffee shops. Here are a few recommendations:\n\n1. Blue Bottle Coffee - with multiple locations throughout the city, Blue Bottle is known for its high-quality, carefully crafted coffee.\n\n2. Toby's Estate Coffee - located in Brooklyn, with other locations throughout NYC, Toby's Estate offers a variety of specialty coffee drinks, including pour-overs and nitro cold brew.\n\n3. Joe Coffee - another popular spot with multiple locations throughout the city, Joe's focuses on single-origin specialty coffee and offers a sophisticated atmosphere.\n\n4. Irving Farm Coffee Roasters - with locations in Manhattan and Brooklyn, Irving Farm sources and roasts their own coffee beans and offers a variety of brewing methods, including pour-overs and French press.\n\n5. Café Grumpy - a local favorite with locations throughout Brooklyn and Manhattan, this coffee shop offers a cozy atmosphere and a variety of coffee and espresso drinks.\n\nThese are just a few options to get you started. New York City is home to countless coffee shops, so be sure to ask locals for their favorites and do some exploring!\n                                ```\n\n                                Candidate answer:\n                                By Chloe.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 300,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "longmemeval_answer_judge",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "reason": {
+                            "description": "One short sentence explaining the judgement.",
+                            "type": "string"
+                        },
+                        "supported": {
+                            "description": "Whether the candidate answer satisfies the expected answer.",
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "supported",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "longMemEvalAnswerJudge": true,
+                "questionId": "d596882b",
+                "questionType": "single-session-assistant"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"reason\":\"The evidence explicitly identifies By Chloe as the vegan plant-based eatery with multiple locations throughout NYC.\",\"supported\":true}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2553,
+                "completionTokens": 40,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
