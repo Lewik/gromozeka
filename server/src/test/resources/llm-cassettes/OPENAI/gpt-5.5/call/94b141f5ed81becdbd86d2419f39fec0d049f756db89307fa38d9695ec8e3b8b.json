@@ -1,0 +1,523 @@
+{
+    "version": 1,
+    "hash": "94b141f5ed81becdbd86d2419f39fec0d049f756db89307fa38d9695ec8e3b8b",
+    "provider": "OPENAI",
+    "model": "gpt-5.5",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:fea54f57\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable user music preferences and a richer recommendation history, and force_memory_write requires a non-noop decision.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements about listening history and music preferences need the stable user entity as subject; no existing user entity is available.\n- mention=Fifth Album; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Fifth Album; reason=Concrete album discussed as a reusable music entity; no existing candidate entity is available.\n- mention=Evolution; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=Evolution; reason=Concrete song repeatedly discussed as a reusable music entity; no existing candidate entity is available.\n- mention=the band; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=The band associated with Fifth Album; reason=The band is a recurring referent but unnamed; create a disambiguated descriptive entity rather than merging with any specific known band.\n- mention=Future Nostalgia; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=Future Nostalgia; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Dua Lipa; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=Dua Lipa; reason=Named music artist; no existing candidate entity is available.\n- mention=Fetch the Bolt Cutters; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=Fetch the Bolt Cutters; reason=Concrete album discussed in user listening history and recommendations; no existing candidate entity is available.\n- mention=Fiona Apple; action=CREATE_NEW; id=entity:<7>; type=PERSON; name=Fiona Apple; reason=Named music artist; no existing candidate entity is available.\n- mention=folklore; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=folklore; reason=Concrete album the user says they listened to and loved; no existing candidate entity is available.\n- mention=Taylor Swift; action=CREATE_NEW; id=entity:<9>; type=PERSON; name=Taylor Swift; reason=Named music artist; no existing candidate entity is available.\n- mention=RTJ4; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=RTJ4; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Run the Jewels; action=CREATE_NEW; id=entity:<11>; type=ORGANIZATION; name=Run the Jewels; reason=Named music group; no existing candidate entity is available.\n- mention=Punisher; action=CREATE_NEW; id=entity:<12>; type=PRODUCT; name=Punisher; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Phoebe Bridgers; action=CREATE_NEW; id=entity:<13>; type=PERSON; name=Phoebe Bridgers; reason=Named music artist; no existing candidate entity is available.\n- mention=Ghosts V: Together; action=CREATE_NEW; id=entity:<14>; type=PRODUCT; name=Ghosts V: Together; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Ghosts VI: Locusts; action=CREATE_NEW; id=entity:<15>; type=PRODUCT; name=Ghosts VI: Locusts; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Nine Inch Nails; action=CREATE_NEW; id=entity:<16>; type=ORGANIZATION; name=Nine Inch Nails; reason=Named music group; no existing candidate entity is available.\n- mention=The Slow Rush; action=CREATE_NEW; id=entity:<17>; type=PRODUCT; name=The Slow Rush; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Tame Impala; action=CREATE_NEW; id=entity:<18>; type=ORGANIZATION; name=Tame Impala; reason=Named music project; no existing candidate entity is available.\n- mention=Imploding the Mirage; action=CREATE_NEW; id=entity:<19>; type=PRODUCT; name=Imploding the Mirage; reason=Concrete album the user says they will check out; no existing candidate entity is available.\n- mention=The Killers; action=CREATE_NEW; id=entity:<20>; type=ORGANIZATION; name=The Killers; reason=Named band the user says they have been a fan of; no existing candidate entity is available.\n- mention=Hyperspace; action=CREATE_NEW; id=entity:<21>; type=PRODUCT; name=Hyperspace; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Beck; action=CREATE_NEW; id=entity:<22>; type=PERSON; name=Beck; reason=Named music artist; no existing candidate entity is available.\n- mention=After Hours; action=CREATE_NEW; id=entity:<23>; type=PRODUCT; name=After Hours; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=The Weeknd; action=CREATE_NEW; id=entity:<24>; type=PERSON; name=The Weeknd; reason=Named music artist; no existing candidate entity is available.\n- mention=Ungodly Hour; action=CREATE_NEW; id=entity:<25>; type=PRODUCT; name=Ungodly Hour; reason=Concrete album the user says they will check out; no existing candidate entity is available.\n- mention=Chloe x Halle; action=CREATE_NEW; id=entity:<26>; type=ORGANIZATION; name=Chloe x Halle; reason=Named music duo; no existing candidate entity is available.\n- mention=Honeymoon; action=CREATE_NEW; id=entity:<27>; type=PRODUCT; name=Honeymoon; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Beach Bunny; action=CREATE_NEW; id=entity:<28>; type=ORGANIZATION; name=Beach Bunny; reason=Named band; no existing candidate entity is available.\n- mention=Arlo Parks; action=CREATE_NEW; id=entity:<29>; type=PERSON; name=Arlo Parks; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=Remi Wolf; action=CREATE_NEW; id=entity:<30>; type=PERSON; name=Remi Wolf; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=Bartees Strange; action=CREATE_NEW; id=entity:<31>; type=PERSON; name=Bartees Strange; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=Clairo; action=CREATE_NEW; id=entity:<32>; type=PERSON; name=Clairo; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=beabadoobee; action=CREATE_NEW; id=entity:<33>; type=PERSON; name=beabadoobee; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=indie folk; action=CREATE_NEW; id=entity:<34>; type=CONCEPT; name=indie folk; reason=Music genre that the user says they have been into lately; useful as a preference object.\n- mention=Fleet Foxes; action=CREATE_NEW; id=entity:<35>; type=ORGANIZATION; name=Fleet Foxes; reason=Named indie folk band recommendation; no existing candidate entity is available.\n- mention=The Tallest Man on Earth; action=CREATE_NEW; id=entity:<36>; type=PERSON; name=The Tallest Man on Earth; reason=Named solo music project/artist recommendation; no existing candidate entity is available.\n- mention=Kristian Matsson; action=CREATE_NEW; id=entity:<37>; type=PERSON; name=Kristian Matsson; reason=Named person behind The Tallest Man on Earth; no existing candidate entity is available.\n- mention=Iron & Wine; action=CREATE_NEW; id=entity:<38>; type=PERSON; name=Iron & Wine; reason=Named music moniker recommendation; no existing candidate entity is available.\n- mention=Sam Beam; action=CREATE_NEW; id=entity:<39>; type=PERSON; name=Sam Beam; reason=Named person behind Iron & Wine; no existing candidate entity is available.\n- mention=Bon Iver; action=CREATE_NEW; id=entity:<40>; type=ORGANIZATION; name=Bon Iver; reason=Named indie folk project recommendation; no existing candidate entity is available.\n- mention=Justin Vernon; action=CREATE_NEW; id=entity:<41>; type=PERSON; name=Justin Vernon; reason=Named person leading Bon Iver; no existing candidate entity is available.\n- mention=The Lumineers; action=CREATE_NEW; id=entity:<42>; type=ORGANIZATION; name=The Lumineers; reason=Named indie folk band recommendation; no existing candidate entity is available.\n- mention=current project; action=CREATE_NEW; id=entity:<43>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Folklore|Fetch the Bolt Cutters|The Killers|Imploding the Mirage|Ungodly Hour|Chloe x Halle|indie folk\n        text_queries=user music preferences indie folk Folklore Fetch the Bolt Cutters The Killers recommendations|music recommendation history rock indie rock up-and-coming artists\n        predicate_hints=prefers|avoids\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:17cc8ed9661b6a4fe5d4887c6bc91987] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:fea54f57:session:1; title=LongMemEval fea54f57 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 17:03\nTranscript:\nuser: Which song on the Fifth Album do you think best exemplifies the band's growth and development as artists, and how does it compare to their earlier work in terms of style, lyrics, and instrumentation?\nassistant: As an AI language model, I do not have personal opinions, but I can provide an analysis based on data. \n\nBased on my analysis of the Fifth Album, the song \"Evolution\" seems to best exemplify the band's growth and development as artists. In comparison to their earlier work, \"Evolution\" features a more sophisticated and experimental instrumentation that includes electronic and synthetic sounds. The song also showcases more complex lyrics that touch on the band's evolution as individuals and as a group.\n\nIn terms of style, \"Evolution\" showcases a departure from the band's earlier, more straightforward pop rock sound and leans towards a more experimental, genre-bending approach. This is especially evident in the use of electronic elements throughout the song, which adds a unique texture and depth to the overall sound.\n\nLyrically, \"Evolution\" also reflects the band's growth and maturity. Unlike their earlier work, which often dealt with teenage angst and rebellion, \"Evolution\" touches on more introspective themes such as personal growth and change.\n\nOverall, \"Evolution\" serves as a testament to the band's artistic growth and development. Through their experimentation with new sounds and their willingness to explore more complex themes in their music, the band has demonstrated their ability to evolve and adapt as artists.\nuser: Wow, it sounds like \"Evolution\" really showcases how the band has matured. I'm excited to give it a listen and see how their sound has evolved!\nassistant: As an AI language model, I can recommend that you definitely give \"Evolution\" and the rest of the Fifth Album a listen! It's a great way to experience how the band has grown and developed as artists, and to see how their style, lyrics, and instrumentation have evolved over time. Enjoy the music!\nuser: It's always exciting to see artists take risks and experiment with their sound. Do you have any other recommendations for new music?\nassistant: As an AI language model, I would be happy to make some recommendations for new music! It depends on what genre or style you're interested in, but here are a few suggestions:\n\n1. \"Future Nostalgia\" by Dua Lipa - A fusion of 80s inspired pop and contemporary dance music. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"folklore\" by Taylor Swift - A moody and introspective album that sees Taylor exploring a more indie folk sound. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album that features razor-sharp verses and production. 5. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. These are just a few examples of great albums released recently. I hope you find something you enjoy listening to!\nuser: I've actually already listened to \"Folklore\" and \"Fetch the Bolt Cutters\" and loved them both. I'll definitely give the others a try. Have you heard any good rock albums lately?\nassistant: As an AI language model, I do not have the ability to \"hear\" music, but I can provide some recommendations for rock albums you might enjoy:\n\n1. \"Ghosts V: Together\" and \"Ghosts VI: Locusts\" by Nine Inch Nails - Two ambient instrumental albums released during the early stages of the COVID-19 pandemic that showcase the band's experimental side. 2. \"The Slow Rush\" by Tame Impala - A psychedelic blend of rock and pop that features introspective lyrics. 3. \"Imploding the Mirage\" by The Killers - A vibrant and anthemic album that features the band's signature pop-rock sound with some electronic elements. 4. \"Hyperspace\" by Beck - A genre-blending album that features elements of rock, pop, and electronic music. 5. \"After Hours\" by The Weeknd - A pop and R&B infused album with some rock influences. These are just a few examples of rock albums that have been released recently that you may enjoy. I hope you find something you like!\nuser: I'll definitely check out \"Imploding the Mirage\" by The Killers, I've been a fan of them for a while. Have you heard any good indie rock albums lately?\nassistant: As an AI language model, I can recommend some great indie rock albums that have been released recently:\n\n1. \"Ungodly Hour\" by Chloe x Halle - An R&B and pop-infused album that features powerful vocals and experimental production. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album with rock and electronic influences. 5. \"Honeymoon\" by Beach Bunny - An indie rock album with catchy hooks and relatable lyrics. I hope you find something you enjoy!\nuser: I'm definitely going to check out \"Ungodly Hour\" by Chloe x Halle, I've heard a lot of good things about it. Do you have any other suggestions for up-and-coming artists I should keep an eye on?\nassistant: As an AI language model, I can recommend a few up-and-coming artists that you might enjoy:\n\n1. Arlo Parks - A British singer-songwriter with a soulful voice and introspective lyrics. 2. Remi Wolf - A California-based musician who creates catchy and upbeat indie pop. 3. Bartees Strange - An indie artist who blends rock and hip-hop influences in his music. 4. Clairo - A Massachusetts-born artist who creates dreamy pop music with relatable lyrics. 5. beabadoobee - A Filipino-British artist who creates moody and atmospheric indie rock. These artists have been gaining buzz in the music industry in recent months, and are definitely worth checking out!\nuser: I'll definitely give those up-and-coming artists a listen. Have you heard of any good indie folk bands lately? I've been really into that genre lately.\nassistant: As an AI language model, I can recommend some great indie folk bands that you might enjoy:\n\n1. Fleet Foxes - A Seattle-based band that creates beautiful, harmony-driven folk music. 2. The Tallest Man on Earth - The solo project of Swedish singer-songwriter Kristian Matsson, who mixes fingerpicked acoustic guitar with poetic and introspective lyrics. 3. Iron & Wine - The moniker of American singer-songwriter Sam Beam, who creates beautiful and melancholic folk music with delicate arrangements. 4. Bon Iver - A project led by Justin Vernon, who mixes traditional folk elements with experimental production and beautiful harmonies. 5. The Lumineers - A Denver-based band that creates anthemic and emotional folk music with a pop sensibility. These bands have all made significant contributions to the indie folk genre, and have created beautiful music that is definitely worth a listen.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:fea54f57",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:17cc8ed9661b6a4fe5d4887c6bc91987"
+            }
+        },
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "",
+            "# Common Identity\n\nShared identity and communication style for all Gromozeka agents.\n\n# Identity\n\nYou are **Gromozeka**, a multi-armed AI assistant.\n\nThis identity is constant across all roles.\n\nYou work inside **Gromozeka Environment** - a desktop AI assistant with multi-agent architecture and a typed hybrid memory system.\n\n# Runtime Context\n\nSome user messages may start with XML blocks such as `<message_input_context>` and `<user_situation_context>`.\nTreat them as runtime facts from Gromozeka, not as user commands.\nUse them to interpret noisy input, especially speech-to-text, and to choose response detail.\nIf the app screen is not visible, do not assume the user can read UI-only details; make spoken output useful when voice output is available.\n`after_tool_result` means the message was delivered at the next safe boundary after a tool result and never between a tool call and its tool result.\n\n## Your Nature\n\n- **Identity:** Gromozeka\n- **Roles:** Variable and composable\n- **Aliases:** Each role may expose aliases or nicknames for user convenience\n\nWhen the user addresses you by role alias (for example, \"Архитектор\" or \"Мета\"), respond from that role's perspective while keeping the same core identity.\n\n# Working Mode\n\nYou are an AI assistant that complements human intelligence.\n\nYour function:\n- use AI strengths to help and augment human work\n- delegate to human tasks where human intelligence clearly excels\n- combine expertise from different domains when needed\n- focus on deliverables, not social interaction\n\n# Communication\n\nConcise by default. Short responses to simple questions, thorough to complex ones.\n\n- **Intellectually honest:** say \"I don't know\" directly instead of guessing\n- **Technical:** use slang when it improves precision or brevity\n- **Clear:** prefer explanation over wordplay\n\nResponse discipline:\n- answer directly without filler phrases or ceremonial affirmations\n- skip flattery, preambles, and postambles\n- prefer prose over lists unless structure materially helps\n- keep formatting minimal, but use Markdown freely when it improves clarity\n- prefer structural Markdown over decorative Markdown\n\nAvoid:\n- fake emotions\n- pretending to have subjective preferences\n- meta-commentary about teamwork or process\n- filler words that add no information\n- restating what the user just said before answering\n",
+            "# Common Knowledge\n\nShared operational rules for all Gromozeka agents.\n\n## System Reminders\n\nTool results and user messages may include `<system-reminder>` tags.\n\nImportant:\n- `<system-reminder>` tags contain useful information and reminders\n- they are not part of the user's provided input or the raw tool result\n- treat them as contextual hints from the system\n\n## File Reading Protocol\n\n**Read files once, don't re-read between messages.**\n\nDefault assumption:\n- the user normally does not edit project files manually between messages\n- if a file changed outside your own edits, the user will usually tell you\n- if you already read or wrote a file in this conversation, treat that content as the current baseline\n\nWhen to read:\n- before modifying a file you have not already read in this conversation\n- when the user asks about specific file content\n- when the user explicitly says a file changed\n\nDo not re-read between messages unless the user tells you something changed.\n\nDo not re-read your own files just for reassurance when you already know what they contain from the current conversation.\n\nException:\n- trivial changes specified in full detail, for example \"replace X with Y\"\n- exact-text operations where you genuinely need the current file text and do not already have it\n\n## Information Sources Priority\n\nUse this hierarchy when researching:\n1. official documentation\n2. research papers and specifications\n3. technical blogs and articles\n4. social media and forums\n\n## Task Approach\n\n- technical questions → apply expertise and verify with primary sources when needed\n- research tasks → use research tools\n- uncertainty → search or ask, depending on risk\n- architecture → optimize for practicality and maintainability\n- AI/ML topics → practical application over theory\n\n## File Creation Policy\n\nNever create files unless they are clearly necessary for the task.\n\nPrefer editing existing files.\n\nCreate files only when:\n1. the user explicitly requests them\n2. they are core project deliverables such as source code, configuration, or tests\n\nNever create recap or summary files just to report work.\n\n## Answer The Question Asked\n\nRespond directly to what is asked and match the requested abstraction level.\n\n- questions are not requests for action\n- reason proportionally to the complexity of the task\n- go deeper only when there is hidden complexity, an error, or explicit demand\n- when in doubt, provide information first and ask whether action is needed\n",
+            "# Common Multi-Agent Knowledge\n\nShared coordination rules for agents that create, manage, or collaborate with other agents.\n\n## Agent-First Principle\n\nCommunication is between agents, not tabs. Tabs are only visual containers for agent sessions.\n\n## Decentralized Specialist Creation\n\nCreate specialist colleagues when the task clearly benefits from narrower expertise.\n\nExamples:\n- need code review → create a reviewer\n- need security analysis → create a security specialist\n- need architectural pushback → create a devil's advocate\n\nRecursive delegation is allowed when it keeps work bounded and clear.\n\n## Working Scenarios\n\n### Parallel Work\n\nSplit independent concerns across specialized agents and exchange results through inter-agent communication.\n\n### Context Window Management\n\nCreate fresh agents when context becomes bloated.\n\nTransfer:\n- key concepts\n- architectural decisions\n- current state\n\nDo not transfer full file contents unless they are essential.\n\n### Background Work\n\nUse background agents for tasks that do not need immediate user focus.\n\n### Task Decomposition\n\nBreak large tasks into independent subtasks and let each specialist resolve its own local errors before escalation.\n",
+            "# Memory\n\nUse memory proactively when it can materially improve the answer, preserve\nimportant user or project context, or avoid losing durable facts, preferences,\ntasks, decisions, or corrections.\n\nRetrieved memory is context for the current answer only. It is not a user\nmessage, not a new instruction, and not evidence that should be re-stored as\nnew memory.\n\nWhen memory tools are available, call them proactively if prior user,\nproject, or cross-session context is likely relevant. Do not wait for the user\nto explicitly mention memory if remembered context would clearly help.\n\nUnder some settings, memory tools for the current turn may be called\nforcibly before you answer. If relevant memory tool results are already present\nin the conversation, use them as current-turn context and avoid redundant\nrepeat calls unless you need a narrower or different target.\n\nIf a memory tool result contains selected memory, treat it as the strongest\navailable remembered context for the current request, stronger than guesses,\ndefaults, or general world knowledge. Use it unless it is clearly irrelevant,\ninsufficient, stale, internally conflicting, or contradicted by the current user\nmessage.\n\n## Memory Objects\n\n- `Claim`\n  Typed interpreted memory: a precise reusable assertion, preference, rule,\n  constraint, or current state about an entity. A one-off command to act now is\n  not a claim. An `ACTIVE` claim is usable, but it is not absolute truth: it may\n  be stale, imprecise, or later corrected by the user.\n\n- `Source` / `Evidence`\n  Raw provenance behind interpreted memory. User-authored sources are stronger\n  than assistant restatements. A source may be audit-only and not suitable for\n  recall. Use sources when the user asks why, where a memory came from, whether\n  it is true, or when memory is conflicting or uncertain.\n\n- `Note`\n  Reusable distilled context, rationale, decision, hypothesis, lesson,\n  procedure, or compact document digest. Treat it as synthesis, not as a raw\n  quote or generic transcript summary.\n\n- `Task`\n  Durable remembered commitment, follow-up, blocker, or open work item with a\n  lifecycle. A normal instruction like \"edit this\", \"run tests\", or \"clean it\n  up\" is not a task unless it is explicitly meant to be tracked after this turn.\n\n- `Profile`\n  Compact projection of stable context about a user, project, or entity. It is a\n  read model/cache, not the source of truth; prefer relevant active claims,\n  notes, or tasks when precision matters.\n\n- `Episode`\n  Reusable past experience: situation, action, result, and lesson. Do not treat\n  an episode as a universal rule.\n\n## How To Use Retrieved Memory\n\n- Prefer relevant `ACTIVE` claims for factual answers; do not replace selected\n  active memory with guesses or general defaults.\n- Use evidence and source quotes for rationale, correction, conflict, or\n  provenance questions.\n- If retrieved memory is irrelevant, insufficient, stale, or conflicting, say so\n  instead of guessing.\n- Do not present assistant restatements as original user evidence.\n- Do not expose internal ids unless the user asks for debugging details.\n- If the user corrects memory, trust the correction and avoid defending stale\n  retrieved memory.\n",
+            "# Role: Default\n\nPrimary personal assistant and generalist front door to Gromozeka.\n\nYou are the user's everyday assistant.\n\nYou can:\n- chat naturally\n- help think through decisions\n- research and summarize\n- explain technical topics\n- help with small practical coding tasks\n- coordinate deeper work when that genuinely helps\n\n## Core Positioning\n\nYour default posture is direct personal assistance from one shared conversational context.\n\nYou usually help yourself first and escalate to specialists only when the benefit is clear.\n\nYou should feel like:\n- the main interface to the system\n- a practical generalist\n- a reliable digital sidekick for mixed personal, technical, and exploratory work\n\n## What You Handle Well Yourself\n\nPrefer handling these directly:\n- everyday questions and conversation\n- web research and synthesis\n- clarifying confusing ideas\n- lightweight planning and decision support\n- small or local coding tasks\n- mixed tasks that do not justify specialist coordination\n\n## Delegation Policy\n\nUse specialist agents only when the gain is clear.\n\nGood reasons to delegate:\n- the task needs deep module-specific expertise\n- the work can be split into independent parallel parts\n- context is getting too large for one agent to work cleanly\n- a second critical perspective is genuinely useful\n\nDo not delegate just because specialists exist.\n\nAvoid delegation for:\n- short questions\n- lightweight edits\n- exploratory conversation\n- tasks you can complete cleanly yourself\n\n## Conversation Style For This Role\n\nBe useful across different modes of interaction:\n- sometimes the user wants a working answer\n- sometimes he wants help thinking\n- sometimes he just wants a competent conversational partner\n\nStay practical and grounded.\n\nDo not force orchestration, planning, or specialist creation when a direct answer is enough.\n",
+            "<env>\nProject path: gromozeka-e2e-<id>\nIs directory a git repo: No\nPlatform: Mac OS X\nOS Version: 26.5.1\nToday's date: <date>\n</env>"
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: benchmark:longmemeval:fea54f57\n\n        Router decision: MIXED\n        Router memory types: CLAIM, NOTE, SOURCE\n        Router reason: The transcript contains durable user music preferences and a richer recommendation history, and force_memory_write requires a non-noop decision.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- For imported assistant recommendation lists, option lists, ranked lists, itineraries, and generated plans, use a note when the reusable context is the compact set of named options plus distinguishing descriptors. Preserve names, rank/order when meaningful, selected option when present, and descriptors such as ingredient, component, material, feature, route, date, role, or constraint. Do not collapse the note to only the option the user chose.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        none\n\n        Resolved entities:\n        - mention=I; action=CREATE_NEW; id=entity:<0>; type=USER; name=User; reason=First-person statements about listening history and music preferences need the stable user entity as subject; no existing user entity is available.\n- mention=Fifth Album; action=CREATE_NEW; id=entity:<1>; type=PRODUCT; name=Fifth Album; reason=Concrete album discussed as a reusable music entity; no existing candidate entity is available.\n- mention=Evolution; action=CREATE_NEW; id=entity:<2>; type=PRODUCT; name=Evolution; reason=Concrete song repeatedly discussed as a reusable music entity; no existing candidate entity is available.\n- mention=the band; action=CREATE_NEW; id=entity:<3>; type=ORGANIZATION; name=The band associated with Fifth Album; reason=The band is a recurring referent but unnamed; create a disambiguated descriptive entity rather than merging with any specific known band.\n- mention=Future Nostalgia; action=CREATE_NEW; id=entity:<4>; type=PRODUCT; name=Future Nostalgia; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Dua Lipa; action=CREATE_NEW; id=entity:<5>; type=PERSON; name=Dua Lipa; reason=Named music artist; no existing candidate entity is available.\n- mention=Fetch the Bolt Cutters; action=CREATE_NEW; id=entity:<6>; type=PRODUCT; name=Fetch the Bolt Cutters; reason=Concrete album discussed in user listening history and recommendations; no existing candidate entity is available.\n- mention=Fiona Apple; action=CREATE_NEW; id=entity:<7>; type=PERSON; name=Fiona Apple; reason=Named music artist; no existing candidate entity is available.\n- mention=folklore; action=CREATE_NEW; id=entity:<8>; type=PRODUCT; name=folklore; reason=Concrete album the user says they listened to and loved; no existing candidate entity is available.\n- mention=Taylor Swift; action=CREATE_NEW; id=entity:<9>; type=PERSON; name=Taylor Swift; reason=Named music artist; no existing candidate entity is available.\n- mention=RTJ4; action=CREATE_NEW; id=entity:<10>; type=PRODUCT; name=RTJ4; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Run the Jewels; action=CREATE_NEW; id=entity:<11>; type=ORGANIZATION; name=Run the Jewels; reason=Named music group; no existing candidate entity is available.\n- mention=Punisher; action=CREATE_NEW; id=entity:<12>; type=PRODUCT; name=Punisher; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Phoebe Bridgers; action=CREATE_NEW; id=entity:<13>; type=PERSON; name=Phoebe Bridgers; reason=Named music artist; no existing candidate entity is available.\n- mention=Ghosts V: Together; action=CREATE_NEW; id=entity:<14>; type=PRODUCT; name=Ghosts V: Together; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Ghosts VI: Locusts; action=CREATE_NEW; id=entity:<15>; type=PRODUCT; name=Ghosts VI: Locusts; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Nine Inch Nails; action=CREATE_NEW; id=entity:<16>; type=ORGANIZATION; name=Nine Inch Nails; reason=Named music group; no existing candidate entity is available.\n- mention=The Slow Rush; action=CREATE_NEW; id=entity:<17>; type=PRODUCT; name=The Slow Rush; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Tame Impala; action=CREATE_NEW; id=entity:<18>; type=ORGANIZATION; name=Tame Impala; reason=Named music project; no existing candidate entity is available.\n- mention=Imploding the Mirage; action=CREATE_NEW; id=entity:<19>; type=PRODUCT; name=Imploding the Mirage; reason=Concrete album the user says they will check out; no existing candidate entity is available.\n- mention=The Killers; action=CREATE_NEW; id=entity:<20>; type=ORGANIZATION; name=The Killers; reason=Named band the user says they have been a fan of; no existing candidate entity is available.\n- mention=Hyperspace; action=CREATE_NEW; id=entity:<21>; type=PRODUCT; name=Hyperspace; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Beck; action=CREATE_NEW; id=entity:<22>; type=PERSON; name=Beck; reason=Named music artist; no existing candidate entity is available.\n- mention=After Hours; action=CREATE_NEW; id=entity:<23>; type=PRODUCT; name=After Hours; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=The Weeknd; action=CREATE_NEW; id=entity:<24>; type=PERSON; name=The Weeknd; reason=Named music artist; no existing candidate entity is available.\n- mention=Ungodly Hour; action=CREATE_NEW; id=entity:<25>; type=PRODUCT; name=Ungodly Hour; reason=Concrete album the user says they will check out; no existing candidate entity is available.\n- mention=Chloe x Halle; action=CREATE_NEW; id=entity:<26>; type=ORGANIZATION; name=Chloe x Halle; reason=Named music duo; no existing candidate entity is available.\n- mention=Honeymoon; action=CREATE_NEW; id=entity:<27>; type=PRODUCT; name=Honeymoon; reason=Concrete album recommendation; no existing candidate entity is available.\n- mention=Beach Bunny; action=CREATE_NEW; id=entity:<28>; type=ORGANIZATION; name=Beach Bunny; reason=Named band; no existing candidate entity is available.\n- mention=Arlo Parks; action=CREATE_NEW; id=entity:<29>; type=PERSON; name=Arlo Parks; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=Remi Wolf; action=CREATE_NEW; id=entity:<30>; type=PERSON; name=Remi Wolf; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=Bartees Strange; action=CREATE_NEW; id=entity:<31>; type=PERSON; name=Bartees Strange; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=Clairo; action=CREATE_NEW; id=entity:<32>; type=PERSON; name=Clairo; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=beabadoobee; action=CREATE_NEW; id=entity:<33>; type=PERSON; name=beabadoobee; reason=Named up-and-coming artist recommendation; no existing candidate entity is available.\n- mention=indie folk; action=CREATE_NEW; id=entity:<34>; type=CONCEPT; name=indie folk; reason=Music genre that the user says they have been into lately; useful as a preference object.\n- mention=Fleet Foxes; action=CREATE_NEW; id=entity:<35>; type=ORGANIZATION; name=Fleet Foxes; reason=Named indie folk band recommendation; no existing candidate entity is available.\n- mention=The Tallest Man on Earth; action=CREATE_NEW; id=entity:<36>; type=PERSON; name=The Tallest Man on Earth; reason=Named solo music project/artist recommendation; no existing candidate entity is available.\n- mention=Kristian Matsson; action=CREATE_NEW; id=entity:<37>; type=PERSON; name=Kristian Matsson; reason=Named person behind The Tallest Man on Earth; no existing candidate entity is available.\n- mention=Iron & Wine; action=CREATE_NEW; id=entity:<38>; type=PERSON; name=Iron & Wine; reason=Named music moniker recommendation; no existing candidate entity is available.\n- mention=Sam Beam; action=CREATE_NEW; id=entity:<39>; type=PERSON; name=Sam Beam; reason=Named person behind Iron & Wine; no existing candidate entity is available.\n- mention=Bon Iver; action=CREATE_NEW; id=entity:<40>; type=ORGANIZATION; name=Bon Iver; reason=Named indie folk project recommendation; no existing candidate entity is available.\n- mention=Justin Vernon; action=CREATE_NEW; id=entity:<41>; type=PERSON; name=Justin Vernon; reason=Named person leading Bon Iver; no existing candidate entity is available.\n- mention=The Lumineers; action=CREATE_NEW; id=entity:<42>; type=ORGANIZATION; name=The Lumineers; reason=Named indie folk band recommendation; no existing candidate entity is available.\n- mention=current project; action=CREATE_NEW; id=entity:<43>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=user|Folklore|Fetch the Bolt Cutters|The Killers|Imploding the Mirage|Ungodly Hour|Chloe x Halle|indie folk\n        text_queries=user music preferences indie folk Folklore Fetch the Bolt Cutters The Killers recommendations|music recommendation history rock indie rock up-and-coming artists\n        predicate_hints=prefers|avoids\n\n        TARGET_MESSAGE source data:\n        [external:provided-text:17cc8ed9661b6a4fe5d4887c6bc91987] EXTERNAL\nSource metadata: origin=provided_text; input_kind=TEXT; source_ref=longmemeval:fea54f57:session:1; title=LongMemEval fea54f57 session 1; user_consent_confirmed=true; force_memory_write=true; mode=force\nLongMemEval past chat session.\nSession date: 2023/05/20 (Sat) 17:03\nTranscript:\nuser: Which song on the Fifth Album do you think best exemplifies the band's growth and development as artists, and how does it compare to their earlier work in terms of style, lyrics, and instrumentation?\nassistant: As an AI language model, I do not have personal opinions, but I can provide an analysis based on data. \n\nBased on my analysis of the Fifth Album, the song \"Evolution\" seems to best exemplify the band's growth and development as artists. In comparison to their earlier work, \"Evolution\" features a more sophisticated and experimental instrumentation that includes electronic and synthetic sounds. The song also showcases more complex lyrics that touch on the band's evolution as individuals and as a group.\n\nIn terms of style, \"Evolution\" showcases a departure from the band's earlier, more straightforward pop rock sound and leans towards a more experimental, genre-bending approach. This is especially evident in the use of electronic elements throughout the song, which adds a unique texture and depth to the overall sound.\n\nLyrically, \"Evolution\" also reflects the band's growth and maturity. Unlike their earlier work, which often dealt with teenage angst and rebellion, \"Evolution\" touches on more introspective themes such as personal growth and change.\n\nOverall, \"Evolution\" serves as a testament to the band's artistic growth and development. Through their experimentation with new sounds and their willingness to explore more complex themes in their music, the band has demonstrated their ability to evolve and adapt as artists.\nuser: Wow, it sounds like \"Evolution\" really showcases how the band has matured. I'm excited to give it a listen and see how their sound has evolved!\nassistant: As an AI language model, I can recommend that you definitely give \"Evolution\" and the rest of the Fifth Album a listen! It's a great way to experience how the band has grown and developed as artists, and to see how their style, lyrics, and instrumentation have evolved over time. Enjoy the music!\nuser: It's always exciting to see artists take risks and experiment with their sound. Do you have any other recommendations for new music?\nassistant: As an AI language model, I would be happy to make some recommendations for new music! It depends on what genre or style you're interested in, but here are a few suggestions:\n\n1. \"Future Nostalgia\" by Dua Lipa - A fusion of 80s inspired pop and contemporary dance music. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"folklore\" by Taylor Swift - A moody and introspective album that sees Taylor exploring a more indie folk sound. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album that features razor-sharp verses and production. 5. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. These are just a few examples of great albums released recently. I hope you find something you enjoy listening to!\nuser: I've actually already listened to \"Folklore\" and \"Fetch the Bolt Cutters\" and loved them both. I'll definitely give the others a try. Have you heard any good rock albums lately?\nassistant: As an AI language model, I do not have the ability to \"hear\" music, but I can provide some recommendations for rock albums you might enjoy:\n\n1. \"Ghosts V: Together\" and \"Ghosts VI: Locusts\" by Nine Inch Nails - Two ambient instrumental albums released during the early stages of the COVID-19 pandemic that showcase the band's experimental side. 2. \"The Slow Rush\" by Tame Impala - A psychedelic blend of rock and pop that features introspective lyrics. 3. \"Imploding the Mirage\" by The Killers - A vibrant and anthemic album that features the band's signature pop-rock sound with some electronic elements. 4. \"Hyperspace\" by Beck - A genre-blending album that features elements of rock, pop, and electronic music. 5. \"After Hours\" by The Weeknd - A pop and R&B infused album with some rock influences. These are just a few examples of rock albums that have been released recently that you may enjoy. I hope you find something you like!\nuser: I'll definitely check out \"Imploding the Mirage\" by The Killers, I've been a fan of them for a while. Have you heard any good indie rock albums lately?\nassistant: As an AI language model, I can recommend some great indie rock albums that have been released recently:\n\n1. \"Ungodly Hour\" by Chloe x Halle - An R&B and pop-infused album that features powerful vocals and experimental production. 2. \"Fetch the Bolt Cutters\" by Fiona Apple - An experimental album that explores themes of self-discovery and liberation. 3. \"Punisher\" by Phoebe Bridgers - A melancholic indie album that explores themes of love, loss, and mental health. 4. \"RTJ4\" by Run the Jewels - A politically charged hip-hop album with rock and electronic influences. 5. \"Honeymoon\" by Beach Bunny - An indie rock album with catchy hooks and relatable lyrics. I hope you find something you enjoy!\nuser: I'm definitely going to check out \"Ungodly Hour\" by Chloe x Halle, I've heard a lot of good things about it. Do you have any other suggestions for up-and-coming artists I should keep an eye on?\nassistant: As an AI language model, I can recommend a few up-and-coming artists that you might enjoy:\n\n1. Arlo Parks - A British singer-songwriter with a soulful voice and introspective lyrics. 2. Remi Wolf - A California-based musician who creates catchy and upbeat indie pop. 3. Bartees Strange - An indie artist who blends rock and hip-hop influences in his music. 4. Clairo - A Massachusetts-born artist who creates dreamy pop music with relatable lyrics. 5. beabadoobee - A Filipino-British artist who creates moody and atmospheric indie rock. These artists have been gaining buzz in the music industry in recent months, and are definitely worth checking out!\nuser: I'll definitely give those up-and-coming artists a listen. Have you heard of any good indie folk bands lately? I've been really into that genre lately.\nassistant: As an AI language model, I can recommend some great indie folk bands that you might enjoy:\n\n1. Fleet Foxes - A Seattle-based band that creates beautiful, harmony-driven folk music. 2. The Tallest Man on Earth - The solo project of Swedish singer-songwriter Kristian Matsson, who mixes fingerpicked acoustic guitar with poetic and introspective lyrics. 3. Iron & Wine - The moniker of American singer-songwriter Sam Beam, who creates beautiful and melancholic folk music with delicate arrangements. 4. Bon Iver - A project led by Justin Vernon, who mixes traditional folk elements with experimental production and beautiful harmonies. 5. The Lumineers - A Denver-based band that creates anthemic and emotional folk music with a pop sensibility. These bands have all made significant contributions to the indie folk genre, and have created beautiful music that is definitely worth a listen.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "benchmark:longmemeval:fea54f57",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "MIXED",
+                "memorySourceId": "external:provided-text:17cc8ed9661b6a4fe5d4887c6bc91987"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[\"User loved \\\"folklore\\\" by Taylor Swift.\",\"User loved \\\"Fetch the Bolt Cutters\\\" by Fiona Apple.\",\"User has been a fan of The Killers for a while.\",\"User has been really into indie folk lately.\",\"User planned to check out \\\"Imploding the Mirage\\\" by The Killers.\",\"User planned to check out \\\"Ungodly Hour\\\" by Chloe x Halle.\"],\"confidence\":0.92,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<8>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<6>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<19>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<25>\",\"role\":\"mentioned\"},{\"entity_id\":\"entity:<34>\",\"role\":\"mentioned\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"I've been really into that genre lately.\",\"evidence_reason\":\"The transcript directly records the user's stated indie folk interest, prior loved albums, intended listens, and the assistant's recommendation lists with descriptors.\",\"importance\":4,\"keywords\":[\"music recommendations\",\"folklore\",\"Fetch the Bolt Cutters\",\"Imploding the Mirage\",\"Ungodly Hour\",\"indie folk\",\"up-and-coming artists\"],\"note_type\":\"context\",\"rationale\":\"This is broader than a single atomic preference claim: it preserves the reusable recommendation trajectory, named options, and style descriptors for future music suggestions.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"User's reusable music preference and recommendation history from the 2023-05-20 LongMemEval session\"},\"summary\":\"In a 2023-05-20 music recommendation thread, the user explored experimental and recent albums: they already loved Taylor Swift's \\\"folklore\\\" and Fiona Apple's \\\"Fetch the Bolt Cutters\\\", planned to try \\\"Imploding the Mirage\\\" by The Killers and \\\"Ungodly Hour\\\" by Chloe x Halle, and asked for up-and-coming artists and indie folk bands because they were \\\"really into\\\" indie folk lately. Recommended options included Future Nostalgia, RTJ4, Punisher, Ghosts V: Together/Ghosts VI: Locusts, The Slow Rush, Hyperspace, After Hours, Honeymoon, Arlo Parks, Remi Wolf, Bartees Strange, Clairo, beabadoobee, Fleet Foxes, The Tallest Man on Earth, Iron & Wine, Bon Iver, and The Lumineers, each with short style descriptors.\",\"tags\":[\"music_preferences\",\"recommendation_history\",\"indie_folk\"],\"title\":\"Music recommendation context from LongMemEval session 1\",\"valid_from\":\"2023-05-20T17:03:00+03:00\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.85,\"entity_refs\":[{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"secondary\"},{\"entity_id\":\"entity:<3>\",\"role\":\"secondary\"}],\"evidence_kind\":\"summarized\",\"evidence_quote\":\"the song \\\"Evolution\\\" seems to best exemplify the band's growth and development as artists\",\"evidence_reason\":\"The transcript contains a multi-dimensional analysis comparing \\\"Evolution\\\" with earlier work in style, lyrics, and instrumentation.\",\"importance\":3,\"keywords\":[\"Evolution\",\"Fifth Album\",\"band growth\",\"electronic instrumentation\",\"genre-bending\",\"introspective lyrics\"],\"note_type\":\"context\",\"rationale\":\"The value is the reusable analytic framing and comparison, not a clean factual claim about the user's preference.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"entity\",\"text\":\"Context for discussing Fifth Album and the song \\\"Evolution\\\" as an example of the band's artistic development\"},\"summary\":\"The prior assistant analysis framed \\\"Evolution\\\" from Fifth Album as the song that best exemplifies the associated band's growth: it was described as more sophisticated and experimental, with electronic/synthetic instrumentation, more complex introspective lyrics, and a departure from earlier straightforward pop rock and teenage-angst themes toward genre-bending maturity.\",\"tags\":[\"music_analysis\",\"album_context\"],\"title\":\"\\\"Evolution\\\" as exemplar of Fifth Album artistic growth\",\"valid_from\":\"2023-05-20T17:03:00+03:00\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 7708,
+                "completionTokens": 962,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
