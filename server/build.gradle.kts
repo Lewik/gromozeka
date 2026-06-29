@@ -95,9 +95,18 @@ tasks.named("processTestResources") {
 tasks.withType<Test> {
     useJUnitPlatform()
 
-    val currentSystemProperties = gradle.startParameter.systemPropertiesArgs
+    val isLongMemEvalRun = providers.systemProperty("gromozeka.longmemeval")
+        .map { it == "true" }
+        .orElse(false)
+        .get()
+    if (isLongMemEvalRun) {
+        reports.junitXml.required.set(false)
+        reports.html.required.set(false)
+        outputs.upToDateWhen { false }
+    }
+
     fun passSystemProperty(name: String) {
-        currentSystemProperties[name]?.let { value ->
+        providers.systemProperty(name).orNull?.let { value ->
             systemProperty(name, value)
         }
     }
